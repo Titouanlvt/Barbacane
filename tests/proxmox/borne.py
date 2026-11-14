@@ -95,7 +95,7 @@ def pretraiter(ppm, png):
     # Binarisation : les bordures grises des boutons (≈ 130) et le fond (≈ 244) disparaissent.
     open(variante(png, ".n.pgm"), "wb").write(entete + bytes(0 if v < 70 else 255 for v in img))
     open(variante(png, ".m.pgm"), "wb").write(entete + bytes(0 if v < 150 else 255 for v in img))  # texte gris
-    open(variante(png, ".i.pgm"), "wb").write(entete + bytes(0 if v > 250 else 255 for v in img))
+    open(variante(png, ".i.pgm"), "wb").write(entete + bytes(0 if v > 240 else 255 for v in img))
 
 
 def norm(t):
