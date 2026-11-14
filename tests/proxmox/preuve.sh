@@ -115,7 +115,7 @@ if [ "${REPRISE:-0}" = 1 ] && qm listsnapshot "$VMID" 2>/dev/null | grep -q inst
     qm stop "$VMID" >/dev/null 2>&1 || true
     qm rollback "$VMID" installee
     qm start "$VMID"
-    "${B[@]}" attendre "Branchez la clé USB à analyser" 600 "$OUT/01-accueil.png"
+    "${B[@]}" attendre "Insérez la clé à analyser" 600 "$OUT/01-accueil.png"
     ok "borne remise à l'état « installée » (instantané)"
 else
     if qm status "$VMID" >/dev/null 2>&1; then
@@ -131,7 +131,7 @@ else
         --scsihw virtio-scsi-single --scsi0 "$STOCKAGE:16" \
         --ide2 local:iso/barbacane-preuve.iso,media=cdrom --boot 'order=scsi0;ide2' --vga std --ostype l26 >/dev/null
     qm start "$VMID"
-    "${B[@]}" attendre "Branchez la clé USB à analyser" 2400 "$OUT/01-accueil.png"
+    "${B[@]}" attendre "Insérez la clé à analyser" 2400 "$OUT/01-accueil.png"
     ok "installation automatique terminée, interface affichée"
     qm snapshot "$VMID" installee >/dev/null
 fi
@@ -154,7 +154,7 @@ ok "clé $SERIE_SORTIE enrôlée, mode clés enrôlées activé"
 "${B[@]}" cliquer "Retour au menu"
 debrancher usb1
 "${B[@]}" cliquer "Quitter le mode administrateur"
-"${B[@]}" attendre "Branchez la clé USB à analyser" 30
+"${B[@]}" attendre "Insérez la clé à analyser" 30
 
 # --- 3. Transfert ---------------------------------------------------------------------
 etape "3. Transfert : clé inconnue ($SERIE_SOURCE) → clé enrôlée ($SERIE_SORTIE)"
@@ -162,13 +162,13 @@ D="$OUT/transfert"
 remplir "$SERIE_SOURCE" "$D/source.sha256"
 brancher usb1 "$SERIE_SOURCE"
 "${B[@]}" attendre "Clé détectée" 60 "$D/01-cle-detectee.png"
-"${B[@]}" cliquer "Copier vers une autre clé"
+"${B[@]}" cliquer "Copier vers une clé de destination"
 "${B[@]}" attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"
 "${B[@]}" lire > "$D/02-resultat-analyse.txt"
 si grep -qi eicar "$D/02-resultat-analyse.txt" -- "écran : EICAR détecté" "écran : EICAR non affiché"
-"${B[@]}" cliquer "Choisir la clé de sortie"
+"${B[@]}" cliquer "Choisir la clé de destination"
 brancher usb2 "$SERIE_SORTIE"
-"${B[@]}" attendre "Clé de sortie" 60 "$D/03-cle-sortie.png"
+"${B[@]}" attendre "Clé de destination" 60 "$D/03-cle-sortie.png"
 "${B[@]}" cliquer "Effacer cette clé"
 "${B[@]}" attendre "Vous pouvez retirer les clés" 10800 "$D/04-termine.png"
 "${B[@]}" lire > "$D/04-termine.txt"
@@ -176,7 +176,7 @@ debrancher usb2; debrancher usb1
 inventaire "$SERIE_SORTIE" "$D/sortie.sha256" "$D"
 verifier "$D/source.sha256" "$D/sortie.sha256" "$D"
 # Clés retirées : la borne revient seule à l'accueil.
-"${B[@]}" attendre "Branchez la clé USB à analyser" 60
+"${B[@]}" attendre "Insérez la clé à analyser" 60
 
 # --- 4. Blanchiment -------------------------------------------------------------------
 etape "4. Blanchiment de la clé $SERIE_SOURCE"

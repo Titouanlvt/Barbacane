@@ -82,6 +82,13 @@ pub struct App {
 pub fn run(cfg: Config) -> iced::Result {
     iced::application(move || App::new(cfg.clone()), App::update, App::view)
         .title(|a: &App| a.cfg.title.clone())
+        // Polices de la charte, embarquées : rien ne vient du réseau ni du système.
+        .font(include_bytes!("../ressources/polices/AtkinsonHyperlegible-Regular.ttf").as_slice())
+        .font(include_bytes!("../ressources/polices/AtkinsonHyperlegible-Bold.ttf").as_slice())
+        .font(include_bytes!("../ressources/polices/BarlowCondensed-SemiBold.ttf").as_slice())
+        .font(include_bytes!("../ressources/polices/BarlowCondensed-Bold.ttf").as_slice())
+        .font(include_bytes!("../ressources/polices/JetBrainsMono.ttf").as_slice())
+        .default_font(style::CORPS)
         .subscription(App::subscription)
         .run()
 }
@@ -92,7 +99,7 @@ fn etape(s: Status) -> &'static str {
         Status::ReadSrc => "Lecture de la clé",
         Status::UploadAv => "Envoi des fichiers à l'analyseur",
         Status::Analyze => "Analyse des fichiers",
-        Status::MkFs => "Préparation de la clé de sortie",
+        Status::MkFs => "Préparation de la clé de destination",
         Status::MkArchive | Status::ExecCmd => "Fin de la lecture",
         Status::WriteDst => "Écriture sur la clé",
         Status::Wipe => "Effacement complet de la clé",
@@ -235,7 +242,7 @@ impl App {
                         self.dst = Some(c);
                     } else {
                         self.dst_refused = Some(format!(
-                            "Cette clé ({}) n'est pas enrôlée : elle ne peut pas servir de clé de sortie.",
+                            "Cette clé ({}) n'est pas enrôlée : elle ne peut pas servir de clé de destination.",
                             barbacane_parcours::describe(&c)
                         ));
                     }
@@ -409,7 +416,7 @@ impl App {
                              Laissez-la branchée et réessayez l'écriture."
                         ),
                         Mode::Copier => format!(
-                            "L'écriture sur la clé de sortie a échoué : {e}.\nNe l'utilisez pas en l'état ; réessayez."
+                            "L'écriture sur la clé de destination a échoué : {e}.\nNe l'utilisez pas en l'état ; réessayez."
                         ),
                     },
                     retry: true,
@@ -429,8 +436,9 @@ impl App {
                 texte("Connexion au service de lecture des clés USB."),
             ]),
             Screen::Accueil => centre(column![
-                text("🛡").size(110).shaping(text::Shaping::Advanced),
-                titre("Branchez la clé USB à analyser"),
+                icone(LOGO, 150.0),
+                Space::new().height(10),
+                titre("Insérez la clé à analyser"),
                 texte("sur le port d'entrée de la borne."),
                 Space::new().height(30),
                 petit(
@@ -467,16 +475,13 @@ impl App {
             ]),
             Screen::Ecriture => self.view_progress(
                 match self.mode {
-                    Mode::Copier => "Écriture sur la clé de sortie",
+                    Mode::Copier => "Écriture sur la clé de destination",
                     Mode::Blanchir => "Blanchiment de la clé",
                 },
                 "Ne retirez aucune clé.",
             ),
             Screen::Fin(n) => centre(column![
-                text("✔")
-                    .size(100)
-                    .color(style::VERT)
-                    .shaping(text::Shaping::Advanced),
+                icone_etat(ICONE_SAIN, 110.0, style::SAIN),
                 titre("Terminé"),
                 texte(&format!(
                     "{n} fichier(s) sain(s) écrit(s), avec le rapport (rapport-barbacane-…txt / .html)."
@@ -500,10 +505,7 @@ impl App {
                     ));
                 }
                 centre(column![
-                    text("⚠")
-                        .size(90)
-                        .color(style::ROUGE)
-                        .shaping(text::Shaping::Advanced),
+                    icone_etat(ICONE_ALERTE, 96.0, style::ALERTE),
                     titre("Une erreur est survenue"),
                     carte(column![texte(message)]),
                     Space::new().height(20),
@@ -529,11 +531,14 @@ impl App {
 
     fn view_header(&self) -> Element<'_, Msg> {
         let mut r = row![
-            text(&self.cfg.title)
-                .size(style::TITRE)
-                .color(iced::Color::WHITE),
+            icone(LOGO_NUIT, 52.0),
+            text(self.cfg.title.to_uppercase())
+                .size(34)
+                .font(style::TITRE_POLICE)
+                .color(style::SUR_ENCRE),
             Space::new().width(Length::Fill)
         ]
+        .spacing(14)
         .align_y(Alignment::Center);
         let age = self
             .etat
@@ -555,7 +560,7 @@ impl App {
                 r = r.push(
                     text(format!("Signatures antivirales : {a} jour(s)"))
                         .size(style::PETIT)
-                        .color(iced::Color::WHITE),
+                        .color(style::SUR_ENCRE),
                 )
             }
             None if self.etat.is_some() => {
@@ -617,7 +622,7 @@ impl App {
             texte(&d),
             Space::new().height(30),
             row![
-                grand_choix("Copier vers une autre clé", "Les fichiers sains sont copiés sur une clé de sortie,\nqui sera effacée et formatée.", Msg::Choisir(Mode::Copier)),
+                grand_choix("Copier vers une clé de destination", "Les fichiers sains sont copiés sur une clé de destination,\nqui sera effacée et formatée.", Msg::Choisir(Mode::Copier)),
                 grand_choix("Blanchir cette clé", "La clé est analysée, entièrement effacée,\npuis seuls ses fichiers sains y sont réécrits.", Msg::Choisir(Mode::Blanchir)),
             ]
             .spacing(40),
@@ -634,7 +639,8 @@ impl App {
                 c = c.push(
                     progress_bar(0.0..=tot as f32, cur as f32)
                         .length(Length::Fixed(700.0))
-                        .girth(28),
+                        .girth(28)
+                        .style(style::jauge),
                 );
                 // Étapes en octets : quantité, vitesse de la clé, temps restant
                 if matches!(s, Status::ReadSrc | Status::WriteDst | Status::Wipe) {
@@ -698,16 +704,28 @@ impl App {
         let copied = a.report.copied().count();
         let refused: Vec<_> = a.report.refused().collect();
         let mut list = Column::new().spacing(8);
+        let est_menace = |r: &str| r.contains("menace");
+        let menaces = refused.iter().filter(|f| est_menace(&f.reason)).count();
         for f in &refused {
+            let (ic, c) = if est_menace(&f.reason) {
+                (ICONE_MENACE, style::MENACE)
+            } else {
+                (ICONE_ALERTE, style::ALERTE)
+            };
             list = list.push(
-                column![
-                    text(&f.path)
-                        .size(style::TEXTE_TAILLE)
-                        .color(style::ROUGE)
-                        .shaping(text::Shaping::Advanced),
-                    petit(&f.reason)
+                row![
+                    icone_etat(ic, 26.0, c),
+                    column![
+                        text(&f.path)
+                            .size(style::PETIT)
+                            .font(style::MONO)
+                            .color(style::ENCRE)
+                            .shaping(text::Shaping::Advanced),
+                        petit(&f.reason)
+                    ]
+                    .spacing(2)
                 ]
-                .spacing(2),
+                .spacing(12),
             );
         }
         for f in &a.filtered {
@@ -728,24 +746,51 @@ impl App {
             .iter()
             .filter(|f| a.report.is_unpacked(f))
             .collect();
-        let mut c = column![
-            titre("Résultat de l'analyse"),
+        // Verdict (charte) : un seul bandeau, la menace l'emporte sur l'alerte.
+        let ecartes = refused.len() - menaces + a.filtered.len();
+        let (ic, c, fond, titre_v) = if menaces > 0 {
+            (
+                ICONE_MENACE,
+                style::MENACE,
+                style::MENACE_FOND,
+                format!("{menaces} menace(s) détectée(s)"),
+            )
+        } else if ecartes > 0 {
+            (
+                ICONE_ALERTE,
+                style::ALERTE,
+                style::ALERTE_FOND,
+                format!("{ecartes} fichier(s) écarté(s)"),
+            )
+        } else {
+            (
+                ICONE_SAIN,
+                style::SAIN,
+                style::SAIN_FOND,
+                "Aucune menace détectée".to_string(),
+            )
+        };
+        let verdict = container(
             row![
-                pastille(
-                    &format!("{copied}"),
-                    "fichier(s) sain(s) à copier",
-                    style::VERT
-                ),
-                pastille(
-                    &format!("{}", refused.len() + a.filtered.len()),
-                    "fichier(s) refusé(s)",
-                    style::ROUGE
-                ),
+                icone_etat(ic, 48.0, c),
+                column![
+                    text(titre_v).size(36).font(style::TITRE_POLICE).color(c),
+                    texte(&format!(
+                        "{copied} fichier(s) sain(s) à copier · {} refusé(s)",
+                        refused.len() + a.filtered.len()
+                    )),
+                ]
+                .spacing(2)
             ]
-            .spacing(30),
-        ]
-        .spacing(16)
-        .align_x(Alignment::Center);
+            .spacing(20)
+            .align_y(Alignment::Center),
+        )
+        .padding([16, 28])
+        .width(Length::Fixed(900.0))
+        .style(style::verdict(fond, c));
+        let mut c = column![titre("Résultat de l'analyse"), verdict]
+            .spacing(16)
+            .align_x(Alignment::Center);
         if !unpacked.is_empty() {
             c = c.push(petit(&format!(
                 "{} archive(s) contenant des fichiers refusés : leurs fichiers sains seront copiés dans un dossier « <archive>.extrait ».",
@@ -765,7 +810,11 @@ impl App {
             );
         }
         let action = match self.mode {
-            Mode::Copier => bouton("Choisir la clé de sortie", Msg::VersSortie, style::primaire),
+            Mode::Copier => bouton(
+                "Choisir la clé de destination",
+                Msg::VersSortie,
+                style::primaire,
+            ),
             Mode::Blanchir => bouton("Blanchir la clé", Msg::Blanchir, style::danger),
         };
         c = c.push(Space::new().height(10)).push(
@@ -780,7 +829,7 @@ impl App {
 
     fn view_sortie(&self) -> Element<'_, Msg> {
         let mut c = column![
-            titre("Branchez la clé de sortie"),
+            titre("Insérez la clé de destination"),
             texte("sur le port de sortie de la borne.")
         ]
         .spacing(14)
@@ -788,14 +837,17 @@ impl App {
         if let Some(r) = &self.dst_refused {
             c = c.push(container(texte(r)).padding(12).style(style::alerte));
         }
-        let mut go =
-            button(text("Effacer cette clé et y copier les fichiers").size(style::TEXTE_TAILLE))
-                .padding([18, 30])
-                .style(style::primaire);
+        let mut go = button(
+            text("Effacer cette clé et y copier les fichiers")
+                .size(24)
+                .font(style::CORPS_GRAS),
+        )
+        .padding([18, 30])
+        .style(style::primaire);
         if let Some(d) = &self.dst {
             c = c.push(carte(column![
                 texte(&format!(
-                    "Clé de sortie : {}",
+                    "Clé de destination : {}",
                     barbacane_parcours::describe(d)
                 )),
                 texte_c("Son contenu actuel sera entièrement effacé.", style::ROUGE),
@@ -818,9 +870,34 @@ pub fn centre<'a>(c: Column<'a, Msg>) -> Element<'a, Msg> {
         .into()
 }
 
+/// Logo en relief (version nuit sur le bandeau encre).
+const LOGO: &[u8] = include_bytes!("../ressources/icones/barbacane-relief.svg");
+const LOGO_NUIT: &[u8] = include_bytes!("../ressources/icones/barbacane-relief-nuit.svg");
+pub const ICONE_SAIN: &[u8] = include_bytes!("../ressources/icones/shield-check.svg");
+pub const ICONE_ALERTE: &[u8] = include_bytes!("../ressources/icones/triangle-alert.svg");
+pub const ICONE_MENACE: &[u8] = include_bytes!("../ressources/icones/octagon-x.svg");
+
+/// Image SVG embarquée, carrée.
+pub fn icone<'a>(svg: &'static [u8], taille: f32) -> Element<'a, Msg> {
+    iced::widget::svg(iced::widget::svg::Handle::from_memory(svg))
+        .width(taille)
+        .height(taille)
+        .into()
+}
+
+/// Icône au trait (Lucide) colorée selon l'état.
+pub fn icone_etat<'a>(svg: &'static [u8], taille: f32, c: iced::Color) -> Element<'a, Msg> {
+    iced::widget::svg(iced::widget::svg::Handle::from_memory(svg))
+        .width(taille)
+        .height(taille)
+        .style(move |_, _| iced::widget::svg::Style { color: Some(c) })
+        .into()
+}
+
 pub fn titre<'a>(t: &str) -> Element<'a, Msg> {
     text(t.to_string())
         .size(style::TITRE)
+        .font(style::TITRE_POLICE)
         .color(style::BLEU)
         .shaping(text::Shaping::Advanced)
         .into()
@@ -861,12 +938,14 @@ pub fn bouton<'a>(
     m: Msg,
     s: fn(&iced::Theme, button::Status) -> button::Style,
 ) -> Element<'a, Msg> {
+    // Charte : 24 px gras, cible d'au moins 64 px (72 px visés en 1080p)
     button(
         text(t.to_string())
-            .size(style::TEXTE_TAILLE)
+            .size(24)
+            .font(style::CORPS_GRAS)
             .shaping(text::Shaping::Advanced),
     )
-    .padding([18, 30])
+    .padding([18, 32])
     .style(s)
     .on_press(m)
     .into()
@@ -885,20 +964,5 @@ fn grand_choix<'a>(t: &str, d: &str, m: Msg) -> Element<'a, Msg> {
     .width(Length::Fixed(460.0))
     .style(style::primaire)
     .on_press(m)
-    .into()
-}
-
-fn pastille<'a>(n: &str, l: &str, c: iced::Color) -> Element<'a, Msg> {
-    container(
-        column![
-            text(n.to_string()).size(44).color(c),
-            text(l.to_string()).size(style::TEXTE_TAILLE)
-        ]
-        .align_x(Alignment::Center),
-    )
-    .center_x(Length::Fixed(320.0))
-    .padding(12)
-    .width(Length::Fixed(320.0))
-    .style(style::carte)
     .into()
 }
