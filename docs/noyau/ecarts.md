@@ -23,6 +23,21 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
 - Cause : pendant les longues écritures, les clés bon marché marquent des pauses internes
   (vidage de cache, ramasse-miettes de la mémoire flash) de plus de 5 s ; usbsas n'accordait
   que 5 s par transfert USB (Linux : 30 s par commande).
+- Test modifié (à signaler) : `csw_timeouts_are_retried` vérifiait 2 expirations tolérées sur 3 ; il
+  vérifie maintenant 1 tolérée sur 2 (même propriété, nouvelle valeur), il n'est pas affaibli.
 - Correctif : délai de transfert 5 s → 30 s (`usbsas-mass-storage/src/lib.rs`) et
   `CSW_READ_ATTEMPTS` 3 → 2 (`usbsas-scsi/src/lib.rs`), soit 60 s d'attente du statut.
   Aucune donnée n'est relue ni réécrite : on attend seulement plus longtemps la même commande.
+
+### 3. Reprise des correctifs amont de `usbsas-fsrw` et de `usbsas-usbsas`
+- Constat (revue de sécurité du 14/11/2026, docs/revue-securite.md, S-02) : 25 commits du CEA sur
+  les lecteurs de systèmes de fichiers manquaient au noyau (fusion `-s ours` de main) ; plusieurs
+  corrigent des défauts mémoire atteignables par une clé piégée : double fermeture d'inode NTFS,
+  inodes non fermés sur erreur, horodatages qui débordent, noms invalides, chemins contenant NUL (FAT).
+- Correctif : `noyau/usbsas-fsrw` remplacé par la version amont (commit `0af6969` du dépôt, dossier
+  inchangé jusque-là côté Barbacane) ; commit amont `4005053` appliqué à `usbsas-usbsas/src/states.rs`
+  (plus de panique sur une version d'analyseur non prise en charge).
+- Tests apportés : `nul_in_path`, `malicious_on_disk_timestamp`, `invalid_names`, `failed_mount_releases`,
+  `timestamp_clamped`, `concurrent_mkntfs`… ; phase 1, e2e de la borne (FAT et NTFS) au vert.
+- Non repris (hors usage de la borne) : `907301e` (espace disque avant téléchargement réseau ; la borne
+  n'utilise pas la source réseau).
