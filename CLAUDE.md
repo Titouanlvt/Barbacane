@@ -10,7 +10,7 @@ par Claude. Le noyau de lecture USB provient d'usbsas (CEA) et vit dans `noyau/`
 - La borne n'est JAMAIS sur le réseau, même à l'installation : seule l'ISO est valable ;
   `systeme/install.sh` = maquette uniquement.
 - Design : charte `docs/charte/` (source : artifact Design System de l'utilisateur).
-- Fusion dans `main` quand la CI est verte.
+- Travail sur une branche, fusion dans `main` quand la CI est verte.
 
 ## Organisation
 `noyau/` (crates usbsas, chemins relatifs entre elles) · `borne/` (client, analyzer, admind,
@@ -41,12 +41,16 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
   complet d'une clé de 7 Go ≈ 45 min.
 
 ## État au 14/11/2026
-- Transfert prouvé sur vraies clés (EICAR détecté, absent en sortie, sains intacts).
+- **Preuves faites sur vraies clés** (docs/preuves/README.md, verdict OK) : transfert (EICAR
+  détecté et absent en sortie, sains intacts) et blanchiment (empreinte modifiée, EICAR effacé,
+  sains réécrits). Clés : SanDisk 16 Go (source) et SanDisk Ultra 64 Go (destination enrôlée).
 - Corrigés : blocage d'installation à 14 %, boutons hors écran en 1280×800, CI phase 1,
-  blanchiment interrompu sur clé lente (attente CSW 60 s, écart n°2).
+  délais USB (30 s, écart n°2), progression avec vitesse/temps restant, charte graphique.
+- `main` = arborescence refondue (noyau/ borne/ systeme/ tests/ docs/), fusionnée en gardant le
+  contenu prouvé : les 100 commits amont usbsas présents sur l'ancien main n'y sont PAS appliqués.
 
 ## Reste à faire
-1. Preuve du blanchiment sur vraies clés + `docs/preuves/README.md` ; test à 8 Go de RAM.
-2. Interface selon la charte (thème Pierre, polices embarquées, icônes SVG, verdicts) et
-   progression avec vitesse de la clé / temps restant.
-3. Image mkosi jamais construite ; drop-in tmpfs non supprimé à la purge (mineur).
+1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
+2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).
+3. Charte : thème Nuit (option), animations d'analyse, bandeau d'étapes.
+4. Image mkosi jamais construite ; drop-in tmpfs non supprimé à la purge (mineur).
