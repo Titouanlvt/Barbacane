@@ -105,7 +105,8 @@ impl MassStorage {
                             desc.setting_number(),
                             ep0,
                             ep1,
-                            Duration::from_secs(5),
+                            // Barbacane : 30 s comme Linux (5 s ne suffisaient pas aux clés lentes)
+                            Duration::from_secs(30),
                         );
                         return MassStorage::new(scsiusb, Some(file));
                     }

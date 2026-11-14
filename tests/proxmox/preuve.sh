@@ -146,7 +146,7 @@ etape "2. PIN, enrôlement de la clé de sortie ($SERIE_SORTIE)"
 "${B[@]}" cliquer "Valider"
 "${B[@]}" cliquer "Clés de sortie enrôlées"
 brancher usb1 "$SERIE_SORTIE"
-"${B[@]}" attendre "$SERIE_SORTIE" 60
+"${B[@]}" attendre "Enrôler" 60
 "${B[@]}" cliquer "Enrôler"
 "${B[@]}" cliquer "Activer"
 "${B[@]}" attendre "ACTIVÉ" 30 "$OUT/03-cle-enrolee.png"
