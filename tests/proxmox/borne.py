@@ -11,6 +11,7 @@ Le clic passe par la tablette USB (positions absolues) : `mouse_move` du moniteu
 HMP est relatif et part sur la souris PS/2. Lecture par tesseract (fra).
 """
 import json
+import re
 import os
 import socket
 import subprocess
@@ -93,9 +94,35 @@ def pretraiter(ppm, png):
     img = b"".join(lignes)
     entete = f"P5 {l * 2} {h * 2} 255\n".encode()
     # Binarisation : les bordures grises des boutons (≈ 130) et le fond (≈ 244) disparaissent.
-    open(variante(png, ".n.pgm"), "wb").write(entete + bytes(0 if v < 70 else 255 for v in img))
+    n = bytes(0 if v < 70 else 255 for v in img)
+    open(variante(png, ".n.pgm"), "wb").write(entete + sans_bordures(n, l * 2, h * 2))
     open(variante(png, ".m.pgm"), "wb").write(entete + bytes(0 if v < 150 else 255 for v in img))  # texte gris
     open(variante(png, ".i.pgm"), "wb").write(entete + bytes(0 if v > 240 else 255 for v in img))
+
+
+def sans_bordures(img, l, h, long=60, ecart=6):
+    """Efface les traits longs et fins (bordures des boutons) d'une image binaire :
+    tesseract prend un mot encadré pour une image et ne le lit pas."""
+    px = bytearray(img)
+    trait = re.compile(rb"\x00{%d,}" % long)
+
+    def fin(seg):  # segment voisin presque blanc : le trait est fin
+        return seg.count(0) < len(seg) * 0.3
+
+    for y in range(ecart, h - ecart):
+        ligne = bytes(px[y * l:(y + 1) * l])
+        for m in trait.finditer(ligne):
+            a, b = m.span()
+            if fin(px[(y - ecart) * l + a:(y - ecart) * l + b]) or fin(px[(y + ecart) * l + a:(y + ecart) * l + b]):
+                px[y * l + a:y * l + b] = b"\xff" * (b - a)
+    for x in range(ecart, l - ecart):
+        col = bytes(px[x::l])
+        for m in trait.finditer(col):
+            a, b = m.span()
+            g, d = px[x - ecart::l][a:b], px[x + ecart::l][a:b]
+            if fin(g) or fin(d):
+                px[x + a * l:x + b * l:l] = b"\xff" * (b - a)
+    return bytes(px)
 
 
 def norm(t):

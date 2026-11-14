@@ -266,8 +266,34 @@ impl Devices {
 pub fn describe(d: &UsbDevice) -> String {
     format!(
         "{} {} (n° de série {}, {:04x}:{:04x})",
-        d.manufacturer, d.description, d.serial, d.vendorid, d.productid
+        d.manufacturer.trim(),
+        d.description.trim(),
+        serie_courte(&d.serial),
+        d.vendorid,
+        d.productid
     )
+}
+
+/// Numéro de série lisible à l'écran : certaines clés en ont un de plus de 100
+/// caractères, qui déborde. L'enrôlement compare toujours le numéro complet.
+pub fn serie_courte(s: &str) -> String {
+    let c: Vec<char> = s.trim().chars().collect();
+    if c.len() <= 20 {
+        return c.into_iter().collect();
+    }
+    let debut: String = c[..10].iter().collect();
+    let fin: String = c[c.len() - 6..].iter().collect();
+    format!("{debut}…{fin}")
+}
+
+#[cfg(test)]
+mod tests_affichage {
+    #[test]
+    fn serie_courte() {
+        assert_eq!(super::serie_courte("CA003B87786AA493"), "CA003B87786AA493");
+        let longue = "0501f66b357c3cb8eaaf6efb1d11265cc6fcdab3ce4e06b163ad06c25b56858f2dd9";
+        assert_eq!(super::serie_courte(longue), "0501f66b35…8f2dd9");
+    }
 }
 
 pub fn devices(comm: &mut impl ProtoReqUsbsas) -> Result<Devices> {
