@@ -37,6 +37,8 @@ jobs:
         run: cargo fmt --all --check
       - name: clippy
         run: cargo clippy --no-deps --all-targets -p barbacane-client -p barbacane-analyzer -p barbacane-admind -p barbacane-parcours -- -D warnings
+      - name: clippy noyau (non strict, comme le CI amont d'usbsas)
+        run: cargo clippy --no-deps --all-targets --workspace
       - name: tests (noyau, analyseur, archives, bout en bout mock)
         run: cargo test
       - name: mises à jour signées (préparation → application)
