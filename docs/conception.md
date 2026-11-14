@@ -191,7 +191,7 @@ dynamique. Le client sera un fork (autorisé par la consigne).
 - **Tar usbsas** : les fichiers sont sous `data/` (plus `config.json`), comme le traite
   `usbsas-analyzer-server` ; l'analyseur fait de même.
 - La logique des parcours (analyse, préparation, écriture, effacement) est dans la
-  bibliothèque `barbacane/parcours`, testée de bout en bout en mode mock, et utilisée
+  bibliothèque `borne/parcours`, testée de bout en bout en mode mock, et utilisée
   par le client graphique.
 
 ## 7. Décisions (validées)

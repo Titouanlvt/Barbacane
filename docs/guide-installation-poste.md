@@ -19,12 +19,12 @@ Sur le poste administrateur :
 ```sh
 git clone <dépôt> usbsas && cd usbsas
 # Recommandé : la clé publique de signature des mises à jour
-cp /chemin/barbacane-maj.pub barbacane/system/iso/maj.pub
+cp /chemin/barbacane-maj.pub systeme/iso/maj.pub
 # Debian 13, en root :
-sudo barbacane/system/iso/build-iso.sh --sortie barbacane.iso
+sudo systeme/iso/build-iso.sh --sortie barbacane.iso
 # ou, depuis un autre Linux :
 docker run --rm --privileged -v "$PWD":/src -w /src debian:trixie \
-    barbacane/system/iso/build-iso.sh --sortie barbacane.iso
+    systeme/iso/build-iso.sh --sortie barbacane.iso
 ```
 
 Résultat : le fichier `barbacane.iso`. Il contient tout ce qu'il faut (Debian, Barbacane,

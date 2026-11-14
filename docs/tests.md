@@ -37,7 +37,7 @@ export des journaux, mise à jour signée. Captures dans [`captures/`](captures/
 
 ## Paquets
 
-`barbacane/system/build-debs.sh` construit `usbsas-server`, `usbsas-hid` et
+`systeme/build-debs.sh` construit `usbsas-server`, `usbsas-hid` et
 `barbacane` (production, sans mock). Installés sur Ubuntu 24.04 (faute de
 Debian 13) : comptes et groupes créés, réglages clamd appliqués, unités,
 PAM, modprobe, sysctl en place. Les postinst d'usbsas échouent dans un conteneur

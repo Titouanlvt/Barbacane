@@ -12,22 +12,22 @@ exploitation, administration, tests, ecarts-upstream).
 - Branche de travail : `claude/affectionate-galileo-w0bjm2`.
 
 ## Vérifications locales
-- `barbacane/tests/phase1-mock.sh` (usbsas mock, EICAR)
+- `tests/phase1-mock.sh` (usbsas mock, EICAR)
 - `cd barbacane && cargo fmt --all --check && cargo clippy --no-deps --all-targets -- -D warnings && cargo test`
 - `cd barbacane && cargo build -p barbacane-admind && tests/maj/maj.sh`
-- `shellcheck barbacane/system/*.sh barbacane/system/iso/*.sh barbacane/tests/*.sh barbacane/tests/*/*.sh`
+- `shellcheck systeme/*.sh systeme/iso/*.sh tests/*.sh tests/*/*.sh`
 - Build debug lourd : profil dev à debuginfo réduit (disque).
 
-## ISO d'installation hors ligne (`barbacane/system/iso/`)
+## ISO d'installation hors ligne (`systeme/iso/`)
 - `build-iso.sh` (root, Debian 13 ou conteneur `debian:trixie --privileged`) :
   ISO netinst officielle + paquets Barbacane et dépendances (résolues dans un
-  debootstrap) + base ClamAV + `maj.pub` (déposer la clé dans `barbacane/system/iso/maj.pub`).
+  debootstrap) + base ClamAV + `maj.pub` (déposer la clé dans `systeme/iso/maj.pub`).
 - `preseed.cfg` : aucune question ; langue via `locale=` du menu ; mot de passe root
   aléatoire (exigé par d-i) puis `passwd -l` dans `configurer.sh`.
 - `choisir-disque.sh` : plus grand disque non-USB. `fin-installation.sh` : installe
   les .deb depuis l'ISO puis lance `configurer.sh` (partagé avec mkosi).
 - simple-cdd/debian-cd ont été ABANDONNÉS (exigent l'installateur i386, absent de trixie).
-- CI : `.github/workflows/iso.yml` = construction + test `barbacane/tests/iso/qemu.sh`
+- CI : `.github/workflows/iso.yml` = construction + test `tests/iso/qemu.sh`
   (QEMU UEFI, ISO en clé USB, installateur sur console série en anglais car la série
   n'affiche pas le français, puis inspection du journal du disque installé).
 

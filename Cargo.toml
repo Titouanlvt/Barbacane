@@ -1,57 +1,69 @@
+# Barbacane : un seul workspace — noyau/ (lecture USB isolée, issu d'usbsas) et borne/.
 [workspace]
 members = [
-  "usbsas-utils",
-  "usbsas-comm",
-  "usbsas-proto",
-  "usbsas-process",
-  "usbsas-sandbox",
-  "usbsas-scsi",
-  "usbsas-mass-storage",
-  "usbsas-fsrw",
-  "usbsas-mock",
-  "usbsas-config",
-  "usbsas-analyzer-server",
-  "usbsas-cmdexec",
-  "usbsas-dev2scsi",
-  "usbsas-files2fs",
-  "usbsas-files2tar",
-  "usbsas-fs2dev",
-  "usbsas-identifier",
-  "usbsas-scsi2files",
-  "usbsas-tar2files",
-  "usbsas-local2files",
-  "usbsas-net",
-  "usbsas-usbdev",
-  "usbsas-usbsas",
-  "usbsas-hid",
-  "usbsas-client",
-  "usbsas-tools"
+  "noyau/usbsas-utils",
+  "noyau/usbsas-comm",
+  "noyau/usbsas-proto",
+  "noyau/usbsas-process",
+  "noyau/usbsas-sandbox",
+  "noyau/usbsas-scsi",
+  "noyau/usbsas-mass-storage",
+  "noyau/usbsas-fsrw",
+  "noyau/usbsas-mock",
+  "noyau/usbsas-config",
+  "noyau/usbsas-analyzer-server",
+  "noyau/usbsas-cmdexec",
+  "noyau/usbsas-dev2scsi",
+  "noyau/usbsas-files2fs",
+  "noyau/usbsas-files2tar",
+  "noyau/usbsas-fs2dev",
+  "noyau/usbsas-identifier",
+  "noyau/usbsas-scsi2files",
+  "noyau/usbsas-tar2files",
+  "noyau/usbsas-local2files",
+  "noyau/usbsas-net",
+  "noyau/usbsas-usbdev",
+  "noyau/usbsas-usbsas",
+  "noyau/usbsas-hid",
+  "noyau/usbsas-tools",
+  "borne/analyzer",
+  "borne/parcours",
+  "borne/client",
+  "borne/admind"
 ]
 default-members = [
-  "usbsas-utils",
-  "usbsas-comm",
-  "usbsas-proto",
-  "usbsas-process",
-  "usbsas-sandbox",
-  "usbsas-scsi",
-  "usbsas-mass-storage",
-  "usbsas-fsrw",
-  "usbsas-config",
-  "usbsas-cmdexec",
-  "usbsas-dev2scsi",
-  "usbsas-files2fs",
-  "usbsas-files2tar",
-  "usbsas-fs2dev",
-  "usbsas-identifier",
-  "usbsas-scsi2files",
-  "usbsas-tar2files",
-  "usbsas-local2files",
-  "usbsas-net",
-  "usbsas-usbdev",
-  "usbsas-client",
-  "usbsas-usbsas"
+  "noyau/usbsas-utils",
+  "noyau/usbsas-comm",
+  "noyau/usbsas-proto",
+  "noyau/usbsas-process",
+  "noyau/usbsas-sandbox",
+  "noyau/usbsas-scsi",
+  "noyau/usbsas-mass-storage",
+  "noyau/usbsas-fsrw",
+  "noyau/usbsas-config",
+  "noyau/usbsas-cmdexec",
+  "noyau/usbsas-dev2scsi",
+  "noyau/usbsas-files2fs",
+  "noyau/usbsas-files2tar",
+  "noyau/usbsas-fs2dev",
+  "noyau/usbsas-identifier",
+  "noyau/usbsas-scsi2files",
+  "noyau/usbsas-tar2files",
+  "noyau/usbsas-local2files",
+  "noyau/usbsas-net",
+  "noyau/usbsas-usbdev",
+  "noyau/usbsas-usbsas",
+  "borne/analyzer",
+  "borne/parcours",
+  "borne/client",
+  "borne/admind"
 ]
 resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0"
 
 [profile.release]
 overflow-checks = true
@@ -59,3 +71,9 @@ strip = true
 codegen-units = 1
 lto = "fat"
 opt-level = 3
+
+# Infos de débogage réduites : l'espace disque des builds de test reste raisonnable.
+[profile.dev]
+debug = "line-tables-only"
+[profile.dev.package."*"]
+debug = false

@@ -38,8 +38,8 @@ ni question**.
 ou conteneur `debian:trixie`) :
 
 ```sh
-cp maj.pub barbacane/system/iso/maj.pub        # clé publique des mises à jour (recommandé)
-barbacane/system/iso/build-iso.sh --sortie barbacane.iso
+cp maj.pub systeme/iso/maj.pub        # clé publique des mises à jour (recommandé)
+systeme/iso/build-iso.sh --sortie barbacane.iso
 ```
 
 La base ClamAV du jour est téléchargée et embarquée (`--clamav DOSSIER` pour en
@@ -75,14 +75,14 @@ Installer Debian 13 (trixie) depuis l'image `netinst` :
 Préparer sur une clé (depuis le poste administrateur) :
 - la clé publique de mise à jour `barbacane-maj.pub` (voir [administration.md](administration.md#cles)) ;
 - facultatif : une base ClamAV (`main.cvd`, `daily.cvd`, `bytecode.cvd`) et des règles YARA ;
-- facultatif : les paquets déjà construits (`barbacane/system/build-debs.sh` sur le poste administrateur).
+- facultatif : les paquets déjà construits (`systeme/build-debs.sh` sur le poste administrateur).
 
 Sur la machine de maquette (connectée), avec un clavier :
 
 ```shell
 apt install git
 git clone <dépôt> barbacane && cd barbacane
-sudo barbacane/system/install.sh --pin --cle-publique /media/cle/barbacane-maj.pub \
+sudo systeme/install.sh --pin --cle-publique /media/cle/barbacane-maj.pub \
      [--clamav /media/cle/clamav] [--yara /media/cle/yara] [--debs /media/cle/paquets] \
      --couper-reseau
 ```
@@ -165,11 +165,11 @@ clé publique `/etc/barbacane/maj.pub`. Données : `/var/lib/barbacane/` (rappor
 ### 6.1 Construction (poste administrateur, Debian 13, mkosi ≥ 25)
 
 ```shell
-barbacane/system/build-debs.sh                       # paquets → barbacane/system/mkosi/paquets/
-cp barbacane-maj.pub barbacane/system/mkosi/mkosi.extra/etc/barbacane/maj.pub
+systeme/build-debs.sh                       # paquets → systeme/mkosi/paquets/
+cp barbacane-maj.pub systeme/mkosi/mkosi.extra/etc/barbacane/maj.pub
 # facultatif : base ClamAV initiale
-mkdir -p barbacane/system/mkosi/mkosi.extra/var/lib/clamav && cp clamav/*.cvd "$_"/
-cd barbacane/system/mkosi && BARBACANE_PIN=xxxxxx mkosi -f build
+mkdir -p systeme/mkosi/mkosi.extra/var/lib/clamav && cp clamav/*.cvd "$_"/
+cd systeme/mkosi && BARBACANE_PIN=xxxxxx mkosi -f build
 ```
 
 ### 6.2 Flashage

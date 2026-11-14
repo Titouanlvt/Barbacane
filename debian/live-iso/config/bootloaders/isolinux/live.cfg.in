@@ -1,4 +1,0 @@
-label live-usbsas
-        linux @LINUX@
-        initrd @INITRD@
-        append @APPEND_LIVE@

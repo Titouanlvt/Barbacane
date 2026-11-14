@@ -23,7 +23,7 @@ PIN perdu : démarrer la borne avec un clavier temporaire en mode maintenance
 Sur le poste administrateur (jamais sur une borne) :
 
 ```shell
-barbacane/update/barbacane-update-keygen ~/cles-barbacane
+borne/update/barbacane-update-keygen ~/cles-barbacane
 ```
 
 - `barbacane-maj.key` : clé **secrète**, protégée par phrase de passe. La garder
@@ -45,11 +45,11 @@ la clé publique à la main sur chaque borne (mode maintenance).
    clamav-freshclam git`) :
 
 ```shell
-barbacane/update/barbacane-update-prepare \
+borne/update/barbacane-update-prepare \
     --cle ~/cles-barbacane/barbacane-maj.key --sortie ./maj \
-    --yara-sources barbacane/update/yara-sources.exemple \
+    --yara-sources borne/update/yara-sources.exemple \
     --etat-borne /media/export/barbacane-export-*/dpkg-status \
-    --debs barbacane/system/mkosi/paquets          # usbsas / Barbacane reconstruits
+    --debs systeme/mkosi/paquets          # usbsas / Barbacane reconstruits
 ```
 
 Le script télécharge les signatures ClamAV (freshclam), les règles YARA, les
@@ -116,7 +116,7 @@ le conteneur racine**.
 Désactivé par défaut. Un serveur Barbacane peut analyser pour plusieurs bornes :
 
 - **Serveur** : `barbacane-analyzer` avec `[server]` (TLS, fichier de jetons
-  `<jeton> <nom de la borne>`), voir `barbacane/system/etc/analyzer-serveur.toml.exemple`.
+  `<jeton> <nom de la borne>`), voir `systeme/etc/analyzer-serveur.toml.exemple`.
   Les analyses de chaque borne sont isolées ; les refus de jeton sont journalisés.
 - **Borne** : même binaire en mode `[relay]` (voir `analyzer-relais.toml.exemple`),
   qui écoute toujours sur 127.0.0.1:8042 : usbsas et l'interface sont inchangés.
