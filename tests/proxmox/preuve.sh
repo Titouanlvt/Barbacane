@@ -199,9 +199,11 @@ if test_actif installation && [ "${REPRISE:-0}" != 1 ]; then
     si ! grep -q '^net' "$D/vm.conf" -- "VM sans carte réseau" "la VM a une carte réseau"
     qm start "$VMID"
     sleep 60; capture 01-installateur
-    attendre "Insérez la clé à analyser" 3600 "$D/02-premier-ecran.png"
+    # Fin d'installation : la borne redémarre sur son disque et voit encore la clé d'installation
+    attendre "Clé détectée" 3600 "$D/02a-cle-installation-encore-branchee.png"
+    debrancher usb0     # le technicien retire la clé
+    attendre "Insérez la clé à analyser" 120 "$D/02-premier-ecran.png"
     ok "installation automatique depuis la clé USB, interface affichée (${MEMOIRE} Mo de RAM)"
-    debrancher usb0
     qm snapshot "$VMID" installee >/dev/null
 elif [ "${REPRISE:-0}" = 1 ]; then
     COURANT=installation
@@ -212,19 +214,29 @@ fi
 
 # === grub : édition du démarrage protégée (S-01) =========================================
 if test_actif grub; then
-    debut grub "menu de démarrage : démarrage seul, édition protégée par mot de passe"
-    qm reset "$VMID"
-    for _ in $(seq 40); do echo "sendkey esc" | qm monitor "$VMID" >/dev/null 2>&1; sleep 0.5; done
-    capture 01-menu-grub
-    echo "sendkey e" | qm monitor "$VMID" >/dev/null; sleep 2
-    capture 02-edition-demandee
-    if lire 02-edition-demandee | grep -qi 'username\|utilisateur'; then
-        ok "édition de la ligne du noyau refusée sans mot de passe (« Enter username »)"
-    else
-        ko "GRUB : l'édition ne demande pas de mot de passe (voir 02-edition-demandee.png)"
-    fi
-    qm reset "$VMID"; attendre "Insérez la clé à analyser" 600 "$D/03-redemarrage-normal.png"
-    ok "démarrage normal sans mot de passe"
+    debut grub "démarrage : Échap tenu n'ouvre pas le menu ; grub.cfg verrouillé (lu à l'étape journal)"
+    python3 - "$ICI" "$VMID" "$D" > "$D/ocr-demarrage.txt" <<'PY'
+import sys, time
+sys.path.insert(0, sys.argv[1])
+import borne
+vm, d = sys.argv[2], sys.argv[3]
+borne.qmp(vm, ("system_reset", None))
+t, n = time.time(), 0
+while time.time() - t < 25:          # Échap toutes les 30 ms, comme une touche tenue
+    try:
+        borne.qmp(vm, ("send-key", {"keys": [{"type": "qcode", "data": "esc"}], "hold-time": 20}))
+    except Exception:
+        pass
+    time.sleep(0.03)
+    if time.time() - t > 4 * (n + 1):
+        n += 1
+        png = f"{d}/0{n}-demarrage-echap-{4 * n}s.png"
+        borne.capture(vm, png)
+        print(f"--- {png}\n{borne.lire(png)}")
+PY
+    if attendre "Insérez la clé à analyser" 300 "$D/09-accueil.png" && ! grep -qi 'GNU GRUB\|username' "$D/ocr-demarrage.txt"; then
+        ok "Échap tenu au démarrage : pas de menu GRUB, démarrage direct de la borne"
+    else ko "menu GRUB atteint au clavier (voir ocr-demarrage.txt)"; fi
 fi
 
 # === pin : premier PIN, mauvais PIN ======================================================
@@ -428,8 +440,12 @@ if test_actif journal; then
     journalctl -D "$T/m/var/log/journal" --no-pager -o short-iso -u usbsas-server -u barbacane-kiosk \
         -u barbacane-analyzer -u barbacane-admind -u clamav-daemon -u hid-dealer > "$D/journal.log" || true
     cp "$T/m"/var/lib/usbsas/reports/* "$D/" 2>/dev/null || true
-    grep -c . "$T/m/boot/grub/grub.cfg" >/dev/null && grep -E '^set superusers|^menuentry' "$T/m/boot/grub/grub.cfg" | cut -c1-90 > "$D/grub-cfg-extrait.txt"
+    grep -E '^set superusers|^password_pbkdf2|^menuentry|^submenu' "$T/m/boot/grub/grub.cfg" | cut -c1-90 > "$D/grub-cfg-extrait.txt" || true
     umount "$T/m"
+    si grep -q '^set superusers="barbacane"' "$D/grub-cfg-extrait.txt" -- "grub.cfg : super-utilisateur et mot de passe (édition protégée)" "grub.cfg sans mot de passe"
+    premiere=$(grep -m1 '^menuentry' "$D/grub-cfg-extrait.txt" || true)
+    libre=non; [[ "$premiere" == *--unrestricted* ]] && libre=oui
+    si [ "$libre" = oui ] -- "grub.cfg : entrée par défaut démarrable sans mot de passe" "entrée par défaut restreinte"
     si grep -qi 'eicar' "$D/journal.log" -- "journal : détections EICAR consignées" "journal sans EICAR"
     si grep -qi 'clavier\|keyboard\|not.*mouse\|hid' "$D/journal.log" -- "journal : clavier USB vu par hid-dealer" "journal : aucune trace du clavier"
 fi

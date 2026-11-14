@@ -13,7 +13,7 @@ dangereux vers la sortie), **élevé** (compromission de la borne avec un geste 
 
 | N° | Gravité | Constat | État |
 |---|---|---|---|
-| S-01 | élevé | Menu GRUB éditable : shell root sans PIN avec un clavier au démarrage | **corrigé** (`a9328f2`) |
+| S-01 | moyen | Menu GRUB sans mot de passe (édition de la ligne du noyau si le menu s'affiche) | **corrigé** (`a9328f2`) |
 | S-02 | élevé | Correctifs mémoire amont des lecteurs FAT/NTFS absents du noyau | **corrigé** (`14425be`) |
 | S-03 | moyen | Le premier PIN saisi devient le PIN : borne livrée « ouverte » | documenté |
 | S-04 | moyen | Noms de sortie issus d'archives non normalisés (contrôle, longueur) | à démontrer (étape 4) |
@@ -22,21 +22,24 @@ dangereux vers la sortie), **élevé** (compromission de la borne avec un geste 
 | S-07 | faible | API locale de l'analyseur sans authentification | documenté |
 | S-08 | faible | Fichiers sains de la dernière session conservés sur disque jusqu'à la suivante | documenté |
 
-Aucun constat critique. Les deux constats élevés sont corrigés, chacun dans un commit avec son test.
+Aucun constat critique. Le constat élevé est corrigé (commit et tests) ; S-01, classé élevé au départ puis
+ramené à moyen après essai (voir ci-dessous), est corrigé aussi.
 
 ## Constats
 
-### S-01 — élevé — GRUB éditable : shell root sans PIN (corrigé)
+### S-01 — moyen (élevé à l'analyse, ramené après essai) — GRUB sans mot de passe (corrigé)
 - Où : `systeme/grub/barbacane.cfg` (`GRUB_TIMEOUT=0`, aucun mot de passe), `systeme/iso/configurer.sh`.
-- Attaque : brancher un clavier, redémarrer (bouton d'alimentation), appuyer sur Échap ; dans GRUB
-  (clavier géré par le firmware, indépendamment des pilotes bloqués de Linux) : `e`, ajouter
-  `init=/bin/sh -c "…"` à la ligne du noyau. Le processus initial tourne en root : réinitialisation
-  du PIN, désactivation de l'analyse, implant. Aucun pilote clavier Linux n'est nécessaire.
-- Correctif : super-utilisateur GRUB avec mot de passe aléatoire jamais conservé (`/etc/grub.d/01_barbacane`),
-  entrées Debian `--unrestricted` (démarrage automatique, édition et ligne de commande interdites),
-  `10_linux` dévié par `dpkg-divert` pour résister aux mises à jour de grub.
-- Test : `tests/iso/qemu.sh` vérifie `superusers`, `password_pbkdf2` et l'entrée par défaut
-  `--unrestricted` sur le disque installé ; preuve à l'écran : [docs/preuves/grub](preuves/grub/).
+- Hypothèse initiale : Échap au démarrage ouvre le menu, `e` permet d'ajouter `init=/bin/sh -c "…"`
+  (shell root sans PIN, avec le seul clavier du firmware). **Essai sur la borne** : Échap envoyé toutes
+  les 30 ms pendant tout le démarrage n'ouvre pas le menu ; avec `GRUB_TIMEOUT=0` GRUB démarre
+  directement ([preuves/grub](preuves/grub/)). L'attaque n'est donc pas démontrée.
+- Risque résiduel : GRUB affiche son menu ou sa ligne de commande quand le démarrage échoue
+  (configuration abîmée, entrée introuvable) ; sans mot de passe, ce menu permet la même attaque.
+- Correctif (défense en profondeur) : super-utilisateur GRUB avec mot de passe aléatoire jamais conservé
+  (`/etc/grub.d/01_barbacane`), entrées Debian `--unrestricted` (démarrage automatique, édition et ligne de
+  commande interdites), `10_linux` dévié par `dpkg-divert` pour résister aux mises à jour de grub.
+- Tests : `tests/iso/qemu.sh` (CI) et `tests/proxmox/preuve.sh` (étape journal) vérifient `superusers`,
+  `password_pbkdf2` et l'entrée par défaut `--unrestricted` dans le `grub.cfg` installé.
 - Conséquence : un PIN perdu impose une réinstallation (doc corrigée ; l'ancienne procédure
   « clavier en mode maintenance » était impossible : root verrouillé, aucun pilote clavier).
 
