@@ -1,4 +1,4 @@
-name: Barbacane
+name: CI
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: shellcheck barbacane/system/*.sh barbacane/system/iso/*.sh barbacane/tests/*.sh barbacane/tests/*/*.sh barbacane/update/barbacane-update-*
+      - run: shellcheck systeme/*.sh systeme/iso/*.sh tests/*.sh tests/*/*.sh borne/update/barbacane-update-*
 
   barbacane:
     runs-on: ubuntu-latest
@@ -32,14 +32,14 @@ jobs:
           # bubblewrap sans setuid sur Ubuntu : autoriser les espaces de noms utilisateur
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: phase 1, transfert clé → clé usbsas (mock) avec EICAR
-        run: barbacane/tests/phase1-mock.sh
+        run: tests/phase1-mock.sh
       - name: fmt
-        run: cd barbacane && cargo fmt --all --check
+        run: cargo fmt --all --check
       - name: clippy
-        run: cd barbacane && cargo clippy --no-deps --all-targets -- -D warnings
-      - name: tests (analyseur, archives, bout en bout mock)
-        run: cd barbacane && cargo test
+        run: cargo clippy --no-deps --all-targets -p barbacane-client -p barbacane-analyzer -p barbacane-admind -p barbacane-parcours -- -D warnings
+      - name: tests (noyau, analyseur, archives, bout en bout mock)
+        run: cargo test
       - name: mises à jour signées (préparation → application)
-        run: cd barbacane && cargo build -p barbacane-admind && tests/maj/maj.sh
+        run: cargo build -p barbacane-admind && tests/maj/maj.sh
       - name: audit
-        run: cargo install --locked cargo-audit && cd barbacane && cargo audit
+        run: cargo install --locked cargo-audit && cargo audit

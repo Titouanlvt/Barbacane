@@ -3,8 +3,11 @@ name: ISO
 on:
   push:
     paths:
-      - "barbacane/**"
-      - "usbsas-*/**"
+      - "noyau/**"
+      - "borne/**"
+      - "systeme/**"
+      - "tests/iso/**"
+      - "Cargo.lock"
       - ".github/workflows/iso.yml"
   workflow_dispatch:
 
@@ -26,17 +29,17 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: target/production
-          key: iso-${{ hashFiles('Cargo.lock', 'barbacane/Cargo.lock') }}-${{ github.sha }}
+          key: iso-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
           restore-keys: iso-
       - name: paquets
-        run: . "$HOME/.cargo/env" && barbacane/system/build-debs.sh
+        run: . "$HOME/.cargo/env" && systeme/build-debs.sh
       - uses: actions/cache/save@v4
         with:
           path: target/production
-          key: iso-${{ hashFiles('Cargo.lock', 'barbacane/Cargo.lock') }}-${{ github.sha }}
+          key: iso-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
       - name: ISO
         run: |
-          barbacane/system/iso/build-iso.sh --debs barbacane/system/mkosi/paquets --sortie "$PWD/barbacane.iso"
+          systeme/iso/build-iso.sh --debs systeme/mkosi/paquets --sortie "$PWD/barbacane.iso"
       - uses: actions/upload-artifact@v4
         with:
           name: barbacane-iso
@@ -60,7 +63,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends qemu-system-x86 qemu-utils ovmf socat xorriso
       - name: installation automatique puis premier démarrage
-        run: sudo barbacane/tests/iso/qemu.sh barbacane.iso vm
+        run: sudo tests/iso/qemu.sh barbacane.iso vm
       - uses: actions/upload-artifact@v4
         if: always()
         with:

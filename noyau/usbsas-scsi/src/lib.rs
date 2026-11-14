@@ -26,7 +26,7 @@ pub const MAX_SECTORS_PER_TRANSFER: u16 = 0x800;
 
 /// Attempts at reading a CSW when the device times out (12 × 5 s ≈ 60 s).
 /// Barbacane : 3 essais (15 s) ne suffisaient pas aux clés lentes qui marquent
-/// des pauses internes pendant les longues écritures (voir docs/ecarts-upstream.md).
+/// des pauses internes pendant les longues écritures (voir docs/noyau/ecarts.md).
 const CSW_READ_ATTEMPTS: u32 = 12;
 /// TEST UNIT READY polls per logical unit before giving up on it.
 const TEST_UNIT_READY_ATTEMPTS: u32 = 100;

@@ -1,8 +1,8 @@
-# Écarts avec usbsas upstream
+# Écarts du noyau par rapport à usbsas (CEA)
 
 Base : `cea-sec/usbsas`, commit `69ebcf4` (usbsas-usbsas 0.3.4).
 
-Le code usbsas n'est modifié que par les écarts listés ci-dessous (commits dédiés). Tout le code Barbacane est sous `barbacane/`.
+Le code usbsas n'est modifié que par les écarts listés ci-dessous (commits dédiés). Le noyau est dans `noyau/`, le code de la borne dans `borne/`.
 Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
 
 ## Écarts appliqués

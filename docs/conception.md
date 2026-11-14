@@ -196,7 +196,7 @@ dynamique. Le client sera un fork (autorisé par la consigne).
 
 ## 7. Décisions (validées)
 1. §4.2/4.3 : **option C**, deux transferts via dossier de préparation, aucun patch du cœur.
-2. Dépôt : on garde ce fork. Le code usbsas reste **inchangé** à la racine (épinglé sur le commit upstream `69ebcf4`) ; tout Barbacane vit sous `barbacane/` (`analyzer/`, `client/`, `update/`, `system/`, `tests/`) avec son propre workspace Cargo. `docs/` à la racine. Toute divergence du code usbsas est listée dans `docs/ecarts-upstream.md`.
+2. Dépôt : dépôt autonome `Barbacane`. Le noyau de lecture USB issu d'usbsas (base : commit amont `69ebcf4`) est dans `noyau/`, la borne dans `borne/`, le système dans `systeme/`, les tests dans `tests/`, un seul workspace Cargo. Toute divergence du noyau est listée dans `docs/noyau/ecarts.md`.
 3. Blanchir : la clé reste sur le port d'entrée, qui est donc aussi déclaré dans `ports_dst`.
 4. Limite dépassée dans une archive : **tout le conteneur est refusé**.
 5. Bornes : 16 Go de RAM → tmpfs de préparation 6 Go, tmpfs d'extraction 6 Go.
@@ -218,4 +218,4 @@ dynamique. Le client sera un fork (autorisé par la consigne).
 | Système | paquet `barbacane`, unités durcies, kiosque `cage`, souris via `usbsas-hid`, modprobe / sysctl / nftables `drop`, paramètres noyau, `install.sh`, image `mkosi` |
 | Serveur | mode serveur (TLS, jetons, isolation par borne) + mode relais sur la borne (usbsas inchangé, certificat épinglé) |
 
-Écart au cœur d'usbsas : un seul, le correctif seccomp sur 32 bits (`docs/ecarts-upstream.md`).
+Écart au cœur d'usbsas : un seul, le correctif seccomp sur 32 bits (`docs/noyau/ecarts.md`).
