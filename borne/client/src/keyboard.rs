@@ -102,7 +102,10 @@ impl Input {
             .on_press(msg)
         };
         let mut col = Column::new().spacing(6).align_x(iced::Alignment::Center);
-        for r in rows {
+        let digits = self.layout == Layout::Digits;
+        // Pavé numérique : le « 0 » rejoint la rangée effacer / tout effacer (une rangée de
+        // moins : Annuler/Valider et le message d'erreur tiennent en 1280×768).
+        for r in rows.iter().filter(|r| !(digits && **r == "0")) {
             let mut row = Row::new().spacing(6);
             for c in r.chars() {
                 row = row.push(key(c.to_string(), on(Key::Char(c)), size));
@@ -136,9 +139,11 @@ impl Input {
                     130.0,
                 ));
         }
-        ctl = ctl
-            .push(key("⌫ effacer".into(), on(Key::Backspace), 160.0))
-            .push(key("tout effacer".into(), on(Key::Clear), 160.0));
+        ctl = ctl.push(key("⌫ effacer".into(), on(Key::Backspace), 160.0));
+        if digits {
+            ctl = ctl.push(key("0".into(), on(Key::Char('0')), size));
+        }
+        ctl = ctl.push(key("tout effacer".into(), on(Key::Clear), 160.0));
         col.push(ctl).into()
     }
 }

@@ -215,11 +215,12 @@ def main():
         p = trouver(tmp, "effacer")
         if not p:
             sys.exit(f"ÉCHEC : pavé numérique introuvable ; écran :\n{lire(tmp)}")
+        # « 0 » au centre de la rangée « effacer », les trois rangées de chiffres au-dessus
         pas, cx = 66, l // 2
-        lignes = {"123": 4, "456": 3, "789": 2}
+        lignes = {"123": 3, "456": 2, "789": 1}
         for c in sys.argv[3]:
             if c == "0":
-                x, y = cx, p[1] - pas
+                x, y = cx, p[1]
             else:
                 r = next(k for k in lignes if c in k)
                 x, y = cx + (r.index(c) - 1) * pas, p[1] - lignes[r] * pas
