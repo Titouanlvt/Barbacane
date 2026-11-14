@@ -6,6 +6,7 @@
 use crate::admin_ui::{self, AdminMsg, AdminUi};
 use crate::config::Config;
 use crate::keyboard::{Input, Key};
+use crate::mesure::{self, Mesure};
 use crate::style;
 use crate::worker::{self, Cmd, Ev};
 use barbacane_parcours::{
@@ -66,6 +67,8 @@ pub struct App {
     dst: Option<UsbDevice>,
     mode: Mode,
     progress: Option<(Status, u64, u64)>,
+    /// Vitesse et temps restant de l'étape en cours
+    mesure: Mesure,
     analysis_progress: (u64, u64, u64),
     input: Input,
     analysis: Option<Arc<Analysis>>,
@@ -111,6 +114,7 @@ impl App {
             dst: None,
             mode: Mode::Copier,
             progress: None,
+            mesure: Mesure::default(),
             analysis_progress: (0, 0, 0),
             input: Input::text(128),
             analysis: None,
@@ -358,7 +362,13 @@ impl App {
                 status,
                 current,
                 total,
-            }) => self.progress = Some((status, current, total)),
+            }) => {
+                if self.progress.is_none_or(|(s, _, _)| s != status) {
+                    self.mesure.vider();
+                }
+                self.mesure.ajouter(std::time::Instant::now(), current);
+                self.progress = Some((status, current, total));
+            }
             Ev::Op(Event::Analysis {
                 done,
                 total,
@@ -626,6 +636,27 @@ impl App {
                         .length(Length::Fixed(700.0))
                         .girth(28),
                 );
+                // Étapes en octets : quantité, vitesse de la clé, temps restant
+                if matches!(s, Status::ReadSrc | Status::WriteDst | Status::Wipe) {
+                    c = c.push(texte(&format!(
+                        "{} sur {}  ({} %)",
+                        mesure::taille(cur),
+                        mesure::taille(tot),
+                        cur * 100 / tot
+                    )));
+                    if let (Some(v), Some(r)) = (self.mesure.vitesse(), self.mesure.restant(tot)) {
+                        c = c.push(texte(&format!(
+                            "Vitesse de la clé : {}  ·  Temps restant : {}",
+                            mesure::debit(v),
+                            mesure::duree(r)
+                        )));
+                        if v < mesure::CLE_LENTE {
+                            c = c.push(petit(
+                                "Clé lente : l'opération prend du temps, c'est normal. Ne la retirez pas.",
+                            ));
+                        }
+                    }
+                }
             }
         }
         let (done, total, scanned) = self.analysis_progress;

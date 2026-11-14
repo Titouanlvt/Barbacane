@@ -6,6 +6,7 @@ mod admin_ui;
 mod app;
 mod config;
 mod keyboard;
+mod mesure;
 mod style;
 mod worker;
 
