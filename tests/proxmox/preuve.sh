@@ -48,9 +48,11 @@ note() { echo "$1 [$COURANT] : $2" | tee -a "$R"; }
 ok() { note OK "$*"; }
 ko() { note ÉCHEC "$*" >&2; ECHECS=$((ECHECS + 1)); }
 non_teste() { note "NON TESTÉ" "$*"; }
-si() { # si COMMANDE… -- « message OK » « message ÉCHEC »
-    local c=(); while [ "$1" != -- ]; do c+=("$1"); shift; done; shift
-    if "${c[@]}"; then ok "$1"; else ko "$2"; fi
+si() { # si [!] COMMANDE… -- « message OK » « message ÉCHEC »
+    local c=() inv=0; [ "$1" = "!" ] && { inv=1; shift; }
+    while [ "$1" != -- ]; do c+=("$1"); shift; done; shift
+    local r=0; "${c[@]}" || r=1
+    if [ $((r ^ inv)) -eq 0 ]; then ok "$1"; else ko "$2"; fi
 }
 test_actif() { [[ " $TESTS " == *" $1 "* ]]; }
 debut() { COURANT=$1; D="$OUT/$1"; mkdir -p "$D"; echo; echo "== $1 : $2"; }
