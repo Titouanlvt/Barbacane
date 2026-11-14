@@ -318,12 +318,12 @@ pub fn view(app: &App) -> Element<'_, Msg> {
             } else {
                 "Saisissez le PIN administrateur."
             }),
-            container(text(a.input.shown()).size(34)).padding(12).width(Length::Fixed(360.0)).style(style::carte),
+            container(text(a.input.shown()).size(30)).padding(8).width(Length::Fixed(360.0)).style(style::carte),
             a.input.view(|k| am(AdminMsg::Key(k))),
             msg,
             row![bouton("Annuler", am(AdminMsg::Quitter), style::secondaire), bouton("Valider", am(AdminMsg::Login), style::primaire)].spacing(30),
         ]
-        .spacing(20)
+        .spacing(12) // tient en 1280×768
         .align_x(Alignment::Center)
         .into(),
         Page::Menu => column![
@@ -455,12 +455,12 @@ pub fn view(app: &App) -> Element<'_, Msg> {
         Page::NouveauPin => column![
             titre("Changer le PIN"),
             texte(if a.first_pin.is_some() { "Confirmez le nouveau PIN." } else { "Nouveau PIN (6 chiffres minimum)." }),
-            container(text(a.input.shown()).size(34)).padding(12).width(Length::Fixed(360.0)).style(style::carte),
+            container(text(a.input.shown()).size(30)).padding(8).width(Length::Fixed(360.0)).style(style::carte),
             a.input.view(|k| am(AdminMsg::Key(k))),
             msg,
             row![retour, bouton("Valider", am(AdminMsg::EnregistrerPin), style::primaire)].spacing(30),
         ]
-        .spacing(20)
+        .spacing(12) // tient en 1280×768
         .align_x(Alignment::Center)
         .into(),
         Page::Confirmer(op) => column![
