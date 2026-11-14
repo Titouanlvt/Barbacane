@@ -1,59 +1,77 @@
 #!/bin/bash
-# Preuve de bout en bout sur un hôte Proxmox VE, avec de VRAIES clés USB :
-#   1. installe l'ISO dans une VM borne neuve (UEFI, SANS carte réseau) ;
-#   2. choisit le PIN, enrôle la clé de sortie, active le mode « clés enrôlées » ;
-#   3. TRANSFERT : clé inconnue (fichiers sains + EICAR) → clé enrôlée ;
-#   4. BLANCHIMENT de la clé inconnue (remplie à nouveau) ;
-#   5. récupère rapports et journal de la borne (disque de la VM lu hors ligne) ;
-# et vérifie tout : fichiers sains intacts (sha256), EICAR détecté et absent en sortie.
-# Termine par « OK » ou « ÉCHEC ».
+# Preuves de bout en bout sur un hôte Proxmox VE, avec de VRAIES clés USB passées à une
+# VM borne installée depuis l'ISO copiée sur une clé (comme sur un vrai poste).
 #
-# À lancer en root sur l'hôte Proxmox, les deux clés branchées sur l'hôte :
-#   ISO=barbacane.iso SERIE_SOURCE=… SERIE_SORTIE=… tests/proxmox/preuve.sh [DOSSIER]
-# Variables : VMID (900–999, défaut 910), STOCKAGE (local-zfs), PIN (246813).
-# Les clés sont désignées par leur numéro de série USB (jamais un disque de l'hôte) :
-# elles sont ENTIÈREMENT EFFACÉES. La VM VMID est détruite puis recréée si elle
-# s'appelle « barbacane-borne ».
-# Prérequis : tesseract-ocr tesseract-ocr-fra dosfstools exfatprogs xxd.
+#   ISO=barbacane.iso SERIE_SOURCE=… SERIE_SORTIE=… SERIE_AUTRE=… [MAJ=dossier] \
+#       tests/proxmox/preuve.sh [DOSSIER]
+#
+# Clés (désignées par leur n° de série USB ; ELLES SONT ENTIÈREMENT EFFACÉES) :
+#   SERIE_AUTRE   support d'installation (l'ISO y est copiée), puis clé non enrôlée et clé
+#                 hostile (vide, pleine, illisible, retrait en cours de lecture), clé de mise à jour
+#   SERIE_SOURCE  clé inconnue à analyser, puis à blanchir
+#   SERIE_SORTIE  clé de destination enrôlée (export des journaux aussi)
+# MAJ : dossier de paquets préparés par tests/proxmox/paquets-maj.sh (valide, mauvaise signature,
+#       version plus ancienne) ; sans lui, les tests de mise à jour sont « NON TESTÉ ».
+# Variables : VMID (900–999, défaut 920), MEMOIRE (Mo, 8192), DISQUE (Go, 32), STOCKAGE,
+# PIN (246813), TESTS (liste, défaut : tous), REPRISE=1 (repart de l'instantané « installee »).
+# DOSSIER doit être vide ou absent (aucune preuve d'un passage précédent ne peut compter).
+# Résultat : DOSSIER/resultats.txt (une ligne par vérification) et « OK » / « ÉCHEC » à la fin.
+# Prérequis hôte : tesseract-ocr(-fra) dosfstools exfatprogs xxd zip python3.
 set -euo pipefail
 ICI="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$ICI/../.." && pwd)"
 OUT="$(realpath -m "${1:-$REPO/docs/preuves}")"
-VMID=${VMID:-910} STOCKAGE=${STOCKAGE:-local-zfs} PIN=${PIN:-246813}
-: "${ISO:?ISO=chemin de l ISO}" "${SERIE_SOURCE:?}" "${SERIE_SORTIE:?}"
+VMID=${VMID:-920} STOCKAGE=${STOCKAGE:-local-zfs} PIN=${PIN:-246813}
+MEMOIRE=${MEMOIRE:-8192} DISQUE=${DISQUE:-32}
+TESTS=${TESTS:-"installation grub pin enrolement transfert blanchiment export maj clavier vide pleine illisible retrait verrouillage journal"}
+: "${ISO:?ISO=chemin de l ISO}" "${SERIE_SOURCE:?}" "${SERIE_SORTIE:?}" "${SERIE_AUTRE:?}"
 B=(python3 "$ICI/borne.py" "$VMID")
 # shellcheck disable=SC2016 # chaîne EICAR littérale
 EICAR='X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
-ECHECS=0
-ok() { echo "OK : $*"; }
-# si CONDITION… -- message OK -- message ÉCHEC
-si() {
-    local c=() ; while [ "$1" != -- ]; do c+=("$1"); shift; done; shift
-    if "${c[@]}"; then ok "$1"; else ko "$2"; fi
-}
-ko() { echo "ÉCHEC : $*" >&2; ECHECS=$((ECHECS + 1)); }
-etape() { echo; echo "== $*"; }
+ECHECS=0 COURANT=""
 
 [ "$(id -u)" -eq 0 ] || { echo "À lancer en root." >&2; exit 1; }
 if [ "$VMID" -lt 900 ] || [ "$VMID" -gt 999 ]; then echo "VMID hors de 900–999" >&2; exit 1; fi
-for o in qm tesseract mkfs.vfat xxd sfdisk; do command -v $o >/dev/null || { echo "$o absent" >&2; exit 1; }; done
-mkdir -p "$OUT/transfert" "$OUT/blanchiment" "$OUT/borne"
+for o in qm tesseract mkfs.vfat xxd sfdisk zip python3 sha256sum; do
+    command -v "$o" >/dev/null || { echo "$o absent" >&2; exit 1; }
+done
+if [ -d "$OUT" ] && [ -n "$(ls -A "$OUT")" ]; then
+    echo "$OUT n'est pas vide : utilisez un dossier neuf (aucune preuve ancienne ne doit compter)." >&2; exit 1
+fi
+mkdir -p "$OUT"
+R="$OUT/resultats.txt"
 T="$(mktemp -d)"
 trap 'umount "$T"/m 2>/dev/null || true; rm -rf "$T"' EXIT
 mkdir "$T/m"
 
+note() { echo "$1 [$COURANT] : $2" | tee -a "$R"; }
+ok() { note OK "$*"; }
+ko() { note ÉCHEC "$*" >&2; ECHECS=$((ECHECS + 1)); }
+non_teste() { note "NON TESTÉ" "$*"; }
+si() { # si COMMANDE… -- « message OK » « message ÉCHEC »
+    local c=(); while [ "$1" != -- ]; do c+=("$1"); shift; done; shift
+    if "${c[@]}"; then ok "$1"; else ko "$2"; fi
+}
+test_actif() { [[ " $TESTS " == *" $1 "* ]]; }
+debut() { COURANT=$1; D="$OUT/$1"; mkdir -p "$D"; echo; echo "== $1 : $2"; }
+capture() { "${B[@]}" capture "$D/$1.png"; }
+lire() { "${B[@]}" lire > "$D/$1.txt"; cat "$D/$1.txt"; }
+attendre() { "${B[@]}" attendre "$@"; }
+cliquer() { "${B[@]}" cliquer "$@"; }
+# attendre sans faire échouer le script : renvoie 1 si le texte n'est pas apparu
+voir() { "${B[@]}" attendre "$@" >/dev/null 2>&1; }
+
 # --- clés -----------------------------------------------------------------------------
-# Disque (côté hôte) d'une clé désignée par son numéro de série ; refuse tout disque non USB.
+# Disque côté hôte d'une clé désignée par son numéro de série ; jamais un disque non USB.
 disque() {
     local d
     for _ in $(seq 60); do
         d=$(lsblk -dnpo NAME,SERIAL,TRAN | awk -v s="$1" '$2 == s && $3 == "usb" { print $1 }')
-        [ -n "$d" ] && { echo "$d"; return; }
+        [ -n "$d" ] && [ "$(lsblk -dno TRAN "$d")" = usb ] && { echo "$d"; return; }
         sleep 1
     done
     echo "clé $1 introuvable sur l'hôte" >&2; return 1
 }
-# Port USB de l'hôte (ex. 1-6) d'une clé, pour la passer à la VM.
 port() {
     local f
     for f in /sys/bus/usb/devices/*/serial; do
@@ -61,180 +79,360 @@ port() {
     done
     echo "port de la clé $1 introuvable" >&2; return 1
 }
-brancher() { qm set "$VMID" "-$1" "host=$(port "$2"),usb3=1" >/dev/null; }
-debrancher() { qm set "$VMID" --delete "$1" >/dev/null 2>&1 || true; sleep 3; }
-# Remplit une clé : FAT32, fichiers sains + EICAR. Liste et sha256 dans $2.
-remplir() {
+brancher() { disque "$2" >/dev/null; qm set "$VMID" "-$1" "host=$(port "$2"),usb3=1" >/dev/null; sleep 4; }
+debrancher() { qm set "$VMID" --delete "$1" >/dev/null 2>&1 || true; sleep 4; }
+# FAT32 d'une seule partition (taille facultative, ex. +300M) ; monte sur $T/m
+formater() {
     local d; d=$(disque "$1")
-    wipefs -qa "$d"; echo ',,c' | sfdisk -q "$d"; sleep 2
-    mkfs.vfat -F32 -n SOURCE "${d}1" >/dev/null
+    wipefs -qa "$d"; echo "${2:+size=$2,}type=c" | sfdisk -q "$d"; sleep 2; partprobe "$d" 2>/dev/null || true; sleep 1
+    mkfs.vfat -F32 -n "${3:-CLE}" "${d}1" >/dev/null
     mount "${d}1" "$T/m"
-    mkdir -p "$T/m/docs/sous dossier" "$T/m/photos"
-    printf 'Rapport trimestriel BARBACANE\nLigne accentuée : éàç\n' > "$T/m/docs/rapport.txt"
-    seq 1 20000 > "$T/m/docs/donnees.csv"
-    head -c 300000 /dev/urandom > "$T/m/photos/image.bin"
-    printf 'fichier imbriqué\n' > "$T/m/docs/sous dossier/note.txt"
-    printf '%s' "$EICAR" > "$T/m/docs/eicar.com"
-    (cd "$T/m" && find . -type f | sort | sed 's|^\./||' | while read -r f; do sha256sum "$f"; done) > "$2"
-    umount "$T/m"; sync
 }
-# Liste et sha256 des fichiers d'une clé (montée en lecture seule).
-inventaire() {
-    local d p; d=$(disque "$1")
-    sleep 2; partprobe "$d" 2>/dev/null || true; sleep 2
-    p=$(lsblk -lnpo NAME,FSTYPE "$d" | awk '$2 != "" { print $1; exit }')
-    mount -o ro "$p" "$T/m"
-    (cd "$T/m" && find . -type f | sort | sed 's|^\./||' | while read -r f; do sha256sum "$f"; done) > "$2"
-    cp "$T/m"/rapport-barbacane-* "$3/" 2>/dev/null || true
-    umount "$T/m"
+liste_sha() { (cd "$1" && find . -type f | sort | sed 's|^\./||' | while read -r f; do sha256sum "$f"; done); }
+demonter() { liste_sha "$T/m" > "$1"; umount "$T/m"; sync; }
+# Contenu de test : fichiers sains, EICAR, archives (mixte, imbriquée, chiffrée, noms piégés,
+# nom très long) et type déguisé. Liste et sha256 dans $1.
+contenu_test() {
+    local m="$T/m"
+    mkdir -p "$m/docs/sous dossier" "$m/photos" "$m/archives"
+    printf 'Rapport trimestriel BARBACANE\nLigne accentuée : éàç\n' > "$m/docs/rapport.txt"
+    seq 1 20000 > "$m/docs/donnees.csv"
+    head -c 300000 /dev/urandom > "$m/photos/image.bin"
+    printf 'fichier imbriqué\n' > "$m/docs/sous dossier/note.txt"
+    printf '%s' "$EICAR" > "$m/docs/eicar.com"
+    printf '%s' "$EICAR" > "$m/photos/vacances.jpg"          # type déguisé
+    printf 'contenu sain\n' > "$T/sain.txt"; printf '%s' "$EICAR" > "$T/eicar.com"
+    (cd "$T" && zip -q -X "$m/archives/mixte.zip" eicar.com sain.txt)
+    (cd "$T" && zip -q -X inner.zip eicar.com sain.txt && zip -q -X "$m/archives/imbriquee.zip" inner.zip sain.txt)
+    (cd "$T" && zip -q -X -P secret "$m/archives/chiffre-bon.zip" sain.txt)
+    python3 - "$m/archives/noms-pieges.zip" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "w") as z:
+    z.writestr("../../../evasion.txt", "traversée")
+    z.writestr("/etc/absolu.txt", "absolu")
+    z.writestr("controle-\x07-\x1b.txt", "caractères de contrôle")
+    z.writestr("n" * 300 + ".txt", "nom de 304 caractères")
+    z.writestr("sain-dans-pieges.txt", "contenu sain\n")
+PY
 }
-# Vérifie : fichiers sains identiques, EICAR absent, rapport présent.
-verifier() { # $1 avant  $2 après  $3 dossier (rapports)
-    local f n=0
+
+# Passage complet sur une clé (sha256 et recherche d'EICAR en UNE lecture de toute la clé).
+empreinte_cle() { # serie prefixe
+    local d t; d=$(disque "$1"); t=$(blockdev --getsize64 "$d")
+    tee >(sha256sum | awk -v t="$t" '{ print $1 "  clé entière (" t " octets)" }' > "$D/$2.sha256") \
+        < "$d" | grep -obaF 'EICAR-STANDARD' | cut -d: -f1 > "$D/$2-eicar-offsets.txt" || true
+    sleep 1
+    xxd -l 512 "$d" > "$D/$2-secteur0.hex"
+    local o; o=$(head -1 "$D/$2-eicar-offsets.txt")
+    if [ -n "$o" ]; then xxd -s $((o - 32)) -l 128 "$d" > "$D/$2-eicar.hex"; fi
+}
+
+# Vérifie la sortie : ensemble exact (sains attendus + extraits + rapports), aucun contenu EICAR.
+verifier_sortie() { # source.sha256 sortie.sha256 dossier_monte
+    local f h n=0
     while read -r h f; do
-        [ "$f" = docs/eicar.com ] && continue
+        case "$f" in docs/eicar.com|photos/vacances.jpg|archives/*) continue ;; esac
         if grep -qxF "$h  $f" "$2"; then n=$((n + 1)); else ko "$f absent ou modifié en sortie"; fi
     done < "$1"
-    ok "$n fichiers sains intacts (sha256 identiques)"
-    if grep -q 'eicar' "$2" || grep -q "$(printf '%s' "$EICAR" | sha256sum | cut -c1-64)" "$2"; then
-        ko "EICAR présent en sortie"
-    else
-        ok "EICAR absent de la clé de sortie"
-    fi
-    if ls "$3"/rapport-barbacane-*.txt >/dev/null 2>&1; then
-        if grep -qi 'eicar' "$3"/rapport-barbacane-*.txt; then ok "rapport : EICAR détecté et refusé"; else ko "rapport sans mention d'EICAR"; fi
-    else
-        ko "rapport absent de la clé"
+    ok "$n fichiers sains copiés intacts (sha256 identiques à la source)"
+    local intrus; intrus=$(awk '{ $1=""; sub(/^ /, ""); print }' "$2" | grep -vxF -f <(awk '{ $1=""; sub(/^ /, ""); print }' "$1") \
+        | grep -vE '^rapport-barbacane-[0-9-]+\.(txt|html)$|^archives/[^/]+\.extrait/|^archives/chiffre-bon\.zip$' || true)
+    si [ -z "$intrus" ] -- "aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)" \
+        "fichiers inattendus en sortie : $(echo "$intrus" | tr '\n' ' ')"
+    si [ -z "$(grep -rlaF 'EICAR-STANDARD' "$3" 2>/dev/null)" ] -- "aucun fichier de la sortie ne contient EICAR" \
+        "EICAR présent en sortie : $(grep -rlaF 'EICAR-STANDARD' "$3" | tr '\n' ' ')"
+    si ! grep -q 'vacances.jpg$\|eicar.com$' "$2" -- "fichiers EICAR (dont le .jpg déguisé) absents" "un fichier EICAR est copié"
+    si grep -q 'chiffre-bon.zip$' "$2" -- "archive chiffrée (bon mot de passe) copiée" "archive chiffrée absente"
+    si grep -q 'mixte.zip.extrait/sain.txt$' "$2" -- "archive mixte : seul son fichier sain est extrait" "extraction de mixte.zip absente"
+    si ! grep -q 'evasion\|absolu' "$2" -- "noms piégés (traversée, absolu) non écrits" "nom piégé écrit en sortie"
+}
+
+# Monte la première partition d'une clé en lecture seule sur $T/m
+monter_ro() {
+    local d p; d=$(disque "$1"); sleep 2; partprobe "$d" 2>/dev/null || true; sleep 2
+    p=$(lsblk -lnpo NAME,FSTYPE "$d" | awk '$2 != "" { print $1; exit }')
+    mount -o ro "$p" "$T/m"
+}
+
+admin() { # ouvre le mode administrateur (PIN déjà choisi)
+    cliquer "Administration"; attendre "Saisissez le PIN" 30
+    "${B[@]}" pin "$PIN"; cliquer "Valider"; attendre "Quitter le mode administrateur" 30
+}
+quitter_admin() { cliquer "Quitter le mode administrateur"; attendre "Insérez la clé à analyser" 30; }
+# Répond à une demande de mot de passe d'archive (clavier virtuel) si elle apparaît.
+mot_de_passe_si_demande() {
+    if voir "Archive protégée" 600; then
+        capture 02b-mot-de-passe
+        "${B[@]}" texte "$1"; cliquer "Valider"
     fi
 }
 
-# --- 1. VM borne ----------------------------------------------------------------------
-etape "1. Installation de l'ISO dans la VM $VMID (UEFI, sans réseau)"
-# Un passage interrompu peut avoir laissé une clé passée à la VM : on la rend à l'hôte.
-if qm status "$VMID" >/dev/null 2>&1; then
-    qm set "$VMID" --delete usb1,usb2 >/dev/null 2>&1 || true
-    sleep 3
-fi
-if [ "${REPRISE:-0}" = 1 ] && qm listsnapshot "$VMID" 2>/dev/null | grep -q installee; then
-    # Mise au point : borne remise dans l'état « juste installée » sans réinstaller.
-    qm stop "$VMID" >/dev/null 2>&1 || true
-    qm rollback "$VMID" installee
-    qm start "$VMID"
-    "${B[@]}" attendre "Insérez la clé à analyser" 600 "$OUT/01-accueil.png"
-    ok "borne remise à l'état « installée » (instantané)"
-else
+echo "Preuves : $OUT ; ISO : $ISO (sha256 $(sha256sum "$ISO" | cut -c1-16)…) ; commit $(git -C "$REPO" rev-parse --short HEAD)"
+{ echo "ISO sha256 : $(sha256sum "$ISO" | cut -d' ' -f1)"; echo "Commit : $(git -C "$REPO" rev-parse HEAD)"
+  echo "VM : $VMID, ${MEMOIRE} Mo, disque ${DISQUE} Go, UEFI, sans réseau"; echo "Date : $(date -Is)"; } > "$OUT/contexte.txt"
+
+# Un passage interrompu peut avoir laissé des clés passées à la VM : on les rend à l'hôte.
+if qm status "$VMID" >/dev/null 2>&1; then qm set "$VMID" --delete usb0,usb1,usb2 >/dev/null 2>&1 || true; sleep 3; fi
+
+# === installation : ISO copiée sur une clé, VM démarrée sur la clé ========================
+if test_actif installation && [ "${REPRISE:-0}" != 1 ]; then
+    debut installation "ISO copiée sur la clé $SERIE_AUTRE, VM démarrée dessus"
     if qm status "$VMID" >/dev/null 2>&1; then
         [ "$(qm config "$VMID" | awk '/^name:/ { print $2 }')" = barbacane-borne ] \
             || { echo "VM $VMID existante qui n'est pas barbacane-borne : abandon" >&2; exit 1; }
-        qm stop "$VMID" >/dev/null 2>&1 || true
-        qm destroy "$VMID" --purge >/dev/null
+        qm stop "$VMID" >/dev/null 2>&1 || true; qm destroy "$VMID" --purge >/dev/null
     fi
-    mkdir -p /var/lib/vz/template/iso
-    cp "$ISO" /var/lib/vz/template/iso/barbacane-preuve.iso
+    d=$(disque "$SERIE_AUTRE")
+    [ "$(blockdev --getsize64 "$d")" -gt "$(stat -c %s "$ISO")" ] || { ko "clé trop petite pour l'ISO"; exit 1; }
+    ! lsblk -no MOUNTPOINT "$d" | grep -q . || { ko "clé d'installation montée sur l'hôte"; exit 1; }
+    lsblk -o NAME,SIZE,TRAN,SERIAL,MODEL "$d" > "$D/cle-avant-dd.txt"
+    dd if="$ISO" of="$d" bs=4M conv=fsync status=none
+    si cmp -n "$(stat -c %s "$ISO")" "$ISO" "$d" -- "ISO copiée sur la clé (relecture identique)" "copie de l'ISO sur la clé incorrecte"
     qm create "$VMID" --name barbacane-borne --bios ovmf --machine q35 \
-        --efidisk0 "$STOCKAGE:1,efitype=4m,pre-enrolled-keys=0" --memory 16384 --cores 2 --cpu host \
-        --scsihw virtio-scsi-single --scsi0 "$STOCKAGE:16" \
-        --ide2 local:iso/barbacane-preuve.iso,media=cdrom --boot 'order=scsi0;ide2' --vga std --ostype l26 >/dev/null
+        --efidisk0 "$STOCKAGE:1,efitype=4m,pre-enrolled-keys=0" --memory "$MEMOIRE" --cores 2 --cpu host \
+        --scsihw virtio-scsi-single --scsi0 "$STOCKAGE:$DISQUE" --vga std --ostype l26 >/dev/null
+    qm set "$VMID" -usb0 "host=$(port "$SERIE_AUTRE"),usb3=1" >/dev/null
+    qm set "$VMID" --boot 'order=scsi0;usb0' >/dev/null
+    qm config "$VMID" > "$D/vm.conf"
+    si ! grep -q '^net' "$D/vm.conf" -- "VM sans carte réseau" "la VM a une carte réseau"
     qm start "$VMID"
-    "${B[@]}" attendre "Insérez la clé à analyser" 2400 "$OUT/01-accueil.png"
-    ok "installation automatique terminée, interface affichée"
+    sleep 60; capture 01-installateur
+    attendre "Insérez la clé à analyser" 3600 "$D/02-premier-ecran.png"
+    ok "installation automatique depuis la clé USB, interface affichée (${MEMOIRE} Mo de RAM)"
+    debrancher usb0
     qm snapshot "$VMID" installee >/dev/null
+elif [ "${REPRISE:-0}" = 1 ]; then
+    COURANT=installation
+    qm stop "$VMID" >/dev/null 2>&1 || true; qm rollback "$VMID" installee; qm start "$VMID"
+    attendre "Insérez la clé à analyser" 600
+    ok "borne remise à l'état « installée » (instantané, REPRISE=1)"
 fi
-if qm config "$VMID" | grep -q '^net'; then ko "la VM a une carte réseau"; exit 1; fi
-ok "VM sans carte réseau"
 
-# --- 2. Administration ----------------------------------------------------------------
-etape "2. PIN, enrôlement de la clé de sortie ($SERIE_SORTIE)"
-"${B[@]}" cliquer "Administration"
-"${B[@]}" attendre "choisissez le PIN" 30 "$OUT/02-premier-pin.png"
-"${B[@]}" pin "$PIN"
-"${B[@]}" cliquer "Valider"
-"${B[@]}" cliquer "Clés de sortie enrôlées"
-brancher usb1 "$SERIE_SORTIE"
-"${B[@]}" attendre "Enrôler" 60
-"${B[@]}" cliquer "Enrôler"
-"${B[@]}" cliquer "Activer"
-"${B[@]}" attendre "ACTIVÉ" 30 "$OUT/03-cle-enrolee.png"
-ok "clé $SERIE_SORTIE enrôlée, mode clés enrôlées activé"
-"${B[@]}" cliquer "Retour au menu"
-debrancher usb1
-"${B[@]}" cliquer "Quitter le mode administrateur"
-"${B[@]}" attendre "Insérez la clé à analyser" 30
+# === grub : édition du démarrage protégée (S-01) =========================================
+if test_actif grub; then
+    debut grub "menu de démarrage : démarrage seul, édition protégée par mot de passe"
+    qm reset "$VMID"
+    for _ in $(seq 40); do echo "sendkey esc" | qm monitor "$VMID" >/dev/null 2>&1; sleep 0.5; done
+    capture 01-menu-grub
+    echo "sendkey e" | qm monitor "$VMID" >/dev/null; sleep 2
+    capture 02-edition-demandee
+    if lire 02-edition-demandee | grep -qi 'username\|utilisateur'; then
+        ok "édition de la ligne du noyau refusée sans mot de passe (« Enter username »)"
+    else
+        ko "GRUB : l'édition ne demande pas de mot de passe (voir 02-edition-demandee.png)"
+    fi
+    qm reset "$VMID"; attendre "Insérez la clé à analyser" 600 "$D/03-redemarrage-normal.png"
+    ok "démarrage normal sans mot de passe"
+fi
 
-# --- 3. Transfert ---------------------------------------------------------------------
-etape "3. Transfert : clé inconnue ($SERIE_SOURCE) → clé enrôlée ($SERIE_SORTIE)"
-D="$OUT/transfert"
-remplir "$SERIE_SOURCE" "$D/source.sha256"
-brancher usb1 "$SERIE_SOURCE"
-"${B[@]}" attendre "Clé détectée" 60 "$D/01-cle-detectee.png"
-"${B[@]}" cliquer "Copier vers une clé"
-"${B[@]}" attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"
-"${B[@]}" lire > "$D/02-resultat-analyse.txt"
-si grep -qi eicar "$D/02-resultat-analyse.txt" -- "écran : EICAR détecté" "écran : EICAR non affiché"
-"${B[@]}" cliquer "Choisir la clé de destination"
-brancher usb2 "$SERIE_SORTIE"
-"${B[@]}" attendre "Clé de destination" 60 "$D/03-cle-sortie.png"
-"${B[@]}" cliquer "Effacer cette clé"
-"${B[@]}" attendre "Vous pouvez retirer les clés" 10800 "$D/04-termine.png"
-"${B[@]}" lire > "$D/04-termine.txt"
-debrancher usb2; debrancher usb1
-inventaire "$SERIE_SORTIE" "$D/sortie.sha256" "$D"
-verifier "$D/source.sha256" "$D/sortie.sha256" "$D"
-# Clés retirées : la borne revient seule à l'accueil.
-"${B[@]}" attendre "Insérez la clé à analyser" 60
+# === pin : premier PIN, mauvais PIN ======================================================
+if test_actif pin; then
+    debut pin "premier démarrage (choix du PIN), mauvais PIN, bon PIN"
+    cliquer "Administration"; attendre "choisissez le PIN" 30 "$D/01-premier-pin.png"
+    "${B[@]}" pin "$PIN"; cliquer "Valider"; attendre "Quitter le mode administrateur" 30 "$D/02-menu-admin.png"
+    ok "premier PIN choisi, menu d'administration ouvert"
+    quitter_admin
+    cliquer "Administration"; attendre "Saisissez le PIN" 30
+    "${B[@]}" pin 999999; cliquer "Valider"
+    si voir "PIN incorrect" 20 "$D/03-mauvais-pin.png" -- "mauvais PIN refusé (essais restants affichés)" "mauvais PIN non refusé"
+    "${B[@]}" pin "$PIN"; cliquer "Valider"
+    si voir "Quitter le mode administrateur" 30 "$D/04-bon-pin.png" -- "bon PIN accepté après une erreur" "bon PIN refusé"
+    quitter_admin
+fi
 
-# --- 4. Blanchiment -------------------------------------------------------------------
-etape "4. Blanchiment de la clé $SERIE_SOURCE"
-D="$OUT/blanchiment"
-remplir "$SERIE_SOURCE" "$D/avant.sha256"
-d=$(disque "$SERIE_SOURCE")
-taille=$(blockdev --getsize64 "$d")
-# Empreinte de la clé entière et extraits hexadécimaux (secteur 0, fichier EICAR).
-empreinte() { # $1 avant|apres
-    sha256sum "$d" | awk -v t="$taille" '{ print $1 "  clé entière (" t " octets)" }' > "$D/cle-$1.sha256"
-    xxd -l 512 "$d" > "$D/cle-$1-secteur0.hex"
-    : > "$D/cle-$1-eicar.hex"
-    local o
-    o=$(head -c 64M "$d" | grep -obaF 'EICAR-STANDARD' | head -1 | cut -d: -f1 || true)
-    echo "${o:-aucune}" > "$D/cle-$1-eicar-offset.txt"
-    [ -n "$o" ] && xxd -s $((o - 32)) -l 128 "$d" > "$D/cle-$1-eicar.hex"
-    return 0
+# === enrolement : clé de destination enrôlée, mode activé ================================
+if test_actif enrolement; then
+    debut enrolement "enrôlement de la clé de destination $SERIE_SORTIE"
+    admin; cliquer "Clés de sortie enrôlées"
+    brancher usb1 "$SERIE_SORTIE"; attendre "Enrôler" 60 "$D/01-cle-branchee.png"
+    cliquer "Enrôler"; cliquer "Activer"
+    si voir "ACTIVÉ" 30 "$D/02-cle-enrolee.png" -- "clé enrôlée, mode « clés enrôlées » activé" "mode clés enrôlées non activé"
+    cliquer "Retour au menu"; debrancher usb1; quitter_admin
+fi
+
+# === transfert : clé inconnue → clé non enrôlée (refus) puis clé enrôlée ==================
+if test_actif transfert; then
+    debut transfert "clé inconnue $SERIE_SOURCE → clé enrôlée $SERIE_SORTIE"
+    formater "$SERIE_SOURCE" "" SOURCE; contenu_test; demonter "$D/source.sha256"
+    formater "$SERIE_SORTIE" "" DEST; echo "témoin à effacer" > "$T/m/TEMOIN-AVANT.txt"; demonter "$D/destination-avant.sha256"
+    brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 60 "$D/01-cle-detectee.png"
+    cliquer "Copier vers une clé"
+    mot_de_passe_si_demande secret
+    attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"
+    lire 02-resultat-analyse >/dev/null
+    si grep -qi 'menace' "$D/02-resultat-analyse.txt" -- "écran : menaces détectées" "écran : aucune menace affichée"
+    cliquer "Choisir la clé de destination"
+    brancher usb2 "$SERIE_AUTRE"
+    si voir "pas enrôlée" 60 "$D/03-cle-non-enrolee-refusee.png" -- "clé non enrôlée refusée en sortie" "clé non enrôlée acceptée"
+    debrancher usb2
+    brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 60 "$D/04-cle-destination.png"
+    cliquer "Effacer cette clé"
+    attendre "Vous pouvez retirer les clés" 3600 "$D/05-termine.png"
+    debrancher usb2; debrancher usb1
+    monter_ro "$SERIE_SORTIE"; liste_sha "$T/m" > "$D/sortie.sha256"
+    cp "$T/m"/rapport-barbacane-* "$D/" 2>/dev/null || true
+    verifier_sortie "$D/source.sha256" "$D/sortie.sha256" "$T/m"
+    si ! grep -q TEMOIN-AVANT "$D/sortie.sha256" -- "contenu précédent de la destination effacé (témoin absent)" "le témoin est encore sur la destination"
+    umount "$T/m"
+    si grep -qi 'eicar' "$D"/rapport-barbacane-*.txt -- "rapport : EICAR détecté et refusé" "rapport sans EICAR"
+    attendre "Insérez la clé à analyser" 120
+fi
+
+# === blanchiment de la clé source ========================================================
+if test_actif blanchiment; then
+    debut blanchiment "blanchiment de la clé $SERIE_SOURCE"
+    formater "$SERIE_SOURCE" "" SOURCE; contenu_test; demonter "$D/avant.sha256"
+    empreinte_cle "$SERIE_SOURCE" cle-avant
+    si [ -s "$D/cle-avant-eicar-offsets.txt" ] -- "avant : EICAR sur la clé (octets $(tr '\n' ' ' < "$D/cle-avant-eicar-offsets.txt"))" "avant : EICAR introuvable"
+    brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 60 "$D/01-cle-detectee.png"
+    cliquer "Blanchir cette clé"
+    mot_de_passe_si_demande secret
+    attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"
+    cliquer "Blanchir la clé"; attendre "Effacer et réécrire" 30 "$D/03-confirmation.png"
+    cliquer "Effacer et réécrire"
+    sleep 90; capture 04-effacement-en-cours
+    attendre "Vous pouvez retirer les clés" 10800 "$D/05-termine.png"
+    debrancher usb1
+    empreinte_cle "$SERIE_SOURCE" cle-apres
+    si [ "$(cut -c1-64 "$D/cle-avant.sha256")" != "$(cut -c1-64 "$D/cle-apres.sha256")" ] \
+        -- "empreinte de la clé entière modifiée" "clé inchangée"
+    si [ ! -s "$D/cle-apres-eicar-offsets.txt" ] -- "après : aucune trace d'EICAR sur TOUTE la clé" "après : EICAR encore présent"
+    monter_ro "$SERIE_SOURCE"; liste_sha "$T/m" > "$D/apres.sha256"; cp "$T/m"/rapport-barbacane-* "$D/" 2>/dev/null || true
+    verifier_sortie "$D/avant.sha256" "$D/apres.sha256" "$T/m"; umount "$T/m"
+    attendre "Insérez la clé à analyser" 120
+fi
+
+# === export des journaux et rapports =====================================================
+if test_actif export; then
+    debut export "export des journaux et rapports sur la clé $SERIE_SORTIE"
+    admin; cliquer "Exporter les journaux"; attendre "Exporter les journaux et rapports" 30
+    brancher usb1 "$SERIE_SORTIE"; sleep 5; cliquer "Exporter"
+    si voir "exportés" 600 "$D/01-export-termine.png" -- "export terminé" "export échoué"
+    cliquer "Retour au menu"; debrancher usb1; quitter_admin
+    monter_ro "$SERIE_SORTIE"; (cd "$T/m" && find . -type f | sort) > "$D/contenu-cle.txt"
+    cp -r "$T/m"/. "$D/cle/" 2>/dev/null || { mkdir -p "$D/cle"; cp -r "$T/m"/. "$D/cle/"; }
+    umount "$T/m"
+    si grep -q 'journal' "$D/contenu-cle.txt" -- "journal de la borne exporté" "journal absent de l'export"
+    si grep -q 'rapport-barbacane' "$D/contenu-cle.txt" -- "rapports exportés" "rapports absents de l'export"
+fi
+
+# === maj : mise à jour signée valide, puis refus ==========================================
+maj_appliquer() { # fichier.bcu sous-dossier attendu
+    formater "$SERIE_AUTRE" "" MAJ; cp "$1" "$1.minisig" "$T/m/"; demonter "$D/$2-cle.sha256"
+    admin; cliquer "Mettre à jour"; attendre "Mise à jour hors ligne" 30
+    brancher usb1 "$SERIE_AUTRE"; sleep 5; cliquer "Lire et appliquer"
+    if voir "$3" 900 "$D/$2.png"; then lire "$2" >/dev/null; return 0; fi
+    lire "$2" >/dev/null; return 1
 }
-empreinte avant
-off_avant=$(cat "$D/cle-avant-eicar-offset.txt")
-si [ "$off_avant" != aucune ] -- "avant : EICAR présent sur la clé (octet $off_avant)" "avant : EICAR introuvable"
-brancher usb1 "$SERIE_SOURCE"
-"${B[@]}" attendre "Clé détectée" 60 "$D/01-cle-detectee.png"
-"${B[@]}" cliquer "Blanchir cette clé"
-"${B[@]}" attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"
-"${B[@]}" lire > "$D/02-resultat-analyse.txt"
-"${B[@]}" cliquer "Blanchir la clé"
-"${B[@]}" attendre "Effacer et réécrire" 30 "$D/03-confirmation.png"
-"${B[@]}" cliquer "Effacer et réécrire"
-"${B[@]}" attendre "Vous pouvez retirer les clés" 10800 "$D/04-termine.png"
-"${B[@]}" lire > "$D/04-termine.txt"
-debrancher usb1
-d=$(disque "$SERIE_SOURCE")
-empreinte apres
-si [ "$(cut -c1-64 "$D/cle-avant.sha256")" != "$(cut -c1-64 "$D/cle-apres.sha256")" ] \
-    -- "empreinte de la clé modifiée par le blanchiment" "clé inchangée après blanchiment"
-si [ "$(cat "$D/cle-apres-eicar-offset.txt")" = aucune ] \
-    -- "après : aucune trace d'EICAR dans les 64 premiers Mo" "après : EICAR encore présent sur la clé"
-inventaire "$SERIE_SOURCE" "$D/apres.sha256" "$D"
-verifier "$D/avant.sha256" "$D/apres.sha256" "$D"
+if test_actif maj; then
+    debut maj "mises à jour signées"
+    if [ -z "${MAJ:-}" ] || [ ! -d "$MAJ" ]; then
+        non_teste "MAJ non fourni (tests/proxmox/paquets-maj.sh)"
+    else
+        valide=$(ls "$MAJ"/valide/*.bcu); sig=$(ls "$MAJ"/mauvaise-signature/*.bcu); vieux=$(ls "$MAJ"/ancienne/*.bcu)
+        v=$(basename "$valide" .bcu | grep -o '[0-9]*$')
+        si maj_appliquer "$valide" 01-valide "version $v" -- "paquet signé valide appliqué (version $v, base antivirale)" "paquet valide non appliqué"
+        cliquer "Retour au menu"; debrancher usb1; quitter_admin
+        si maj_appliquer "$sig" 02-mauvaise-signature "signature invalide" -- "paquet signé par une autre clé refusé" "mauvaise signature acceptée"
+        cliquer "Retour au menu"; debrancher usb1; quitter_admin
+        si maj_appliquer "$vieux" 03-version-ancienne "retour arrière" -- "version plus ancienne refusée" "retour arrière accepté"
+        cliquer "Retour au menu"; debrancher usb1
+        cliquer "État de la borne"; capture 04-etat-borne; lire 04-etat-borne >/dev/null
+        cliquer "Retour au menu"; quitter_admin
+    fi
+fi
 
-# --- 5. Journal et rapports de la borne -----------------------------------------------
-etape "5. Journal et rapports de la borne (disque de la VM lu hors ligne)"
-qm shutdown "$VMID" --timeout 120 >/dev/null 2>&1 || qm stop "$VMID"
-vol=$(pvesm path "$(qm config "$VMID" | awk -F'[ ,]' '/^scsi0:/ { print $2 }')")
-racine=$(lsblk -lnpo NAME,FSTYPE "$vol" | awk '$2 == "ext4" { print $1; exit }')
-mount -o ro,noload "$racine" "$T/m"
-J=(journalctl -D "$T/m/var/log/journal" --no-pager -o short-iso)
-"${J[@]}" -u usbsas-server -u barbacane-kiosk -u barbacane-analyzer -u barbacane-admind -u clamav-daemon \
-    | grep -v '^-- ' > "$OUT/borne/journal.log" || true
-cp "$T/m"/var/lib/usbsas/reports/* "$OUT/borne/" 2>/dev/null || true
-umount "$T/m"
-si grep -qi eicar "$OUT/borne/journal.log" -- "journal de la borne : EICAR consigné" "journal : EICAR absent"
+# === clavier : un clavier USB ne peut rien taper (S-06) ===================================
+if test_actif clavier; then
+    debut clavier "clavier USB branché (émulé : usb-kbd QEMU)"
+    echo "device_add usb-kbd,id=clavier_test" | qm monitor "$VMID" > "$D/monitor.txt"; sleep 5
+    cliquer "Administration"; attendre "Saisissez le PIN" 30
+    for k in 1 2 3 4 5 6 ret; do echo "sendkey $k" | qm monitor "$VMID" >/dev/null; sleep 0.3; done
+    for k in ctrl-alt-f1 ctrl-alt-f3 alt-sysrq-h; do echo "sendkey $k" | qm monitor "$VMID" >/dev/null; sleep 1; done
+    capture 01-apres-frappes; lire 01-apres-frappes >/dev/null
+    si voir "Saisissez le PIN" 10 -- "frappes et combinaisons sans effet : l'écran du PIN est inchangé" "le clavier a eu un effet"
+    si ! grep -q '●' "$D/01-apres-frappes.txt" -- "aucun chiffre saisi dans le champ PIN" "des chiffres ont été saisis"
+    cliquer "Annuler"
+    echo "device_del clavier_test" | qm monitor "$VMID" >/dev/null
+fi
+
+# === clés hostiles ======================================================================
+if test_actif vide; then
+    debut vide "clé vide"
+    formater "$SERIE_AUTRE" "" VIDE; demonter "$D/cle.sha256"
+    brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Copier vers une clé"
+    if voir "Résultat de l'analyse" 300 "$D/01-resultat.png" || voir "erreur" 5 "$D/01-resultat.png"; then
+        lire 01-resultat >/dev/null; ok "clé vide : la borne affiche un résultat sans planter"
+    else ko "clé vide : aucun résultat"; fi
+    capture 01-resultat
+    cliquer "Abandonner" || cliquer "Recommencer"
+    debrancher usb1
+    si voir "Insérez la clé à analyser" 60 -- "retour à l'accueil" "borne bloquée après la clé vide"
+fi
+if test_actif pleine; then
+    debut pleine "clé pleine (système de fichiers rempli à 100 %)"
+    formater "$SERIE_AUTRE" +256M PLEINE
+    i=0; while head -c 16M /dev/urandom > "$T/m/remplissage-$i.bin" 2>/dev/null; do i=$((i + 1)); done
+    head -c 1M /dev/urandom > "$T/m/dernier.bin" 2>/dev/null || true
+    df -h "$T/m" > "$D/occupation.txt"; demonter "$D/cle.sha256"
+    brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Copier vers une clé"
+    si voir "Résultat de l'analyse" 1800 "$D/01-resultat.png" -- "clé pleine analysée ($(grep -c . "$D/cle.sha256") fichiers)" "clé pleine : pas de résultat"
+    lire 01-resultat >/dev/null; cliquer "Abandonner"; debrancher usb1
+    si voir "Insérez la clé à analyser" 60 -- "retour à l'accueil" "borne bloquée après la clé pleine"
+fi
+if test_actif illisible; then
+    debut illisible "clé illisible (64 premiers Mo aléatoires : ni table de partitions ni système de fichiers)"
+    d=$(disque "$SERIE_AUTRE"); wipefs -qa "$d"; dd if=/dev/urandom of="$d" bs=1M count=64 conv=fsync status=none
+    xxd -l 512 "$d" > "$D/secteur0.hex"
+    brancher usb1 "$SERIE_AUTRE"; sleep 10; capture 01-branchee; lire 01-branchee >/dev/null
+    if grep -q "Clé détectée" "$D/01-branchee.txt"; then
+        cliquer "Copier vers une clé"; sleep 30; capture 02-apres-lecture; lire 02-apres-lecture >/dev/null
+    fi
+    debrancher usb1; sleep 5
+    if voir "Insérez la clé à analyser" 30 || { cliquer "Recommencer" && voir "Insérez la clé à analyser" 30; }; then
+        capture 03-retour-accueil; ok "clé illisible : message affiché, borne de nouveau utilisable"
+    else capture 03-bloquee; ko "borne bloquée après une clé illisible"; fi
+fi
+if test_actif retrait; then
+    debut retrait "clé retirée pendant la lecture"
+    formater "$SERIE_AUTRE" "" GROS; head -c 1500M /dev/urandom > "$T/m/gros.bin"; demonter "$D/cle.sha256"
+    brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Copier vers une clé"
+    sleep 15; capture 01-lecture-en-cours
+    debrancher usb1; sleep 15; capture 02-apres-retrait; lire 02-apres-retrait >/dev/null
+    if voir "Insérez la clé à analyser" 20 || { cliquer "Recommencer" && voir "Insérez la clé à analyser" 30; } \
+        || { cliquer "Abandonner" && voir "Insérez la clé à analyser" 30; }; then
+        capture 03-retour-accueil; ok "retrait en cours de lecture : erreur affichée, aucune copie, borne de nouveau utilisable"
+    else ko "borne bloquée après un retrait en cours de lecture"; fi
+fi
+
+# === verrouillage du PIN (en dernier : bloque l'administration 15 min) ====================
+if test_actif verrouillage; then
+    debut verrouillage "5 mauvais PIN → verrouillage"
+    cliquer "Administration"; attendre "Saisissez le PIN" 30
+    for _ in 1 2 3 4 5; do "${B[@]}" pin 999999; cliquer "Valider"; sleep 2; done
+    si voir "verrouillé" 30 "$D/01-verrouille.png" -- "administration verrouillée après 5 échecs" "pas de verrouillage"
+    "${B[@]}" pin "$PIN"; cliquer "Valider"
+    si voir "verrouillé" 20 "$D/02-bon-pin-refuse.png" -- "même le bon PIN est refusé pendant le verrouillage" "bon PIN accepté pendant le verrouillage"
+    cliquer "Annuler" || true
+fi
+
+# === journal de la borne (disque de la VM lu hors ligne) ==================================
+if test_actif journal; then
+    debut journal "journal et rapports de la borne"
+    qm shutdown "$VMID" --timeout 120 >/dev/null 2>&1 || qm stop "$VMID"
+    vol=$(pvesm path "$(qm config "$VMID" | awk -F'[ ,]' '/^scsi0:/ { print $2 }')")
+    racine=$(lsblk -lnpo NAME,FSTYPE "$vol" | awk '$2 == "ext4" { print $1; exit }')
+    mount -o ro,noload "$racine" "$T/m"
+    journalctl -D "$T/m/var/log/journal" --no-pager -o short-iso -u usbsas-server -u barbacane-kiosk \
+        -u barbacane-analyzer -u barbacane-admind -u clamav-daemon -u hid-dealer > "$D/journal.log" || true
+    cp "$T/m"/var/lib/usbsas/reports/* "$D/" 2>/dev/null || true
+    grep -c . "$T/m/boot/grub/grub.cfg" >/dev/null && grep -E '^set superusers|^menuentry' "$T/m/boot/grub/grub.cfg" | cut -c1-90 > "$D/grub-cfg-extrait.txt"
+    umount "$T/m"
+    si grep -qi 'eicar' "$D/journal.log" -- "journal : détections EICAR consignées" "journal sans EICAR"
+    si grep -qi 'clavier\|keyboard\|not.*mouse\|hid' "$D/journal.log" -- "journal : clavier USB vu par hid-dealer" "journal : aucune trace du clavier"
+fi
 
 echo
-if [ "$ECHECS" -eq 0 ]; then echo "OK"; else echo "ÉCHEC ($ECHECS)"; exit 1; fi
+grep -c '^OK' "$R" | xargs echo "Vérifications OK :"
+grep '^NON TESTÉ' "$R" || true
+if [ "$ECHECS" -eq 0 ]; then echo "OK"; else grep '^ÉCHEC' "$R"; echo "ÉCHEC ($ECHECS)"; exit 1; fi

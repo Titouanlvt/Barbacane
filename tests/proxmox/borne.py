@@ -6,6 +6,8 @@
   borne.py VMID cliquer "texte" [CAPTURE.png]              # clique au centre du texte
   borne.py VMID xy X Y                                     # clic à une position absolue
   borne.py VMID lire                                       # texte reconnu à l'écran
+  borne.py VMID pin CHIFFRES                               # pavé numérique du PIN
+  borne.py VMID texte minuscules                           # clavier virtuel (mot de passe)
 
 Le clic passe par la tablette USB (positions absolues) : `mouse_move` du moniteur
 HMP est relatif et part sur la souris PS/2. Lecture par tesseract (fra).
@@ -222,6 +224,19 @@ def main():
                 r = next(k for k in lignes if c in k)
                 x, y = cx + (r.index(c) - 1) * pas, p[1] - lignes[r] * pas
             clic(vm, x, y, l, h)
+            time.sleep(0.3)
+    elif op == "texte":
+        # Clavier virtuel (client/src/keyboard.rs) : 4 rangées de 10 touches de 54 px au pas
+        # de 60, centrées ; la rangée de contrôle (« MAJUSCULES »…) est juste en dessous.
+        rangs = ["1234567890", "azertyuiop", "qsdfghjklm", "wxcvbn,.-_"]
+        l, h = capture(vm, tmp)
+        p = trouver(tmp, "MAJUSCULES")
+        if not p:
+            sys.exit(f"ÉCHEC : clavier virtuel introuvable ; écran :\n{lire(tmp)}")
+        cx = l // 2
+        for c in sys.argv[3]:
+            r = next(i for i, k in enumerate(rangs) if c in k)
+            clic(vm, cx - 270 + 60 * rangs[r].index(c), p[1] - (4 - r) * 60, l, h)
             time.sleep(0.3)
     else:
         sys.exit(__doc__)

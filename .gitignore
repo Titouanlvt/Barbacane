@@ -34,3 +34,7 @@ proto3_pb2.py
 *.vrb
 *.xdv
 target/
+
+# Clé publique de mise à jour propre à chaque déploiement (jamais dans le dépôt)
+systeme/iso/maj.pub
+*.iso
