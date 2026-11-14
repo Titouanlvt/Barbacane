@@ -13,8 +13,11 @@ Sur l'écran d'accueil (ou l'écran « Clé détectée »), bouton discret
 Menu : État de la borne · Mettre à jour · Exporter les journaux · Clés de sortie
 enrôlées · Limites d'analyse · Changer le PIN · Redémarrer · Éteindre.
 
-PIN perdu : démarrer la borne avec un clavier temporaire en mode maintenance
-(BIOS) et exécuter `echo NOUVEAUPIN | sudo barbacane-admind --set-pin`.
+PIN perdu : **réinstaller la borne** avec l'ISO (les clés enrôlées et les réglages sont
+perdus, à refaire). Il n'existe volontairement aucune porte dérobée : root est verrouillé,
+la borne n'a aucun pilote clavier et le menu de démarrage GRUB est protégé par un mot de
+passe aléatoire que personne ne connaît (sinon un clavier branché au démarrage suffirait
+à obtenir un shell root).
 
 ## 2. Mises à jour hors ligne
 

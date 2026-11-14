@@ -95,6 +95,14 @@ for u in barbacane-analyzer barbacane-admind barbacane-kiosk usbsas-server clama
         echo "ÉCHEC : $u" >&2; ko=1
     fi
 done
+# GRUB verrouillé : édition de la ligne du noyau protégée, démarrage sans mot de passe.
+cfg="$W/racine/boot/grub/grub.cfg"
+if grep -q '^set superusers="barbacane"' "$cfg" && grep -q '^password_pbkdf2 barbacane grub.pbkdf2' "$cfg" \
+    && grep -m1 '^menuentry ' "$cfg" | grep -q -- '--unrestricted'; then
+    echo "OK : GRUB verrouillé (superusers), entrée par défaut sans mot de passe"
+else
+    echo "ÉCHEC : GRUB éditable sans mot de passe (ou entrée par défaut restreinte)" >&2; ko=1
+fi
 # L'interface doit réellement s'afficher (écran non noir).
 clair=$(python3 -c '
 import sys
