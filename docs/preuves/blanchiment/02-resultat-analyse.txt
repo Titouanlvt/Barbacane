@@ -1,0 +1,35 @@
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+tésu tat ce ‘ana yse
+
+4 fichier{(s] sains) à copier . 1 refusé{s)
+Ce qui ne passe pas, et pourquoi :
+
+docs/ceicar.con
+
+Abandonner
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+Résultat de l'analyse
+
+© 1 menace(s) détectée(s)
+
+4 fichier(s} sain(s) à copier : 1 refusé(s)
+
+Ce qui ne passe pas, et pourquoi :
+
+Ç docs/eicar.com
+menace détectée par ClamAY : Eicar-Test-Signature
+
+Blanchir La clé
+
+Barbacane 8.16 — station blanche hors ligne Administration
+
+BARBACANE
+
+(&) docs/eicar.com
+menace détectée par ClamAV : Eicar-Test-Signature
+
+Blanchir La clé
+
