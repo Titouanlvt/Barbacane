@@ -110,6 +110,11 @@ verifier() { # $1 avant  $2 après  $3 dossier (rapports)
 
 # --- 1. VM borne ----------------------------------------------------------------------
 etape "1. Installation de l'ISO dans la VM $VMID (UEFI, sans réseau)"
+# Un passage interrompu peut avoir laissé une clé passée à la VM : on la rend à l'hôte.
+if qm status "$VMID" >/dev/null 2>&1; then
+    qm set "$VMID" --delete usb1,usb2 >/dev/null 2>&1 || true
+    sleep 3
+fi
 if [ "${REPRISE:-0}" = 1 ] && qm listsnapshot "$VMID" 2>/dev/null | grep -q installee; then
     # Mise au point : borne remise dans l'état « juste installée » sans réinstaller.
     qm stop "$VMID" >/dev/null 2>&1 || true
