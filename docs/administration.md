@@ -23,7 +23,8 @@ passe aléatoire que personne ne connaît (sinon un clavier branché au démarra
 
 ### 2.1 <a name="cles"></a>Clés de signature
 
-Sur le poste administrateur (jamais sur une borne) :
+Sur le poste administrateur (jamais sur une borne), outil `minisign` installé
+(`apt-get install minisign`) ; la phrase de passe est demandée deux fois :
 
 ```shell
 borne/update/barbacane-update-keygen ~/cles-barbacane

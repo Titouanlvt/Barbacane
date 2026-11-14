@@ -7,25 +7,33 @@ Ce guide s'adresse à la personne qui prépare une borne. Durée : environ 30 mi
 
 | Élément | Remarque |
 |---|---|
-| Un PC x86_64 (HP, Dell…) | 16 Go de RAM minimum, disque interne ≥ 32 Go. **Le disque sera entièrement effacé.** |
+| Un PC x86_64 (HP, Dell…) | 16 Go de RAM recommandés (8 Go testés), disque interne ≥ 32 Go. **Le disque sera entièrement effacé.** |
 | Une clé USB ≥ 2 Go | Elle servira de support d'installation (son contenu sera effacé). |
-| Un poste administrateur connecté à Internet | Debian 13, ou n'importe quel Linux avec Docker, pour fabriquer l'ISO. |
+| Un poste administrateur connecté à Internet | Debian 13 (testé), ≈ 20 Go libres, droits root. Il fabrique l'ISO et signe les mises à jour. |
 | Un écran tactile, ou un écran et une souris | Le clavier n'est utile qu'au réglage du BIOS. |
 
 ## Étape 1 — Fabriquer l'ISO (une seule fois pour toutes les bornes)
 
-Sur le poste administrateur :
+Sur le poste administrateur, **en root** (`su -` si `sudo` n'est pas installé) :
 
 ```sh
-git clone <dépôt> usbsas && cd usbsas
-# Recommandé : la clé publique de signature des mises à jour
-cp /chemin/barbacane-maj.pub systeme/iso/maj.pub
-# Debian 13, en root :
-sudo systeme/iso/build-iso.sh --sortie barbacane.iso
-# ou, depuis un autre Linux :
-docker run --rm --privileged -v "$PWD":/src -w /src debian:trixie \
-    systeme/iso/build-iso.sh --sortie barbacane.iso
+apt-get update && apt-get install -y git minisign
+git clone https://github.com/Titouanlvt/Barbacane.git barbacane && cd barbacane
+
+# Clé de signature des mises à jour : à faire UNE fois pour tout le parc.
+# Choisir une phrase de passe solide ; la clé secrète (.key) ne quitte jamais ce poste
+# (ou une clé USB chiffrée rangée au coffre).
+borne/update/barbacane-update-keygen ~/cles-barbacane
+cp ~/cles-barbacane/barbacane-maj.pub systeme/iso/maj.pub    # ignoré par git
+
+systeme/iso/build-iso.sh --sortie barbacane.iso              # 30 à 40 min (Rust, paquets, ClamAV)
+sha256sum barbacane.iso                                      # à noter avec la date
 ```
+
+Sans `maj.pub`, l'ISO fonctionne mais **aucune mise à jour ne pourra jamais être appliquée**
+aux bornes ainsi installées (signatures antivirales comprises).
+Une autre distribution peut utiliser un conteneur (`docker run --rm --privileged -v "$PWD":/src
+-w /src debian:trixie systeme/iso/build-iso.sh --sortie barbacane.iso`) : variante non testée.
 
 Résultat : le fichier `barbacane.iso`. Il contient tout ce qu'il faut (Debian, Barbacane,
 base antivirale du jour) : **l'installation ne demande aucun réseau**.
@@ -36,8 +44,13 @@ base antivirale du jour) : **l'installation ne demande aucun réseau**.
 
 ## Étape 2 — Copier l'ISO sur la clé USB
 
-- **Linux** : `sudo dd if=barbacane.iso of=/dev/sdX bs=4M status=progress conv=fsync`
-  (remplacer `sdX` par la clé, vérifier avec `lsblk` : une erreur efface le mauvais disque).
+- **Linux** : repérer la clé **avant** de copier — une erreur efface un disque du poste :
+  ```sh
+  lsblk -d -o NAME,SIZE,TRAN,MODEL,SERIAL     # la clé : TRAN = usb, taille et modèle attendus
+  dd if=barbacane.iso of=/dev/sdX bs=4M status=progress conv=fsync    # sdX = la clé
+  cmp -n "$(stat -c %s barbacane.iso)" barbacane.iso /dev/sdX && echo copie vérifiée
+  ```
+  Ne jamais viser un disque dont `TRAN` n'est pas `usb`.
 - **Windows** : Rufus, en choisissant le mode **« image DD »** quand il le propose.
 - **macOS / tous** : balenaEtcher.
 
@@ -82,7 +95,7 @@ menace. Insérer une clé saine : les fichiers doivent pouvoir être copiés ver
 |---|---|
 | Le poste ne démarre pas sur la clé | Vérifier l'étape 3 (démarrage USB, Secure Boot) ; recopier l'ISO en mode « DD ». |
 | L'installation s'arrête sur une question | Le poste a plusieurs disques ambigus : débrancher les disques en trop et relancer. |
-| Écran noir après installation | Brancher un clavier, `Ctrl+Alt+F2`, et consulter `journalctl -b -u barbacane-kiosk` (voir [exploitation.md](exploitation.md)). |
+| Écran noir après installation | La borne n'a pas de pilote clavier (sécurité) : on ne peut pas s'y connecter. Démarrer le poste sur une clé Debian « live », monter le disque interne en lecture seule et lire `journalctl -D /mnt/var/log/journal -u barbacane-kiosk` ; sinon réinstaller. |
 | PIN oublié | Réinstaller le poste (étapes 4 à 6). |
 
 Pour les mises à jour et la base antivirale : [administration.md](administration.md).

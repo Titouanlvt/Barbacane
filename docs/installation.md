@@ -7,8 +7,8 @@ d'installation sur une Debian 13 fraîche, soit en flashant une image disque.
 
 | Élément | Exigence |
 |---|---|
-| Poste | HP ProDesk / Dell OptiPlex x86_64, UEFI, **16 Go de RAM** minimum |
-| Disque | 64 Go minimum (journaux, rapports, fichiers temporaires usbsas) |
+| Poste | HP ProDesk / Dell OptiPlex x86_64, UEFI, **16 Go de RAM** recommandés (8 Go testés) |
+| Disque | 32 Go minimum (testé), 64 Go recommandés (journaux, rapports, fichiers temporaires) |
 | Périphériques | écran + **souris USB** uniquement ; aucun clavier en production |
 | Ports USB | 1 port « entrée » (clé inconnue, aussi utilisé pour Blanchir), 1 port « sortie », 1 port souris |
 | Réseau | **jamais d'Internet, même à l'installation** : l'ISO est préparée sur un poste connecté puis copiée sur une clé USB |
@@ -51,7 +51,7 @@ fournir une). La CI publie aussi une ISO de test (artefact `barbacane-iso`, sans
 3. Le menu lance l'installation au bout de 10 s : **le plus grand disque interne est effacé**
    (jamais un disque USB). Environ 10 minutes, puis redémarrage automatique.
 4. Retirer la clé. La borne démarre sur l'interface Barbacane.
-5. Cliquer sur l'accès administrateur et **choisir le PIN** (6 chiffres minimum) : le premier PIN saisi devient le PIN.
+5. Cliquer sur l'accès administrateur et **choisir le PIN tout de suite** (6 chiffres minimum) : le premier PIN saisi devient le PIN (une borne laissée sans PIN appartient au premier venu).
 6. Appliquer les réglages BIOS du §2 (désactiver le démarrage USB).
 
 Les ports USB n'ont pas à être configurés : par défaut tout port peut servir
