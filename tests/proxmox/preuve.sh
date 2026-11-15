@@ -409,7 +409,10 @@ if test_actif maj; then
     else
         valide=$(ls "$MAJ"/valide/*.bcu); sig=$(ls "$MAJ"/mauvaise-signature/*.bcu); vieux=$(ls "$MAJ"/ancienne/*.bcu)
         v=$(basename "$valide" .bcu | grep -o '[0-9]*$')
-        si maj_appliquer "$valide" 01-valide "version $v" -- "paquet signé valide appliqué (version $v, base antivirale)" "paquet valide non appliqué"
+        # Chiffres à zéro barré (police de la borne) mal lus par l'OCR : la phrase suffit à l'écran,
+        # le numéro exact est vérifié dans le journal de la borne (étape journal, sans OCR).
+        si maj_appliquer "$valide" 01-valide "Paquet de mise à jour version" -- "paquet signé valide appliqué (écran : « Paquet de mise à jour version … »)" "paquet valide non appliqué"
+        echo "$v" > "$OUT/version-maj-attendue.txt"
         cliquer "Retour au menu"; debrancher usb1; quitter_admin
         si maj_appliquer "$sig" 02-mauvaise-signature "signature invalide" -- "paquet signé par une autre clé refusé" "mauvaise signature acceptée"
         cliquer "Retour au menu"; debrancher usb1; quitter_admin
@@ -511,6 +514,10 @@ if test_actif journal; then
     libre=non; [[ "$premiere" == *--unrestricted* ]] && libre=oui
     si [ "$libre" = oui ] -- "grub.cfg : entrée par défaut démarrable sans mot de passe" "entrée par défaut restreinte"
     si grep -qi 'eicar' "$D/journal.log" -- "journal : détections EICAR consignées" "journal sans EICAR"
+    if [ -s "$OUT/version-maj-attendue.txt" ]; then
+        v=$(cat "$OUT/version-maj-attendue.txt")
+        si grep -q "$v" "$D/journal.log" -- "journal : mise à jour $v appliquée" "journal : version $v absente"
+    fi
     si grep -qi 'clavier\|keyboard\|not.*mouse\|hid' "$D/journal.log" -- "journal : clavier USB vu par hid-dealer" "journal : aucune trace du clavier"
 fi
 
