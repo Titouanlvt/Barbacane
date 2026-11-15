@@ -133,7 +133,7 @@ if test_actif blanchiment; then
     debut blanchiment "blanchiment du disque réinscriptible"
     xorriso -indev /dev/sr0 -toc > "$D/disque-avant.toc.txt" 2>&1 || true
     voir "Disque détecté" 60 || ko "écran disque détecté absent"
-    cliquer "Blanchir ce disque"
+    cliquer "Blanchir ce"
     mot_de_passe_si_demande secret
     attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
     cliquer "Blanchir le disque"; attendre "Effacer et réécrire" 60 "$D/03-confirmation.png"
@@ -162,7 +162,7 @@ if test_actif gravure; then
     attendre "Résultat de l'analyse" 1800 "$D/02-resultat-analyse.png"
     cliquer "Choisir le disque de destination"
     attendre "Effacer ce disque" 120 "$D/03-disque-destination.png"
-    cliquer "Effacer ce disque et y graver les fichiers"; date +%s > "$D/debut"
+    cliquer "Effacer ce disque"; date +%s > "$D/debut"
     sleep 60; capture 04-gravure-en-cours; lire 04-gravure-en-cours >/dev/null
     attendre "Terminé" 14400 "$D/05-termine.png"; date +%s > "$D/fin"; debrancher usb1
     ok "gravure terminée en $(( $(cat "$D/fin") - $(cat "$D/debut") )) s (effacement complet + gravure + relecture par la borne)"
