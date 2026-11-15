@@ -209,6 +209,32 @@ la vitesse de la clé et le temps restant. Une clé lente prend du temps : ne la
 
 ![Effacement en cours](preuves/blanchiment/04-effacement-en-cours.png)
 
+## Disques optiques (CD, DVD, BD)
+
+Le lecteur optique de la borne est une source et une destination comme les ports USB.
+
+- **Disque à analyser** : insérer le disque. L'écran « Disque détecté » propose **Copier vers
+  une clé de destination**, **Graver sur un disque** ou **Blanchir ce disque** (disque
+  réinscriptible seulement), ou **Ignorer ce disque** (pour utiliser une clé à la place).
+  **Toutes les sessions** du disque sont lues : un fichier caché dans une ancienne session
+  est analysé comme les autres. Les CD audio et les disques illisibles sont refusés.
+
+![Disque détecté](preuves/optique/image/01-disque-detecte.png)
+
+- **Graver sur un disque** (depuis une clé ou un disque) : utiliser un disque
+  **réinscriptible** (CD-RW, DVD-RW, DVD+RW, BD-RE). Son contenu est d'abord **entièrement
+  effacé**, puis les fichiers sains sont gravés à la vitesse la plus basse que le disque accepte,
+  puis **relus et comparés** (empreinte SHA-256 de chaque fichier). Un CD-R, DVD-R ou BD-R est
+  refusé avec un message. Avec un seul lecteur, la copie disque → disque demande de retirer le
+  disque analysé puis d'insérer le disque de destination.
+- **Blanchir ce disque** : analyse, effacement **complet** (jamais l'effacement rapide, qui
+  laisse les données lisibles) vérifié par relecture, puis regravure des seuls fichiers sains.
+- En mode « clés enrôlées », la gravure sur disque est refusée (seules les clés enrôlées sont
+  acceptées en sortie).
+- Durées : voir le tableau des mesures dans `docs/preuves/optique/` (un CD-RW se grave et
+  s'efface lentement : plusieurs minutes pour quelques centaines de Mo). Ne retirez pas le
+  disque pendant l'opération ; la borne l'éjecte à la fin.
+
 ## Lire un rapport
 
 Le rapport `.txt` liste chaque fichier : `[COPIÉ]` ou `[REFUSÉ]`, avec la raison (« menace

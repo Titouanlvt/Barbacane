@@ -14,26 +14,35 @@ use std::time::Instant;
 /// Avancement d'une opération longue : (pourcentage, phase).
 pub type Suivi<'a> = &'a mut dyn FnMut(f32, &str);
 
-/// Identification du disque inséré (sans rien écrire).
+/// Identification du disque inséré (sans rien écrire). Sur un lecteur, `-outdev` donne aussi
+/// l'état vierge et les vitesses d'écriture ; un disque en lecture seule (DVD-ROM, CD pressé)
+/// le refuse : on relit alors en `-indev`. Toute la sortie est analysée, même en cas d'erreur.
 pub fn identifier(o: &Outil) -> Result<(Media, Option<u32>)> {
     let dev = o.device.display().to_string();
-    // -outdev pour un lecteur (état vierge, vitesses d'écriture), -indev pour une image
-    let (opt, vitesses) = if o.is_drive() {
-        ("-outdev", true)
-    } else {
-        ("-indev", false)
-    };
-    let mut args: Vec<String> = vec![opt.into(), dev, "-toc".into()];
-    if vitesses {
-        args.push("-list_speeds".into());
+    let mut sortie = String::new();
+    if o.is_drive() {
+        let (_, s) = o.run_brut(
+            &[
+                "-outdev".into(),
+                dev.clone(),
+                "-toc".into(),
+                "-list_speeds".into(),
+            ],
+            None,
+            None,
+        )?;
+        sortie = s;
     }
-    let out = match o.run(&args, None, None, |_| ()) {
-        Ok(s) => s,
-        // Disque vierge lu en -indev, ou absent : la sortie suffit à le dire
-        Err(e) => format!("{e}"),
-    };
-    let m = parse_toc(&out);
-    Ok((m, slowest_write_speed(&out)))
+    let mut m = parse_toc(&sortie);
+    if m.absent() || (!m.blank && m.data_sessions().next().is_none()) {
+        let (_, s) = o.run_brut(&["-indev".into(), dev, "-toc".into()], None, None)?;
+        let m2 = parse_toc(&s);
+        if !m2.absent() {
+            m = m2;
+        }
+        sortie.push_str(&s);
+    }
+    Ok((m, slowest_write_speed(&sortie)))
 }
 
 /// Erreur claire pour les disques sans données (CD audio, vierge, illisible).

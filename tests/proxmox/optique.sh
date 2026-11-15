@@ -87,6 +87,12 @@ qm set "$VMID" --delete usb0,usb1,usb2 >/dev/null 2>&1 || true
 # === image : disque virtuel multisession, EICAR seulement dans la 1re session ================
 if test_actif image; then
     debut image "image ISO multisession en lecteur virtuel : disque → clé"
+    # Un lecteur doit exister au démarrage (pas d'ajout de contrôleur à chaud) ; on change ensuite le disque.
+    if ! qm config "$VMID" | grep -q '^ide2:'; then
+        qm stop "$VMID" >/dev/null 2>&1 || true
+        qm set "$VMID" --ide2 none,media=cdrom >/dev/null; qm start "$VMID"
+        attendre "à analyser" 600
+    fi
     qm set "$VMID" --ide2 "local:iso/$(basename "$ISO_TEST"),media=cdrom" >/dev/null
     attendre "Disque détecté" 120 "$D/01-disque-detecte.png"
     cliquer "Copier vers une clé de destination"

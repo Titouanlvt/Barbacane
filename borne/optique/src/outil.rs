@@ -78,10 +78,12 @@ impl Outil {
                     "/tmp",
                 ]);
                 // Le lecteur (ou l'image) au même chemin que dehors : xorriso le désigne ainsi.
+                // « -try » : un lecteur absent (débranché, pas encore détecté) ne doit pas empêcher
+                // xorriso de démarrer ; il répond alors « aucun disque ».
                 if self.is_drive() {
-                    c.arg("--dev-bind").arg(&self.device).arg(&self.device);
+                    c.arg("--dev-bind-try").arg(&self.device).arg(&self.device);
                 } else {
-                    c.arg("--bind").arg(&self.device).arg(&self.device);
+                    c.arg("--bind-try").arg(&self.device).arg(&self.device);
                 }
                 for d in &self.extra_devices {
                     c.arg("--dev-bind-try").arg(d).arg(d);
@@ -118,6 +120,31 @@ impl Outil {
             });
         }
         c
+    }
+
+    /// Lance xorriso et renvoie (réussite, toute la sortie), même en cas d'échec de xorriso
+    /// (l'identification d'un disque en lecture seule en a besoin). Échec seulement si
+    /// bubblewrap ou xorriso ne démarrent pas.
+    pub fn run_brut(
+        &self,
+        args: &[String],
+        rw: Option<&Path>,
+        ro: Option<&Path>,
+    ) -> Result<(bool, String)> {
+        let out = self
+            .command(args, rw, ro)
+            .stdin(Stdio::null())
+            .output()
+            .context("lancement de xorriso")?;
+        let all = format!(
+            "{}\n{}",
+            String::from_utf8_lossy(&out.stderr),
+            String::from_utf8_lossy(&out.stdout)
+        );
+        if let Some(l) = all.lines().find(|l| l.starts_with("bwrap:")) {
+            bail!("bac à sable indisponible ({l})");
+        }
+        Ok((out.status.success(), all))
     }
 
     /// Lance xorriso ; chaque ligne de sortie est passée à `ligne` (progression). Renvoie
