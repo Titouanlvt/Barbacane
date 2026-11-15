@@ -95,7 +95,7 @@ if test_actif image; then
     fi
     qm set "$VMID" --ide2 "local:iso/$(basename "$ISO_TEST"),media=cdrom" >/dev/null
     attendre "Disque détecté" 120 "$D/01-disque-detecte.png"
-    cliquer "Copier vers une clé de destination"
+    cliquer "Copier vers une clé"
     attendre "Résultat de l'analyse" 1800 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
     si grep -qi 'menace' "$D/02-resultat-analyse.txt" -- "écran : menace détectée sur le disque" "aucune menace affichée"
     cliquer "Choisir la clé de destination"
@@ -180,7 +180,7 @@ fi
 if test_actif relecture; then
     debut relecture "disque gravé par la borne → clé de destination"
     voir "Disque détecté" 120 "$D/01-disque-detecte.png" || ko "disque gravé non détecté"
-    cliquer "Copier vers une clé de destination"
+    cliquer "Copier vers une clé"
     attendre "Résultat de l'analyse" 1800 "$D/02-resultat-analyse.png"
     cliquer "Choisir la clé de destination"
     formater "$SERIE_SORTIE" DEST; umount "$T/m"
