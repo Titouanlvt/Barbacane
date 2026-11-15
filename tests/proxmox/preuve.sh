@@ -313,8 +313,13 @@ if test_actif enrolement; then
     debut enrolement "enrôlement de la clé de destination $SERIE_SORTIE"
     admin; cliquer "Clés de sortie enrôlées"
     brancher usb1 "$SERIE_SORTIE"; attendre "Enrôler" 60 "$D/01-cle-branchee.png"
-    cliquer "Enrôler"; cliquer "Activer"
-    si voir "ACTIVÉ" 30 "$D/02-cle-enrolee.png" -- "clé enrôlée, mode « clés enrôlées » activé" "mode clés enrôlées non activé"
+    # Preuves exactes : la clé apparaît dans la liste (bouton « Retirer ») et le texte « ACTIVÉ (seules
+    # ces clés…) » ; « ACTIVÉ » seul est aussi lu dans « désactivé » (faux OK jusqu'au 15/11).
+    cliquer "Enrôler"
+    si voir "Retirer" 30 "$D/02-cle-dans-la-liste.png" -- "clé enrôlée : elle figure dans la liste" "clé absente de la liste après « Enrôler »"
+    cliquer "Activer"
+    si voir "seules ces clés sont acceptées" 30 "$D/03-mode-active.png" -- "mode « clés enrôlées » activé" "mode clés enrôlées non activé"
+    capture 04-page-enrolement; lire 04-page-enrolement >/dev/null
     cliquer "Retour au menu"; debrancher usb1; quitter_admin
 fi
 
