@@ -847,6 +847,15 @@ impl App {
                 "Ce disque n'est pas réinscriptible : il ne peut pas être blanchi (seulement lu).",
             ));
         }
+        if disque {
+            // Utiliser une clé alors qu'un disque est dans le lecteur : le disque est ignoré
+            // jusqu'à son retrait.
+            c = c.push(Space::new().height(10)).push(bouton(
+                "Ignorer ce disque",
+                Msg::Terminer,
+                style::secondaire,
+            ));
+        }
         centre(c)
     }
 
