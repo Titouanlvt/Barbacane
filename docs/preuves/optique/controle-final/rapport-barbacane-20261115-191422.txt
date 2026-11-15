@@ -1,0 +1,22 @@
+BARBACANE — RAPPORT DE TRANSFERT
+================================
+
+Date            : 15/11/2026 19:14:22
+Clé source      : Disque optique : CD-ROM (2 session(s), 345 ko)
+Identifiant     : f9eff6ff-5cb1-43fc-b40c-8b5f3bc69c22
+Antivirus       : ClamAV ClamAV 1.4.3 (base 28184 du Sun Nov 15 07:27:28 2026) + YARA
+
+FICHIERS COPIÉS (7)
+  [OK]     session-1/docs/donnees.csv  (23.3 Ko)
+  [OK]     session-1/docs/image.bin  (195.3 Ko)
+  [OK]     session-1/docs/rapport.txt  (52 o)
+  [OK]     session-2/docs/donnees.csv  (23.3 Ko)
+  [OK]     session-2/docs/image.bin  (195.3 Ko)
+  [OK]     session-2/docs/nouveau.txt  (16 o)
+  [OK]     session-2/docs/rapport.txt  (52 o)
+
+FICHIERS REFUSÉS (1)
+  [REFUSÉ] session-1/cache/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+
+Les fichiers refusés ne sont pas copiés. En cas de doute, contactez votre administrateur.

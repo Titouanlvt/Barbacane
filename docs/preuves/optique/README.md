@@ -8,6 +8,8 @@ porte aussi le disque système de l'hôte ([lecteur/vm.conf](lecteur/)). Le disq
 **CD-RW** (CMC Magnetics, 4x à 10x) : [identification.txt](identification.txt). Toute gravure et
 tout effacement ont été faits par la borne ; l'hôte n'a fait que lire.
 
+Contrôle final après correction de l'écart n° 5 : [controle-final/](controle-final/) (étape image, 7 OK).
+
 Résultat : **22 vérifications OK, aucun échec** ([resultats.txt](resultats.txt)), plus le
 blanchiment ci-dessous (5 OK, ISO précédente).
 

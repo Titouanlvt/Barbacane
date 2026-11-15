@@ -1,0 +1,7 @@
+OK [image] : écran : menace détectée sur le disque
+OK [image] : docs/rapport.txt : copié, sha256 identique
+OK [image] : docs/donnees.csv : copié, sha256 identique
+OK [image] : docs/image.bin : copié, sha256 identique
+OK [image] : docs/nouveau.txt : copié, sha256 identique
+OK [image] : EICAR (1re session seulement) absent de la clé
+OK [image] : rapport : EICAR trouvé dans la session 1 (masquée par la 2e) et refusé
