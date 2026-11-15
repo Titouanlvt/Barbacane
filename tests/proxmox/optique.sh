@@ -68,10 +68,13 @@ mot_de_passe_si_demande() { for _ in $(seq 120); do
         if voir "Résultat de l'analyse" 2; then return; fi; done; }
 # Le disque inséré, relu par l'hôte (lecture seule, borne inactive) : contenu et sha256
 relire_disque() { # dossier
+    # La VM tient le lecteur (scsi-generic) : xorriso sur l'hôte le trouve « busy ». Lecture brute
+    # de /dev/sr0 (lecture seule) jusqu'à la fin de la zone lisible, puis examen de l'image.
     rm -rf "$1"; mkdir -p "$1"
-    # La borne interroge aussi le lecteur (toutes les 2 s) : « busy » possible, on réessaie.
-    for _ in $(seq 30); do xorriso -indev /dev/sr0 -toc > "$1.toc.txt" 2>&1 && break; sleep 3; done
-    for _ in $(seq 30); do rm -rf "${1:?}"/*; xorriso -osirrox on -indev /dev/sr0 -extract / "$1" >/dev/null 2>&1 && break; sleep 3; done
+    timeout 1200 dd if=/dev/sr0 of="$T/disque.img" bs=2048 status=none 2>/dev/null || true
+    xorriso -indev "$T/disque.img" -toc > "$1.toc.txt" 2>&1 || true
+    xorriso -osirrox on -indev "$T/disque.img" -extract / "$1" >/dev/null 2>&1 || true
+    rm -f "$T/disque.img"
     liste_sha "$1" > "$1.sha256"
 }
 # Attente d'une personne : le tiroir doit être refermé (lecteur mince sans moteur de fermeture)
