@@ -1,6 +1,6 @@
 # Barbacane
 
-Charte graphique de **Barbacane**, borne de décontamination de clés USB hors ligne (Debian 13, cœur usbsas du CEA, analyse ClamAV + YARA). Une barbacane est l'ouvrage avancé qui contrôle l'entrée d'un château : la borne est l'endroit où une clé inconnue s'arrête avant d'atteindre le réseau.
+Charte graphique de **Barbacane**, borne de décontamination de clés USB hors ligne (Debian 13, cœur usbsas du CEA, analyse ClamAV + YARA). Une barbacane est l'ouvrage avancé qui contrôle l'entrée d'un château : la borne est l'endroit où une clé USB ou un CD-ROM inconnu s'arrête avant d'atteindre le réseau.
 
 Cette charte vise l'écran de la borne (interface kiosk sous cage, rendu logiciel), puis la documentation et le dépôt GitHub.
 
@@ -15,7 +15,7 @@ Cette charte vise l'écran de la borne (interface kiosk sous cage, rendu logicie
 ## Voix et textes
 
 - Vouvoiement, phrases courtes, verbe à l'impératif en tête : « Insérez la clé à analyser. »
-- On nomme les objets comme l'utilisateur les voit : **clé à analyser** (clé inconnue) et **clé de destination** (clé de confiance). Jamais « périphérique », « device » ou « stockage de masse ».
+- On nomme les objets comme l'utilisateur les voit : **clé à analyser** ou **disque à analyser** (CD-ROM, DVD), et **clé de destination** (clé de confiance). Le mot générique, quand les deux sont possibles, est **support**. Jamais « périphérique », « device » ou « stockage de masse ».
 - Les verdicts sont des faits : « 2 fichiers malveillants retirés », pas « Attention ! Danger ! ».
 - Un message d'erreur dit ce qui s'est passé et quoi faire : « La clé n'est pas lisible. Retirez-la et essayez une autre clé. »
 - Les noms de menaces (ex. `Win.Test.EICAR_HDB-1`) s'affichent en police mono, en `encre-douce`, sous le nom du fichier.
@@ -57,13 +57,13 @@ Le symbole est une barbacane vue de face : deux tours crénelées, une porte en 
 
 ## Iconographie
 
-Icônes au trait de 2 px, coins arrondis, grille de 24 (jeu conseillé : Lucide, licence ISC, à embarquer en SVG). Affichées à 32 px sur la borne. Une icône par état : `shield-check` (sain), `triangle-alert` (écarté), `octagon-x` (menace), `loader` (en cours), `usb` (clé).
+Icônes au trait de 2 px, coins arrondis, grille de 24 (jeu conseillé : Lucide, licence ISC, à embarquer en SVG). Affichées à 32 px sur la borne. Une icône par état : `shield-check` (sain), `triangle-alert` (écarté), `octagon-x` (menace), `loader` (en cours), `usb` (clé), `disc` (CD-ROM / DVD). Le CD-ROM en relief suit les mêmes règles que le logo : face claire, tranche décalée, secteur laiton pour le reflet.
 
 ## Parcours de la borne
 
 Chaque écran reprend la même structure : bandeau d'étapes en haut, consigne au centre, actions en bas.
 
-1. **Accueil** : « Insérez la clé à analyser. » Logo, rien d'autre.
+1. **Accueil** : « Insérez la clé ou le disque à analyser. » Logo, rien d'autre.
 2. **Clé détectée** : nom, taille, nombre de fichiers. Choix : « Copier vers une clé de destination » ou « Effacer cette clé ».
 3. **Destination** : « Insérez la clé de destination. »
 4. **Analyse** : jauge + fichier en cours (mono). Bouton secondaire « Annuler ».

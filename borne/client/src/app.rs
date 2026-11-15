@@ -583,8 +583,17 @@ impl App {
             Screen::Accueil => centre(column![
                 icone(LOGO, 150.0),
                 Space::new().height(10),
-                titre("Insérez la clé à analyser"),
-                texte("sur le port d'entrée de la borne."),
+                // Charte : « clé à analyser » / « disque à analyser » ; les deux si un lecteur existe
+                titre(if self.optique.is_some() {
+                    "Insérez la clé ou le disque à analyser"
+                } else {
+                    "Insérez la clé à analyser"
+                }),
+                texte(if self.optique.is_some() {
+                    "sur le port d'entrée ou dans le lecteur de la borne."
+                } else {
+                    "sur le port d'entrée de la borne."
+                }),
                 Space::new().height(30),
                 petit(
                     "Tous les fichiers seront analysés, y compris le contenu des archives.\nSeuls les fichiers sains seront copiés."
@@ -809,6 +818,11 @@ impl App {
             ));
         }
         let mut c = column![
+            icone_etat(
+                if disque { ICONE_DISQUE } else { ICONE_CLE },
+                72.0,
+                style::ENCRE
+            ),
             titre(if disque {
                 "Disque détecté"
             } else {
@@ -1149,6 +1163,9 @@ const LOGO_NUIT: &[u8] = include_bytes!("../ressources/icones/barbacane-relief-n
 pub const ICONE_SAIN: &[u8] = include_bytes!("../ressources/icones/shield-check.svg");
 pub const ICONE_ALERTE: &[u8] = include_bytes!("../ressources/icones/triangle-alert.svg");
 pub const ICONE_MENACE: &[u8] = include_bytes!("../ressources/icones/octagon-x.svg");
+/// Charte : `usb` pour la clé, `disc` pour le disque (Lucide, ISC)
+pub const ICONE_CLE: &[u8] = include_bytes!("../ressources/icones/usb.svg");
+pub const ICONE_DISQUE: &[u8] = include_bytes!("../ressources/icones/disc.svg");
 
 /// Image SVG embarquée, carrée.
 pub fn icone<'a>(svg: &'static [u8], taille: f32) -> Element<'a, Msg> {

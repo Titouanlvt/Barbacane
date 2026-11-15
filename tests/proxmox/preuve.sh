@@ -16,6 +16,7 @@
 #   SERIE_SORTIE  clé de destination enrôlée (export des journaux aussi)
 # MAJ : dossier de paquets préparés par tests/proxmox/paquets-maj.sh (valide, mauvaise signature,
 #       version plus ancienne) ; sans lui, les tests de mise à jour sont « NON TESTÉ ».
+# Écran d'accueil reconnu par « à analyser » (« Insérez la clé [ou le disque] à analyser »).
 # Variables : CLE_VIRTUELLE (/var/lib/vz/barbacane/cle-virtuelle.img), VMID (900–999, défaut 920), MEMOIRE (Mo, 8192), DISQUE (Go, 32), STOCKAGE,
 # PIN (246813), TESTS (liste, défaut : tous), REPRISE=1 (repart de l'instantané « installee »).
 # DOSSIER doit être vide ou absent (aucune preuve d'un passage précédent ne peut compter).
@@ -199,7 +200,7 @@ admin() { # ouvre le mode administrateur (PIN déjà choisi)
     cliquer "Administration"; attendre "Saisissez le PIN" 30
     "${B[@]}" pin "$PIN"; cliquer "Valider"; attendre "Quitter le mode administrateur" 30
 }
-quitter_admin() { cliquer "Quitter le mode administrateur"; attendre "Insérez la clé à analyser" 30; }
+quitter_admin() { cliquer "Quitter le mode administrateur"; attendre "à analyser" 30; }
 # Répond à une demande de mot de passe d'archive (clavier virtuel) si elle apparaît.
 # Le contenu de test contient une archive chiffrée : la demande DOIT apparaître avant le résultat.
 mot_de_passe_si_demande() {
@@ -256,13 +257,13 @@ if test_actif installation && [ "${REPRISE:-0}" != 1 ]; then
     # Fin d'installation : la borne redémarre sur son disque et voit encore la clé d'installation
     attendre "Clé détectée" 3600 "$D/02a-cle-installation-encore-branchee.png"
     debrancher usb0     # le technicien retire la clé
-    attendre "Insérez la clé à analyser" 120 "$D/02-premier-ecran.png"
+    attendre "à analyser" 120 "$D/02-premier-ecran.png"
     ok "installation automatique depuis la clé USB, interface affichée (${MEMOIRE} Mo de RAM)"
     qm snapshot "$VMID" installee >/dev/null
 elif [ "${REPRISE:-0}" = 1 ]; then
     COURANT=installation
     qm stop "$VMID" >/dev/null 2>&1 || true; qm rollback "$VMID" installee; qm start "$VMID"
-    attendre "Insérez la clé à analyser" 600
+    attendre "à analyser" 600
     ok "borne remise à l'état « installée » (instantané, REPRISE=1)"
 fi
 
@@ -288,7 +289,7 @@ while time.time() - t < 25:          # Échap toutes les 30 ms, comme une touche
         borne.capture(vm, png)
         print(f"--- {png}\n{borne.lire(png)}")
 PY
-    if attendre "Insérez la clé à analyser" 300 "$D/09-accueil.png" && ! grep -qi 'GNU GRUB\|username' "$D/ocr-demarrage.txt"; then
+    if attendre "à analyser" 300 "$D/09-accueil.png" && ! grep -qi 'GNU GRUB\|username' "$D/ocr-demarrage.txt"; then
         ok "Échap tenu au démarrage : pas de menu GRUB, démarrage direct de la borne"
     else ko "menu GRUB atteint au clavier (voir ocr-demarrage.txt)"; fi
 fi
@@ -352,7 +353,7 @@ if test_actif transfert; then
     si ! grep -q TEMOIN-AVANT "$D/sortie.sha256" -- "contenu précédent de la destination effacé (témoin absent)" "le témoin est encore sur la destination"
     umount "$T/m"
     si grep -qi 'eicar' "$D"/rapport-barbacane-*.txt -- "rapport : EICAR détecté et refusé" "rapport sans EICAR"
-    attendre "Insérez la clé à analyser" 120
+    attendre "à analyser" 120
 fi
 
 # === blanchiment de la clé source ========================================================
@@ -376,7 +377,7 @@ if test_actif blanchiment; then
     si [ ! -s "$D/cle-apres-eicar-offsets.txt" ] -- "après : aucune trace d'EICAR sur TOUTE la clé" "après : EICAR encore présent"
     monter_ro "$SERIE_SOURCE"; liste_sha "$T/m" > "$D/apres.sha256"; cp "$T/m"/rapport-barbacane-* "$D/" 2>/dev/null || true
     verifier_sortie "$D/avant.sha256" "$D/apres.sha256" "$T/m"; umount "$T/m"
-    attendre "Insérez la clé à analyser" 120
+    attendre "à analyser" 120
 fi
 
 # === export des journaux et rapports =====================================================
@@ -448,7 +449,7 @@ if test_actif vide; then
     capture 01-resultat
     cliquer "Abandonner" || cliquer "Recommencer"
     debrancher usb1
-    si voir "Insérez la clé à analyser" 60 -- "retour à l'accueil" "borne bloquée après la clé vide"
+    si voir "à analyser" 60 -- "retour à l'accueil" "borne bloquée après la clé vide"
 fi
 if test_actif pleine; then
     debut pleine "clé pleine (système de fichiers rempli à 100 %)"
@@ -459,7 +460,7 @@ if test_actif pleine; then
     brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Copier vers une clé"
     si voir "Résultat de l'analyse" 1800 "$D/01-resultat.png" -- "clé pleine analysée ($(grep -c . "$D/cle.sha256") fichiers)" "clé pleine : pas de résultat"
     lire 01-resultat >/dev/null; cliquer "Abandonner"; debrancher usb1
-    si voir "Insérez la clé à analyser" 60 -- "retour à l'accueil" "borne bloquée après la clé pleine"
+    si voir "à analyser" 60 -- "retour à l'accueil" "borne bloquée après la clé pleine"
 fi
 if test_actif illisible; then
     debut illisible "clé illisible (64 premiers Mo aléatoires : ni table de partitions ni système de fichiers)"
@@ -470,7 +471,7 @@ if test_actif illisible; then
         cliquer "Copier vers une clé"; sleep 30; capture 02-apres-lecture; lire 02-apres-lecture >/dev/null
     fi
     debrancher usb1; sleep 5
-    if voir "Insérez la clé à analyser" 30 || { cliquer "Recommencer" && voir "Insérez la clé à analyser" 30; }; then
+    if voir "à analyser" 30 || { cliquer "Recommencer" && voir "à analyser" 30; }; then
         capture 03-retour-accueil; ok "clé illisible : message affiché, borne de nouveau utilisable"
     else capture 03-bloquee; ko "borne bloquée après une clé illisible"; fi
 fi
@@ -480,8 +481,8 @@ if test_actif retrait; then
     brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Copier vers une clé"
     sleep 15; capture 01-lecture-en-cours
     debrancher usb1; sleep 15; capture 02-apres-retrait; lire 02-apres-retrait >/dev/null
-    if voir "Insérez la clé à analyser" 20 || { cliquer "Recommencer" && voir "Insérez la clé à analyser" 30; } \
-        || { cliquer "Abandonner" && voir "Insérez la clé à analyser" 30; }; then
+    if voir "à analyser" 20 || { cliquer "Recommencer" && voir "à analyser" 30; } \
+        || { cliquer "Abandonner" && voir "à analyser" 30; }; then
         capture 03-retour-accueil; ok "retrait en cours de lecture : erreur affichée, aucune copie, borne de nouveau utilisable"
     else ko "borne bloquée après un retrait en cours de lecture"; fi
 fi
