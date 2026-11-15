@@ -219,7 +219,9 @@ Le lecteur optique de la borne est une source et une destination comme les ports
   **Toutes les sessions** du disque sont lues : un fichier caché dans une ancienne session
   est analysé comme les autres. Les CD audio et les disques illisibles sont refusés.
 
-![Disque détecté](preuves/optique/image/01-disque-detecte.png)
+![Disque réinscriptible détecté : copier, graver ou blanchir](preuves/optique/lecteur/01-disque-detecte.png)
+
+![Gravure en cours (effacement complet, puis gravure vérifiée)](preuves/optique/gravure/04-gravure-en-cours.png)
 
 - **Graver sur un disque** (depuis une clé ou un disque) : utiliser un disque
   **réinscriptible** (CD-RW, DVD-RW, DVD+RW, BD-RE). Son contenu est d'abord **entièrement
@@ -231,9 +233,11 @@ Le lecteur optique de la borne est une source et une destination comme les ports
   laisse les données lisibles) vérifié par relecture, puis regravure des seuls fichiers sains.
 - En mode « clés enrôlées », la gravure sur disque est refusée (seules les clés enrôlées sont
   acceptées en sortie).
-- Durées : voir le tableau des mesures dans `docs/preuves/optique/` (un CD-RW se grave et
-  s'efface lentement : plusieurs minutes pour quelques centaines de Mo). Ne retirez pas le
-  disque pendant l'opération ; la borne l'éjecte à la fin.
+- Durées mesurées sur un CD-RW (lecteur portable) : lecture d'un disque, 15 s environ ;
+  effacement complet, 9 min ; gravure complète (effacement, gravure, relecture), 10 min ;
+  blanchiment de 190 Mo, 15 min. Ne retirez pas le disque pendant l'opération.
+- La borne **éjecte** le disque à la fin. Un lecteur portable (tiroir sans moteur) doit être
+  refermé à la main avant d'insérer ou de réinsérer un disque.
 
 ## Lire un rapport
 

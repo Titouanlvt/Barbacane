@@ -1,29 +1,86 @@
-/* Charte Barbacane (docs/charte/tokens.json), thème Pierre, pour l'impression A4 */
+/* Charte Barbacane (docs/charte/tokens.json), thème Pierre, pour l'impression A4 (WeasyPrint) */
 @font-face { font-family: "Atkinson Hyperlegible"; src: url("@POLICES@/AtkinsonHyperlegible-Regular.ttf"); }
 @font-face { font-family: "Atkinson Hyperlegible"; font-weight: bold; src: url("@POLICES@/AtkinsonHyperlegible-Bold.ttf"); }
 @font-face { font-family: "Barlow Condensed"; font-weight: 600; src: url("@POLICES@/BarlowCondensed-SemiBold.ttf"); }
 @font-face { font-family: "JetBrains Mono"; src: url("@POLICES@/JetBrainsMono.ttf"); }
-@page { size: A4; margin: 18mm 16mm 20mm 16mm;
-  @bottom-center { content: "Barbacane — guide du technicien · " counter(page) " / " counter(pages);
-                   font: 9pt "Atkinson Hyperlegible"; color: #565B5F; } }
-html { font: 10.5pt/1.45 "Atkinson Hyperlegible", sans-serif; color: #1C1F22; }
-header#title-block-header { background: #1C1F22; color: #F8F6F2; padding: 18mm 12mm; margin: -18mm -16mm 10mm;
-  page-break-after: always; min-height: 230mm; }
-header#title-block-header::before { content: url("@DOCS@/charte/logos/barbacane-relief-nuit.svg"); display: block; width: 40mm; margin-bottom: 8mm; }
-h1.title { font: 600 34pt "Barlow Condensed"; letter-spacing: .04em; text-transform: uppercase; margin: 0; }
-p.subtitle { font-size: 16pt; color: #D4A64A; margin-top: 4mm; }
-nav#TOC { page-break-after: always; }
-nav#TOC::before { content: "Sommaire"; font: 600 22pt "Barlow Condensed"; display: block; margin-bottom: 4mm; }
-nav#TOC ul { list-style: none; padding-left: 0; } nav#TOC ul ul { padding-left: 6mm; }
+
+/* --- Pages : en-tête (chapitre courant) et pied (numéro) ------------------------------- */
+@page {
+  size: A4; margin: 22mm 18mm 20mm 18mm;
+  @top-left { content: "BARBACANE"; font: 600 9pt "Barlow Condensed"; letter-spacing: .12em; color: #8A6420; }
+  @top-right { content: string(chapitre); font: 9pt "Atkinson Hyperlegible"; color: #565B5F; }
+  @bottom-left { content: "Guide du technicien"; font: 8.5pt "Atkinson Hyperlegible"; color: #8A8F93; }
+  @bottom-right { content: counter(page) " / " counter(pages); font: 8.5pt "Atkinson Hyperlegible"; color: #565B5F; }
+}
+@page couverture { margin: 0; @top-left { content: none } @top-right { content: none }
+                   @bottom-left { content: none } @bottom-right { content: none } }
+@page sommaire { @top-right { content: "Sommaire" } }
+
+html { font: 10.5pt/1.5 "Atkinson Hyperlegible", sans-serif; color: #1C1F22; }
+body { margin: 0; }
+p { margin: 0 0 2.5mm; orphans: 3; widows: 3; }
+
+/* --- Couverture (docs/pdf/couverture.html) ------------------------------------------- */
+header#title-block-header { display: none; }
+section.couverture {
+  page: couverture; break-after: page;
+  width: 210mm; height: 297mm; box-sizing: border-box; padding: 38mm 24mm 22mm;
+  background: #1C1F22; color: #F8F6F2; position: relative;
+}
+.couverture .logo { width: 34mm; height: auto; border: 0; display: block; margin-bottom: 10mm; }
+.couverture .marque { font: 600 40pt/1 "Barlow Condensed"; letter-spacing: .14em; }
+.couverture .devise { font-size: 12pt; color: #D4A64A; margin-top: 3mm; }
+.couverture .filet { width: 30mm; height: 1.2mm; background: #D4A64A; margin: 26mm 0 9mm; }
+.couverture h1.titre-couverture { font: 600 30pt/1.1 "Barlow Condensed"; color: #F8F6F2;
+  border: 0; margin: 0; padding: 0; break-before: auto; string-set: none; }
+.couverture .sous-titre { font-size: 15pt; color: #CFC9BD; margin-top: 5mm; }
+.couverture .pied-couverture { position: absolute; left: 24mm; right: 24mm; bottom: 22mm;
+  font-size: 9pt; color: #8A8F93; border-top: 1px solid #3A3F43; padding-top: 4mm; }
+
+/* --- Sommaire avec numéros de page ---------------------------------------------------- */
+nav#TOC { page: sommaire; break-after: page; }
+nav#TOC > h2, #toc-title { font: 600 26pt "Barlow Condensed"; margin: 0 0 8mm; border: 0; }
+nav#TOC ul { list-style: none; padding-left: 0; margin: 0; }
+nav#TOC > ul > li { margin-top: 3.5mm; font-weight: bold; }
+nav#TOC ul ul { padding-left: 7mm; font-weight: normal; }
+nav#TOC ul ul li { margin-top: 1mm; }
 nav#TOC a { color: #1C1F22; text-decoration: none; }
-h1 { font: 600 24pt "Barlow Condensed"; border-bottom: 2px solid #8A6420; padding-bottom: 1mm; margin-top: 10mm;
-  page-break-before: always; }
-h2 { font: 600 16pt "Barlow Condensed"; margin-top: 7mm; }
-code, pre { font-family: "JetBrains Mono", monospace; font-size: 8.8pt; }
-pre { background: #F8F6F2; border: 1px solid #CFC9BD; border-radius: 4px; padding: 3mm; white-space: pre-wrap; }
-table { border-collapse: collapse; width: 100%; margin: 3mm 0; font-size: 9.5pt; }
-th { background: #E9DCC0; text-align: left; } th, td { border: 1px solid #CFC9BD; padding: 1.5mm 2mm; vertical-align: top; }
-figure { margin: 4mm 0; page-break-inside: avoid; text-align: center; }
-img { max-width: 100%; max-height: 105mm; border: 1px solid #CFC9BD; border-radius: 4px; }
-figcaption { font-size: 9pt; color: #565B5F; margin-top: 1.5mm; }
+nav#TOC a::after { content: leader(".") target-counter(attr(href), page); color: #565B5F; font-weight: normal; }
+
+/* --- Titres ----------------------------------------------------------------------------- */
+h1 { font: 600 25pt/1.1 "Barlow Condensed"; color: #1C1F22; break-before: page; string-set: chapitre content();
+  margin: 0 0 6mm; padding-bottom: 2mm; border-bottom: 2px solid #D4A64A; }
+h2 { font: 600 15.5pt "Barlow Condensed"; color: #1C1F22; margin: 7mm 0 2.5mm; break-after: avoid; }
+h3 { font: bold 11pt "Atkinson Hyperlegible"; margin: 5mm 0 2mm; break-after: avoid; }
+h2 + p, h3 + p { break-before: avoid; }
+
+/* --- Listes, code, tableaux ------------------------------------------------------------- */
+ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+li { margin-bottom: 1.2mm; }
+li::marker { color: #8A6420; font-weight: bold; }
+code { font-family: "JetBrains Mono", monospace; font-size: 8.6pt; background: #F1ECE2; padding: .2mm 1mm; border-radius: 2px; }
+pre { font-family: "JetBrains Mono", monospace; font-size: 8.4pt; line-height: 1.45;
+  background: #1C1F22; color: #F1ECE2; border-radius: 4px; padding: 3.5mm 4mm; margin: 2mm 0 4mm;
+  white-space: pre-wrap; break-inside: avoid; }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+pre .co { color: #9AA0A4; } pre .st { color: #E3C27A; } pre .kw, pre .fu { color: #F8F6F2; font-weight: bold; }
+table { border-collapse: collapse; width: 100%; margin: 3mm 0 5mm; font-size: 9.4pt; break-inside: auto; }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th { background: #1C1F22; color: #F8F6F2; text-align: left; font-weight: bold; }
+th, td { padding: 2mm 2.5mm; vertical-align: top; border-bottom: 1px solid #DCD5C8; }
+tbody tr:nth-child(even) td { background: #F7F3EC; }
+
+/* --- Encadrés (citations Markdown « > ») ------------------------------------------------- */
+blockquote { margin: 4mm 0; padding: 3mm 4mm; background: #F7EFDD; border-left: 1.2mm solid #D4A64A;
+  border-radius: 0 3px 3px 0; break-inside: avoid; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* --- Captures d'écran ----------------------------------------------------------------- */
+figure { margin: 4mm auto 5mm; break-inside: avoid; text-align: center; }
+figure img { width: 80%; height: auto; max-height: 92mm; object-fit: contain;
+  border: 1px solid #CFC9BD; border-radius: 3px; box-shadow: 0 1mm 2.5mm rgba(28, 31, 34, .18); }
+figcaption { font-size: 8.8pt; color: #565B5F; margin-top: 2mm; font-style: italic; }
+img { max-width: 100%; }
 strong { color: #1C1F22; }
+a { color: #8A6420; }
