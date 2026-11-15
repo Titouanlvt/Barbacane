@@ -74,5 +74,7 @@ en conditions réelles (tests unitaires seulement), CD → CD (un seul CD-RW), r
 disque plein pendant une gravure (non provoqués sur l'unique disque). Le tiroir du lecteur
 portable se referme à la main.
 
+Guide d'installation exécuté depuis zéro : [installation-doc/](installation-doc/) (ISO construite en 8 min 44, installée sans intervention).
+
 Archives : [2026-11-14-premiere/](2026-11-14-premiere/) (premières preuves, dont l'enrôlement
 non vérifié).
