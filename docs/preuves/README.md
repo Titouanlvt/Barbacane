@@ -55,8 +55,24 @@ Résultat : **53 vérifications OK, aucun échec** ([resultats.txt](resultats.tx
 | Poste physique (BIOS, écran tactile, ports USB réels de la borne) | tests en VM Proxmox ; les clés USB sont de vraies clés passées à la VM |
 | Image mkosi | jamais construite (l'ISO est la seule méthode d'installation) |
 
-## Disques optiques
-Voir [optique/](optique/) (section complétée en fin de campagne optique).
+## Disques optiques (vrai graveur, vrai CD-RW, passés à la VM au niveau SCSI)
+Détail et durées : [optique/README.md](optique/README.md). **27 vérifications OK, aucun échec.**
+
+| Marche (avec la preuve) | Preuve |
+|---|---|
+| Disque détecté à l'écran, toutes les sessions lues (EICAR caché dans une 1re session masquée : trouvé, refusé) | [optique/image/](optique/image/) |
+| Disque → clé : sains copiés, sha256 identiques | [optique/image/](optique/image/), [optique/relecture/](optique/relecture/) |
+| Clé → disque : effacement complet vérifié, gravure à 4x, relecture sha256, EICAR non gravé, relu par l'hôte à l'identique | [optique/gravure/](optique/gravure/) |
+| Blanchiment d'un CD-RW : une seule session « BARBACANE » ensuite, ancien contenu introuvable | [optique/blanchiment/](optique/blanchiment/) |
+| Durées : effacement complet 519 s, gravure complète 588 s, blanchiment 881 s, lecture 13 s | [optique/journal/](optique/journal/) |
+
+Défaut majeur trouvé et corrigé : usbsas n'analysait pas les fichiers d'une source « dossier
+local » (donc d'un disque) — [écart n° 5](../noyau/ecarts.md).
+
+**Non testé** (aucun disque de ce type au lab) : DVD±RW, BD-RE, refus d'un CD-R ou d'un CD audio
+en conditions réelles (tests unitaires seulement), CD → CD (un seul CD-RW), retrait du disque ou
+disque plein pendant une gravure (non provoqués sur l'unique disque). Le tiroir du lecteur
+portable se referme à la main.
 
 Archives : [2026-11-14-premiere/](2026-11-14-premiere/) (premières preuves, dont l'enrôlement
 non vérifié).

@@ -1,0 +1,3 @@
+>>> FERMEZ LE TIROIR DU LECTEUR (disque dedans) — 18:06:03
+tiroir refermé 18:06:30
+relecture hôte refaite à la main 18:10–18:25 (blkid bloqué sur ce disque, xorriso hôte « busy » : script corrigé)

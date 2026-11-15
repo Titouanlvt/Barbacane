@@ -1,0 +1,22 @@
+OK [image] : écran : menace détectée sur le disque
+OK [image] : docs/rapport.txt : copié, sha256 identique
+OK [image] : docs/donnees.csv : copié, sha256 identique
+OK [image] : docs/image.bin : copié, sha256 identique
+OK [image] : docs/nouveau.txt : copié, sha256 identique
+OK [image] : EICAR (1re session seulement) absent de la clé
+OK [image] : rapport : EICAR trouvé dans la session 1 (masquée par la 2e) et refusé
+OK [lecteur] : aucun passthrough PCI
+OK [lecteur] : la borne voit le disque du lecteur réel : CD-RW {1 session(s)
+OK [gravure] : gravure terminée en 599 s (effacement complet + gravure + relecture par la borne)
+OK [gravure] : docs/note.txt gravé, relu par l'hôte à l'identique
+OK [gravure] : docs/table.csv gravé, relu par l'hôte à l'identique
+OK [gravure] : docs/sous dossier/binaire.bin gravé, relu par l'hôte à l'identique
+OK [gravure] : EICAR non gravé
+OK [gravure] : rapport gravé avec les fichiers
+OK [relecture] : docs/note.txt : disque → clé, sha256 identique à la clé d'origine
+OK [relecture] : docs/table.csv : disque → clé, sha256 identique à la clé d'origine
+OK [relecture] : docs/sous dossier/binaire.bin : disque → clé, sha256 identique à la clé d'origine
+OK [journal] : bac à sable optique fonctionnel
+OK [journal] : durée d'effacement complet mesurée
+OK [journal] : durée de gravure mesurée
+OK [journal] : aucun échec consigné par barbacane-optique

@@ -1,0 +1,3 @@
+OK [installation] : ISO copiée sur la clé (relecture identique)
+OK [installation] : VM sans carte réseau
+OK [installation] : installation automatique depuis la clé USB, interface affichée (8192 Mo de RAM)

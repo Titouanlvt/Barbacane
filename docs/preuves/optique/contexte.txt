@@ -1,0 +1,4 @@
+Date : 2026-11-15T18:37:46+01:00
+Commit : 2b7dd9c731fc0a3f72517ddc49e6ba63b5b35495
+VM : 921 ; lecteur : /dev/sg1 (MATSHITA DVD-RAM UJ8E2Q )
+Image de test : /var/lib/vz/template/iso/barbacane-optique-test.iso (fcfeb4c81579cf43…)

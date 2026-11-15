@@ -1,0 +1,36 @@
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+tésu tat ce ‘ana yse
+
+133 fichier(s) sain(s} à copier - 1 refusé(s)
+Ce qui ne passe pas, et pourquoi :
+
+session 1/TO00LS.TOG
+
+Abandonner
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+Résultat de l'analyse
+
+A 1fichier(s) écarté(s)
+
+133 fichier(s) saîin(s) à copier - 1 refusé(s)
+
+Ce qui ne passe pas, et pourquoi :
+
+À session-1/TO0LS.T86
+archive trop imbriquée {profondeur maximale 5}
+
+Blanchir Le disque
+
+Barbacane 8.16 — station blanche hors ligne Administration
+
+BARBACANE
+
+A session-1/TO0LS,TO0
+
+archive trop imbriquée (profondeur maximale 5)
+
+Blanchir Le disque
+

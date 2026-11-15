@@ -60,6 +60,17 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - `main` = arborescence refondue (noyau/ borne/ systeme/ tests/ docs/), fusionnée en gardant le
   contenu prouvé : les 100 commits amont usbsas présents sur l'ancien main n'y sont PAS appliqués.
 
+## État au 15/11/2026
+- Campagne USB finale : 53 OK, 0 échec (docs/preuves/README.md). VMs : 901 bb (construction),
+  902 bu (ISO), 903 bz (Debian vierge), 920 borne USB, 921 borne optique.
+- **Disques optiques** (`borne/optique`, service `barbacane-optique`, socket
+  `/run/barbacane-optique/optique.sock`) : prouvés sur vrai graveur + CD-RW, lecteur passé à la VM
+  en scsi-generic UNIQUEMENT (jamais de passthrough PCI : le contrôleur SATA porte le disque système
+  de l'hôte). `tests/proxmox/optique.sh` ; le tiroir doit être refermé à la main (prévenir l'utilisateur).
+  usbsas : écart n° 5 (analyse d'un dossier local source).
+- Pièges : `pkill -f` dont le motif figure dans la commande tue le shell ; libellés de boutons sur
+  deux lignes pour l'OCR (cliquer sur la 1re ligne).
+
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
 2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).

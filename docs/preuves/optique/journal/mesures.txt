@@ -1,0 +1,2 @@
+2026-11-15T18:50:21+01:00 barbacane barbacane-optique[635]: [2026-11-15T17:50:21Z INFO  barbacane_optique] mesure : effacement complet CD-RW : 519 s, 736966656 octets, 1386 ko/s
+2026-11-15T18:50:21+01:00 barbacane barbacane-optique[635]: [2026-11-15T17:50:21Z INFO  barbacane_optique] mesure : gravure CD-RW (706 ko/s demandés) : 37 s, 2171156 octets, 57 ko/s

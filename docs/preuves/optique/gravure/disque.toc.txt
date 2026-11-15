@@ -1,0 +1,21 @@
+xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
+
+xorriso : NOTE : Loading ISO image tree from LBA 0
+xorriso : UPDATE :       7 nodes read in 1 seconds
+Drive current: -indev '/tmp/tmp.Zsp9nrk2m5/disque.img'
+Media current: stdio file, overwriteable
+Media status : is written , is appendable
+Media summary: 1 session, 1096 data blocks, 2192k data, 62.1g free
+Volume id    : 'BARBACANE'
+Drive current: -indev '/tmp/tmp.Zsp9nrk2m5/disque.img'
+Drive access : exclusive:unrestricted
+Drive type   : vendor 'YOYODYNE' product 'WARP DRIVE' revision 'FX01'
+Media current: stdio file, overwriteable
+Media status : is written , is appendable
+Media blocks : 1120 readable , 32549790 writable , 32550910 overall
+ISO offers   : Rock_Ridge Joliet
+ISO loaded   : Rock_Ridge
+TOC layout   : Idx ,  sbsector ,       Size , Volume Id
+ISO session  :   1 ,         0 ,      1096s , BARBACANE
+Media summary: 1 session, 1096 data blocks, 2192k data, 62.1g free
+Media nwa    : 1120s

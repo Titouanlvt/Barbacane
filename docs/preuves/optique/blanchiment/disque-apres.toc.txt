@@ -1,0 +1,5 @@
+Media summary: 1 session, 97746 data blocks,  191m data, 35.3g free
+Volume id    : 'BARBACANE'
+TOC layout   : Idx ,  sbsector ,       Size , Volume Id
+ISO session  :   1 ,         0 ,     97746s , BARBACANE
+Media summary: 1 session, 97746 data blocks,  191m data, 35.3g free

@@ -1,0 +1,28 @@
+xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
+
+xorriso : NOTE : Loading ISO image tree from LBA 0
+xorriso : UPDATE :     137 nodes read in 3 seconds
+xorriso : NOTE : Detected El-Torito boot information which currently is set to be discarded
+Drive current: -indev '/dev/sr0'
+Media current: CD-RW
+Media status : is written , is closed
+Boot record  : El Torito
+Media summary: 1 session, 189327 data blocks,  370m data,     0 free
+Volume id    : 'HP-ESXI-6.0.0-ISO-600.9.3.30.2'
+Drive current: -indev '/dev/sr0'
+Drive access : exclusive:unrestricted
+Drive type   : vendor 'MATSHITA' product 'DVD-RAM UJ8E2Q' revision '1.00'
+Drive id     : 'H088  506140'
+Media current: CD-RW
+Media product: 97m26s65f/79m59s74f , CMC Magnetics Corporation
+Media status : is written , is closed
+Media blocks : 189327 readable , 0 writable , 359847 overall
+Boot record  : El Torito
+Boot catalog : '/BOOT.CAT'
+Boot image   : '/ISOLINUX.BIN' , boot_info_table=on
+Boot image   : '/EFIBOOT.IMG' , platform_id=0xEF 
+ISO offers   : Only_ECMA_119
+ISO loaded   : Only_ECMA_119
+TOC layout   : Idx ,  sbsector ,       Size , Volume Id
+ISO session  :   1 ,         0 ,    189325s , HP-ESXI-6.0.0-ISO-600.9.3.30.2
+Media summary: 1 session, 189327 data blocks,  370m data,     0 free

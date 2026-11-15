@@ -1,0 +1,5 @@
+OK [blanchiment] : blanchiment terminé en 881 s (effacement complet + gravure + relecture)
+OK [blanchiment] : relu par l'hôte (lecture brute de /dev/sr0, la VM tenant le lecteur) : une seule session « BARBACANE » (97746 blocs)
+OK [blanchiment] : une seule session (anciennes sessions effacées)
+OK [blanchiment] : ancien volume HP-ESXI introuvable sur toute la zone lisible
+OK [blanchiment] : 135 fichiers sains regravés ; rapport : 1 refusé (session-1/TOOLS.T00)
