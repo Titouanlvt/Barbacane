@@ -263,10 +263,10 @@ impl App {
                 }
             }
             Screen::Choix | Screen::Resume => {
-                let still = self
-                    .src
-                    .as_ref()
-                    .is_some_and(|s| self.devices.sources().any(|(_, u)| Self::same(u, s)));
+                // Disque optique : sa présence est suivie par on_optique (pas une clé USB).
+                let still = self.src.as_ref().is_some_and(|s| {
+                    est_optique(s) || self.devices.sources().any(|(_, u)| Self::same(u, s))
+                });
                 if !still {
                     self.reset();
                 }
@@ -387,7 +387,11 @@ impl App {
     }
 
     fn reset(&mut self) {
-        if self.optique.as_ref().is_some_and(|e| e.present) {
+        // Seul le disque qui vient d'être traité est écarté : un disque déjà présent au
+        // démarrage (ou inséré pendant une session clé) doit être proposé.
+        if self.src.as_ref().is_some_and(est_optique)
+            && self.optique.as_ref().is_some_and(|e| e.present)
+        {
             self.disque_ecarte = true;
         }
         self.screen = Screen::Accueil;
