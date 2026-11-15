@@ -41,3 +41,11 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
   `timestamp_clamped`, `concurrent_mkntfs`… ; phase 1, e2e de la borne (FAT et NTFS) au vert.
 - Non repris (hors usage de la borne) : `907301e` (espace disque avant téléchargement réseau ; la borne
   n'utilise pas la source réseau).
+
+### 4. Paquets `usbsas-server` et `usbsas-hid` : refus sur un hôte Proxmox (`preinst`)
+- Contexte : incident du 15/11/2026 ([../incident-proxmox.md](../incident-proxmox.md)). Ces paquets
+  posent des règles udev et modprobe (`usbsas-hid` : `hid.conf`, `99-usbsas-hid.rules`) qui
+  rendraient un hyperviseur inutilisable s'ils y étaient installés par erreur.
+- Correctif : `noyau/usbsas-usbsas/debian/preinst` et `noyau/usbsas-hid/debian/preinst` (nouveaux,
+  aucun code Rust touché) sortent en erreur si `/etc/pve` existe, avant la copie des fichiers.
+- Test : `tests/garde-fou/paquets.sh` (CI, iso.yml). Spécifique à Barbacane, pas à proposer au CEA.

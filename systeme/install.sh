@@ -14,6 +14,12 @@
 #
 # Le réseau n'est utile que pendant l'installation (paquets Debian, compilation).
 set -euo pipefail
+# Garde-fou : jamais sur un hôte Proxmox VE (docs/incident-proxmox.md). Barbacane s'installe
+# uniquement sur la borne ou dans une VM de test ; aucune variable ne permet de passer outre.
+if [ -e /etc/pve ]; then
+    echo "REFUS : hôte Proxmox VE détecté (/etc/pve). Barbacane ne s'installe que sur la borne ou dans une VM." >&2
+    exit 1
+fi
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 DEBS='' CLE_PUB='' CLAMAV='' YARA='' PIN=0 RAR=1 COUPER=0

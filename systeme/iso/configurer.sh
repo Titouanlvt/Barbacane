@@ -1,6 +1,12 @@
 #!/bin/bash
 # Exécuté dans le système installé (image mkosi ou ISO) après installation des paquets.
 set -euo pipefail
+# Garde-fou : jamais sur un hôte Proxmox VE (docs/incident-proxmox.md). Barbacane s'installe
+# uniquement sur la borne ou dans une VM de test ; aucune variable ne permet de passer outre.
+if [ -e /etc/pve ]; then
+    echo "REFUS : hôte Proxmox VE détecté (/etc/pve). Barbacane ne s'installe que sur la borne ou dans une VM." >&2
+    exit 1
+fi
 install -m 644 /usr/share/barbacane/usbsas-config.toml /etc/usbsas/config.toml
 install -m 644 /usr/share/barbacane/nftables.conf /etc/nftables.conf
 systemctl enable nftables.service

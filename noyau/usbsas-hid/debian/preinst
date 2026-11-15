@@ -1,0 +1,10 @@
+#!/bin/sh
+# Paquet usbsas-hid : refuse de s'installer sur un hôte Proxmox VE (avant toute copie de fichier :
+# modprobe, udev, PAM, GRUB… rendraient l'hôte inutilisable). Voir docs/incident-proxmox.md.
+set -e
+if [ -e /etc/pve ]; then
+    echo "REFUS : hôte Proxmox VE détecté (/etc/pve). usbsas-hid ne s'installe que sur la borne ou dans une VM." >&2
+    exit 1
+fi
+
+#DEBHELPER#
