@@ -397,8 +397,10 @@ impl InitState {
                 None
             };
 
+            // Barbacane (écart n° 5) : un dossier local source (disque optique extrait) est
+            // analysé comme une clé USB ; en amont, seules les clés l'étaient.
             let analyze = if let Some(ref conf) = self.config.analyzer {
-                if matches!(src, Device::Usb(_)) {
+                if matches!(src, Device::Usb(_) | Device::LocalDir(_)) {
                     match dst {
                         Device::Usb(_) => conf.analyze_usb,
                         Device::Network(_) => conf.analyze_net,

@@ -13,7 +13,8 @@ Le lecteur optique de la borne devient une source et une destination comme les c
 | Blanchiment du disque | lecture et analyse ; effacement **complet** ; relecture prouvant que rien n'est lisible ; gravure des seuls fichiers sains ; relecture |
 
 ## Choix principaux
-1. **Pas de modification d'usbsas** (aucun écart au noyau). usbsas sait déjà lire un **dossier local**
+1. **Une seule modification d'usbsas** ([écart n° 5](noyau/ecarts.md) : en amont, un dossier local
+   source n'était jamais analysé ; corrigé, découvert par la campagne du 15/11). usbsas sait déjà lire un **dossier local**
    déclaré dans `[[src_local_dirs]]` ; c'est ainsi que la borne écrit le dossier de préparation
    sur la clé de destination. Le disque est donc d'abord **extrait** dans un dossier local
    (`/var/lib/barbacane/optique/entree`), puis ce dossier suit exactement le parcours d'une clé

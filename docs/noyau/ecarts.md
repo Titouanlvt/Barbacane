@@ -49,3 +49,13 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
 - Correctif : `noyau/usbsas-usbsas/debian/preinst` et `noyau/usbsas-hid/debian/preinst` (nouveaux,
   aucun code Rust touché) sortent en erreur si `/etc/pve` existe, avant la copie des fichiers.
 - Test : `tests/garde-fou/paquets.sh` (VM de test ; CI : `tests/garde-fou/ci-workflows.patch`). Spécifique à Barbacane, pas à proposer au CEA.
+
+### 5. Analyse des fichiers d'un dossier local source (`usbsas-usbsas/src/states.rs`)
+- Constat (campagne optique du 15/11/2026, VM 921) : un disque optique lu par `barbacane-optique` est
+  présenté à usbsas comme dossier local (`[[src_local_dirs]]`). En amont, la décision d'analyser
+  (`analyze_usb`, `analyze_cmd`…) ne s'applique qu'aux sources USB : les fichiers d'un dossier local
+  n'étaient **jamais analysés**. Sur la borne, l'interface l'a refusé (« analyse introuvable ») ;
+  aucun fichier n'a été copié.
+- Correctif : la source `LocalDir` suit les mêmes règles qu'une source USB (selon la destination).
+- Test : `tests/proxmox/optique.sh`, étape `image` (EICAR caché dans la 1re session du disque bloqué,
+  fichiers sains copiés). Spécifique à l'usage de Barbacane ; proposable au CEA (option de configuration).
