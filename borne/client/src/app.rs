@@ -94,6 +94,9 @@ pub struct App {
     /// Disque écarté (« Abandonner », fin d'opération) : ignoré jusqu'à son retrait, pour ne pas
     /// le reprendre en boucle et laisser choisir une clé quand un disque reste dans le lecteur
     disque_ecarte: bool,
+    /// Réponses « pas de disque » consécutives (deux avant de conclure au retrait : évite un
+    /// clignotement si une interrogation du lecteur échoue)
+    absent_n: u8,
 }
 
 pub fn run(cfg: Config) -> iced::Result {
@@ -150,6 +153,7 @@ impl App {
             optique_avance: None,
             echange_fait: false,
             disque_ecarte: false,
+            absent_n: 0,
         };
         let t = app.refresh_etat();
         (app, t)
@@ -302,7 +306,13 @@ impl App {
             .travail
             .as_ref()
             .is_some_and(|t| t["fini"].as_bool() != Some(true));
-        if !e.present {
+        self.absent_n = if e.present {
+            0
+        } else {
+            self.absent_n.saturating_add(1)
+        };
+        let retire = self.absent_n >= 2;
+        if retire {
             self.disque_ecarte = false;
         }
         match &self.screen {
@@ -312,7 +322,7 @@ impl App {
                 self.screen = Screen::Choix;
             }
             // Disque retiré avant le choix : retour à l'accueil
-            Screen::Choix if self.src.as_ref().is_some_and(est_optique) && !e.present => {
+            Screen::Choix if self.src.as_ref().is_some_and(est_optique) && retire => {
                 self.optique = Some(e);
                 self.reset();
                 return;
@@ -320,7 +330,7 @@ impl App {
             _ => (),
         }
         if self.screen_sortie_graver() {
-            if self.src.as_ref().is_some_and(est_optique) && !e.present {
+            if self.src.as_ref().is_some_and(est_optique) && retire {
                 self.echange_fait = true;
             }
             self.optique = Some(e);

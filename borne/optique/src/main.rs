@@ -67,6 +67,10 @@ struct Ctx {
     conf: Config,
     outil: Outil,
     travail: Arc<Mutex<Travail>>,
+    /// Une seule identification à la fois (deux xorriso sur le même lecteur : le second trouve
+    /// le lecteur occupé et le disque passerait pour absent) ; sinon le dernier état connu.
+    lecteur: Mutex<()>,
+    dernier: Mutex<Option<Value>>,
 }
 
 impl Ctx {
@@ -133,12 +137,27 @@ impl Ctx {
             t.restant = (t.pourcent > 1.0)
                 .then(|| (t.ecoule as f32 * (100.0 - t.pourcent) / t.pourcent) as u64);
         }
-        // Pas d'interrogation du lecteur pendant une opération (il est occupé)
-        let media: Option<(Media, Option<u32>)> = if t.debut.is_none() || t.fini {
-            ops::identifier(&self.outil).ok()
+        // Pas d'interrogation du lecteur pendant une opération (il est occupé), ni pendant une
+        // autre identification : on renvoie alors le dernier état connu.
+        let travail = if t.debut.is_some() {
+            serde_json::to_value(&t).unwrap_or_default()
         } else {
-            None
+            Value::Null
         };
+        let libre = t.debut.is_none() || t.fini;
+        if !libre {
+            let dernier = self.dernier.lock().unwrap().clone();
+            return json!({"disque": dernier, "travail": travail});
+        }
+        let dernier = self.dernier.lock().unwrap().clone();
+        let _verrou = match (self.lecteur.try_lock(), dernier) {
+            (Ok(v), _) => v,
+            // Identification en cours : le dernier état connu…
+            (Err(_), Some(d)) => return json!({"disque": d, "travail": travail}),
+            // … ou, s'il n'y en a pas encore, attendre la fin de celle en cours.
+            (Err(_), None) => self.lecteur.lock().unwrap(),
+        };
+        let media: Option<(Media, Option<u32>)> = ops::identifier(&self.outil).ok();
         let media = media.map(|(m, v)| {
             json!({
                 "present": !m.absent(),
@@ -152,7 +171,8 @@ impl Ctx {
                 "vitesse_gravure_ko_s": v,
             })
         });
-        json!({"disque": media, "travail": if t.debut.is_some() { serde_json::to_value(&t).unwrap_or_default() } else { Value::Null }})
+        *self.dernier.lock().unwrap() = media.clone();
+        json!({"disque": media, "travail": travail})
     }
 
     fn handle(&self, req: Value) -> Result<Value> {
@@ -253,6 +273,8 @@ fn main() -> Result<()> {
         conf,
         outil,
         travail: Arc::default(),
+        lecteur: Mutex::new(()),
+        dernier: Mutex::new(None),
     };
     let sock = &ctx.conf.socket;
     if let Some(p) = sock.parent() {
