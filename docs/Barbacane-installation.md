@@ -164,7 +164,7 @@ fichiers. C'est une mesure d'organisation, pas un contrôle d'accès : un numér
 2. Brancher la clé : elle apparaît sous « Enrôler : … ». Cliquer dessus.
 3. Cliquer **Activer** pour n'accepter que les clés de la liste.
 
-![Clé enrôlée, mode activé](preuves/enrolement/02-cle-enrolee.png)
+![Clé enrôlée, mode activé](preuves/enrolement/03-mode-active.png)
 
 ## Retirer une clé, perte d'une clé enrôlée
 
