@@ -146,9 +146,14 @@ def mots(png):
 
 
 def trouver(png, texte):
-    """Position (x, y) du centre de la suite de mots correspondant au texte, ou None."""
+    """Position (x, y) du centre de la suite de mots correspondant au texte, ou None.
+
+    Plusieurs occurrences (ex. « Exporter » dans le titre « Exporter les journaux » et sur le
+    bouton) : on préfère celle qui n'a pas d'autre mot collé sur sa ligne (un bouton), sinon
+    la plus basse à l'écran (les boutons sont sous les titres)."""
     cible = [norm(m) for m in texte.split() if norm(m)]
     w = [m for m in mots(png) if norm(m[0])]
+    trouves = []
     for i in range(len(w) - len(cible) + 1):
         seq = w[i:i + len(cible)]
         if all(norm(a[0]) == b for a, b in zip(seq, cible)):
@@ -156,8 +161,12 @@ def trouver(png, texte):
             y0 = min(m[2] for m in seq)
             x1 = max(m[1] + m[3] for m in seq)
             y1 = max(m[2] + m[4] for m in seq)
-            return (x0 + x1) // 2, (y0 + y1) // 2
-    return None
+            voisins = [m for m in w if m not in seq and abs((m[2] + m[4] / 2) - (y0 + y1) / 2) < (y1 - y0)
+                       and (x0 - 25 < m[1] + m[3] <= x0 or x1 <= m[1] < x1 + 25)]
+            trouves.append((bool(voisins), -y0, ((x0 + x1) // 2, (y0 + y1) // 2)))
+    if not trouves:
+        return None
+    return min(trouves)[2]
 
 
 def lire(png):
