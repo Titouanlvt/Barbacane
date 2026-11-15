@@ -801,6 +801,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "barbacane-optique"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "env_logger",
+ "hex",
+ "libc",
+ "log",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "tempfile",
+ "toml",
+]
+
+[[package]]
 name = "barbacane-parcours"
 version = "0.1.0"
 dependencies = [
