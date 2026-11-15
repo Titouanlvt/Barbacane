@@ -390,7 +390,8 @@ if test_actif export; then
     cp -r "$T/m"/. "$D/cle/" 2>/dev/null || { mkdir -p "$D/cle"; cp -r "$T/m"/. "$D/cle/"; }
     umount "$T/m"
     si grep -q 'journal' "$D/contenu-cle.txt" -- "journal de la borne exporté" "journal absent de l'export"
-    si grep -q 'rapport-barbacane' "$D/contenu-cle.txt" -- "rapports exportés" "rapports absents de l'export"
+    si grep -qE '/rapports/[^/]+\.json$' "$D/contenu-cle.txt" -- "rapports exportés ($(grep -cE '/rapports/[^/]+\.json$' "$D/contenu-cle.txt") rapports JSON)" "rapports absents de l'export"
+    si grep -rqi 'eicar' "$D/cle/" --include='*.json' -- "rapports exportés : détections EICAR présentes" "rapports exportés sans les détections"
 fi
 
 # === maj : mise à jour signée valide, puis refus ==========================================
