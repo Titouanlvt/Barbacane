@@ -39,7 +39,7 @@ ECHECS=0 COURANT=""
 
 [ "$(id -u)" -eq 0 ] || { echo "À lancer en root." >&2; exit 1; }
 if [ "$VMID" -lt 900 ] || [ "$VMID" -gt 999 ]; then echo "VMID hors de 900–999" >&2; exit 1; fi
-for o in qm tesseract mkfs.vfat xxd sfdisk zip python3 sha256sum; do
+for o in qm tesseract mkfs.vfat xxd sfdisk zip python3 sha256sum eject losetup; do
     command -v "$o" >/dev/null || { echo "$o absent" >&2; exit 1; }
 done
 if [ -d "$OUT" ] && [ -n "$(ls -A "$OUT")" ]; then
@@ -82,7 +82,12 @@ disque() {
     fi
     for _ in $(seq 60); do
         d=$(lsblk -dnpo NAME,SERIAL,TRAN | awk -v s="$1" '$2 == s && $3 == "usb" { print $1 }')
-        [ -n "$d" ] && [ "$(lsblk -dno TRAN "$d")" = usb ] && { echo "$d"; return; }
+        if [ -n "$d" ] && [ "$(lsblk -dno TRAN "$d")" = usb ]; then
+            # Clé « éjectée » par la borne en fin d'opération (START STOP UNIT) : le firmware la
+            # présente ensuite sans support, même rebranchée ; « eject -t » la recharge.
+            [ "$(lsblk -dbno SIZE "$d")" -gt 0 ] || { eject -t "$d" 2>/dev/null || true; sleep 2; }
+            [ "$(lsblk -dbno SIZE "$d")" -gt 0 ] && { echo "$d"; return; }
+        fi
         sleep 1
     done
     echo "clé $1 introuvable sur l'hôte" >&2; return 1
