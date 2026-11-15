@@ -821,20 +821,21 @@ impl App {
         let mut choix = row![grand_choix(
             "Copier vers une clé de destination",
             if disque {
-                "Toutes les sessions du disque sont analysées ;\nles fichiers sains sont copiés sur une clé effacée et formatée."
+                "Toutes les sessions du disque sont analysées ; les fichiers sains sont copiés sur une clé effacée et formatée."
             } else {
-                "Les fichiers sains sont copiés sur une clé de destination,\nqui sera effacée et formatée."
+                "Les fichiers sains sont copiés sur une clé de destination, qui sera effacée et formatée."
             },
             Msg::Choisir(Mode::Copier)
         )]
-        .spacing(30);
+        .spacing(30)
+        .width(Length::Fill);
         if self.optique.is_some() {
             choix = choix.push(grand_choix(
                 "Graver sur un disque",
                 if disque {
-                    "Les fichiers sains sont gravés sur un disque réinscriptible\n(échange de disque demandé), puis vérifiés."
+                    "Les fichiers sains sont gravés sur un disque réinscriptible (échange de disque demandé), puis vérifiés."
                 } else {
-                    "Les fichiers sains sont gravés sur un disque réinscriptible\n(CD-RW, DVD-RW, DVD+RW, BD-RE), puis vérifiés."
+                    "Les fichiers sains sont gravés sur un disque réinscriptible (CD-RW, DVD-RW, DVD+RW, BD-RE), puis vérifiés."
                 },
                 Msg::Choisir(Mode::Graver),
             ));
@@ -843,13 +844,13 @@ impl App {
         if !disque {
             choix = choix.push(grand_choix(
                 "Blanchir cette clé",
-                "La clé est analysée, entièrement effacée,\npuis seuls ses fichiers sains y sont réécrits.",
+                "La clé est analysée, entièrement effacée, puis seuls ses fichiers sains y sont réécrits.",
                 Msg::Choisir(Mode::Blanchir),
             ));
         } else if reinscriptible {
             choix = choix.push(grand_choix(
                 "Blanchir ce disque",
-                "Le disque est analysé, effacé COMPLÈTEMENT (vérifié),\npuis seuls ses fichiers sains y sont regravés.",
+                "Le disque est analysé, effacé COMPLÈTEMENT (vérifié), puis seuls ses fichiers sains y sont regravés.",
                 Msg::Choisir(Mode::Blanchir),
             ));
         }
@@ -867,7 +868,8 @@ impl App {
             texte(&d),
             Space::new().height(30),
             choix,
-        ];
+        ]
+        .max_width(1460);
         if disque && !reinscriptible {
             c = c.push(petit(
                 "Ce disque n'est pas réinscriptible : il ne peut pas être blanchi (seulement lu).",
@@ -1296,7 +1298,8 @@ fn grand_choix<'a>(t: &str, d: &str, m: Msg) -> Element<'a, Msg> {
         .align_x(Alignment::Center),
     )
     .padding(30)
-    .width(Length::Fixed(460.0))
+    // Largeur partagée : trois choix (clé + lecteur optique) tiennent sur un écran de 1280 px.
+    .width(Length::FillPortion(1))
     .style(style::primaire)
     .on_press(m)
     .into()
