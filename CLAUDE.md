@@ -12,6 +12,17 @@ par Claude. Le noyau de lecture USB provient d'usbsas (CEA) et vit dans `noyau/`
 - Design : charte `docs/charte/` (source : artifact Design System de l'utilisateur).
 - Travail sur une branche, fusion dans `main` quand la CI est verte.
 
+## Hôte Proxmox : règles absolues (incident du 15/11/2026, `docs/incident-proxmox.md`)
+- Rien de Barbacane ni d'usbsas SUR L'HÔTE : uniquement dans une VM `barbacane-9xx` (900–999).
+  `install.sh`, `configurer.sh` et les paquets refusent de toute façon un hôte (`/etc/pve`).
+- Jamais modifier sur l'hôte : réseau, pare-feu, modprobe, udev, PAM, GRUB, comptes, services
+  (une ligne `iface vmbr0 inet dhcp` a bloqué le démarrage de l'ancien hôte).
+- Avant toute autre modification de l'hôte (`qm create`, `apt install`…) :
+  `zfs snapshot rpool/ROOT/pve-1@avant-<étape>`. Outils de dev (shellcheck, pandoc, cargo) : dans `bu`/`bb`.
+- Ne jamais lire `/root/BARBACANE/.env`. L'ancien NVMe (pool importé `ancien`) : lecture seule.
+- Jeton GitHub sans droit `workflow` : une modification de `.github/workflows/` ne peut pas être
+  poussée par Claude (patch fourni dans `tests/garde-fou/ci-workflows.patch`).
+
 ## Organisation
 `noyau/` (crates usbsas, chemins relatifs entre elles) · `borne/` (client, analyzer, admind,
 parcours, update) · `systeme/` (ISO, deb, systemd, durcissement) · `tests/` · `docs/`.

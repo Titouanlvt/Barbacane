@@ -111,10 +111,14 @@ comme sur le nouvel hôte (`192.168.10.72/24`, passerelle `192.168.10.254`).
 
    Ce garde-fou n'aurait pas empêché l'incident du 15/11 (une commande à la main), mais il
    ferme la cause soupçonnée au départ.
-3. **Tests** (CI uniquement, jamais sur un vrai hôte : ils créent `/etc/pve` sur une machine jetable) :
-   - `tests/garde-fou/scripts.sh` (ci.yml, job `garde-fou-proxmox`) : avec `/etc/pve`, chaque
+3. **Tests** (machine jetable uniquement, jamais sur un vrai hôte : ils créent puis retirent `/etc/pve`) :
+   - Branchement en CI : `tests/garde-fou/ci-workflows.patch` (jobs `garde-fou-proxmox` dans ci.yml,
+     étape après la construction des paquets dans iso.yml). Le jeton de Claude n'a pas le droit
+     GitHub `workflow` : appliquer le patch et le pousser soi-même (`git apply` puis commit).
+   - Passage vérifié le 15/11 dans la VM 902 (Debian 13) : [preuves/garde-fou/](preuves/garde-fou/).
+   - `tests/garde-fou/scripts.sh` : avec `/etc/pve`, chaque
      script sort en erreur avec le message « REFUS : hôte Proxmox VE détecté » et **aucune** des
      commandes témoins (`apt-get`, `dpkg`, `systemctl`, `install`, `sed`, `passwd`,
      `update-grub`…) n'est appelée ; contrôle sans `/etc/pve` : le garde-fou laisse passer.
-   - `tests/garde-fou/paquets.sh` (iso.yml, après la construction des paquets) : avec `/etc/pve`,
+   - `tests/garde-fou/paquets.sh` (après la construction des paquets) : avec `/etc/pve`,
      `dpkg -i` de chaque paquet échoue dans le preinst et ne pose aucun fichier.

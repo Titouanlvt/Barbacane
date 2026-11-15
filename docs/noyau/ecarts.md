@@ -48,4 +48,4 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
   rendraient un hyperviseur inutilisable s'ils y étaient installés par erreur.
 - Correctif : `noyau/usbsas-usbsas/debian/preinst` et `noyau/usbsas-hid/debian/preinst` (nouveaux,
   aucun code Rust touché) sortent en erreur si `/etc/pve` existe, avant la copie des fichiers.
-- Test : `tests/garde-fou/paquets.sh` (CI, iso.yml). Spécifique à Barbacane, pas à proposer au CEA.
+- Test : `tests/garde-fou/paquets.sh` (VM de test ; CI : `tests/garde-fou/ci-workflows.patch`). Spécifique à Barbacane, pas à proposer au CEA.

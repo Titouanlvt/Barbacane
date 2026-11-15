@@ -1,0 +1,333 @@
+2026-11-14T17:59:38+01:00 barbacane systemd[1]: Started barbacane-admind.service - Barbacane : service d'administration (PIN, mises à jour, enrôlement).
+2026-11-14T17:59:38+01:00 barbacane systemd[1]: Starting clamav-daemon.service - Clam AntiVirus userspace daemon...
+2026-11-14T17:59:38+01:00 barbacane systemd[1]: Started usbsas-server.service - SAS USB Server.
+2026-11-14T17:59:38+01:00 barbacane systemd[1]: Started clamav-daemon.service - Clam AntiVirus userspace daemon.
+2026-11-14T17:59:38+01:00 barbacane systemd[1]: Started barbacane-analyzer.service - Barbacane : analyseur de fichiers (ClamAV + YARA, archives).
+2026-11-14T17:59:38+01:00 barbacane barbacane-admind[624]: [2026-11-14T16:59:38Z INFO  barbacane_admind] écoute sur /run/barbacane/admin.sock
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[638]: [2026-11-14T16:59:38Z INFO  usbsas_usbsas] init ec0e6fde349f4aea868bfd56bb006a78 (638)
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[671]: [2026-11-14T16:59:38Z INFO  usbsas_identifier] start (671)
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[672]: [2026-11-14T16:59:38Z INFO  usbsas_cmdexec] start (672): /var/lib/usbsas/tmp/usbsas_ec0e6fde349f4aea868bfd56bb006a78.tar /var/lib/usbsas/tmp/usbsas_ec0e6fde349f4aea868bfd56bb006a78.img
+2026-11-14T17:59:38+01:00 barbacane systemd[1]: Starting barbacane-kiosk.service - Barbacane : interface kiosque...
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[673]: [2026-11-14T16:59:38Z INFO  usbsas_downloader] start (673): /var/lib/usbsas/tmp/usbsas_ec0e6fde349f4aea868bfd56bb006a78.tar
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[673]: [2026-11-14T16:59:38Z WARN  usbsas_net::downloader] No configuration for downloader, parking
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[679]: [2026-11-14T16:59:38Z INFO  usbsas_files2tar] start (679): /var/lib/usbsas/tmp/usbsas_ec0e6fde349f4aea868bfd56bb006a78_clean.tar
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[678]: [2026-11-14T16:59:38Z INFO  usbsas_files2tar] start (678): /var/lib/usbsas/tmp/usbsas_ec0e6fde349f4aea868bfd56bb006a78.tar
+2026-11-14T17:59:38+01:00 barbacane barbacane-analyzer[655]: [2026-11-14T16:59:38Z INFO  barbacane_analyzer::av] 0 fichier(s) de règles YARA chargé(s)
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[674]: [2026-11-14T16:59:38Z INFO  usbsas_usbdev] start (674)
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[677]: [2026-11-14T16:59:38Z INFO  usbsas_local2files] start (677)
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[680]: [2026-11-14T16:59:38Z INFO  usbsas_files2fs] start (680): /var/lib/usbsas/tmp/usbsas_ec0e6fde349f4aea868bfd56bb006a78.img
+2026-11-14T17:59:38+01:00 barbacane (chvt)[676]: pam_unix(barbacane-kiosk:session): session opened for user barbacane-kiosk(uid=104) by (uid=0)
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[675]: [2026-11-14T16:59:38Z INFO  usbsas_scsi2files] start (675)
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[682]: [2026-11-14T16:59:38Z INFO  usbsas_tar2files] start (682): /var/lib/usbsas/tmp/usbsas_ec0e6fde349f4aea868bfd56bb006a78.tar
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[681]: [2026-11-14T16:59:38Z INFO  usbsas_fs2dev] start (681): /var/lib/usbsas/tmp/usbsas_ec0e6fde349f4aea868bfd56bb006a78.img
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[690]: [2026-11-14T16:59:38Z INFO  usbsas_dev2scsi] start (690)
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[684]: [2026-11-14T16:59:38Z INFO  usbsas_analyzer] start (684): /var/lib/usbsas/tmp/usbsas_ec0e6fde349f4aea868bfd56bb006a78.tar
+2026-11-14T17:59:38+01:00 barbacane usbsas-usbsas[692]: [2026-11-14T16:59:38Z INFO  usbsas_jsonparser] start (692)
+2026-11-14T17:59:38+01:00 barbacane systemd[1]: Started barbacane-kiosk.service - Barbacane : interface kiosque.
+2026-11-14T17:59:38+01:00 barbacane (env)[705]: pam_unix(barbacane-kiosk:session): session opened for user barbacane-kiosk(uid=104) by (uid=0)
+2026-11-14T17:59:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T16:59:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[638]: [2026-11-14T16:59:40Z ERROR usbsas_usbsas] listing devices, waiting end
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[638]: [2026-11-14T16:59:40Z ERROR usbsas_usbsas] failed to fill whole buffer, waiting end
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[692]: [2026-11-14T16:59:40Z ERROR usbsas_net::jsonparser] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[684]: [2026-11-14T16:59:40Z ERROR usbsas_net::analyzer] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[684]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[692]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[682]: [2026-11-14T16:59:40Z ERROR usbsas_tar2files] state run error: io error: failed to fill whole buffer
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[682]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[681]: [2026-11-14T16:59:40Z ERROR usbsas_fs2dev] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[681]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[671]: Error:
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[672]: [2026-11-14T16:59:40Z ERROR usbsas_cmdexec] state run error: io error: failed to fill whole buffer
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[673]: [2026-11-14T16:59:40Z ERROR usbsas_net::downloader] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[673]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[638]: Error: main loop
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[638]: Caused by:
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[638]:     Broken pipe (os error 32)
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[671]: IO(Error { kind: UnexpectedEof, message: "failed to fill whole buffer" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[680]: [2026-11-14T16:59:40Z ERROR usbsas_files2fs] state run error: io error: failed to fill whole buffer
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[680]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[672]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[678]: [2026-11-14T16:59:40Z ERROR usbsas_files2tar::files2tar] state run error: io error: failed to fill whole buffer
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[678]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[679]: [2026-11-14T16:59:40Z ERROR usbsas_files2tar::files2tar] state run error: io error: failed to fill whole buffer
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[679]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[677]: [2026-11-14T16:59:40Z ERROR usbsas_local2files] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[677]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[675]: [2026-11-14T16:59:40Z ERROR usbsas_scsi2files] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[675]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[683]: [2026-11-14T16:59:40Z ERROR usbsas_net::uploader] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[683]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T17:59:40+01:00 barbacane systemd[1]: usbsas-server.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-14T17:59:40+01:00 barbacane systemd[1]: usbsas-server.service: Failed with result 'exit-code'.
+2026-11-14T17:59:40+01:00 barbacane systemd[1]: usbsas-server.service: Scheduled restart job, restart counter is at 1.
+2026-11-14T17:59:40+01:00 barbacane systemd[1]: Started usbsas-server.service - SAS USB Server.
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[722]: [2026-11-14T16:59:40Z INFO  usbsas_usbsas] init fa60546bc7df4e2b9df85f01d7d0ec4f (722)
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[724]: [2026-11-14T16:59:40Z INFO  usbsas_identifier] start (724)
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[725]: [2026-11-14T16:59:40Z INFO  usbsas_cmdexec] start (725): /var/lib/usbsas/tmp/usbsas_fa60546bc7df4e2b9df85f01d7d0ec4f.tar /var/lib/usbsas/tmp/usbsas_fa60546bc7df4e2b9df85f01d7d0ec4f.img
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[728]: [2026-11-14T16:59:40Z INFO  usbsas_scsi2files] start (728)
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[727]: [2026-11-14T16:59:40Z INFO  usbsas_usbdev] start (727)
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[729]: [2026-11-14T16:59:40Z INFO  usbsas_local2files] start (729)
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[726]: [2026-11-14T16:59:40Z INFO  usbsas_downloader] start (726): /var/lib/usbsas/tmp/usbsas_fa60546bc7df4e2b9df85f01d7d0ec4f.tar
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[731]: [2026-11-14T16:59:40Z INFO  usbsas_dev2scsi] start (731)
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[732]: [2026-11-14T16:59:40Z INFO  usbsas_files2tar] start (732): /var/lib/usbsas/tmp/usbsas_fa60546bc7df4e2b9df85f01d7d0ec4f.tar
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[733]: [2026-11-14T16:59:40Z INFO  usbsas_files2tar] start (733): /var/lib/usbsas/tmp/usbsas_fa60546bc7df4e2b9df85f01d7d0ec4f_clean.tar
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[734]: [2026-11-14T16:59:40Z INFO  usbsas_files2fs] start (734): /var/lib/usbsas/tmp/usbsas_fa60546bc7df4e2b9df85f01d7d0ec4f.img
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[736]: [2026-11-14T16:59:40Z INFO  usbsas_tar2files] start (736): /var/lib/usbsas/tmp/usbsas_fa60546bc7df4e2b9df85f01d7d0ec4f.tar
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[735]: [2026-11-14T16:59:40Z INFO  usbsas_fs2dev] start (735): /var/lib/usbsas/tmp/usbsas_fa60546bc7df4e2b9df85f01d7d0ec4f.img
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[738]: [2026-11-14T16:59:40Z INFO  usbsas_analyzer] start (738): /var/lib/usbsas/tmp/usbsas_fa60546bc7df4e2b9df85f01d7d0ec4f.tar
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[726]: [2026-11-14T16:59:40Z WARN  usbsas_net::downloader] No configuration for downloader, parking
+2026-11-14T17:59:40+01:00 barbacane usbsas-usbsas[739]: [2026-11-14T16:59:40Z INFO  usbsas_jsonparser] start (739)
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: Global time limit set to 120000 milliseconds.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: Global size limit set to 4194304000 bytes.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: LibClamAV Warning: Max file-size was set to 4194304000 bytes. Unfortunately, scanning files greater than 2147483647 bytes (2 GiB - 1) is not supported.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: File size limit set to 2147483645 bytes.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: Recursion level limit set to 20.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: Files limit set to 20000.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: MaxEmbeddedPE limit set to 10485760 bytes.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: MaxHTMLNormalize limit set to 10485760 bytes.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: MaxHTMLNoTags limit set to 2097152 bytes.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: MaxScriptNormalize limit set to 5242880 bytes.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: MaxZipTypeRcg limit set to 1048576 bytes.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: MaxPartitions limit set to 50.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: MaxIconsPE limit set to 100.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: MaxRecHWP3 limit set to 16.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: PCREMatchLimit limit set to 10000.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: PCRERecMatchLimit limit set to 5000.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Limits: PCREMaxFileSize limit set to 26214400.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Archive support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Image (graphics) scanning support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Detection using image fuzzy hash enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Heuristic alerting enabled for scans that exceed set maximums.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Heuristic alerts enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Portable Executable support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> ELF support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Mail files support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> OLE2 support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> PDF support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> SWF support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> HTML support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> XMLDOCS support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> HWP3 support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> OneNote support enabled.
+2026-11-14T17:59:47+01:00 barbacane clamd[652]: Sat Nov 14 17:59:47 2026 -> Self checking every 3600 seconds.
+2026-11-14T17:59:47+01:00 barbacane barbacane-analyzer[655]: [2026-11-14T16:59:47Z INFO  barbacane_analyzer] clamd joignable : ("ClamAV 1.4.3", "28183", "Sat Nov 14 07:24:17 2026")
+2026-11-14T17:59:47+01:00 barbacane barbacane-analyzer[655]: [2026-11-14T16:59:47Z INFO  barbacane_analyzer] écoute sur 127.0.0.1:8042
+2026-11-14T18:00:00+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:00:00Z INFO  barbacane_admind] PIN administrateur initial défini
+2026-11-14T18:00:00+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:00:00Z INFO  barbacane_admind] connexion administrateur
+2026-11-14T18:00:04+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:00:04Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:00:06+01:00 barbacane usbsas-usbsas[727]: [2026-11-14T17:00:06Z INFO  usbsas_usbdev] Device plugged 10-2 ( USB -  SanDisk 3.2Gen1 - 0501f66b357c3cb8eaaf6efb1d11265cc6fcdab3ce4e06b163ad06c25b56858f2dd900000000000000000000d8d8d3fcff960b108155810725ae0edb) [10, 2], src: true, dst: true]
+2026-11-14T18:00:20+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:00:20Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:00:27+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:00:27Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:00:38+01:00 barbacane usbsas-usbsas[727]: [2026-11-14T17:00:38Z INFO  usbsas_usbdev] Device plugged 9-2 ( USB -  SanDisk 3.2Gen1 - 03020611111524225725) [9, 2], src: true, dst: true]
+2026-11-14T18:00:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:00:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:00:48+01:00 barbacane usbsas-usbsas[722]: [2026-11-14T17:00:48Z INFO  usbsas_usbsas::states] Init transfer from Usb(UsbDevice { busnum: 9, devnum: 2, vendorid: 1921, productid: 21889, manufacturer: " USB", description: " SanDisk 3.2Gen1", serial: "03020611111524225725", dev_size: None, block_size: None, is_src: true, is_dst: true }) to Command(Command { bin: "/bin/true", args: [], title: "Analyse", description: "Analyse des fichiers sans copie", is_src: false, is_dst: true }) for Some("Tartempion")
+2026-11-14T18:01:18+01:00 barbacane usbsas-usbsas[731]: [2026-11-14T17:01:18Z WARN  usbsas_mass_storage] Error mass storage init: usb error during data-in stage: Operation timed out, resetting device and retrying
+2026-11-14T18:01:19+01:00 barbacane usbsas-usbsas[728]: [2026-11-14T17:01:19Z INFO  usbsas_scsi2files] Reading partition: PartitionInfo { size: 15374951424, start: 2048, ptype: 12, name_str: "SOURCE", type_str: "FAT" }
+2026-11-14T18:01:19+01:00 barbacane barbacane-analyzer[655]: [2026-11-14T17:01:19Z INFO  barbacane_analyzer] analyse 902aac4e-e883-46d0-9be3-2df28c6e5f5c pour Tartempion
+2026-11-14T18:01:19+01:00 barbacane clamd[652]: Sat Nov 14 18:01:19 2026 -> instream(local): Eicar-Test-Signature(44d88612fea8a8f36de82e1278abb02f:68) FOUND
+2026-11-14T18:01:19+01:00 barbacane barbacane-analyzer[655]: [2026-11-14T17:01:19Z INFO  barbacane_analyzer] analyse 902aac4e-e883-46d0-9be3-2df28c6e5f5c terminée : Scanned
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[725]: [2026-11-14T17:01:20Z INFO  usbsas_cmdexec] executing /bin/true []
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[722]: [2026-11-14T17:01:20Z INFO  usbsas_usbsas::states] transfer done, waiting end
+2026-11-14T18:01:20+01:00 barbacane systemd[1]: usbsas-server.service: Deactivated successfully.
+2026-11-14T18:01:20+01:00 barbacane systemd[1]: usbsas-server.service: Scheduled restart job, restart counter is at 2.
+2026-11-14T18:01:20+01:00 barbacane systemd[1]: Started usbsas-server.service - SAS USB Server.
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[776]: [2026-11-14T17:01:20Z INFO  usbsas_usbsas] init 3a5332d6e99149d0b1567809194b6bf0 (776)
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[778]: [2026-11-14T17:01:20Z INFO  usbsas_identifier] start (778)
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[781]: [2026-11-14T17:01:20Z INFO  usbsas_usbdev] start (781)
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[780]: [2026-11-14T17:01:20Z INFO  usbsas_downloader] start (780): /var/lib/usbsas/tmp/usbsas_3a5332d6e99149d0b1567809194b6bf0.tar
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[780]: [2026-11-14T17:01:20Z WARN  usbsas_net::downloader] No configuration for downloader, parking
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[779]: [2026-11-14T17:01:20Z INFO  usbsas_cmdexec] start (779): /var/lib/usbsas/tmp/usbsas_3a5332d6e99149d0b1567809194b6bf0.tar /var/lib/usbsas/tmp/usbsas_3a5332d6e99149d0b1567809194b6bf0.img
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[782]: [2026-11-14T17:01:20Z INFO  usbsas_scsi2files] start (782)
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[786]: [2026-11-14T17:01:20Z INFO  usbsas_files2tar] start (786): /var/lib/usbsas/tmp/usbsas_3a5332d6e99149d0b1567809194b6bf0_clean.tar
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[784]: [2026-11-14T17:01:20Z INFO  usbsas_local2files] start (784)
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[787]: [2026-11-14T17:01:20Z INFO  usbsas_files2fs] start (787): /var/lib/usbsas/tmp/usbsas_3a5332d6e99149d0b1567809194b6bf0.img
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[785]: [2026-11-14T17:01:20Z INFO  usbsas_files2tar] start (785): /var/lib/usbsas/tmp/usbsas_3a5332d6e99149d0b1567809194b6bf0.tar
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[788]: [2026-11-14T17:01:20Z INFO  usbsas_dev2scsi] start (788)
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[789]: [2026-11-14T17:01:20Z INFO  usbsas_fs2dev] start (789): /var/lib/usbsas/tmp/usbsas_3a5332d6e99149d0b1567809194b6bf0.img
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[790]: [2026-11-14T17:01:20Z INFO  usbsas_tar2files] start (790): /var/lib/usbsas/tmp/usbsas_3a5332d6e99149d0b1567809194b6bf0.tar
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[792]: [2026-11-14T17:01:20Z INFO  usbsas_analyzer] start (792): /var/lib/usbsas/tmp/usbsas_3a5332d6e99149d0b1567809194b6bf0.tar
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[793]: [2026-11-14T17:01:20Z INFO  usbsas_jsonparser] start (793)
+2026-11-14T18:01:20+01:00 barbacane usbsas-usbsas[781]: [2026-11-14T17:01:20Z INFO  usbsas_usbdev] Device plugged 9-2 ( USB -  SanDisk 3.2Gen1 - 03020611111524225725) [9, 2], src: true, dst: true]
+2026-11-14T18:01:32+01:00 barbacane usbsas-usbsas[781]: [2026-11-14T17:01:32Z INFO  usbsas_usbdev] Device plugged 10-2 ( USB -  SanDisk 3.2Gen1 - 0501f66b357c3cb8eaaf6efb1d11265cc6fcdab3ce4e06b163ad06c25b56858f2dd900000000000000000000d8d8d3fcff960b108155810725ae0edb) [10, 3], src: true, dst: true]
+2026-11-14T18:01:37+01:00 barbacane usbsas-usbsas[776]: [2026-11-14T17:01:37Z INFO  usbsas_usbsas::states] Init transfer from LocalDir(LocalDir { path: "/var/lib/barbacane/sortie", title: "Fichiers sains", description: "Fichiers sains préparés par Barbacane", is_src: true, is_dst: false }) to Usb(UsbDevice { busnum: 10, devnum: 2, vendorid: 1921, productid: 21889, manufacturer: " USB", description: " SanDisk 3.2Gen1", serial: "0501f66b357c3cb8eaaf6efb1d11265cc6fcdab3ce4e06b163ad06c25b56858f2dd900000000000000000000d8d8d3fcff960b108155810725ae0edb", dev_size: None, block_size: None, is_src: true, is_dst: true }) for Some("Tartempion")
+2026-11-14T18:01:37+01:00 barbacane usbsas-usbsas[789]: [2026-11-14T17:01:37Z WARN  usbsas_mass_storage] Error mass storage init: usb error during command stage: Input/Output Error, resetting device and retrying
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[776]: [2026-11-14T17:01:38Z INFO  usbsas_usbsas::states] transfer done, waiting end
+2026-11-14T18:01:38+01:00 barbacane systemd[1]: usbsas-server.service: Deactivated successfully.
+2026-11-14T18:01:38+01:00 barbacane systemd[1]: usbsas-server.service: Consumed 448ms CPU time, 82.7M memory peak.
+2026-11-14T18:01:38+01:00 barbacane systemd[1]: usbsas-server.service: Scheduled restart job, restart counter is at 3.
+2026-11-14T18:01:38+01:00 barbacane systemd[1]: Started usbsas-server.service - SAS USB Server.
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[802]: [2026-11-14T17:01:38Z INFO  usbsas_usbsas] init cd0404bf2f9e4ceeb78b73e142c2623c (802)
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[804]: [2026-11-14T17:01:38Z INFO  usbsas_identifier] start (804)
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[805]: [2026-11-14T17:01:38Z INFO  usbsas_cmdexec] start (805): /var/lib/usbsas/tmp/usbsas_cd0404bf2f9e4ceeb78b73e142c2623c.tar /var/lib/usbsas/tmp/usbsas_cd0404bf2f9e4ceeb78b73e142c2623c.img
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[806]: [2026-11-14T17:01:38Z INFO  usbsas_downloader] start (806): /var/lib/usbsas/tmp/usbsas_cd0404bf2f9e4ceeb78b73e142c2623c.tar
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[806]: [2026-11-14T17:01:38Z WARN  usbsas_net::downloader] No configuration for downloader, parking
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[807]: [2026-11-14T17:01:38Z INFO  usbsas_usbdev] start (807)
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[808]: [2026-11-14T17:01:38Z INFO  usbsas_scsi2files] start (808)
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[810]: [2026-11-14T17:01:38Z INFO  usbsas_files2tar] start (810): /var/lib/usbsas/tmp/usbsas_cd0404bf2f9e4ceeb78b73e142c2623c.tar
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[813]: [2026-11-14T17:01:38Z INFO  usbsas_files2tar] start (813): /var/lib/usbsas/tmp/usbsas_cd0404bf2f9e4ceeb78b73e142c2623c_clean.tar
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[811]: [2026-11-14T17:01:38Z INFO  usbsas_dev2scsi] start (811)
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[809]: [2026-11-14T17:01:38Z INFO  usbsas_local2files] start (809)
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[814]: [2026-11-14T17:01:38Z INFO  usbsas_files2fs] start (814): /var/lib/usbsas/tmp/usbsas_cd0404bf2f9e4ceeb78b73e142c2623c.img
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[816]: [2026-11-14T17:01:38Z INFO  usbsas_tar2files] start (816): /var/lib/usbsas/tmp/usbsas_cd0404bf2f9e4ceeb78b73e142c2623c.tar
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[815]: [2026-11-14T17:01:38Z INFO  usbsas_fs2dev] start (815): /var/lib/usbsas/tmp/usbsas_cd0404bf2f9e4ceeb78b73e142c2623c.img
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[818]: [2026-11-14T17:01:38Z INFO  usbsas_analyzer] start (818): /var/lib/usbsas/tmp/usbsas_cd0404bf2f9e4ceeb78b73e142c2623c.tar
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[819]: [2026-11-14T17:01:38Z INFO  usbsas_jsonparser] start (819)
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[807]: [2026-11-14T17:01:38Z INFO  usbsas_usbdev] Device plugged 10-2 ( USB -  SanDisk 3.2Gen1 - 0501f66b357c3cb8eaaf6efb1d11265cc6fcdab3ce4e06b163ad06c25b56858f2dd900000000000000000000d8d8d3fcff960b108155810725ae0edb) [10, 3], src: true, dst: true]
+2026-11-14T18:01:38+01:00 barbacane usbsas-usbsas[807]: [2026-11-14T17:01:38Z INFO  usbsas_usbdev] Device plugged 9-2 ( USB -  SanDisk 3.2Gen1 - 03020611111524225725) [9, 2], src: true, dst: true]
+2026-11-14T18:01:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:01:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:02:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:02:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:03:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:03:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:04:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:04:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:05:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:05:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:06:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:06:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:07:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:07:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:08:06+01:00 barbacane usbsas-usbsas[807]: [2026-11-14T17:08:06Z INFO  usbsas_usbdev] Device plugged 9-2 ( USB -  SanDisk 3.2Gen1 - 03020611111524225725) [9, 2], src: true, dst: true]
+2026-11-14T18:08:17+01:00 barbacane usbsas-usbsas[802]: [2026-11-14T17:08:17Z INFO  usbsas_usbsas::states] Init transfer from Usb(UsbDevice { busnum: 9, devnum: 2, vendorid: 1921, productid: 21889, manufacturer: " USB", description: " SanDisk 3.2Gen1", serial: "03020611111524225725", dev_size: None, block_size: None, is_src: true, is_dst: true }) to Command(Command { bin: "/bin/true", args: [], title: "Analyse", description: "Analyse des fichiers sans copie", is_src: false, is_dst: true }) for Some("Tartempion")
+2026-11-14T18:08:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:08:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:08:47+01:00 barbacane usbsas-usbsas[811]: [2026-11-14T17:08:47Z WARN  usbsas_mass_storage] Error mass storage init: usb error during data-in stage: Operation timed out, resetting device and retrying
+2026-11-14T18:08:47+01:00 barbacane usbsas-usbsas[808]: [2026-11-14T17:08:47Z INFO  usbsas_scsi2files] Reading partition: PartitionInfo { size: 15374951424, start: 2048, ptype: 12, name_str: "SOURCE", type_str: "FAT" }
+2026-11-14T18:08:47+01:00 barbacane barbacane-analyzer[655]: [2026-11-14T17:08:47Z INFO  barbacane_analyzer] analyse 5f0ef8bc-2a22-49f2-b25b-6a4b03e90f9c pour Tartempion
+2026-11-14T18:08:47+01:00 barbacane clamd[652]: Sat Nov 14 18:08:47 2026 -> instream(local): Eicar-Test-Signature(44d88612fea8a8f36de82e1278abb02f:68) FOUND
+2026-11-14T18:08:47+01:00 barbacane barbacane-analyzer[655]: [2026-11-14T17:08:47Z INFO  barbacane_analyzer] analyse 5f0ef8bc-2a22-49f2-b25b-6a4b03e90f9c terminée : Scanned
+2026-11-14T18:08:48+01:00 barbacane usbsas-usbsas[805]: [2026-11-14T17:08:48Z INFO  usbsas_cmdexec] executing /bin/true []
+2026-11-14T18:08:48+01:00 barbacane usbsas-usbsas[802]: [2026-11-14T17:08:48Z INFO  usbsas_usbsas::states] transfer done, waiting end
+2026-11-14T18:08:48+01:00 barbacane systemd[1]: usbsas-server.service: Deactivated successfully.
+2026-11-14T18:08:49+01:00 barbacane systemd[1]: usbsas-server.service: Scheduled restart job, restart counter is at 4.
+2026-11-14T18:08:49+01:00 barbacane systemd[1]: Started usbsas-server.service - SAS USB Server.
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[861]: [2026-11-14T17:08:49Z INFO  usbsas_usbsas] init 3026a865dab44950a0071307e4a6e71c (861)
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[863]: [2026-11-14T17:08:49Z INFO  usbsas_identifier] start (863)
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[864]: [2026-11-14T17:08:49Z INFO  usbsas_cmdexec] start (864): /var/lib/usbsas/tmp/usbsas_3026a865dab44950a0071307e4a6e71c.tar /var/lib/usbsas/tmp/usbsas_3026a865dab44950a0071307e4a6e71c.img
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[865]: [2026-11-14T17:08:49Z INFO  usbsas_downloader] start (865): /var/lib/usbsas/tmp/usbsas_3026a865dab44950a0071307e4a6e71c.tar
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[865]: [2026-11-14T17:08:49Z WARN  usbsas_net::downloader] No configuration for downloader, parking
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[866]: [2026-11-14T17:08:49Z INFO  usbsas_usbdev] start (866)
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[867]: [2026-11-14T17:08:49Z INFO  usbsas_scsi2files] start (867)
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[869]: [2026-11-14T17:08:49Z INFO  usbsas_local2files] start (869)
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[870]: [2026-11-14T17:08:49Z INFO  usbsas_files2tar] start (870): /var/lib/usbsas/tmp/usbsas_3026a865dab44950a0071307e4a6e71c.tar
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[868]: [2026-11-14T17:08:49Z INFO  usbsas_dev2scsi] start (868)
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[872]: [2026-11-14T17:08:49Z INFO  usbsas_files2tar] start (872): /var/lib/usbsas/tmp/usbsas_3026a865dab44950a0071307e4a6e71c_clean.tar
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[873]: [2026-11-14T17:08:49Z INFO  usbsas_files2fs] start (873): /var/lib/usbsas/tmp/usbsas_3026a865dab44950a0071307e4a6e71c.img
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[874]: [2026-11-14T17:08:49Z INFO  usbsas_fs2dev] start (874): /var/lib/usbsas/tmp/usbsas_3026a865dab44950a0071307e4a6e71c.img
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[875]: [2026-11-14T17:08:49Z INFO  usbsas_tar2files] start (875): /var/lib/usbsas/tmp/usbsas_3026a865dab44950a0071307e4a6e71c.tar
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[877]: [2026-11-14T17:08:49Z INFO  usbsas_analyzer] start (877): /var/lib/usbsas/tmp/usbsas_3026a865dab44950a0071307e4a6e71c.tar
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[878]: [2026-11-14T17:08:49Z INFO  usbsas_jsonparser] start (878)
+2026-11-14T18:08:49+01:00 barbacane usbsas-usbsas[866]: [2026-11-14T17:08:49Z INFO  usbsas_usbdev] Device plugged 9-2 ( USB -  SanDisk 3.2Gen1 - 03020611111524225725) [9, 2], src: true, dst: true]
+2026-11-14T18:09:04+01:00 barbacane usbsas-usbsas[861]: [2026-11-14T17:09:04Z INFO  usbsas_usbsas::states] wipe device (serial: 03020611111524225725, fmt: EXFAT, secure: true
+2026-11-14T18:09:34+01:00 barbacane usbsas-usbsas[874]: [2026-11-14T17:09:34Z WARN  usbsas_mass_storage] Error mass storage init: usb error during data-in stage: Operation timed out, resetting device and retrying
+2026-11-14T18:09:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:09:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:10:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:10:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:11:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:11:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:12:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:12:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:13:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:13:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:14:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:14:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:15:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:15:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:16:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:16:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:17:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:17:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:18:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:18:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:19:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:19:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:20:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:20:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:21:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:21:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:22:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:22:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:23:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:23:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:24:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:24:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:25:13+01:00 barbacane usbsas-usbsas[861]: [2026-11-14T17:25:13Z INFO  usbsas_usbsas::states] wipe done
+2026-11-14T18:25:14+01:00 barbacane systemd[1]: usbsas-server.service: Deactivated successfully.
+2026-11-14T18:25:14+01:00 barbacane systemd[1]: usbsas-server.service: Consumed 1min 1.570s CPU time, 23.8M memory peak.
+2026-11-14T18:25:14+01:00 barbacane systemd[1]: usbsas-server.service: Scheduled restart job, restart counter is at 5.
+2026-11-14T18:25:14+01:00 barbacane systemd[1]: Started usbsas-server.service - SAS USB Server.
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[934]: [2026-11-14T17:25:14Z INFO  usbsas_usbsas] init cd2bab9e4ce54be38927b25bff33ef4f (934)
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[936]: [2026-11-14T17:25:14Z INFO  usbsas_identifier] start (936)
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[937]: [2026-11-14T17:25:14Z INFO  usbsas_cmdexec] start (937): /var/lib/usbsas/tmp/usbsas_cd2bab9e4ce54be38927b25bff33ef4f.tar /var/lib/usbsas/tmp/usbsas_cd2bab9e4ce54be38927b25bff33ef4f.img
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[938]: [2026-11-14T17:25:14Z INFO  usbsas_downloader] start (938): /var/lib/usbsas/tmp/usbsas_cd2bab9e4ce54be38927b25bff33ef4f.tar
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[938]: [2026-11-14T17:25:14Z WARN  usbsas_net::downloader] No configuration for downloader, parking
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[939]: [2026-11-14T17:25:14Z INFO  usbsas_usbdev] start (939)
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[940]: [2026-11-14T17:25:14Z INFO  usbsas_scsi2files] start (940)
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[942]: [2026-11-14T17:25:14Z INFO  usbsas_local2files] start (942)
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[943]: [2026-11-14T17:25:14Z INFO  usbsas_dev2scsi] start (943)
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[944]: [2026-11-14T17:25:14Z INFO  usbsas_files2tar] start (944): /var/lib/usbsas/tmp/usbsas_cd2bab9e4ce54be38927b25bff33ef4f.tar
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[945]: [2026-11-14T17:25:14Z INFO  usbsas_files2tar] start (945): /var/lib/usbsas/tmp/usbsas_cd2bab9e4ce54be38927b25bff33ef4f_clean.tar
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[946]: [2026-11-14T17:25:14Z INFO  usbsas_files2fs] start (946): /var/lib/usbsas/tmp/usbsas_cd2bab9e4ce54be38927b25bff33ef4f.img
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[947]: [2026-11-14T17:25:14Z INFO  usbsas_fs2dev] start (947): /var/lib/usbsas/tmp/usbsas_cd2bab9e4ce54be38927b25bff33ef4f.img
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[939]: [2026-11-14T17:25:14Z INFO  usbsas_usbdev] Device plugged 9-2 ( USB -  SanDisk 3.2Gen1 - 03020611111524225725) [9, 2], src: true, dst: true]
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[948]: [2026-11-14T17:25:14Z INFO  usbsas_tar2files] start (948): /var/lib/usbsas/tmp/usbsas_cd2bab9e4ce54be38927b25bff33ef4f.tar
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[950]: [2026-11-14T17:25:14Z INFO  usbsas_analyzer] start (950): /var/lib/usbsas/tmp/usbsas_cd2bab9e4ce54be38927b25bff33ef4f.tar
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[951]: [2026-11-14T17:25:14Z INFO  usbsas_jsonparser] start (951)
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[934]: [2026-11-14T17:25:14Z INFO  usbsas_usbsas::states] Init transfer from LocalDir(LocalDir { path: "/var/lib/barbacane/sortie", title: "Fichiers sains", description: "Fichiers sains préparés par Barbacane", is_src: true, is_dst: false }) to Usb(UsbDevice { busnum: 9, devnum: 2, vendorid: 1921, productid: 21889, manufacturer: " USB", description: " SanDisk 3.2Gen1", serial: "03020611111524225725", dev_size: None, block_size: None, is_src: true, is_dst: true }) for Some("Tartempion")
+2026-11-14T18:25:14+01:00 barbacane usbsas-usbsas[934]: [2026-11-14T17:25:14Z INFO  usbsas_usbsas::states] transfer done, waiting end
+2026-11-14T18:25:14+01:00 barbacane systemd[1]: usbsas-server.service: Deactivated successfully.
+2026-11-14T18:25:15+01:00 barbacane systemd[1]: usbsas-server.service: Scheduled restart job, restart counter is at 6.
+2026-11-14T18:25:15+01:00 barbacane systemd[1]: Started usbsas-server.service - SAS USB Server.
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[956]: [2026-11-14T17:25:15Z INFO  usbsas_usbsas] init bad5ff5ca8364b17a4eefbed9e87a796 (956)
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[958]: [2026-11-14T17:25:15Z INFO  usbsas_identifier] start (958)
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[959]: [2026-11-14T17:25:15Z INFO  usbsas_cmdexec] start (959): /var/lib/usbsas/tmp/usbsas_bad5ff5ca8364b17a4eefbed9e87a796.tar /var/lib/usbsas/tmp/usbsas_bad5ff5ca8364b17a4eefbed9e87a796.img
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[962]: [2026-11-14T17:25:15Z INFO  usbsas_scsi2files] start (962)
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[963]: [2026-11-14T17:25:15Z INFO  usbsas_local2files] start (963)
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[960]: [2026-11-14T17:25:15Z INFO  usbsas_downloader] start (960): /var/lib/usbsas/tmp/usbsas_bad5ff5ca8364b17a4eefbed9e87a796.tar
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[960]: [2026-11-14T17:25:15Z WARN  usbsas_net::downloader] No configuration for downloader, parking
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[961]: [2026-11-14T17:25:15Z INFO  usbsas_usbdev] start (961)
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[966]: [2026-11-14T17:25:15Z INFO  usbsas_files2tar] start (966): /var/lib/usbsas/tmp/usbsas_bad5ff5ca8364b17a4eefbed9e87a796.tar
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[967]: [2026-11-14T17:25:15Z INFO  usbsas_files2tar] start (967): /var/lib/usbsas/tmp/usbsas_bad5ff5ca8364b17a4eefbed9e87a796_clean.tar
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[968]: [2026-11-14T17:25:15Z INFO  usbsas_files2fs] start (968): /var/lib/usbsas/tmp/usbsas_bad5ff5ca8364b17a4eefbed9e87a796.img
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[964]: [2026-11-14T17:25:15Z INFO  usbsas_dev2scsi] start (964)
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[969]: [2026-11-14T17:25:15Z INFO  usbsas_fs2dev] start (969): /var/lib/usbsas/tmp/usbsas_bad5ff5ca8364b17a4eefbed9e87a796.img
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[970]: [2026-11-14T17:25:15Z INFO  usbsas_tar2files] start (970): /var/lib/usbsas/tmp/usbsas_bad5ff5ca8364b17a4eefbed9e87a796.tar
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[972]: [2026-11-14T17:25:15Z INFO  usbsas_analyzer] start (972): /var/lib/usbsas/tmp/usbsas_bad5ff5ca8364b17a4eefbed9e87a796.tar
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[961]: [2026-11-14T17:25:15Z INFO  usbsas_usbdev] Device plugged 9-2 ( USB -  SanDisk 3.2Gen1 - 03020611111524225725) [9, 2], src: true, dst: true]
+2026-11-14T18:25:15+01:00 barbacane usbsas-usbsas[973]: [2026-11-14T17:25:15Z INFO  usbsas_jsonparser] start (973)
+2026-11-14T18:25:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:25:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:26:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:26:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:27:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:27:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:28:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:28:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:29:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:29:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:30:39+01:00 barbacane barbacane-admind[624]: [2026-11-14T17:30:39Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+2026-11-14T18:31:33+01:00 barbacane systemd[1]: Stopping barbacane-admind.service - Barbacane : service d'administration (PIN, mises à jour, enrôlement)...
+2026-11-14T18:31:33+01:00 barbacane systemd[1]: Stopping barbacane-kiosk.service - Barbacane : interface kiosque...
+2026-11-14T18:31:33+01:00 barbacane systemd[1]: barbacane-admind.service: Deactivated successfully.
+2026-11-14T18:31:33+01:00 barbacane systemd[1]: Stopped barbacane-admind.service - Barbacane : service d'administration (PIN, mises à jour, enrôlement).
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[956]: [2026-11-14T17:31:33Z ERROR usbsas_usbsas] failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[959]: [2026-11-14T17:31:33Z ERROR usbsas_cmdexec] state run error: io error: failed to fill whole buffer
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[959]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[960]: [2026-11-14T17:31:34Z ERROR usbsas_net::downloader] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[960]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[958]: Error: IO(Error { kind: UnexpectedEof, message: "failed to fill whole buffer" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[969]: [2026-11-14T17:31:34Z ERROR usbsas_fs2dev] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[969]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[970]: [2026-11-14T17:31:34Z ERROR usbsas_tar2files] state run error: io error: failed to fill whole buffer
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[970]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[973]: [2026-11-14T17:31:34Z ERROR usbsas_net::jsonparser] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[973]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[972]: [2026-11-14T17:31:34Z ERROR usbsas_net::analyzer] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[972]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[968]: [2026-11-14T17:31:34Z ERROR usbsas_files2fs] state run error: io error: failed to fill whole buffer
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[968]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[971]: [2026-11-14T17:31:34Z ERROR usbsas_net::uploader] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[971]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: barbacane-kiosk.service: Deactivated successfully.
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[956]: Error: main loop
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[956]: Caused by:
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[956]:     Broken pipe (os error
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[961]: [2026-11-14T17:31:34Z ERROR usbsas_usbdev] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[956]: 32)
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[961]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[966]: [2026-11-14T17:31:34Z ERROR usbsas_files2tar::files2tar] state run error: io error: failed to fill whole buffer
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[966]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[967]: [2026-11-14T17:31:34Z ERROR usbsas_files2tar::files2tar] state run error: io error: failed to fill whole buffer
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[967]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[963]: [2026-11-14T17:31:34Z ERROR usbsas_local2files] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[963]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[964]: [2026-11-14T17:31:34Z ERROR usbsas_dev2scsi] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[962]: [2026-11-14T17:31:34Z ERROR usbsas_scsi2files] state run error: io error: failed to fill whole buffer, waiting end
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[964]: Error:
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[962]: Error: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane usbsas-usbsas[964]: IO(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" })
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: Stopped barbacane-kiosk.service - Barbacane : interface kiosque.
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: usbsas-server.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: usbsas-server.service: Failed with result 'exit-code'.
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: Stopped usbsas-server.service - SAS USB Server.
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: Stopping barbacane-analyzer.service - Barbacane : analyseur de fichiers (ClamAV + YARA, archives)...
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: barbacane-analyzer.service: Deactivated successfully.
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: Stopped barbacane-analyzer.service - Barbacane : analyseur de fichiers (ClamAV + YARA, archives).
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: Stopping clamav-daemon.service - Clam AntiVirus userspace daemon...
+2026-11-14T18:31:34+01:00 barbacane clamd[652]: Sat Nov 14 18:31:34 2026 -> --- Stopped at Sat Nov 14 18:31:34 2026
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: clamav-daemon.service: Deactivated successfully.
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: Stopped clamav-daemon.service - Clam AntiVirus userspace daemon.
+2026-11-14T18:31:34+01:00 barbacane systemd[1]: clamav-daemon.service: Consumed 9.376s CPU time, 1G memory peak.
