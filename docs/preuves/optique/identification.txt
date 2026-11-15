@@ -1,0 +1,60 @@
+# Identification du disque — 2026-11-15T13:55:22+01:00 — hôte Proxmox, lecture seule
+## lecteur
+MATSHITA DVD-RAM UJ8E2Q   1.00 (/dev/sr0 = /dev/sg1, contrôleur SATA 0000:00:17.0, le même que le SSD système sda : passthrough PCI exclu)
+
+## dvd+rw-mediainfo /dev/sr0
+:-( non-DVD media mounted, exiting...
+INQUIRY:                [MATSHITA][DVD-RAM UJ8E2Q  ][1.00]
+GET [CURRENT] CONFIGURATION:
+
+## xorriso -indev /dev/sr0 -toc
+xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
+
+xorriso : NOTE : Loading ISO image tree from LBA 0
+xorriso : UPDATE :     137 nodes read in 3 seconds
+xorriso : NOTE : Detected El-Torito boot information which currently is set to be discarded
+Drive current: -indev '/dev/sr0'
+Media current: CD-RW
+Media status : is written , is closed
+Boot record  : El Torito
+Media summary: 1 session, 189327 data blocks,  370m data,     0 free
+Volume id    : 'HP-ESXI-6.0.0-ISO-600.9.3.30.2'
+Drive current: -indev '/dev/sr0'
+Drive access : exclusive:unrestricted
+Drive type   : vendor 'MATSHITA' product 'DVD-RAM UJ8E2Q' revision '1.00'
+Drive id     : 'H088  506140'
+Media current: CD-RW
+Media product: 97m26s65f/79m59s74f , CMC Magnetics Corporation
+Media status : is written , is closed
+Media blocks : 189327 readable , 0 writable , 359847 overall
+Boot record  : El Torito
+Boot catalog : '/BOOT.CAT'
+Boot image   : '/ISOLINUX.BIN' , boot_info_table=on
+Boot image   : '/EFIBOOT.IMG' , platform_id=0xEF 
+ISO offers   : Only_ECMA_119
+ISO loaded   : Only_ECMA_119
+TOC layout   : Idx ,  sbsector ,       Size , Volume Id
+ISO session  :   1 ,         0 ,    189325s , HP-ESXI-6.0.0-ISO-600.9.3.30.2
+Media summary: 1 session, 189327 data blocks,  370m data,     0 free
+
+## xorriso -list_speeds
+xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
+xorriso : NOTE : Disc status unsuitable for writing
+Drive current: -outdev '/dev/sr0'
+Media current: CD-RW
+Media status : is written , is closed
+Media summary: 1 session, 189327 data blocks,  370m data,     0 free
+Drive current: -outdev '/dev/sr0'
+Media current: CD-RW
+Media status : is written , is closed
+Media summary: 1 session, 189327 data blocks,  370m data,     0 free
+Read speed   :   3353k , 19.0xC
+Read speed   :   1899k , 10.8xC
+Read speed L :   1899k , 10.8xC
+Read speed H :   3353k , 19.0xC
+Write speed  :   1764k , 10.0xC
+Write speed l:    706k ,  4.0xC
+Write speed L:    706k ,  4.0xC
+Write speed H:   1764k , 10.0xC
+## blkid
+/dev/sr0: BLOCK_SIZE="2048" UUID="2015-07-15-10-01-02-09" LABEL="HP-ESXI-6.0.0-ISO-600.9.3.30.2" TYPE="iso9660"
