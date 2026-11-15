@@ -56,6 +56,9 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
   (`analyze_usb`, `analyze_cmd`…) ne s'applique qu'aux sources USB : les fichiers d'un dossier local
   n'étaient **jamais analysés**. Sur la borne, l'interface l'a refusé (« analyse introuvable ») ;
   aucun fichier n'a été copié.
-- Correctif : la source `LocalDir` suit les mêmes règles qu'une source USB (selon la destination).
+- Correctif : une source `LocalDir` vers une destination commande (la passe d'analyse de la borne,
+  par laquelle passe tout disque) est analysée selon `analyze_cmd`, comme une clé. Les autres
+  transferts depuis un dossier local (dossier de préparation, déjà analysé, vers la clé de sortie)
+  restent comme en amont (une première version qui les réanalysait cassait le test bout en bout).
 - Test : `tests/proxmox/optique.sh`, étape `image` (EICAR caché dans la 1re session du disque bloqué,
   fichiers sains copiés). Spécifique à l'usage de Barbacane ; proposable au CEA (option de configuration).

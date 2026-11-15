@@ -398,9 +398,13 @@ impl InitState {
             };
 
             // Barbacane (écart n° 5) : un dossier local source (disque optique extrait) est
-            // analysé comme une clé USB ; en amont, seules les clés l'étaient.
+            // analysé lors de la passe d'analyse (destination commande), comme une clé USB ; en
+            // amont, seules les clés l'étaient. Le dossier de préparation (fichiers déjà
+            // analysés) écrit ensuite sur une clé n'est pas réanalysé, comme en amont.
             let analyze = if let Some(ref conf) = self.config.analyzer {
-                if matches!(src, Device::Usb(_) | Device::LocalDir(_)) {
+                if matches!(src, Device::LocalDir(_)) && matches!(dst, Device::Command(_)) {
+                    conf.analyze_cmd
+                } else if matches!(src, Device::Usb(_)) {
                     match dst {
                         Device::Usb(_) => conf.analyze_usb,
                         Device::Network(_) => conf.analyze_net,
