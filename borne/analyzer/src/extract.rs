@@ -95,6 +95,16 @@ pub enum Outcome {
 }
 
 impl Extractor {
+    /// Vérifie au démarrage que le bac à sable fonctionne (7-Zip lancé dans bubblewrap sur un
+    /// fichier vide) : une erreur ici signifie que toutes les archives seraient refusées.
+    pub fn self_test(&self) -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let f = dir.path().join("autotest.bin");
+        std::fs::write(&f, b"")?;
+        let out = tempfile::tempdir()?;
+        self.run(&f, out.path(), "l", None, 1 << 20).map(|_| ())
+    }
+
     /// Liste le conteneur (détection du chiffrement, nombre et taille annoncés).
     pub fn list(&self, archive: &Path, password: Option<&str>) -> Result<(Outcome, Listing)> {
         let out = tempfile::tempdir()?;
@@ -261,6 +271,10 @@ impl Extractor {
                 libc::SIGXCPU => "délai d'extraction dépassé".to_string(),
                 s => format!("extraction interrompue (signal {s})"),
             });
+        }
+        // Échec du bac à sable lui-même (et non de 7-Zip) : jamais présenté comme une archive corrompue.
+        if let Some(l) = stderr.lines().find(|l| l.starts_with("bwrap:")) {
+            bail!("bac à sable indisponible ({l})");
         }
         let outcome =
             if all.contains("Wrong password") || all.contains("Can not open encrypted archive") {

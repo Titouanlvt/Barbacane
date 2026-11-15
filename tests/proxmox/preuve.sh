@@ -201,11 +201,17 @@ admin() { # ouvre le mode administrateur (PIN déjà choisi)
 }
 quitter_admin() { cliquer "Quitter le mode administrateur"; attendre "Insérez la clé à analyser" 30; }
 # Répond à une demande de mot de passe d'archive (clavier virtuel) si elle apparaît.
+# Le contenu de test contient une archive chiffrée : la demande DOIT apparaître avant le résultat.
 mot_de_passe_si_demande() {
-    if voir "Archive protégée" 600; then
-        capture 02b-mot-de-passe
-        "${B[@]}" texte "$1"; cliquer "Valider"
-    fi
+    local i
+    for i in $(seq 120); do
+        if voir "Archive protégée" 3; then
+            capture 02b-mot-de-passe; ok "mot de passe d'archive demandé (clavier virtuel)"
+            "${B[@]}" texte "$1"; cliquer "Valider"; return
+        fi
+        if voir "Résultat de l'analyse" 2; then ko "archive chiffrée : mot de passe jamais demandé"; return; fi
+        [ "$i" -lt 120 ] || ko "ni demande de mot de passe ni résultat après 10 min"
+    done
 }
 
 echo "Preuves : $OUT ; ISO : $ISO (sha256 $(sha256sum "$ISO" | cut -c1-16)…) ; commit $(git -C "$REPO" rev-parse --short HEAD)"

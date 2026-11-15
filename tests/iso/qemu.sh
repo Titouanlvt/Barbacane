@@ -95,6 +95,12 @@ for u in barbacane-analyzer barbacane-admind barbacane-kiosk usbsas-server clama
         echo "ÉCHEC : $u" >&2; ko=1
     fi
 done
+# Bac à sable des archives (bubblewrap sous les restrictions systemd du service)
+if grep -q 'bac à sable des archives : OK' "$W/services.log"; then
+    echo "OK : bac à sable des archives fonctionnel dans le service"
+else
+    echo "ÉCHEC : bac à sable des archives inutilisable (toutes les archives seraient refusées)" >&2; ko=1
+fi
 # GRUB verrouillé : édition de la ligne du noyau protégée, démarrage sans mot de passe.
 cfg="$W/racine/boot/grub/grub.cfg"
 if grep -q '^set superusers="barbacane"' "$cfg" && grep -q '^password_pbkdf2 barbacane grub.pbkdf2' "$cfg" \

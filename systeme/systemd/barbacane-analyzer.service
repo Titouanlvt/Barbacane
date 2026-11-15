@@ -33,7 +33,9 @@ RestrictSUIDSGID=yes
 LockPersonality=yes
 # bubblewrap a besoin des espaces de noms utilisateur
 RestrictNamespaces=user mnt pid ipc net uts cgroup
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# AF_NETLINK : bubblewrap configure la boucle locale de son espace réseau isolé (sans lui,
+# bwrap sort en erreur et TOUTE archive était refusée comme « corrompue », 15/11/2026)
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 IPAddressAllow=localhost
 IPAddressDeny=any
 CapabilityBoundingSet=

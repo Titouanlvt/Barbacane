@@ -83,6 +83,10 @@ async fn main() -> anyhow::Result<()> {
         timeout: Duration::from_secs(conf.limits.extract_timeout),
         memory: conf.limits.extract_memory,
     };
+    match extractor.self_test() {
+        Ok(()) => log::info!("bac à sable des archives : OK"),
+        Err(e) => log::error!("bac à sable des archives INUTILISABLE (archives refusées) : {e:#}"),
+    }
     let listen = conf.listen.clone();
     let server = conf.server.clone();
     let app: Shared = Arc::new(App {
