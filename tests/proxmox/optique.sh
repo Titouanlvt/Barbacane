@@ -69,14 +69,15 @@ mot_de_passe_si_demande() { for _ in $(seq 120); do
 # Le disque inséré, relu par l'hôte (lecture seule, borne inactive) : contenu et sha256
 relire_disque() { # dossier
     rm -rf "$1"; mkdir -p "$1"
-    xorriso -indev /dev/sr0 -toc > "$1.toc.txt" 2>&1 || true
-    xorriso -osirrox on -indev /dev/sr0 -extract / "$1" >/dev/null 2>&1 || true
+    # La borne interroge aussi le lecteur (toutes les 2 s) : « busy » possible, on réessaie.
+    for _ in $(seq 30); do xorriso -indev /dev/sr0 -toc > "$1.toc.txt" 2>&1 && break; sleep 3; done
+    for _ in $(seq 30); do rm -rf "${1:?}"/*; xorriso -osirrox on -indev /dev/sr0 -extract / "$1" >/dev/null 2>&1 && break; sleep 3; done
     liste_sha "$1" > "$1.sha256"
 }
 # Attente d'une personne : le tiroir doit être refermé (lecteur mince sans moteur de fermeture)
 tiroir() {
     echo ">>> FERMEZ LE TIROIR DU LECTEUR (disque dedans) — $(date +%T)" | tee -a "$OUT/interventions.txt"
-    for _ in $(seq 720); do blkid /dev/sr0 >/dev/null 2>&1 && { echo "tiroir refermé $(date +%T)" >> "$OUT/interventions.txt"; sleep 5; return 0; }; sleep 5; done
+    for _ in $(seq 720); do timeout 20 dd if=/dev/sr0 of=/dev/null bs=2048 count=1 status=none 2>/dev/null && { echo "tiroir refermé $(date +%T)" >> "$OUT/interventions.txt"; sleep 5; return 0; }; sleep 5; done
     ko "tiroir non refermé après 1 h"; return 1
 }
 
