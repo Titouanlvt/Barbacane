@@ -45,29 +45,116 @@ refusé, et pourquoi.
 
 ## Comment ça marche
 
+### Vue d'ensemble
+
 ```mermaid
 flowchart LR
-    U[Clé USB] -->|pile USB en espace utilisateur,<br>processus isolés seccomp| N(Noyau de lecture)
-    O[CD / DVD / BD] -->|toutes les sessions,<br>service confiné| N
-    N --> X(Analyse<br>ClamAV + YARA<br>archives en bac à sable)
-    X -->|sains| D[Clé de destination]
-    X -->|sains| G[Disque gravé et vérifié]
-    X -->|sains| B[Support blanchi]
-    X -->|menaces| R[Refusés + rapport]
+    U[Clé USB] -->|pile USB en espace utilisateur,<br>processus isolés seccomp + Landlock| N(Noyau de lecture<br>issu d'usbsas)
+    O[CD / DVD / BD] -->|toutes les sessions,<br>service confiné| E[(Dossier d'entrée)]
+    E --> N
+    N -->|tar de session| X(Analyseur<br>ClamAV + YARA<br>archives en bac à sable)
+    X -->|fichiers sains| S[(Dossier de préparation<br>+ rapport)]
+    X -->|menaces, archives piégées| R[Refusés, consignés au rapport]
+    S -->|Copier| D[Clé de destination<br>reformatée]
+    S -->|Graver| G[Disque réinscriptible<br>relu et vérifié]
+    S -->|Blanchir| B[Même support,<br>effacé complètement]
 ```
 
-- **Rien n'est exécuté ni monté par le système.** Les clés sont lues par une pile USB en espace
-  utilisateur, découpée en processus isolés (seccomp, Landlock), héritée
-  d'[usbsas](docs/noyau/usbsas.md) (CEA). Les disques optiques sont lus par un service séparé,
-  sans réseau, limité au seul lecteur.
-- **Analyse en profondeur.** ClamAV et YARA ; archives (zip, 7z, rar, iso…) extraites
-  récursivement dans `bubblewrap`, avec limites contre les bombes de décompression ; mot de passe
-  demandé à l'écran pour les archives chiffrées. Sur un disque, **toutes les sessions** sont
-  lues : rien ne se cache dans une session masquée.
-- **Hors ligne de bout en bout.** Installation par ISO sans réseau ; signatures antivirales et
-  logiciel mis à jour par clé USB **signée** (minisign), versions anciennes refusées.
-- **Administration à l'écran.** PIN (Argon2id, verrouillage après 5 essais), clés de sortie
-  enrôlées, limites d'analyse, export des journaux. GRUB verrouillé, clavier sans effet.
+Chaque passage se fait en **deux transferts séparés** :
+
+1. **Analyse** : le support inconnu est lu et tous ses fichiers partent à l'analyseur. Rien n'est
+   encore écrit nulle part ; le support d'origine n'est pas modifié.
+2. **Écriture** : seuls les fichiers déclarés sains, et ceux extraits sains des archives, sont
+   déposés dans un **dossier de préparation**. C'est ce dossier, jamais le support d'origine, qui
+   est écrit sur la clé, gravé ou réécrit.
+
+Ce découpage garantit qu'un fichier non analysé ne peut pas atteindre la sortie : il n'est
+tout simplement pas dans le dossier de préparation.
+
+### 1. Lecture d'une clé USB, sans la confier au système
+
+Le système de la borne **ne monte jamais** une clé : les pilotes noyau `usb_storage` et `uas`,
+ainsi que les systèmes de fichiers rares (`hfs`, `udf`, `squashfs`, `cramfs`…), sont désactivés.
+La clé est pilotée par une pile USB en **espace utilisateur**, héritée
+d'[usbsas](docs/noyau/usbsas.md) (CEA) et découpée en petits processus qui ne se font pas
+confiance :
+
+| Processus | Rôle |
+|---|---|
+| `usbdev` | surveille les branchements, filtre par port et par numéro de série |
+| `dev2scsi` / `scsi2files` | parle SCSI à la clé, lit FAT, exFAT, NTFS, ext4, ISO 9660 |
+| `files2tar` | copie les fichiers choisis dans un tar de session |
+| `analyzer` | envoie le tar à l'analyseur local (un seul port autorisé) |
+| `files2fs` / `fs2dev` | construit le système de fichiers de sortie hors périphérique, puis l'écrit |
+
+Chaque processus est enfermé par **seccomp**, qui ne lui laisse que les appels système dont il a
+besoin, sur des descripteurs ouverts d'avance. **Landlock** restreint en plus les accès réseau
+et les dossiers locaux. Un lecteur de système de fichiers piégé ne peut donc ni ouvrir de fichier, ni joindre le
+réseau, ni toucher à la clé de sortie. Ces processus sont relancés entre deux opérations.
+
+### 2. Analyse de chaque fichier
+
+L'analyseur (`barbacane-analyzer`, service local sans accès réseau) traite chaque fichier du tar :
+
+- **empreinte SHA-256** et **type réel** (signature magique, pas l'extension : un `.jpg` qui
+  contient un exécutable est vu comme tel) ;
+- **ClamAV** (base mise à jour par clé signée) et **règles YARA** ;
+- **archives** (zip, 7z, rar, tar, iso, msi…) : extraites avec `7zz` dans **bubblewrap**
+  (aucun réseau, système de fichiers temporaire, mémoire et durée bornées), puis analysées
+  récursivement ;
+- **limites contre les bombes de décompression** : profondeur 5, 10 000 fichiers, 4 Go
+  décompressés, taux de compression 100:1 au plus, 5 min par archive. Au-delà, l'archive est
+  refusée ;
+- **noms piégés** (`../`, chemins absolus, liens, caractères de contrôle, noms trop longs) :
+  jamais écrits ;
+- **archive chiffrée** : la borne demande le mot de passe au clavier virtuel (3 essais, 5 min).
+  Il n'est jamais journalisé et il est effacé de la mémoire après usage. Sans mot de passe,
+  l'archive est refusée.
+
+Une archive n'est déclarée saine que si **tout** son contenu l'est. Sinon, elle est refusée et
+seuls ses fichiers sains sont extraits vers la sortie (dossier `archive.zip.extrait/`). Si
+l'analyseur ou ClamAV est indisponible, **tout est refusé** : la borne échoue en position fermée.
+
+### 3. Écriture de la sortie
+
+- **Copier** : la clé de destination est **reformatée** (exFAT). Le système de fichiers est
+  construit à part, puis écrit sur la clé : aucun ancien fichier n'y survit. En mode « clés
+  enrôlées », seules les clés dont le numéro de série est inscrit sont acceptées ; une autre clé
+  est refusée sans qu'un seul octet n'y soit écrit.
+- **Blanchir** : après confirmation, la clé d'origine est **remplie de zéros** sur toute sa
+  surface, puis les fichiers sains y sont réécrits. Si l'écriture échoue, le dossier de
+  préparation est conservé pour réessayer sans refaire l'analyse.
+- **Rapport** : `rapport-barbacane-<date>.txt` et `.html` sont joints à la sortie. Ils listent
+  chaque fichier `[COPIÉ]` ou `[REFUSÉ]` avec sa raison (signature ClamAV, règle YARA, archive
+  chiffrée, nom dangereux…).
+
+### 4. Disques optiques
+
+Le lecteur est confié à un service séparé, `barbacane-optique`, qui tourne sous un compte dédié.
+Il n'a aucun accès réseau et ne voit que le lecteur. Chaque opération passe par `xorriso`, lancé
+dans bubblewrap.
+
+- **Lecture** : le disque est identifié (CD-RW, DVD+RW, BD-RE…), puis **chaque session de
+  données** est extraite dans `session-1/`, `session-2/`… Un fichier masqué par une session plus
+  récente est donc analysé lui aussi. Les CD audio et les disques illisibles sont refusés. Le
+  dossier extrait suit ensuite exactement le chemin d'une clé : même analyseur, même rapport.
+- **Gravure** : uniquement sur un disque **réinscriptible** (CD-RW, DVD±RW, BD-RE, DVD-RAM).
+  Le disque est d'abord **entièrement effacé**, jamais par l'effacement rapide qui laisse les
+  données lisibles, et l'effacement est vérifié par relecture. Les fichiers sont ensuite gravés à
+  la **vitesse la plus basse** acceptée, puis **relus** et comparés fichier par fichier (SHA-256).
+- **Fin** : le disque est éjecté. Durées et vitesses sont consignées au journal.
+
+### 5. Une borne fermée
+
+| Couche | Mesure |
+|---|---|
+| Réseau | aucune carte utilisée, pare-feu nftables qui refuse tout en entrée, en sortie et en transit |
+| Démarrage | GRUB protégé par mot de passe (Échap n'ouvre pas le menu), BIOS verrouillé et démarrage sur le disque interne (guide) |
+| Interface | kiosque plein écran (`cage`), le clavier physique n'a aucun effet |
+| Administration | PIN haché en Argon2id, verrouillage après 5 erreurs, fin de session après 15 min d'inactivité |
+| Services | unités systemd durcies : comptes dédiés, système en lecture seule, appels système et périphériques filtrés |
+| Mises à jour | paquet signé (minisign) par la clé du parc, version plus ancienne refusée, appliqué depuis une clé USB |
+
 
 ## Installer une borne
 
