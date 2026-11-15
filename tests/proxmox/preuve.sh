@@ -329,10 +329,14 @@ if test_actif transfert; then
     attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"
     lire 02-resultat-analyse >/dev/null
     si grep -qi 'menace' "$D/02-resultat-analyse.txt" -- "écran : menaces détectées" "écran : aucune menace affichée"
+    formater "$SERIE_AUTRE" "" AUTRE; echo "témoin non enrôlée" > "$T/m/TEMOIN-AUTRE.txt"; demonter "$D/non-enrolee-avant.sha256"
     cliquer "Choisir la clé de destination"
     brancher usb2 "$SERIE_AUTRE"
-    si voir "pas enrôlée" 60 "$D/03-cle-non-enrolee-refusee.png" -- "clé non enrôlée refusée en sortie" "clé non enrôlée acceptée"
+    si voir "pas enrôlée" 60 "$D/03-cle-non-enrolee-refusee.png" -- "clé non enrôlée refusée en sortie" "clé non enrôlée : refus non affiché"
+    capture 03-cle-non-enrolee-ecran; lire 03-cle-non-enrolee-ecran >/dev/null
     debrancher usb2
+    monter_ro "$SERIE_AUTRE"; liste_sha "$T/m" > "$D/non-enrolee-apres.sha256"; umount "$T/m"
+    si cmp -s "$D/non-enrolee-avant.sha256" "$D/non-enrolee-apres.sha256" -- "clé non enrôlée intacte (rien n'y a été écrit)" "la borne a écrit sur la clé non enrôlée"
     brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 60 "$D/04-cle-destination.png"
     cliquer "Effacer cette clé"
     attendre "Vous pouvez retirer les clés" 3600 "$D/05-termine.png"
