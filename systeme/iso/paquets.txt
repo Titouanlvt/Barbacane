@@ -6,6 +6,8 @@ clamav-daemon
 7zip
 7zip-rar
 bubblewrap
+# Disques optiques (barbacane-optique) : lecture, gravure, effacement
+xorriso
 cage
 nftables
 minisign

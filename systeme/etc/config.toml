@@ -26,6 +26,12 @@ path = "/var/lib/barbacane/sortie"
 description = "Fichiers sains"
 longdescr = "Fichiers sains préparés par Barbacane"
 
+# Disque optique extrait par barbacane-optique (toutes les sessions) : source inconnue
+[[src_local_dirs]]
+path = "/var/lib/barbacane/optique/entree"
+description = "Disque optique"
+longdescr = "CD, DVD ou BD inséré dans le lecteur"
+
 # Export des journaux et rapports (mode administrateur), préparé par barbacane-admind
 [[src_local_dirs]]
 path = "/var/lib/barbacane/export"

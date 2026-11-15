@@ -36,11 +36,14 @@ provides = "usbsas-kiosk"
 section = "utility"
 priority = "optional"
 maintainer-scripts = "../../systeme/deb/"
-conf-files = ["/etc/barbacane/analyzer.toml", "/etc/barbacane/client.toml", "/etc/barbacane/admind.toml"]
+conf-files = ["/etc/barbacane/analyzer.toml", "/etc/barbacane/client.toml", "/etc/barbacane/admind.toml", "/etc/barbacane/optique.toml"]
 assets = [
   ["target/release/barbacane-client", "usr/bin/", "755"],
   ["target/release/barbacane-analyzer", "usr/bin/", "755"],
   ["target/release/barbacane-admind", "usr/bin/", "755"],
+  ["target/release/barbacane-optique", "usr/bin/", "755"],
+  ["../../systeme/etc/optique.toml", "etc/barbacane/", "644"],
+  ["../../systeme/systemd/barbacane-optique.service", "usr/lib/systemd/system/", "644"],
   ["../../systeme/etc/analyzer.toml", "etc/barbacane/", "644"],
   ["../../systeme/etc/client.toml", "etc/barbacane/", "644"],
   ["../../systeme/etc/admind.toml", "etc/barbacane/", "644"],

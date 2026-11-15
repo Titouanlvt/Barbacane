@@ -1,0 +1,48 @@
+[Unit]
+Description=Barbacane : disques optiques (lecture de toutes les sessions, gravure vérifiée, effacement complet)
+After=local-fs.target
+
+[Service]
+ExecStart=/usr/bin/barbacane-optique -c /etc/barbacane/optique.toml
+Environment=RUST_LOG=info
+User=barbacane-optique
+Group=barbacane
+SupplementaryGroups=cdrom barbacane-kiosk
+UMask=0027
+RuntimeDirectory=barbacane
+RuntimeDirectoryPreserve=yes
+RuntimeDirectoryMode=0755
+StateDirectory=barbacane/optique barbacane/optique/entree barbacane/optique/travail
+StateDirectoryMode=0750
+# Lit les fichiers sains à graver (dossier de préparation de l'analyseur)
+ReadOnlyPaths=/var/lib/barbacane/sortie
+# Seul le lecteur optique : sr (bloc) et sg (SCSI générique, commandes de gravure)
+DevicePolicy=closed
+DeviceAllow=block-sr rw
+DeviceAllow=char-sg rw
+MemoryMax=2G
+TasksMax=64
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictRealtime=yes
+LockPersonality=yes
+# bubblewrap : espaces de noms (et boucle locale de l'espace réseau isolé : AF_NETLINK)
+RestrictNamespaces=user mnt pid ipc net uts cgroup
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+IPAddressDeny=any
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service @mount @sandbox
+SystemCallFilter=~@obsolete @raw-io @reboot @swap @module @clock @cpu-emulation @debug
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

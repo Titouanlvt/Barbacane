@@ -1,0 +1,7 @@
+# barbacane-optique : lecteur de disques optiques
+device = "/dev/sr0"
+# Nœuds SCSI génériques du lecteur (gravure) ; vide : xorriso passe par /dev/sr0
+extra_devices = []
+entree_dir = "/var/lib/barbacane/optique/entree"   # déclaré dans [[src_local_dirs]] d'usbsas
+stage_dir = "/var/lib/barbacane/sortie"
+travail_dir = "/var/lib/barbacane/optique/travail"

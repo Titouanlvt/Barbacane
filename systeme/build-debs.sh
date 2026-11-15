@@ -27,7 +27,7 @@ cargo build --release --locked -p usbsas-usbsas -p usbsas-net -p usbsas-cmdexec 
     -p usbsas-scsi2files -p usbsas-tar2files -p usbsas-usbdev -p usbsas-hid
 cargo-deb --no-build -p usbsas-usbsas
 cargo-deb --no-build -p usbsas-hid
-cargo build --release --locked -p barbacane-client -p barbacane-analyzer -p barbacane-admind
+cargo build --release --locked -p barbacane-client -p barbacane-analyzer -p barbacane-admind -p barbacane-optique
 cargo-deb --no-build -p barbacane-client
 mkdir -p "$OUT"
 cp "$CARGO_TARGET_DIR"/debian/usbsas-server_*.deb "$CARGO_TARGET_DIR"/debian/usbsas-hid_*.deb "$CARGO_TARGET_DIR"/debian/barbacane_*.deb "$OUT/"
