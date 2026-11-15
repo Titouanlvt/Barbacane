@@ -33,6 +33,8 @@ jobs:
           restore-keys: iso-
       - name: paquets
         run: . "$HOME/.cargo/env" && systeme/build-debs.sh
+      - name: garde-fou Proxmox des paquets (dpkg -i refusé si /etc/pve)
+        run: tests/garde-fou/paquets.sh systeme/mkosi/paquets
       - uses: actions/cache/save@v4
         with:
           path: target/production

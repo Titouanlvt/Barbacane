@@ -1,0 +1,9 @@
+# 2026-11-15T10:49:21+00:00 VM 902, commit 5227d14, paquets de systeme/mkosi/paquets (construits par build-iso.sh)
+OK    barbacane : dpkg -i refusé sur un hôte Proxmox, aucun fichier posé
+OK    usbsas-server : dpkg -i refusé sur un hôte Proxmox, aucun fichier posé
+OK    usbsas-hid : dpkg -i refusé sur un hôte Proxmox, aucun fichier posé
+GARDE-FOU PAQUETS : OK
+code de sortie : 0
+ls: cannot access '/etc/pve': No such file or directory
+0
+blacklist.conf

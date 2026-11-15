@@ -1,0 +1,13 @@
+# 2026-11-15T10:49:21+00:00 VM 902 barbacane-utilisateur (Debian 13.7), commit 5227d14
+OK    systeme/install.sh refuse sur un hôte Proxmox (code 1, aucune commande lancée)
+OK    systeme/iso/configurer.sh refuse sur un hôte Proxmox (code 1, aucune commande lancée)
+OK    systeme/deb/preinst refuse sur un hôte Proxmox (code 1, aucune commande lancée)
+OK    noyau/usbsas-hid/debian/preinst refuse sur un hôte Proxmox (code 1, aucune commande lancée)
+OK    noyau/usbsas-usbsas/debian/preinst refuse sur un hôte Proxmox (code 1, aucune commande lancée)
+OK    systeme/install.sh passe le garde-fou hors Proxmox (premier appel : apt-get update -q)
+OK    systeme/iso/configurer.sh passe le garde-fou hors Proxmox (premier appel : install -m 644 /usr/share/barbacane/usbsas-config.toml /etc/usbsas/config.toml)
+OK    systeme/deb/preinst accepte hors Proxmox
+OK    noyau/usbsas-hid/debian/preinst accepte hors Proxmox
+OK    noyau/usbsas-usbsas/debian/preinst accepte hors Proxmox
+GARDE-FOU : OK
+code de sortie : 0
