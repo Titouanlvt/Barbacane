@@ -68,11 +68,13 @@ impl Media {
         let etat = if self.blank {
             "vierge".to_string()
         } else {
-            format!(
-                "{} session(s), {} Mo",
-                self.sessions.len(),
-                self.readable_blocks * 2048 / 1_000_000
-            )
+            let o = self.data_sessions().map(|s| s.blocks).sum::<u64>() * 2048;
+            let taille = if o >= 1_000_000 {
+                format!("{} Mo", o / 1_000_000)
+            } else {
+                format!("{} ko", o.div_ceil(1000))
+            };
+            format!("{} session(s), {taille}", self.sessions.len())
         };
         format!("{} ({etat})", self.kind)
     }
@@ -180,6 +182,7 @@ Write speed H:   1764k , 10.0xC
         assert_eq!(m.sessions[0].volume, "HP-ESXI-6.0.0-ISO-600.9.3.30.2");
         assert_eq!(m.overall_blocks, 359847);
         assert_eq!(m.data_sessions().count(), 1);
+        assert_eq!(m.label(), "CD-RW (1 session(s), 387 Mo)");
     }
 
     #[test]
