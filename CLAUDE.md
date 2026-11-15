@@ -64,4 +64,7 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
 2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).
 3. Charte : thème Nuit (option), animations d'analyse, bandeau d'étapes.
+5. « Tout Rust » : ntfs-3g et FatFs (C, `noyau/usbsas-fsrw`, isolés par seccomp) restent ; les remplacer
+   (crates `fatfs`, `ntfs`) ferait perdre l'exFAT et l'écriture NTFS (sortie FAT32 seule, 4 Go/fichier).
+   Décision du 15/11 : fiabilité d'abord, chantier à part avec sa propre campagne de preuves.
 4. Image mkosi jamais construite ; drop-in tmpfs non supprimé à la purge (mineur).

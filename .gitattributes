@@ -1,2 +1,5 @@
 usbsas-fsrw/ntfs3g/src/ntfs-3g/** linguist-vendored
 usbsas-fsrw/ff/src/ff/** linguist-vendored
+# Bibliothèques C tierces embarquées par usbsas (lecture/écriture NTFS et FAT/exFAT) : hors statistiques GitHub
+noyau/usbsas-fsrw/ntfs3g/** linguist-vendored
+noyau/usbsas-fsrw/ff/src/ff/** linguist-vendored
