@@ -29,6 +29,7 @@ proto3_pb2.py
 *.nav
 *.out
 *.pdf
+!docs/Barbacane-installation.pdf
 *.snm
 *.toc
 *.vrb
