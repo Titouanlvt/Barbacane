@@ -29,7 +29,9 @@ ProtectControlGroups=yes
 ProtectClock=yes
 ProtectHostname=yes
 RestrictRealtime=yes
-RestrictSUIDSGID=yes
+# Pas de RestrictSUIDSGID : son filtre seccomp fait échouer les montages de bubblewrap 0.12
+# (« Can't open source /usr: Function not implemented ») ; NoNewPrivileges=yes et les montages
+# nosuid de bwrap empêchent déjà tout gain de privilège par setuid/setgid.
 LockPersonality=yes
 # bubblewrap a besoin des espaces de noms utilisateur
 RestrictNamespaces=user mnt pid ipc net uts cgroup

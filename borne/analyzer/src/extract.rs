@@ -192,8 +192,8 @@ impl Extractor {
                     "--symlink",
                     "usr/bin",
                     "/bin",
-                    "--proc",
-                    "/proc",
+                    // Pas de /proc : inutile à 7-Zip, et ProtectKernelTunables/ProtectKernelLogs du
+                    // service interdisent d'en monter un neuf (bwrap échouait sur la borne).
                     "--dev",
                     "/dev",
                     "--tmpfs",
