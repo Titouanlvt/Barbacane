@@ -29,7 +29,8 @@ members = [
   "borne/analyzer",
   "borne/parcours",
   "borne/client",
-  "borne/admind"
+  "borne/admind",
+  "borne/optique"
 ]
 default-members = [
   "noyau/usbsas-utils",
@@ -56,7 +57,8 @@ default-members = [
   "borne/analyzer",
   "borne/parcours",
   "borne/client",
-  "borne/admind"
+  "borne/admind",
+  "borne/optique"
 ]
 resolver = "3"
 
