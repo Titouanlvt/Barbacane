@@ -91,6 +91,9 @@ pub struct App {
     optique_avance: Option<crate::optique::Avancement>,
     /// Disque → disque : le disque analysé a bien été retiré (échange effectué)
     echange_fait: bool,
+    /// Disque écarté (« Abandonner », fin d'opération) : ignoré jusqu'à son retrait, pour ne pas
+    /// le reprendre en boucle et laisser choisir une clé quand un disque reste dans le lecteur
+    disque_ecarte: bool,
 }
 
 pub fn run(cfg: Config) -> iced::Result {
@@ -146,6 +149,7 @@ impl App {
             optique: None,
             optique_avance: None,
             echange_fait: false,
+            disque_ecarte: false,
         };
         let t = app.refresh_etat();
         (app, t)
@@ -298,9 +302,12 @@ impl App {
             .travail
             .as_ref()
             .is_some_and(|t| t["fini"].as_bool() != Some(true));
+        if !e.present {
+            self.disque_ecarte = false;
+        }
         match &self.screen {
             // Un disque de données inséré est une source inconnue, comme une clé.
-            Screen::Accueil if e.present && e.donnees && !occupe => {
+            Screen::Accueil if e.present && e.donnees && !occupe && !self.disque_ecarte => {
                 self.src = Some(barbacane_parcours::optique(&e.libelle));
                 self.screen = Screen::Choix;
             }
@@ -367,6 +374,9 @@ impl App {
     }
 
     fn reset(&mut self) {
+        if self.optique.as_ref().is_some_and(|e| e.present) {
+            self.disque_ecarte = true;
+        }
         self.screen = Screen::Accueil;
         self.src = None;
         self.dst = None;
