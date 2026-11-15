@@ -4,6 +4,9 @@ analyzer_url = "http://127.0.0.1:8042"
 admin_socket = "/run/barbacane/admin.sock"
 stage_dir = "/var/lib/barbacane/sortie"
 export_dir = "/var/lib/barbacane/export"
+# Disques optiques (barbacane-optique) ; optique_socket = "" : pas de lecteur
+optique_socket = "/run/barbacane/optique.sock"
+optique_entree = "/var/lib/barbacane/optique/entree"
 title = "Barbacane"
 signatures_max_age_days = 7
 # Identification par badge : prévue, non disponible

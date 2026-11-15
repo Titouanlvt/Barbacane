@@ -9,6 +9,7 @@ use crate::keyboard::{Input, Key};
 use crate::mesure::{self, Mesure};
 use crate::style;
 use crate::worker::{self, Cmd, Ev};
+use barbacane_parcours::est_optique;
 use barbacane_parcours::{
     Analysis, Analyzer, Devices, Event, PasswordRequest,
     proto::common::{Status, UsbDevice},
@@ -22,6 +23,8 @@ use std::sync::mpsc::Sender;
 pub enum Mode {
     Copier,
     Blanchir,
+    /// Graver les fichiers sains sur un disque optique réinscriptible
+    Graver,
 }
 
 #[derive(Debug)]
@@ -56,6 +59,11 @@ pub enum Msg {
     Etat(Result<serde_json::Value, String>),
     Tick,
     Admin(AdminMsg),
+    /// Interrogation périodique du lecteur optique
+    OptiqueTick,
+    Optique(Result<crate::optique::Etat, String>),
+    Ejecter,
+    Fait(Result<serde_json::Value, String>),
 }
 
 pub struct App {
@@ -77,6 +85,12 @@ pub struct App {
     pub etat: Option<serde_json::Value>,
     dst_refused: Option<String>,
     pub admin: AdminUi,
+    /// Dernier état connu du lecteur optique (None : pas de lecteur ou service absent)
+    optique: Option<crate::optique::Etat>,
+    /// Avancement de l'opération en cours sur le disque
+    optique_avance: Option<crate::optique::Avancement>,
+    /// Disque → disque : le disque analysé a bien été retiré (échange effectué)
+    echange_fait: bool,
 }
 
 pub fn run(cfg: Config) -> iced::Result {
@@ -129,6 +143,9 @@ impl App {
             etat: None,
             dst_refused: None,
             admin,
+            optique: None,
+            optique_avance: None,
+            echange_fait: false,
         };
         let t = app.refresh_etat();
         (app, t)
@@ -149,10 +166,14 @@ impl App {
                 self.cfg.stage_dir.clone(),
                 self.cfg.export_dir.clone(),
                 self.cfg.analyzer_url.clone(),
+                self.cfg.optique_socket.clone(),
+                self.cfg.optique_entree.clone(),
             ),
-            |(sock, stage, export, url)| {
+            |(sock, stage, export, url, optique_socket, optique_entree)| {
                 let (sock, stage, export, url) =
                     (sock.clone(), stage.clone(), export.clone(), url.clone());
+                let (optique_socket, optique_entree) =
+                    (optique_socket.clone(), optique_entree.clone());
                 iced::stream::channel(
                     100,
                     move |mut out: iced::futures::channel::mpsc::Sender<Ev>| async move {
@@ -160,7 +181,12 @@ impl App {
                         let (tx, mut rx) = iced::futures::channel::mpsc::unbounded();
                         worker::spawn(
                             sock,
-                            worker::Dirs { stage, export },
+                            worker::Dirs {
+                                stage,
+                                export,
+                                optique_socket,
+                                optique_entree,
+                            },
                             Analyzer::new(&url),
                             tx,
                         );
@@ -175,7 +201,13 @@ impl App {
         )
         .map(Msg::Worker);
         let tick = iced::time::every(std::time::Duration::from_secs(60)).map(|_| Msg::Tick);
-        Subscription::batch([w, tick])
+        let mut subs = vec![w, tick];
+        if !self.cfg.optique_socket.is_empty() {
+            subs.push(
+                iced::time::every(std::time::Duration::from_secs(2)).map(|_| Msg::OptiqueTick),
+            );
+        }
+        Subscription::batch(subs)
     }
 
     fn send(&self, c: Cmd) {
@@ -228,6 +260,7 @@ impl App {
                     self.reset();
                 }
             }
+            Screen::Sortie if self.mode == Mode::Graver => (),
             Screen::Sortie => {
                 let src = self.src.clone();
                 let cand = self
@@ -255,6 +288,84 @@ impl App {
         }
     }
 
+    /// Nouvel état du lecteur optique.
+    fn on_optique(&mut self, e: Option<crate::optique::Etat>) {
+        let Some(e) = e else {
+            self.optique = None;
+            return;
+        };
+        let occupe = e
+            .travail
+            .as_ref()
+            .is_some_and(|t| t["fini"].as_bool() != Some(true));
+        match &self.screen {
+            // Un disque de données inséré est une source inconnue, comme une clé.
+            Screen::Accueil if e.present && e.donnees && !occupe => {
+                self.src = Some(barbacane_parcours::optique(&e.libelle));
+                self.screen = Screen::Choix;
+            }
+            // Disque retiré avant le choix : retour à l'accueil
+            Screen::Choix if self.src.as_ref().is_some_and(est_optique) && !e.present => {
+                self.optique = Some(e);
+                self.reset();
+                return;
+            }
+            _ => (),
+        }
+        if self.screen_sortie_graver() {
+            if self.src.as_ref().is_some_and(est_optique) && !e.present {
+                self.echange_fait = true;
+            }
+            self.optique = Some(e);
+            self.choisir_disque();
+        } else {
+            self.optique = Some(e);
+        }
+    }
+
+    fn screen_sortie_graver(&self) -> bool {
+        matches!(self.screen, Screen::Sortie) && self.mode == Mode::Graver
+    }
+
+    /// Destination « disque » : retenue seulement si elle est utilisable.
+    fn choisir_disque(&mut self) {
+        if !self.screen_sortie_graver() {
+            return;
+        }
+        self.dst = None;
+        self.dst_refused = None;
+        if self.enrolled().is_some() {
+            self.dst_refused = Some(
+                "Le mode « clés enrôlées » est actif : seules les clés enrôlées sont acceptées en sortie, \
+                 la gravure sur disque n'est pas autorisée."
+                    .into(),
+            );
+            return;
+        }
+        let Some(e) = &self.optique else { return };
+        let attente = self.src.as_ref().is_some_and(est_optique) && !self.echange_fait;
+        if attente || !e.present {
+            return;
+        }
+        if !e.reinscriptible {
+            self.dst_refused = Some(format!(
+                "Ce disque ({}) n'est pas réinscriptible : utilisez un CD-RW, DVD-RW, DVD+RW ou BD-RE.",
+                e.libelle
+            ));
+            return;
+        }
+        self.dst = Some(barbacane_parcours::optique(&e.libelle));
+    }
+
+    /// Ordre simple au service optique (éjection…), sans bloquer l'interface.
+    fn optique_op(&self, op: &'static str) -> Task<Msg> {
+        let sock = self.cfg.optique_socket.clone();
+        Task::perform(
+            smol::unblock(move || crate::optique::requete(&sock, op)),
+            Msg::Fait,
+        )
+    }
+
     fn reset(&mut self) {
         self.screen = Screen::Accueil;
         self.src = None;
@@ -272,6 +383,7 @@ impl App {
                 if let Some(src) = self.src.clone() {
                     self.mode = mode;
                     self.progress = None;
+                    self.optique_avance = None;
                     self.analysis_progress = (0, 0, 0);
                     self.screen = Screen::Analyse;
                     self.send(Cmd::Analyse(src));
@@ -305,7 +417,14 @@ impl App {
             }
             Msg::VersSortie => {
                 self.dst = None;
+                self.dst_refused = None;
+                self.echange_fait = false;
                 self.screen = Screen::Sortie;
+                // Disque → disque : le disque analysé est éjecté pour l'échange
+                if self.mode == Mode::Graver && self.src.as_ref().is_some_and(est_optique) {
+                    return self.optique_op("ejecter");
+                }
+                self.choisir_disque();
                 Task::none()
             }
             Msg::Ecrire => self.start_write(false),
@@ -329,6 +448,21 @@ impl App {
                 Task::none()
             }
             Msg::Tick => self.refresh_etat(),
+            Msg::OptiqueTick => Task::perform(
+                crate::optique::etat_async(self.cfg.optique_socket.clone()),
+                Msg::Optique,
+            ),
+            Msg::Optique(r) => {
+                self.on_optique(r.ok());
+                Task::none()
+            }
+            Msg::Ejecter => self.optique_op("ejecter"),
+            Msg::Fait(r) => {
+                if let Err(e) = r {
+                    log::warn!("lecteur optique : {e}");
+                }
+                Task::none()
+            }
             Msg::Admin(am) => admin_ui::update(self, am),
         }
     }
@@ -339,12 +473,13 @@ impl App {
         };
         let dst = match self.mode {
             Mode::Blanchir => src.clone(),
-            Mode::Copier => match self.dst.clone() {
+            Mode::Copier | Mode::Graver => match self.dst.clone() {
                 Some(d) => d,
                 None => return Task::none(),
             },
         };
         self.progress = None;
+        self.optique_avance = None;
         self.screen = Screen::Ecriture;
         self.send(Cmd::Write {
             src,
@@ -407,7 +542,13 @@ impl App {
                     retry: false,
                 }
             }
-            Ev::Written(Ok(n)) => self.screen = Screen::Fin(n),
+            Ev::Written(Ok(n)) => {
+                self.screen = Screen::Fin(n);
+                // Disque source rendu à l'utilisateur (la gravure éjecte déjà le disque gravé)
+                if self.src.as_ref().is_some_and(est_optique) {
+                    return self.optique_op("ejecter");
+                }
+            }
             Ev::Written(Err(e)) => {
                 self.screen = Screen::Erreur {
                     message: match self.mode {
@@ -418,11 +559,15 @@ impl App {
                         Mode::Copier => format!(
                             "L'écriture sur la clé de destination a échoué : {e}.\nNe l'utilisez pas en l'état ; réessayez."
                         ),
+                        Mode::Graver => format!(
+                            "La gravure du disque a échoué : {e}.\nNe l'utilisez pas en l'état ; réessayez, ou essayez un autre disque."
+                        ),
                     },
                     retry: true,
                 }
             }
             Ev::Exported(r) => return admin_ui::exported(self, r),
+            Ev::Optique(a) => self.optique_avance = Some(a),
         }
         Task::none()
     }
@@ -473,13 +618,23 @@ impl App {
                 ]
                 .spacing(30),
             ]),
-            Screen::Ecriture => self.view_progress(
-                match self.mode {
-                    Mode::Copier => "Écriture sur la clé de destination",
-                    Mode::Blanchir => "Blanchiment de la clé",
-                },
-                "Ne retirez aucune clé.",
-            ),
+            Screen::Ecriture => {
+                let disque =
+                    self.src.as_ref().is_some_and(est_optique) || self.mode == Mode::Graver;
+                self.view_progress(
+                    match self.mode {
+                        Mode::Copier => "Écriture sur la clé de destination",
+                        Mode::Graver => "Gravure du disque",
+                        Mode::Blanchir if disque => "Blanchiment du disque",
+                        Mode::Blanchir => "Blanchiment de la clé",
+                    },
+                    if disque {
+                        "Ne retirez ni la clé ni le disque."
+                    } else {
+                        "Ne retirez aucune clé."
+                    },
+                )
+            }
             Screen::Fin(n) => centre(column![
                 icone_etat(ICONE_SAIN, 110.0, style::SAIN),
                 titre("Terminé"),
@@ -617,16 +772,58 @@ impl App {
             .as_ref()
             .map(barbacane_parcours::describe)
             .unwrap_or_default();
-        centre(column![
-            titre("Clé détectée"),
+        let disque = self.src.as_ref().is_some_and(est_optique);
+        let mut choix = row![grand_choix(
+            "Copier vers une clé de destination",
+            if disque {
+                "Toutes les sessions du disque sont analysées ;\nles fichiers sains sont copiés sur une clé effacée et formatée."
+            } else {
+                "Les fichiers sains sont copiés sur une clé de destination,\nqui sera effacée et formatée."
+            },
+            Msg::Choisir(Mode::Copier)
+        )]
+        .spacing(30);
+        if self.optique.is_some() {
+            choix = choix.push(grand_choix(
+                "Graver sur un disque",
+                if disque {
+                    "Les fichiers sains sont gravés sur un disque réinscriptible\n(échange de disque demandé), puis vérifiés."
+                } else {
+                    "Les fichiers sains sont gravés sur un disque réinscriptible\n(CD-RW, DVD-RW, DVD+RW, BD-RE), puis vérifiés."
+                },
+                Msg::Choisir(Mode::Graver),
+            ));
+        }
+        let reinscriptible = self.optique.as_ref().is_some_and(|e| e.reinscriptible);
+        if !disque {
+            choix = choix.push(grand_choix(
+                "Blanchir cette clé",
+                "La clé est analysée, entièrement effacée,\npuis seuls ses fichiers sains y sont réécrits.",
+                Msg::Choisir(Mode::Blanchir),
+            ));
+        } else if reinscriptible {
+            choix = choix.push(grand_choix(
+                "Blanchir ce disque",
+                "Le disque est analysé, effacé COMPLÈTEMENT (vérifié),\npuis seuls ses fichiers sains y sont regravés.",
+                Msg::Choisir(Mode::Blanchir),
+            ));
+        }
+        let mut c = column![
+            titre(if disque {
+                "Disque détecté"
+            } else {
+                "Clé détectée"
+            }),
             texte(&d),
             Space::new().height(30),
-            row![
-                grand_choix("Copier vers une clé de destination", "Les fichiers sains sont copiés sur une clé de destination,\nqui sera effacée et formatée.", Msg::Choisir(Mode::Copier)),
-                grand_choix("Blanchir cette clé", "La clé est analysée, entièrement effacée,\npuis seuls ses fichiers sains y sont réécrits.", Msg::Choisir(Mode::Blanchir)),
-            ]
-            .spacing(40),
-        ])
+            choix,
+        ];
+        if disque && !reinscriptible {
+            c = c.push(petit(
+                "Ce disque n'est pas réinscriptible : il ne peut pas être blanchi (seulement lu).",
+            ));
+        }
+        centre(c)
     }
 
     fn view_progress(&self, t: &str, sub: &str) -> Element<'_, Msg> {
@@ -664,6 +861,24 @@ impl App {
                     }
                 }
             }
+        }
+        if let Some((phase, p, restant)) = &self.optique_avance {
+            c = c.push(texte(&format!("Disque : {phase}")));
+            c = c.push(
+                progress_bar(0.0..=100.0, *p)
+                    .length(Length::Fixed(700.0))
+                    .girth(28)
+                    .style(style::jauge),
+            );
+            let mut l = format!("{p:.0} %");
+            if let Some(r) = restant {
+                l.push_str(&format!(
+                    "  ·  Temps restant estimé : {}",
+                    mesure::duree(std::time::Duration::from_secs(*r))
+                ));
+            }
+            c = c.push(texte(&l));
+            c = c.push(petit("Ne retirez pas le disque pendant l'opération."));
         }
         let (done, total, scanned) = self.analysis_progress;
         if matches!(self.screen, Screen::Analyse) && total > 0 {
@@ -815,6 +1030,14 @@ impl App {
                 Msg::VersSortie,
                 style::primaire,
             ),
+            Mode::Graver => bouton(
+                "Choisir le disque de destination",
+                Msg::VersSortie,
+                style::primaire,
+            ),
+            Mode::Blanchir if self.src.as_ref().is_some_and(est_optique) => {
+                bouton("Blanchir le disque", Msg::Blanchir, style::danger)
+            }
             Mode::Blanchir => bouton("Blanchir la clé", Msg::Blanchir, style::danger),
         };
         c = c.push(Space::new().height(10)).push(
@@ -827,7 +1050,57 @@ impl App {
         centre(c)
     }
 
+    fn view_sortie_disque(&self) -> Element<'_, Msg> {
+        let attente = self.src.as_ref().is_some_and(est_optique) && !self.echange_fait;
+        let mut c = if attente {
+            column![
+                titre("Retirez le disque analysé"),
+                texte("puis insérez le disque réinscriptible de destination dans le lecteur."),
+            ]
+        } else {
+            column![
+                titre("Insérez le disque de destination"),
+                texte("CD-RW, DVD-RW, DVD+RW ou BD-RE, dans le lecteur de la borne."),
+            ]
+        }
+        .spacing(14)
+        .align_x(Alignment::Center);
+        if let Some(r) = &self.dst_refused {
+            c = c.push(container(texte(r)).padding(12).style(style::alerte));
+        }
+        let mut go = button(
+            text("Effacer ce disque et y graver les fichiers")
+                .size(24)
+                .font(style::CORPS_GRAS),
+        )
+        .padding([18, 30])
+        .style(style::primaire);
+        if let Some(d) = &self.dst {
+            c = c.push(carte(column![
+                texte(&format!("Disque de destination : {}", d.description)),
+                texte_c(
+                    "Son contenu actuel sera entièrement effacé (effacement complet), puis les fichiers \
+                     gravés à vitesse réduite et relus pour vérification.",
+                    style::ROUGE
+                ),
+            ]));
+            go = go.on_press(Msg::Ecrire);
+        }
+        c = c.push(Space::new().height(20)).push(
+            row![
+                bouton("Abandonner", Msg::Terminer, style::secondaire),
+                bouton("Éjecter le disque", Msg::Ejecter, style::secondaire),
+                go
+            ]
+            .spacing(30),
+        );
+        centre(c)
+    }
+
     fn view_sortie(&self) -> Element<'_, Msg> {
+        if self.mode == Mode::Graver {
+            return self.view_sortie_disque();
+        }
         let mut c = column![
             titre("Insérez la clé de destination"),
             texte("sur le port de sortie de la borne.")

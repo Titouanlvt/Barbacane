@@ -263,7 +263,31 @@ impl Devices {
 }
 
 /// Description d'une clé pour les rapports (horodatage + n° de série).
+/// Numéro de série du pseudo-périphérique « lecteur optique » (jamais celui d'une vraie clé :
+/// usbsas ne connaît que l'USB ; le disque passe par un dossier local).
+pub const OPTIQUE: &str = "BARBACANE-LECTEUR-OPTIQUE";
+
+/// Le périphérique désigne-t-il le lecteur optique ?
+pub fn est_optique(d: &UsbDevice) -> bool {
+    d.serial == OPTIQUE && d.vendorid == 0 && d.productid == 0
+}
+
+/// Pseudo-périphérique « lecteur optique », décrit par `libelle` (type et contenu du disque).
+pub fn optique(libelle: &str) -> UsbDevice {
+    UsbDevice {
+        manufacturer: "Disque optique".into(),
+        description: libelle.into(),
+        serial: OPTIQUE.into(),
+        is_src: true,
+        is_dst: true,
+        ..Default::default()
+    }
+}
+
 pub fn describe(d: &UsbDevice) -> String {
+    if est_optique(d) {
+        return format!("{} : {}", d.manufacturer, d.description);
+    }
     format!(
         "{} {} (n° de série {}, {:04x}:{:04x})",
         d.manufacturer.trim(),
@@ -355,6 +379,29 @@ pub fn analyse(
     sink: u64,
     ev: &Sender<Event>,
 ) -> Result<Analysis> {
+    analyse_source(comm, analyzer, src, sink, true, ev)
+}
+
+/// Analyse d'un dossier local déclaré dans `[[src_local_dirs]]` (disque optique extrait par
+/// barbacane-optique) : même parcours qu'une clé inconnue, sans choix de partition.
+pub fn analyse_dossier(
+    comm: &mut impl ProtoReqUsbsas,
+    analyzer: &Analyzer,
+    src: u64,
+    sink: u64,
+    ev: &Sender<Event>,
+) -> Result<Analysis> {
+    analyse_source(comm, analyzer, src, sink, false, ev)
+}
+
+fn analyse_source(
+    comm: &mut impl ProtoReqUsbsas,
+    analyzer: &Analyzer,
+    src: u64,
+    sink: u64,
+    usb: bool,
+    ev: &Sender<Event>,
+) -> Result<Analysis> {
     let uid = comm.userid(proto::usbsas::RequestUserId {})?.userid;
     comm.inittransfer(proto::usbsas::RequestInitTransfer {
         source: src,
@@ -362,16 +409,18 @@ pub fn analyse(
         fstype: None,
         pin: None,
     })?;
-    let parts = comm
-        .partitions(proto::usbsas::RequestPartitions {})?
-        .partitions;
-    let Some(index) = default_partition(&parts) else {
-        let _ = comm.end();
-        return Err(Error::User(
-            "aucun système de fichiers lisible sur la clé".into(),
-        ));
-    };
-    comm.openpartition(proto::usbsas::RequestOpenPartition { index })?;
+    if usb {
+        let parts = comm
+            .partitions(proto::usbsas::RequestPartitions {})?
+            .partitions;
+        let Some(index) = default_partition(&parts) else {
+            let _ = comm.end();
+            return Err(Error::User(
+                "aucun système de fichiers lisible sur la clé".into(),
+            ));
+        };
+        comm.openpartition(proto::usbsas::RequestOpenPartition { index })?;
+    }
     comm.selectfiles(proto::usbsas::RequestSelectFiles {
         selected: vec!["/".into()],
     })?;

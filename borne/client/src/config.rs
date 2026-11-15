@@ -14,6 +14,10 @@ pub struct Config {
     pub stage_dir: String,
     /// Dossier d'export des journaux (même chemin que dans `[[src_local_dirs]]` d'usbsas)
     pub export_dir: String,
+    /// Socket du service des disques optiques (barbacane-optique) ; vide : pas de lecteur
+    pub optique_socket: String,
+    /// Dossier où le disque est extrait (même chemin que dans `[[src_local_dirs]]` d'usbsas)
+    pub optique_entree: String,
     pub title: String,
     /// Âge des signatures antivirales au-delà duquel une alerte s'affiche (jours)
     pub signatures_max_age_days: u64,
@@ -29,6 +33,8 @@ impl Default for Config {
             admin_socket: "/run/barbacane/admin.sock".into(),
             stage_dir: "/var/lib/barbacane/sortie".into(),
             export_dir: "/var/lib/barbacane/export".into(),
+            optique_socket: "/run/barbacane/optique.sock".into(),
+            optique_entree: "/var/lib/barbacane/optique/entree".into(),
             title: "Barbacane".into(),
             signatures_max_age_days: 7,
             badge: false,

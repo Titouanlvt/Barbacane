@@ -7,6 +7,7 @@ mod app;
 mod config;
 mod keyboard;
 mod mesure;
+mod optique;
 mod style;
 mod worker;
 

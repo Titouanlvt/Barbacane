@@ -38,6 +38,8 @@ pub enum Ev {
     Analysed(Result<std::sync::Arc<parcours::Analysis>, String>),
     Written(Result<u64, String>),
     Exported(Result<(), String>),
+    /// Avancement d'une opération sur le disque optique (phase, %, secondes restantes)
+    Optique(crate::optique::Avancement),
 }
 
 /// Chemins des dossiers locaux déclarés dans `[[src_local_dirs]]` d'usbsas.
@@ -45,6 +47,9 @@ pub enum Ev {
 pub struct Dirs {
     pub stage: String,
     pub export: String,
+    /// Socket de barbacane-optique et dossier où le disque est extrait
+    pub optique_socket: String,
+    pub optique_entree: String,
 }
 
 pub struct Worker {
@@ -173,6 +178,9 @@ impl Worker {
         src: &UsbDevice,
         ev: &Sender<Event>,
     ) -> Result<parcours::Analysis, String> {
+        if parcours::est_optique(src) {
+            return self.analyse_optique(ev);
+        }
         let mut s = self.fresh()?;
         let devs = parcours::devices(&mut s).map_err(|e| e.to_string())?;
         let id = devs.find(src, false).ok_or("la clé a été retirée")?;
@@ -180,6 +188,31 @@ impl Worker {
             .sink
             .ok_or("configuration usbsas incomplète ([command] absent)")?;
         parcours::analyse(&mut s, &self.analyzer, id, sink, ev).map_err(|e| e.to_string())
+    }
+
+    /// Disque optique : barbacane-optique extrait TOUTES les sessions dans le dossier d'entrée,
+    /// puis ce dossier suit le parcours d'une clé inconnue (usbsas → analyseur).
+    fn analyse_optique(&mut self, ev: &Sender<Event>) -> Result<parcours::Analysis, String> {
+        let sock = self.dirs.optique_socket.clone();
+        let out = self.out.clone();
+        crate::optique::executer(&sock, "lire", &mut |a| {
+            let _ = out.unbounded_send(Ev::Optique(a));
+        })
+        .map_err(|e| format!("lecture du disque : {e}"))?;
+        let mut s = self.fresh()?;
+        let devs = parcours::devices(&mut s).map_err(|e| e.to_string())?;
+        let entree = self.dirs.optique_entree.clone();
+        let id = devs.local_dir(&entree).ok_or_else(|| {
+            format!("configuration usbsas incomplète ([[src_local_dirs]] {entree})")
+        })?;
+        let sink = devs
+            .sink
+            .ok_or("configuration usbsas incomplète ([command] absent)")?;
+        let r = parcours::analyse_dossier(&mut s, &self.analyzer, id, sink, ev)
+            .map_err(|e| e.to_string());
+        // Le contenu brut du disque n'a plus d'usage : seuls les fichiers sains sont préparés.
+        let _ = crate::optique::requete(&sock, "vider_entree");
+        r
     }
 
     fn write(
@@ -194,6 +227,16 @@ impl Worker {
             .analyzer
             .stage(job, &parcours::describe(src))
             .map_err(|e| e.to_string())?;
+        if parcours::est_optique(dst) {
+            // Gravure : effacement complet du disque, gravure à vitesse sûre, relecture sha256
+            let out = self.out.clone();
+            let t = crate::optique::executer(&self.dirs.optique_socket, "graver", &mut |a| {
+                let _ = out.unbounded_send(Ev::Optique(a));
+            })
+            .map_err(|e| format!("gravure : {e}"))?;
+            let _ = crate::optique::requete(&self.dirs.optique_socket, "ejecter");
+            return Ok(t["fichiers"].as_u64().unwrap_or(n));
+        }
         if wipe {
             let mut s = self.fresh()?;
             let devs = parcours::devices(&mut s).map_err(|e| e.to_string())?;
