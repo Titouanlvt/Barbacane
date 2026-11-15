@@ -1,0 +1,5 @@
+./barbacane-export-20261115-141508/dpkg-status
+./barbacane-export-20261115-141508/etat.json
+./barbacane-export-20261115-141508/journal.txt
+./barbacane-export-20261115-141508/rapports/20261115-135353-8f8ef795-4b05-49b8-bd84-fac651a001de.json
+./barbacane-export-20261115-141508/rapports/20261115-135748-cc201acc-aa74-42ce-a67e-a9a707d961f3.json

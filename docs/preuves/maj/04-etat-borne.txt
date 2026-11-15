@@ -1,0 +1,83 @@
+f BARBACANE
+
+Signatures antivirales : 6 jour(s)
+
+‘tat ce a 20rne
+
+Version Barbacane :
+Version usbsas :
+ClamAV:
+
+Âge des signatures :
+Règles YARA :
+
+Version du dernier paquet de mise à
+jour:
+
+Espace disque libre :
+
+Transferts journalisés :
+
+Retour au menu
+
+9.1.6
+
+9.3.4
+ClamAV 14,3
+Q jour(s)
+
+Q fichier(s]
+262611151949
+
+25.8 Go
+
+5
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+État de la borne
+
+Version Barbacane : 9.1.8
+
+Version usbsas : 5.3.4-1
+ClamAYV : ClamAV 1.4.3
+Âge des signatures : ® jour(s)
+Règles YARA : 8 fichier(s)
+Version du dernier paquet de mise à 262611151849
+jour :
+
+Espace disque libre : 25.8 Go
+Transferts journalisés : 5
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+— BARBACANE
+
+Version Barbacane :
+Version usbsas :
+
+ClamAY :
+
+Âge des signatures :
+
+Règles YARA :
+
+Version du dernier paquet de mise à
+jour :
+
+Espace disque libre :
+
+Transferts joeumalisés :
+
+6.1.9
+
+S.3.4-1
+ClamAV 143
+6 jour(s)
+
+8 Fichier(s)
+202611151849
+
+25.8 Go
+5
+

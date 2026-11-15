@@ -1,0 +1,270 @@
+--- /root/BARBACANE/campagne-finale-2/grub/01-demarrage-echap-4s.png
+
+
+
+--- /root/BARBACANE/campagne-finale-2/grub/02-demarrage-echap-8s.png
+BdsDxe: loading Boot0004 “debian” from HD(1,6PT,F0200530-77BF-415F-BTDC-C2545B004F5D, 0x000 , 0x1E8000) /XEFT\debian\shinx64 .efi
+BdsDxe: starting Boot0004 “debian” from HD(1,6PT,F6208530-77BF-415F-B7DC-C2545B004F5D , 0x600 , 0x1E8000) /XEFI%debian\shinx64 ef i
+
+XPROXMOX
+
+Start boot option
+DEP PP PP PP PP PP PP PP PP EPP PP PP PP PPPPPPPPPPPPPE PPT
+
+BdsDxe: loading Boot0004 “debian” from HD(1,6PT,F0200530-77BF-415F-BTDC-C2545B004F5D, 0x000 , 0x1E8000) /XEFT\debian\shinx64 .efi
+BdsDxe: starting Boot0004 “debian” from HD(1,6PT,F6208530-77BF-415F-B7DC-C2545B004F5D , 0x600 , 0x1E8000) /XEFI%debian\shinx64 ef i
+
+* PRO MO
+
+Start boot option
+DICO LDLC COCCLLL COCCLI CCC LCL LE CCC LL CCI CCC CC CL LCL LL LL CL
+
+Y PRO MO
+
+tart boot optio
+ATARI EE CEEEEEEEREEEnEMEEnE
+
+--- /root/BARBACANE/campagne-finale-2/grub/03-demarrage-echap-12s.png
+Ca D D D D |
+
++
+mèm
+©
+
+.117529]
+.117551]1
+.123144]
+.123164]
+.127877]
+.1278861
+.132959]
+.132568]1
+.139034]
+.1390421
+
+a: clean, 23463/1929536 files, 486154/7703808 blocks
+CON AR A RE PA RE A
+
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+
+0000 :05
+
+0000
+0000
+0000
+0000
+0000
+0000
+0000
+0000
+0000
+
+:05
+:05
+:05
+:05
+:05
+:05
+:05
+:07:
+‘07:10
+
+:01.
+:01.
+:02.
+:02.
+DER
+DER
+‘04.
+‘04.
+ic.
+
+: pci hp register failed with
+: Slot initialization failed
+: pci hp register failed with
+: Slot initialization failed
+: pci hp register failed with
+: Slot initialization failed
+: pci hp register failed with
+: Slot initialization failed
+: pci hp register failed with
+: Slot initialization failed
+
+evrevcecescese
+
+error
+
+error
+
+error
+
+error
+
+error
+
+SCI LC" LC" L/deu-sdaz: recouering journal
+
+Ca D D D D |
+
++
+mèm
+©
+
+.117529]
+.117551]1
+.123144]
+.123164]
+.127877]
+.1278861
+.132959]
+.132568]1
+.139034]
+.1390421
+
+a: clean, 23463/1929536 files, 486154/7703808 blocks
+CON AR A RE PA RE A
+
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+shpchp
+
+0000 :05
+
+0000
+0000
+0000
+0000
+0000
+0000
+0000
+0000
+0000
+
+:05
+:05
+:05
+:05
+:05
+:05
+:05
+:07:
+‘07:10
+
+:01.
+:01.
+:02.
+:02.
+DER
+DER
+‘04.
+‘04.
+ic.
+
+: pci hp register failed with
+: Slot initialization failed
+: pci hp register failed with
+: Slot initialization failed
+: pci hp register failed with
+: Slot initialization failed
+: pci hp register failed with
+: Slot initialization failed
+: pci hp register failed with
+: Slot initialization failed
+
+evrevcecescese
+
+error
+
+error
+
+error
+
+error
+
+error
+
+SCI LC" LC" L/deu-sdaz: recouering journal
+
+
+--- /root/BARBACANE/campagne-finale-2/grub/04-demarrage-echap-16s.png
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+a
+
+nsérez à c &ê à ana yser
+
+sur le port d'entrée de la borne.
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+Insérez la clé à analyser
+
+sur le port d'entrée de la borne.
+
+Tous les fichiers seront analysés, y compris le contenu des archives.
+Seuls Les fichiers sains seront copiés.
+
+Barbacane 8.16 — station blanche hors ligne Administration
+
+BARBACANE
+
+--- /root/BARBACANE/campagne-finale-2/grub/05-demarrage-echap-20s.png
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+a
+
+nsérez à c &ê à ana yser
+
+sur le port d'entrée de la borne.
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+Insérez la clé à analyser
+
+sur le port d'entrée de la borne.
+
+Tous les fichiers seront analysés, y compris le contenu des archives.
+Seuls Les fichiers sains seront copiés.
+
+Barbacane 8.16 — station blanche hors ligne Administration
+
+BARBACANE
+
+--- /root/BARBACANE/campagne-finale-2/grub/06-demarrage-echap-24s.png
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+a
+
+nsérez à c &ê à ana yser
+
+sur le port d'entrée de la borne.
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+Insérez la clé à analyser
+
+sur le port d'entrée de la borne.
+
+Tous les fichiers seront analysés, y compris le contenu des archives.
+Seuls Les fichiers sains seront copiés.
+
+Barbacane 8.16 — station blanche hors ligne Administration
+
+BARBACANE
+

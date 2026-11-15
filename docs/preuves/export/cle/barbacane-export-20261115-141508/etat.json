@@ -1,0 +1,28 @@
+{
+  "enrolled_mode": true,
+  "enrolled": [
+    {
+      "vendorid": 1921,
+      "productid": 21889,
+      "serial": "0501f66b357c3cb8eaaf6efb1d11265cc6fcdab3ce4e06b163ad06c25b56858f2dd900000000000000000000d8d8d3fcff960b108155810725ae0edb",
+      "description": "USB SanDisk 3.2Gen1 (n° de série 0501f66b35…ae0edb, 0781:5581)",
+      "added": "15/11/2026 13:53"
+    }
+  ],
+  "signatures_age_days": 0,
+  "versions": {
+    "barbacane": "0.1.0",
+    "usbsas": "0.3.4-1",
+    "clamav": "ClamAV 1.4.3"
+  },
+  "yara_rules": 0,
+  "update_version": 0,
+  "disk_free": "26.0 Go",
+  "reports": 2,
+  "limits": {
+    "max_depth": 5,
+    "max_files": 10000,
+    "max_total_size": 4294967296
+  },
+  "pin_set": true
+}

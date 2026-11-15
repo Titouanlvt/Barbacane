@@ -1,0 +1,1 @@
+Entering QEMU Monitor for VM 920 - type 'help' for help

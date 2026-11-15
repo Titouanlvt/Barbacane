@@ -1,0 +1,3 @@
+NAME    SIZE TRAN SERIAL                                                                                                                   MODEL
+sdc    57.3G usb  0501f66b357c3cb8eaaf6efb1d11265cc6fcdab3ce4e06b163ad06c25b56858f2dd900000000000000000000d8d8d3fcff960b108155810725ae0edb SanDisk 3.2Gen1
+└─sdc1 57.3G                                                                                                                               

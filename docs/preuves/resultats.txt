@@ -1,0 +1,53 @@
+OK [installation] : borne remise à l'état « installée » (instantané, REPRISE=1)
+OK [grub] : Échap tenu au démarrage : pas de menu GRUB, démarrage direct de la borne
+OK [pin] : premier PIN choisi, menu d'administration ouvert
+OK [pin] : mauvais PIN refusé (essais restants affichés)
+OK [pin] : bon PIN accepté après une erreur
+OK [enrolement] : clé enrôlée : elle figure dans la liste
+OK [enrolement] : mode « clés enrôlées » activé
+OK [transfert] : mot de passe d'archive demandé (clavier virtuel)
+OK [transfert] : écran : menaces détectées
+OK [transfert] : clé non enrôlée refusée en sortie
+OK [transfert] : clé non enrôlée intacte (rien n'y a été écrit)
+OK [transfert] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [transfert] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [transfert] : aucun fichier de la sortie ne contient EICAR
+OK [transfert] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [transfert] : archive chiffrée (bon mot de passe) copiée
+OK [transfert] : archive mixte : seul son fichier sain est extrait
+OK [transfert] : noms piégés (traversée, absolu) non écrits
+OK [transfert] : contenu précédent de la destination effacé (témoin absent)
+OK [transfert] : rapport : EICAR détecté et refusé
+OK [blanchiment] : avant : EICAR sur la clé (octets 16547868 16556060 16564291 16572522 )
+OK [blanchiment] : mot de passe d'archive demandé (clavier virtuel)
+OK [blanchiment] : empreinte de la clé entière modifiée
+OK [blanchiment] : après : aucune trace d'EICAR sur TOUTE la clé
+OK [blanchiment] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [blanchiment] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [blanchiment] : aucun fichier de la sortie ne contient EICAR
+OK [blanchiment] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [blanchiment] : archive chiffrée (bon mot de passe) copiée
+OK [blanchiment] : archive mixte : seul son fichier sain est extrait
+OK [blanchiment] : noms piégés (traversée, absolu) non écrits
+OK [export] : export terminé
+OK [export] : journal de la borne exporté
+OK [export] : rapports exportés (2 rapports JSON)
+OK [export] : rapports exportés : détections EICAR présentes
+OK [maj] : paquet signé valide appliqué (écran : « Paquet de mise à jour version … »)
+OK [maj] : paquet signé par une autre clé refusé
+OK [maj] : version plus ancienne refusée
+OK [clavier] : frappes et combinaisons sans effet : l'écran du PIN est inchangé
+OK [clavier] : aucun chiffre saisi dans le champ PIN
+OK [vide] : clé vide : la borne affiche un résultat sans planter
+OK [vide] : retour à l'accueil
+OK [pleine] : clé pleine analysée (17 fichiers)
+OK [pleine] : retour à l'accueil
+OK [illisible] : clé illisible : message affiché, borne de nouveau utilisable
+OK [retrait] : retrait en cours de lecture : erreur affichée, aucune copie, borne de nouveau utilisable
+OK [verrouillage] : administration verrouillée après 5 échecs
+OK [verrouillage] : même le bon PIN est refusé pendant le verrouillage
+OK [journal] : grub.cfg : super-utilisateur et mot de passe (édition protégée)
+OK [journal] : grub.cfg : entrée par défaut démarrable sans mot de passe
+OK [journal] : journal : détections EICAR consignées
+OK [journal] : journal : mise à jour 202611151049 appliquée
+OK [journal] : journal : clavier USB vu par hid-dealer

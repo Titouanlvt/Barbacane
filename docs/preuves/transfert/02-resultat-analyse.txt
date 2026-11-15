@@ -1,0 +1,59 @@
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+tésu tat ce ‘ana yse
+
+8 fichier{s) sain{s) à copier : 5 refusé{s)
+
+Ce qui ne passe pas, et pourquoi :
+archives/inbriquec.zip/inner.zip/eicar.con
+archives/mixte.zip/eicar.con
+
+archives/nons picges.zip
+
+Abandonner Choisir Là Cle dé destMartiol
+
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+Résultat de l'analyse
+
+© 4 menace(s) détectée{s)
+
+8 fichier(s} sain(s) à copier : 5 refusé(s)
+
+3 archiveisi contenant des fichiers refusés : leurs fichiers sains seront copiés dans un dossier « <archives.extrait ».
+
+Ce qui ne passe pas, et pourquoi :
+
+(©)
+
+archives/imbriquee.zip/inner.zip/eicar.com
+menace détectée par ClamAY : Eicar-Test-Signature
+
+(©)
+
+archives/mixte.zip/eicar.com
+menace détectée par ClamAY : Eicar-Test-Signature
+
+Œ
+
+archives/noms-pieges.zip
+extraction impossible {erreur 7-Zip (code Somel2)}]
+
+Abandonner Choïsir La clé de destination
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+G@) archives/imbriquee.zip/inner.zip/eicar.com
+menace détectée par ClamAV : Eicar-Test-Signature
+
+@) archives/mixte.zip/eicar.com
+
+menace détectée par ClamAV : Eicar-Test-Signature
+
+£\ archives/noms-pieges.zip
+extraction impossible (erreur 7-Zip {code Some{2)}}
+
+Choïsir la clé de destination
+
+
