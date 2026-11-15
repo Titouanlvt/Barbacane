@@ -97,6 +97,8 @@ pub struct App {
     /// Réponses « pas de disque » consécutives (deux avant de conclure au retrait : évite un
     /// clignotement si une interrogation du lecteur échoue)
     absent_n: u8,
+    /// Dernière erreur du service optique journalisée (un message par changement)
+    optique_err: Option<String>,
 }
 
 pub fn run(cfg: Config) -> iced::Result {
@@ -154,6 +156,7 @@ impl App {
             echange_fait: false,
             disque_ecarte: false,
             absent_n: 0,
+            optique_err: None,
         };
         let t = app.refresh_etat();
         (app, t)
@@ -473,6 +476,15 @@ impl App {
                 Msg::Optique,
             ),
             Msg::Optique(r) => {
+                let err = r.as_ref().err().cloned();
+                if err != self.optique_err {
+                    if let Some(e) = &err {
+                        log::warn!("lecteur optique : {e}");
+                    } else {
+                        log::info!("lecteur optique : service joignable");
+                    }
+                    self.optique_err = err;
+                }
                 self.on_optique(r.ok());
                 Task::none()
             }

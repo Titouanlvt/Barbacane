@@ -131,20 +131,48 @@ impl Outil {
         rw: Option<&Path>,
         ro: Option<&Path>,
     ) -> Result<(bool, String)> {
-        let out = self
+        // Délai maximal : un xorriso bloqué sur le lecteur ne doit pas figer l'identification.
+        let mut child = self
             .command(args, rw, ro)
             .stdin(Stdio::null())
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
             .context("lancement de xorriso")?;
+        let lire = |mut r: Box<dyn Read + Send>| {
+            std::thread::spawn(move || {
+                let mut v = Vec::new();
+                let _ = r.read_to_end(&mut v);
+                v
+            })
+        };
+        let to = lire(Box::new(child.stdout.take().unwrap()));
+        let te = lire(Box::new(child.stderr.take().unwrap()));
+        let debut = std::time::Instant::now();
+        let status = loop {
+            if let Some(st) = child.try_wait()? {
+                break Some(st);
+            }
+            if debut.elapsed() > std::time::Duration::from_secs(60) {
+                let _ = child.kill();
+                let _ = child.wait();
+                break None;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        };
+        let (stdout, stderr) = (to.join().unwrap_or_default(), te.join().unwrap_or_default());
         let all = format!(
             "{}\n{}",
-            String::from_utf8_lossy(&out.stderr),
-            String::from_utf8_lossy(&out.stdout)
+            String::from_utf8_lossy(&stderr),
+            String::from_utf8_lossy(&stdout)
         );
+        let Some(status) = status else {
+            bail!("xorriso sans réponse après 60 s (lecteur bloqué)");
+        };
         if let Some(l) = all.lines().find(|l| l.starts_with("bwrap:")) {
             bail!("bac à sable indisponible ({l})");
         }
-        Ok((out.status.success(), all))
+        Ok((status.success(), all))
     }
 
     /// Lance xorriso ; chaque ligne de sortie est passée à `ligne` (progression). Renvoie

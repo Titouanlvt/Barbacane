@@ -35,7 +35,7 @@ struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            socket: "/run/barbacane/optique.sock".into(),
+            socket: "/run/barbacane-optique/optique.sock".into(),
             socket_group: "barbacane-kiosk".into(),
             device: "/dev/sr0".into(),
             extra_devices: vec![],
@@ -71,6 +71,8 @@ struct Ctx {
     /// le lecteur occupé et le disque passerait pour absent) ; sinon le dernier état connu.
     lecteur: Mutex<()>,
     dernier: Mutex<Option<Value>>,
+    /// Dernier libellé journalisé (un message par changement)
+    resume: Mutex<Option<String>>,
 }
 
 impl Ctx {
@@ -157,7 +159,23 @@ impl Ctx {
             // … ou, s'il n'y en a pas encore, attendre la fin de celle en cours.
             (Err(_), None) => self.lecteur.lock().unwrap(),
         };
-        let media: Option<(Media, Option<u32>)> = ops::identifier(&self.outil).ok();
+        let debut = Instant::now();
+        let media: Option<(Media, Option<u32>)> = match ops::identifier(&self.outil) {
+            Ok(m) => Some(m),
+            Err(e) => {
+                log::warn!("identification : {e:#}");
+                None
+            }
+        };
+        let resume = media.as_ref().map(|(m, _)| m.label());
+        if *self.resume.lock().unwrap() != resume {
+            log::info!(
+                "identification ({} ms) : {}",
+                debut.elapsed().as_millis(),
+                resume.as_deref().unwrap_or("échec")
+            );
+            *self.resume.lock().unwrap() = resume;
+        }
         let media = media.map(|(m, v)| {
             json!({
                 "present": !m.absent(),
@@ -275,6 +293,7 @@ fn main() -> Result<()> {
         travail: Arc::default(),
         lecteur: Mutex::new(()),
         dernier: Mutex::new(None),
+        resume: Mutex::new(Some(String::new())),
     };
     let sock = &ctx.conf.socket;
     if let Some(p) = sock.parent() {
