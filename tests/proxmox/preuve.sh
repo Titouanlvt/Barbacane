@@ -7,12 +7,16 @@
 #
 # Clés (désignées par leur n° de série USB ; ELLES SONT ENTIÈREMENT EFFACÉES) :
 #   SERIE_AUTRE   support d'installation (l'ISO y est copiée), puis clé non enrôlée et clé
-#                 hostile (vide, pleine, illisible, retrait en cours de lecture), clé de mise à jour
+#                 hostile (vide, pleine, illisible, retrait en cours de lecture), clé de mise à jour.
+#                 « virtuelle » : clé USB ÉMULÉE (usb-storage QEMU sur l'image CLE_VIRTUELLE, 4 Go),
+#                 quand il manque une troisième vraie clé ; elle ne sert alors pas à l'installation.
+#   SERIE_INSTALL support d'installation (défaut : SERIE_AUTRE ; obligatoire si elle est virtuelle).
+#                 Peut être la clé de sortie : l'ISO y est écrite avant l'enrôlement, puis effacée.
 #   SERIE_SOURCE  clé inconnue à analyser, puis à blanchir
 #   SERIE_SORTIE  clé de destination enrôlée (export des journaux aussi)
 # MAJ : dossier de paquets préparés par tests/proxmox/paquets-maj.sh (valide, mauvaise signature,
 #       version plus ancienne) ; sans lui, les tests de mise à jour sont « NON TESTÉ ».
-# Variables : VMID (900–999, défaut 920), MEMOIRE (Mo, 8192), DISQUE (Go, 32), STOCKAGE,
+# Variables : CLE_VIRTUELLE (/var/lib/vz/barbacane/cle-virtuelle.img), VMID (900–999, défaut 920), MEMOIRE (Mo, 8192), DISQUE (Go, 32), STOCKAGE,
 # PIN (246813), TESTS (liste, défaut : tous), REPRISE=1 (repart de l'instantané « installee »).
 # DOSSIER doit être vide ou absent (aucune preuve d'un passage précédent ne peut compter).
 # Résultat : DOSSIER/resultats.txt (une ligne par vérification) et « OK » / « ÉCHEC » à la fin.
@@ -25,6 +29,9 @@ VMID=${VMID:-920} STOCKAGE=${STOCKAGE:-local-zfs} PIN=${PIN:-246813}
 MEMOIRE=${MEMOIRE:-8192} DISQUE=${DISQUE:-32}
 TESTS=${TESTS:-"installation grub pin enrolement transfert blanchiment export maj clavier vide pleine illisible retrait verrouillage journal"}
 : "${ISO:?ISO=chemin de l ISO}" "${SERIE_SOURCE:?}" "${SERIE_SORTIE:?}" "${SERIE_AUTRE:?}"
+SERIE_INSTALL=${SERIE_INSTALL:-$SERIE_AUTRE}
+CLE_VIRTUELLE=${CLE_VIRTUELLE:-/var/lib/vz/barbacane/cle-virtuelle.img}
+[ "$SERIE_INSTALL" != virtuelle ] || { echo "SERIE_INSTALL : une vraie clé est requise pour l'installation" >&2; exit 1; }
 B=(python3 "$ICI/borne.py" "$VMID")
 # shellcheck disable=SC2016 # chaîne EICAR littérale
 EICAR='X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
@@ -41,7 +48,8 @@ fi
 mkdir -p "$OUT"
 R="$OUT/resultats.txt"
 T="$(mktemp -d)"
-trap 'umount "$T"/m 2>/dev/null || true; rm -rf "$T"' EXIT
+liberer_virtuelle() { local l; for l in $(losetup -j "$CLE_VIRTUELLE" -O NAME -n 2>/dev/null); do losetup -d "$l"; done; }
+trap 'umount "$T"/m 2>/dev/null || true; liberer_virtuelle; rm -rf "$T"' EXIT
 mkdir "$T/m"
 
 note() { echo "$1 [$COURANT] : $2" | tee -a "$R"; }
@@ -67,6 +75,11 @@ voir() { "${B[@]}" attendre "$@" >/dev/null 2>&1; }
 # Disque côté hôte d'une clé désignée par son numéro de série ; jamais un disque non USB.
 disque() {
     local d
+    if [ "$1" = virtuelle ]; then   # image de la clé émulée, vue par l'hôte comme un périphérique loop
+        d=$(losetup -j "$CLE_VIRTUELLE" -O NAME -n | head -1)
+        [ -n "$d" ] || d=$(losetup -fP --show "$CLE_VIRTUELLE")
+        echo "$d"; return
+    fi
     for _ in $(seq 60); do
         d=$(lsblk -dnpo NAME,SERIAL,TRAN | awk -v s="$1" '$2 == s && $3 == "usb" { print $1 }')
         [ -n "$d" ] && [ "$(lsblk -dno TRAN "$d")" = usb ] && { echo "$d"; return; }
@@ -81,14 +94,35 @@ port() {
     done
     echo "port de la clé $1 introuvable" >&2; return 1
 }
-brancher() { disque "$2" >/dev/null; qm set "$VMID" "-$1" "host=$(port "$2"),usb3=1" >/dev/null; sleep 4; }
-debrancher() { qm set "$VMID" --delete "$1" >/dev/null 2>&1 || true; sleep 4; }
+# Clé émulée : branchée à chaud (QMP blockdev-add + device_add usb-storage), jamais en même temps
+# que l'hôte la lit (loop détaché avant).
+VIRT_SLOT=""
+qmp() { python3 -c 'import sys, json; sys.path.insert(0, sys.argv[1]); import borne; borne.qmp(sys.argv[2], *[(c, json.loads(a) if a else None) for c, a in zip(sys.argv[3::2], sys.argv[4::2])])' "$ICI" "$VMID" "$@"; }
+brancher() {
+    if [ "$2" = virtuelle ]; then
+        sync; liberer_virtuelle
+        qmp blockdev-add "{\"driver\": \"raw\", \"node-name\": \"clevirt\", \"file\": {\"driver\": \"file\", \"filename\": \"$CLE_VIRTUELLE\", \"cache\": {\"direct\": true}}}" \
+            device_add '{"driver": "usb-storage", "id": "clevirtdev", "drive": "clevirt", "serial": "BARBACANEVIRT0001", "removable": true}'
+        VIRT_SLOT=$1; sleep 4; return
+    fi
+    disque "$2" >/dev/null; qm set "$VMID" "-$1" "host=$(port "$2"),usb3=1" >/dev/null; sleep 4
+}
+debrancher() {
+    if [ "$1" = "$VIRT_SLOT" ]; then
+        qmp device_del '{"id": "clevirtdev"}' || true; sleep 4
+        qmp blockdev-del '{"node-name": "clevirt"}' || true; VIRT_SLOT=""; return
+    fi
+    qm set "$VMID" --delete "$1" >/dev/null 2>&1 || true; sleep 4
+}
+# Première partition d'une clé (sdX1 ou loopNp1)
+partition() { lsblk -lnpo NAME,TYPE "$1" | awk '$2 == "part" { print $1; exit }'; }
 # FAT32 d'une seule partition (taille facultative, ex. +300M) ; monte sur $T/m
 formater() {
     local d; d=$(disque "$1")
     wipefs -qa "$d"; echo "${2:+size=$2,}type=c" | sfdisk -q "$d"; sleep 2; partprobe "$d" 2>/dev/null || true; sleep 1
-    mkfs.vfat -F32 -n "${3:-CLE}" "${d}1" >/dev/null
-    mount "${d}1" "$T/m"
+    [ "$1" != virtuelle ] || { partx -u "$d" 2>/dev/null || true; sleep 1; }
+    mkfs.vfat -F32 -n "${3:-CLE}" "$(partition "$d")" >/dev/null
+    mount "$(partition "$d")" "$T/m"
 }
 liste_sha() { (cd "$1" && find . -type f | sort | sed 's|^\./||' | while read -r f; do sha256sum "$f"; done); }
 demonter() { liste_sha "$T/m" > "$1"; umount "$T/m"; sync; }
@@ -173,18 +207,27 @@ echo "Preuves : $OUT ; ISO : $ISO (sha256 $(sha256sum "$ISO" | cut -c1-16)…) ;
 { echo "ISO sha256 : $(sha256sum "$ISO" | cut -d' ' -f1)"; echo "Commit : $(git -C "$REPO" rev-parse HEAD)"
   echo "VM : $VMID, ${MEMOIRE} Mo, disque ${DISQUE} Go, UEFI, sans réseau"; echo "Date : $(date -Is)"; } > "$OUT/contexte.txt"
 
+{ echo "Clés : installation $SERIE_INSTALL, source $SERIE_SOURCE, sortie $SERIE_SORTIE, autre $SERIE_AUTRE"
+  [ "$SERIE_AUTRE" != virtuelle ] || echo "Clé « autre » ÉMULÉE (usb-storage QEMU, image $CLE_VIRTUELLE) : pas de troisième vraie clé"
+} >> "$OUT/contexte.txt"
+if [ "$SERIE_AUTRE" = virtuelle ]; then
+    mkdir -p "$(dirname "$CLE_VIRTUELLE")"; liberer_virtuelle; rm -f "$CLE_VIRTUELLE"; truncate -s 4G "$CLE_VIRTUELLE"
+    if qm status "$VMID" 2>/dev/null | grep -q running; then
+        qmp device_del '{"id": "clevirtdev"}' 2>/dev/null || true; sleep 2; qmp blockdev-del '{"node-name": "clevirt"}' 2>/dev/null || true
+    fi
+fi
 # Un passage interrompu peut avoir laissé des clés passées à la VM : on les rend à l'hôte.
 if qm status "$VMID" >/dev/null 2>&1; then qm set "$VMID" --delete usb0,usb1,usb2 >/dev/null 2>&1 || true; sleep 3; fi
 
 # === installation : ISO copiée sur une clé, VM démarrée sur la clé ========================
 if test_actif installation && [ "${REPRISE:-0}" != 1 ]; then
-    debut installation "ISO copiée sur la clé $SERIE_AUTRE, VM démarrée dessus"
+    debut installation "ISO copiée sur la clé $SERIE_INSTALL, VM démarrée dessus"
     if qm status "$VMID" >/dev/null 2>&1; then
         [ "$(qm config "$VMID" | awk '/^name:/ { print $2 }')" = barbacane-borne ] \
             || { echo "VM $VMID existante qui n'est pas barbacane-borne : abandon" >&2; exit 1; }
         qm stop "$VMID" >/dev/null 2>&1 || true; qm destroy "$VMID" --purge >/dev/null
     fi
-    d=$(disque "$SERIE_AUTRE")
+    d=$(disque "$SERIE_INSTALL")
     [ "$(blockdev --getsize64 "$d")" -gt "$(stat -c %s "$ISO")" ] || { ko "clé trop petite pour l'ISO"; exit 1; }
     ! lsblk -no MOUNTPOINT "$d" | grep -q . || { ko "clé d'installation montée sur l'hôte"; exit 1; }
     lsblk -o NAME,SIZE,TRAN,SERIAL,MODEL "$d" > "$D/cle-avant-dd.txt"
@@ -193,7 +236,7 @@ if test_actif installation && [ "${REPRISE:-0}" != 1 ]; then
     qm create "$VMID" --name barbacane-borne --bios ovmf --machine q35 \
         --efidisk0 "$STOCKAGE:1,efitype=4m,pre-enrolled-keys=0" --memory "$MEMOIRE" --cores 2 --cpu host \
         --scsihw virtio-scsi-single --scsi0 "$STOCKAGE:$DISQUE" --vga std --ostype l26 >/dev/null
-    qm set "$VMID" -usb0 "host=$(port "$SERIE_AUTRE"),usb3=1" >/dev/null
+    qm set "$VMID" -usb0 "host=$(port "$SERIE_INSTALL"),usb3=1" >/dev/null
     qm set "$VMID" --boot 'order=scsi0;usb0' >/dev/null
     qm config "$VMID" > "$D/vm.conf"
     si ! grep -q '^net' "$D/vm.conf" -- "VM sans carte réseau" "la VM a une carte réseau"

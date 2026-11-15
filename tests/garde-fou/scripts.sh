@@ -43,7 +43,7 @@ for s in "$REPO/systeme/install.sh --sans-rar --debs /inexistant" "$REPO/systeme
     if [ "$rc" -ne 0 ] && grep -q 'REFUS : hôte Proxmox VE détecté' "$T/sortie" && [ ! -s "$T/appels" ]; then
         ok "$n refuse sur un hôte Proxmox (code $rc, aucune commande lancée)"
     else
-        ko "$n : code $rc, appels : $(cat "$T/appels" 2>/dev/null | tr '\n' ';')"; cat "$T/sortie"
+        ko "$n : code $rc, appels : $(tr '\n' ';' < "$T/appels" 2>/dev/null)"; cat "$T/sortie"
     fi
 done
 
@@ -64,4 +64,5 @@ for s in systeme/deb/preinst noyau/usbsas-hid/debian/preinst noyau/usbsas-usbsas
     if [ "$rc" -eq 0 ]; then ok "$s accepte hors Proxmox"; else ko "$s refuse hors Proxmox (code $rc)"; fi
 done
 
-[ "$echos" -eq 0 ] && echo "GARDE-FOU : OK" || { echo "GARDE-FOU : $echos échec(s)"; exit 1; }
+if [ "$echos" -ne 0 ]; then echo "GARDE-FOU : $echos échec(s)"; exit 1; fi
+echo "GARDE-FOU : OK"

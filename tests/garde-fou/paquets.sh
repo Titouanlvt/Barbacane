@@ -24,4 +24,5 @@ for deb in "$D"/barbacane_*.deb "$D"/usbsas-server_*.deb "$D"/usbsas-hid_*.deb; 
         echo "ÉCHEC $nom : code $rc, $poses fichier(s) posé(s)"; cat /tmp/garde-fou-dpkg.txt; echecs=$((echecs + 1))
     fi
 done
-[ "$echecs" -eq 0 ] && echo "GARDE-FOU PAQUETS : OK" || { echo "GARDE-FOU PAQUETS : $echecs échec(s)"; exit 1; }
+if [ "$echecs" -ne 0 ]; then echo "GARDE-FOU PAQUETS : $echecs échec(s)"; exit 1; fi
+echo "GARDE-FOU PAQUETS : OK"
