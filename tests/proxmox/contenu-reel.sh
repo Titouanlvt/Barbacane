@@ -47,7 +47,8 @@ fermer() { # scénario : manifestes puis démontage
     umount "$T/m"; sync; losetup -d "$(cat "$T/loop")"
 }
 # Conteneurs compressés ou chiffrés : piégés si leur nom contient « piege » (fabriqués ainsi).
-conteneur_piege() { case "$1" in *piege*|*refus-attendu*) echo oui ;; esac; }
+# Refus attendus : pièges, fichier trop gros pour ClamAV, autorun.inf (filtré par usbsas).
+conteneur_piege() { case "$1" in *piege*|*refus-attendu*|autorun.inf) echo oui ;; esac; }
 rm -f "$OUT"/*.sains "$OUT"/*.pieges
 
 # ------------------------------------------------------------------ documents bureautiques
