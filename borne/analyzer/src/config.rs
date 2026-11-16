@@ -98,7 +98,7 @@ impl Default for Limits {
     fn default() -> Self {
         Limits {
             max_depth: 5,
-            max_files: 10_000,
+            max_files: 200_000,
             max_total_size: 32 * 1024 * 1024 * 1024,
             max_ratio: 100,
             extract_timeout: 300,

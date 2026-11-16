@@ -102,7 +102,7 @@ L'analyseur (`barbacane-analyzer`, service local sans accès réseau) traite cha
 - **archives** (zip, 7z, rar, tar, iso, msi…) : extraites avec `7zz` dans **bubblewrap**
   (aucun réseau, système de fichiers temporaire, mémoire et durée bornées), puis analysées
   récursivement ;
-- **limites contre les bombes de décompression** : profondeur 5, 10 000 fichiers, 32 Go
+- **limites contre les bombes de décompression** : profondeur 5, 200 000 fichiers et 32 Go par archive
   décompressés, taux de compression 100:1 au plus, 5 min par archive. Au-delà, l'archive est
   refusée ;
 - **noms piégés** (`../`, chemins absolus, liens, caractères de contrôle, noms trop longs) :

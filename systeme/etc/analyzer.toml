@@ -12,8 +12,8 @@ max_reports = 5000
 
 [limits]
 max_depth = 5
-max_files = 10000
-max_total_size = 34359738368     # 32 Go décompressés par clé (espace de travail sur disque)
+max_files = 200000              # par fichier racine (ISO d'installation : des dizaines de milliers)
+max_total_size = 34359738368     # 32 Go décompressés par fichier racine (espace de travail sur disque)
 max_ratio = 100
 extract_timeout = 300            # secondes
 extract_memory = 2147483648      # 2 Go

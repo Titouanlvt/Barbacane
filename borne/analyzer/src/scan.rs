@@ -104,9 +104,11 @@ impl Scanner<'_> {
             files.push((path, local));
         }
         self.job.set_progress(0, files.len());
-        let mut budget = Budget { files: 0, size: 0 };
         let mut out = Vec::new();
         for (i, (path, local)) in files.into_iter().enumerate() {
+            // Limites par fichier racine (une ISO, une archive…) et non pour toute la clé : une
+            // grosse ISO d'installation ne doit pas épuiser le budget des fichiers suivants.
+            let mut budget = Budget { files: 0, size: 0 };
             if let Some(dir) = &self.import
                 && !path.contains('/')
                 && (path.ends_with(".bcu") || path.ends_with(".bcu.minisig"))

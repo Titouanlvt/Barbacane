@@ -68,3 +68,13 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
   par bindgen (édition 2024), pas écrit à la main ; ils noyaient les messages utiles.
 - Correctif : `#![allow(unsafe_op_in_unsafe_fn)]` dans le module qui inclut les liaisons, comme les
   autres `allow` déjà présents pour ce code généré. Aucun changement de comportement.
+
+### 7. ISO hybride copiée sur une clé (Etcher, Rufus « mode DD ») : système ISO 9660 ignoré (`usbsas-dev2scsi/src/lib.rs`)
+- Constat (campagne du 16/11/2026, image d'une ISO Debian netinst copiée telle quelle sur une vraie
+  clé) : la table de partitions de l'ISO hybride ne déclare qu'une partition EFI (FAT), reconnue ; le
+  système ISO 9660 n'était cherché que si **aucune** partition n'était reconnue. Seuls les 3 fichiers
+  EFI étaient lus (sur 1 011) ; un blanchiment aurait effacé l'ISO en ne gardant que ces 3 fichiers.
+- Correctif : la signature `CD001` (octet 0x8001 ou 0x8801) est toujours cherchée ; si elle est
+  présente, la partition qui démarre au secteur 0 (ou une partition ajoutée couvrant le
+  périphérique) est déclarée ISO9660. La borne choisit la plus grande partition lisible : l'ISO.
+- Test : `tests/proxmox/preuve.sh`, étape `reel` (scénario `etcher`).
