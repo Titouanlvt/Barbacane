@@ -441,7 +441,7 @@ if test_actif reel; then
             debrancher usb1; voir "à analyser" 60 || true; continue
         fi
         cliquer "Copier vers une clé"
-        mot_de_passe_si_demande secret
+        # Ces clés ne contiennent pas d'archive chiffrée : aucune demande de mot de passe attendue.
         if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 7200)" != 2 ]; then
             capture 02-erreur
             lire 02-erreur >/dev/null; ko "analyse en erreur : $(grep -m1 -i 'aboutir\|lisible' "$D/02-erreur.txt" || true)"
