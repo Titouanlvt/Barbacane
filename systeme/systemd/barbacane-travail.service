@@ -1,0 +1,16 @@
+[Unit]
+Description=Barbacane : espace de travail chiffré éphémère (clé aléatoire à chaque démarrage)
+DefaultDependencies=no
+After=local-fs.target systemd-udev-settle.service
+Before=usbsas-server.service barbacane-analyzer.service
+Conflicts=shutdown.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/barbacane/barbacane-travail demarrer
+ExecStop=/usr/lib/barbacane/barbacane-travail arreter
+
+[Install]
+WantedBy=multi-user.target

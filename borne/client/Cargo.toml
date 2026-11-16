@@ -30,7 +30,7 @@ copyright = "Barbacane"
 license-file = ["../../LICENSE", "0"]
 extended-description = "Borne autonome hors ligne d'analyse et de copie de clés USB, au-dessus d'usbsas."
 revision = "1"
-depends = "$auto, usbsas-server, cage, libpam-systemd, ca-certificates, clamav-daemon, 7zip, bubblewrap, nftables, libwayland-egl1, libegl-mesa0, libgl1-mesa-dri, libgbm1, fonts-dejavu-core"
+depends = "$auto, usbsas-server, cryptsetup-bin, e2fsprogs, cage, libpam-systemd, ca-certificates, clamav-daemon, 7zip, bubblewrap, nftables, libwayland-egl1, libegl-mesa0, libgl1-mesa-dri, libgbm1, fonts-dejavu-core"
 recommends = "usbsas-hid, 7zip-rar"
 provides = "usbsas-kiosk"
 section = "utility"
@@ -50,6 +50,8 @@ assets = [
   ["../../systeme/etc/config.toml", "usr/share/barbacane/usbsas-config.toml", "644"],
   ["../../systeme/clamav/clamd-barbacane.conf", "usr/share/barbacane/", "644"],
   ["../../systeme/systemd/barbacane-analyzer.service", "usr/lib/systemd/system/", "644"],
+  ["../../systeme/systemd/barbacane-travail.service", "usr/lib/systemd/system/", "644"],
+  ["../../systeme/travail/barbacane-travail", "usr/lib/barbacane/", "755"],
   ["../../systeme/systemd/barbacane-admind.service", "usr/lib/systemd/system/", "644"],
   ["../../systeme/systemd/barbacane-kiosk.service", "usr/lib/systemd/system/", "644"],
   ["../../systeme/systemd/usbsas-server.service.d/barbacane.conf", "usr/lib/systemd/system/usbsas-server.service.d/", "644"],

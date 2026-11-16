@@ -99,7 +99,7 @@ impl Default for Limits {
         Limits {
             max_depth: 5,
             max_files: 10_000,
-            max_total_size: 4 * 1024 * 1024 * 1024,
+            max_total_size: 32 * 1024 * 1024 * 1024,
             max_ratio: 100,
             extract_timeout: 300,
             extract_memory: 2 * 1024 * 1024 * 1024,

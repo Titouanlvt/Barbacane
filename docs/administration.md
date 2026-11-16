@@ -110,7 +110,7 @@ erreurs et les clés personnelles, il ne remplace pas un contrôle d'accès.
 
 Administration → **Limites d'analyse** : profondeur d'imbrication (défaut 5),
 nombre de fichiers extraits par transfert (10 000), taille décompressée par
-transfert (4 Go). Les autres limites (rapport de compression 100:1, durée 300 s
+transfert (32 Go ; avant le 16/11/2026 : 4 Go, ce qui refusait toute grosse ISO). Les autres limites (rapport de compression 100:1, durée 300 s
 et mémoire 2 Go par extraction, délai de saisie du mot de passe 300 s, 3 essais)
 se règlent dans `/etc/barbacane/analyzer.toml`. Dépasser une limite **refuse tout
 le conteneur racine**.

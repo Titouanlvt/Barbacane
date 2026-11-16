@@ -54,6 +54,17 @@ async fn main() -> anyhow::Result<()> {
         config::Config::load(&conf_path).with_context(|| format!("configuration {conf_path}"))?;
     std::fs::create_dir_all(&conf.work_dir)
         .with_context(|| format!("dossier de travail {}", conf.work_dir.display()))?;
+    // Restes d'une analyse interrompue (arrêt brutal du service) : supprimés au démarrage.
+    if let Ok(entrees) = std::fs::read_dir(&conf.work_dir) {
+        for e in entrees.flatten() {
+            let p = e.path();
+            let _ = if p.is_dir() {
+                std::fs::remove_dir_all(&p)
+            } else {
+                std::fs::remove_file(&p)
+            };
+        }
+    }
     let _ = rustls::crypto::ring::default_provider().install_default();
     if let Some(r) = &conf.relay {
         let router = relay::router(
@@ -213,6 +224,15 @@ fn job_for(app: &App, id: &str, b: &Option<Extension<Borne>>) -> Option<Arc<Job>
     }
 }
 
+/// Octets libres sur le système de fichiers de `p` (statvfs).
+fn espace_libre(p: &std::path::Path) -> Option<u64> {
+    let c = std::ffi::CString::new(p.as_os_str().as_encoded_bytes()).ok()?;
+    let mut st: libc::statvfs = unsafe { std::mem::zeroed() };
+    // SAFETY : chemin terminé par NUL, structure de sortie initialisée.
+    (unsafe { libc::statvfs(c.as_ptr(), &mut st) } == 0)
+        .then(|| st.f_bavail as u64 * st.f_frsize as u64)
+}
+
 fn err(code: StatusCode, msg: impl ToString) -> Response {
     (code, Json(json!({"error": msg.to_string()}))).into_response()
 }
@@ -252,8 +272,21 @@ async fn upload(
     }
     .await;
     if let Err(e) = res {
+        // Réception du tar interrompue : espace de travail plein, ou usbsas qui coupe l'envoi.
+        let libre = espace_libre(&app.conf.work_dir);
+        log::error!(
+            "réception du contenu à analyser interrompue : {e:#} (espace libre dans {} : {})",
+            app.conf.work_dir.display(),
+            libre.map_or("inconnu".into(), |o| format!("{} Mo", o / 1_000_000))
+        );
         return err(StatusCode::BAD_REQUEST, e);
     }
+    log::info!(
+        "contenu reçu : {} Mo ; espace de travail libre : {}",
+        std::fs::metadata(&tar_path).map_or(0, |m| m.len()) / 1_000_000,
+        espace_libre(&app.conf.work_dir)
+            .map_or("inconnu".into(), |o| format!("{} Mo", o / 1_000_000))
+    );
     let job = Arc::new(Job::new(&uid, work));
     {
         // Une seule analyse conservée par borne : la précédente (et ses fichiers) est libérée.

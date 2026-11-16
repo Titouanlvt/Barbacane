@@ -71,6 +71,15 @@ attendre() { "${B[@]}" attendre "$@"; }
 cliquer() { "${B[@]}" cliquer "$@"; }
 # attendre sans faire échouer le script : renvoie 1 si le texte n'est pas apparu
 voir() { "${B[@]}" attendre "$@" >/dev/null 2>&1; }
+# Attend le premier de deux écrans (texte1 texte2 délai) : affiche 1 ou 2, rien si délai dépassé.
+premier() {
+    local fin=$((SECONDS + $3)) t
+    while [ $SECONDS -lt $fin ]; do
+        t=$("${B[@]}" lire 2>/dev/null)
+        case "$t" in *"$1"*) echo 1; return ;; *"$2"*) echo 2; return ;; esac
+        sleep 10
+    done
+}
 
 # --- clés -----------------------------------------------------------------------------
 # Disque côté hôte d'une clé désignée par son numéro de série ; jamais un disque non USB.
@@ -378,6 +387,87 @@ if test_actif blanchiment; then
     monter_ro "$SERIE_SOURCE"; liste_sha "$T/m" > "$D/apres.sha256"; cp "$T/m"/rapport-barbacane-* "$D/" 2>/dev/null || true
     verifier_sortie "$D/avant.sha256" "$D/apres.sha256" "$T/m"; umount "$T/m"
     attendre "à analyser" 120
+fi
+
+# === blanchiment d'une clé volumineuse (5,6 Go d'archives et de fichiers, borne à 8 Go de RAM)
+# Cas signalé le 16/11/2026 sur un Dell OptiPlex 7090 (8 Go) : « Remote server error ».
+if test_actif volumineux; then
+    debut volumineux "blanchiment d'une clé de 5,6 Go (zip, tar, iso, txt) sur $SERIE_SOURCE"
+    formater "$SERIE_SOURCE" "" GROSSE; m="$T/m"; mkdir -p "$m/archives" "$m/images" "$m/textes"
+    g="$T/gros"; mkdir -p "$g"
+    for i in 1 2 3; do head -c 600M /dev/urandom > "$g/donnees-$i.bin"; (cd "$g" && zip -q -0 "$m/archives/lot-$i.zip" "donnees-$i.bin"); rm "$g/donnees-$i.bin"; done
+    printf '%s' "$EICAR" > "$g/eicar.com"; printf 'sain\n' > "$g/sain.txt"
+    (cd "$g" && zip -q -X "$m/archives/mixte.zip" eicar.com sain.txt)
+    for i in 1 2; do head -c 700M /dev/urandom > "$g/bloc-$i.bin"; tar -cf "$m/archives/sauvegarde-$i.tar" -C "$g" "bloc-$i.bin"; rm "$g/bloc-$i.bin"; done
+    mkdir -p "$g/iso"; head -c 1100M /dev/urandom > "$g/iso/disque.bin"
+    xorriso -as mkisofs -quiet -o "$m/images/installation.iso" "$g/iso" 2>/dev/null; rm -rf "$g/iso"
+    for i in $(seq 1 20); do head -c 25M /dev/urandom | base64 > "$m/textes/journal-$i.txt"; done
+    taille=$(du -sh "$m" | cut -f1); demonter "$D/avant.sha256"
+    si [ "$(wc -l < "$D/avant.sha256")" -ge 27 ] -- "clé préparée : $taille, $(wc -l < "$D/avant.sha256") fichiers (zip, tar, iso, txt)" "préparation incomplète"
+    brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120 "$D/01-cle-detectee.png"
+    cliquer "Blanchir cette clé"
+    if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 5400)" != 2 ]; then
+        capture 02-erreur
+        lire 02-erreur >/dev/null; ko "analyse en erreur : $(grep -m1 -i 'aboutir' "$D/02-erreur.txt" || true)"
+    else
+        attendre "Résultat de l'analyse" 60 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
+        ok "analyse aboutie sur 5,6 Go avec $MEMOIRE Mo de RAM"
+        cliquer "Blanchir la clé"
+        if voir "Maintenir pour effacer" 30 "$D/03-confirmation.png"; then "${B[@]}" maintenir "Maintenir pour"
+        else attendre "Effacer et réécrire" 30 "$D/03-confirmation.png"; cliquer "Effacer et réécrire"; fi
+        attendre "Vous pouvez retirer les clés" 14400 "$D/04-termine.png"
+        debrancher usb1
+        monter_ro "$SERIE_SOURCE"; liste_sha "$T/m" > "$D/apres.sha256"; cp "$T/m"/rapport-barbacane-*.txt "$D/" 2>/dev/null || true; umount "$T/m"
+        si ! grep -q 'mixte.zip$' "$D/apres.sha256" -- "archive contenant EICAR non réécrite" "archive avec EICAR réécrite"
+        si grep -q "$(grep 'textes/journal-1.txt' "$D/avant.sha256" | cut -c1-64)" "$D/apres.sha256" -- "fichiers sains réécrits à l'identique (sha256)" "fichier sain absent ou modifié"
+    fi
+    attendre "à analyser" 300 || true
+fi
+
+# === contenus réels : clés flashées (Etcher, Rufus) et fichiers de bureau ====================
+# Images fabriquées par tests/proxmox/contenu-reel.sh (CONTENU=dossier : *.img, *.sains, *.pieges),
+# copiées octet par octet sur la clé source comme le ferait Etcher, puis Copier vers la clé de sortie.
+if test_actif reel; then
+    : "${CONTENU:?CONTENU=dossier des images (tests/proxmox/contenu-reel.sh)}"
+    for img in "$CONTENU"/*.img; do
+        nom=$(basename "$img" .img)
+        debut "reel-$nom" "clé « $nom » : $(du -h "$img" | cut -f1) copiés tels quels sur $SERIE_SOURCE, copie vers $SERIE_SORTIE"
+        d=$(disque "$SERIE_SOURCE"); wipefs -qa "$d"
+        dd if="$img" of="$d" bs=4M conv=fsync status=none; partprobe "$d" 2>/dev/null || true; sleep 2
+        debut_s=$(date +%s)
+        brancher usb1 "$SERIE_SOURCE"
+        if ! voir "Clé détectée" 180 "$D/01-cle-detectee.png"; then
+            capture 01-ecran; lire 01-ecran >/dev/null; ko "clé non proposée à l'analyse : $(head -c 200 "$D/01-ecran.txt" | tr '\n' ' ')"
+            debrancher usb1; voir "à analyser" 60 || true; continue
+        fi
+        cliquer "Copier vers une clé"
+        mot_de_passe_si_demande secret
+        if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 7200)" != 2 ]; then
+            capture 02-erreur
+            lire 02-erreur >/dev/null; ko "analyse en erreur : $(grep -m1 -i 'aboutir\|lisible' "$D/02-erreur.txt" || true)"
+            cliquer "Recommencer depuis le début" || true; debrancher usb1; voir "à analyser" 60 || true; continue
+        fi
+        attendre "Résultat de l'analyse" 60 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
+        npieges=$(wc -l < "$CONTENU/$nom.pieges")
+        if [ "$npieges" -gt 0 ]; then
+            si grep -qiE 'menace|écarté' "$D/02-resultat-analyse.txt" -- "verdict : menace ou écarté affiché ($npieges fichier(s) piégé(s) sur la clé)" "aucune menace affichée"
+        fi
+        cliquer "Choisir la clé de destination"
+        formater "$SERIE_SORTIE" "" DEST; umount "$T/m"
+        brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 90 "$D/03-cle-destination.png"
+        cliquer "Effacer cette clé"
+        attendre "Vous pouvez retirer" 14400 "$D/04-termine.png"
+        ok "durée totale (analyse + écriture) : $(( $(date +%s) - debut_s )) s"
+        debrancher usb1; debrancher usb2
+        monter_ro "$SERIE_SORTIE"; liste_sha "$T/m" > "$D/sortie.sha256"; cp "$T/m"/rapport-barbacane-*.txt "$D/" 2>/dev/null || true
+        manquants=0
+        while read -r h p; do grep -qF "$h  $p" "$D/sortie.sha256" || { manquants=$((manquants + 1)); echo "$p" >> "$D/manquants.txt"; }; done < "$CONTENU/$nom.sains"
+        si [ "$manquants" -eq 0 ] -- "$(wc -l < "$CONTENU/$nom.sains") fichiers sains copiés à l'identique (sha256)" "$manquants fichier(s) sain(s) absents ou modifiés (manquants.txt)"
+        si ! grep -rlaq 'EICAR-STANDARD-ANTIVIRUS-TEST-FILE' "$T/m" -- "aucun EICAR sur la clé de sortie" "EICAR présent sur la clé de sortie"
+        while read -r p; do [ -z "$p" ] || si [ ! -e "$T/m/$p" ] -- "piégé non copié : $p" "piégé copié : $p"; done < "$CONTENU/$nom.pieges"
+        umount "$T/m"
+        voir "à analyser" 120 || true
+    done
 fi
 
 # === export des journaux et rapports =====================================================

@@ -24,10 +24,10 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     if getent group clamav >/dev/null; then adduser --quiet barbacane-analyzer clamav; fi
 
     install -d -m 0755 /var/lib/barbacane /var/lib/barbacane/yara
-    install -d /etc/systemd/system/barbacane-analyzer.service.d
-    printf '[Service]\nTemporaryFileSystem=/var/lib/barbacane/analyzer:size=6G,mode=0700,uid=%s,gid=%s,nr_inodes=200k\n' \
-        "$(id -u barbacane-analyzer)" "$(getent group barbacane | cut -d: -f3)" \
-        > /etc/systemd/system/barbacane-analyzer.service.d/tmpfs.conf
+    # Ancien tmpfs de 6 Go de l'analyseur (débordait avec une clé de 5,5 Go sur 8 Go de RAM) :
+    # remplacé par le volume chiffré éphémère barbacane-travail.
+    rm -f /etc/systemd/system/barbacane-analyzer.service.d/tmpfs.conf
+    rmdir /etc/systemd/system/barbacane-analyzer.service.d 2>/dev/null || true
     install -d -m 0700 -o usbsas -g usbsas /var/lib/usbsas/tmp 2>/dev/null || true
 
     # clamd : limites d'analyse imposées (fichier généré par debconf, réglages remplacés ligne à ligne)
@@ -43,7 +43,7 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     udevadm control --reload-rules >/dev/null 2>&1 || true
     # Borne hors ligne : pas de mise à jour réseau des signatures
     systemctl disable --now clamav-freshclam.service >/dev/null 2>&1 || true
-    for s in clamav-daemon nftables usbsas-server barbacane-analyzer barbacane-admind barbacane-optique barbacane-kiosk hid-dealer; do
+    for s in clamav-daemon nftables barbacane-travail usbsas-server barbacane-analyzer barbacane-admind barbacane-optique barbacane-kiosk hid-dealer; do
         systemctl enable "$s.service" >/dev/null 2>&1 || true
     done
     systemctl mask getty@tty2.service autovt@tty2.service >/dev/null 2>&1 || true
