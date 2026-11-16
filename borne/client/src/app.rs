@@ -1296,19 +1296,23 @@ impl App {
     }
 
     fn view_password(&self, req: &PasswordRequest) -> Element<'_, Msg> {
-        centre(column![
-            titre("Archive protégée par mot de passe"),
-            texte(&format!("« {} »", req.archive)),
+        // Écran le plus haut (clavier virtuel de 5 rangées) : espacements resserrés pour que les
+        // boutons tiennent en 1280×768 avec le bandeau d'étapes.
+        let c = column![
+            text("Archive protégée par mot de passe")
+                .size(36)
+                .font(style::TITRE_POLICE)
+                .color(style::c().encre),
             petit(&format!(
-                "Saisissez son mot de passe pour en analyser le contenu (essai {} sur {}). Sans mot de passe, l'archive sera refusée.",
-                req.attempt, req.max_attempts
+                "« {} » : saisissez son mot de passe pour en analyser le contenu (essai {} sur {}). Sans mot de passe, l'archive sera refusée.",
+                req.archive, req.attempt, req.max_attempts
             )),
             container(
                 text(self.input.shown())
-                    .size(30)
+                    .size(26)
                     .shaping(text::Shaping::Advanced)
             )
-            .padding(14)
+            .padding([6, 14])
             .width(Length::Fixed(700.0))
             .style(style::carte),
             self.input.view(Msg::Key),
@@ -1317,7 +1321,13 @@ impl App {
                 bouton("Valider", Msg::Valider, style::primaire),
             ]
             .spacing(30),
-        ])
+        ]
+        .spacing(8)
+        .align_x(Alignment::Center);
+        container(c)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .into()
     }
 
     fn view_resume(&self) -> Element<'_, Msg> {
