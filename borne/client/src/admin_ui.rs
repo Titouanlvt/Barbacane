@@ -22,6 +22,8 @@ pub enum Page {
     NouveauPin,
     /// Thème Pierre / Nuit, animations réduites
     Affichage,
+    /// Crédits : projets sur lesquels repose Barbacane
+    APropos,
     Confirmer(&'static str),
 }
 
@@ -343,6 +345,7 @@ pub fn view(app: &App) -> Element<'_, Msg> {
             row![menu_btn("Clés de sortie enrôlées", Page::Enrolement), menu_btn("Limites d'analyse", Page::Limites), menu_btn("Changer le PIN", Page::NouveauPin)].spacing(20),
             row![
                 menu_btn("Affichage", Page::Affichage),
+                menu_btn("À propos", Page::APropos),
                 bouton("Redémarrer", am(AdminMsg::Aller(Page::Confirmer("reboot"))), style::danger),
                 bouton("Éteindre", am(AdminMsg::Aller(Page::Confirmer("poweroff"))), style::danger),
             ]
@@ -465,6 +468,58 @@ pub fn view(app: &App) -> Element<'_, Msg> {
                     petit("Réduites : chaque écran s'affiche directement dans son état final."),
                 ]),
                 row![msg, retour].spacing(20).align_y(Alignment::Center),
+            ]
+            .spacing(20)
+            .align_x(Alignment::Center)
+            .into()
+        }
+        Page::APropos => {
+            // Charte, composant Credits : nom, rôle, éditeur, licence et adresse ; pas de logos
+            // redessinés ; mention « non affilié » obligatoire.
+            let pal = style::c();
+            let projet = |nom: &str, role: &str, editeur: &str, adresse: &str| {
+                container(
+                    column![
+                        text(nom.to_string()).size(30).font(style::TITRE_POLICE),
+                        text(role.to_string()).size(style::PETIT),
+                        text(editeur.to_string())
+                            .size(15)
+                            .font(style::MONO)
+                            .color(pal.encre_douce),
+                        text(adresse.to_string())
+                            .size(15)
+                            .font(style::MONO)
+                            .color(pal.encre_douce),
+                    ]
+                    .spacing(4),
+                )
+                .padding(iced::Padding { top: 14.0, ..iced::Padding::ZERO })
+                .width(Length::Fixed(300.0))
+                .style(move |_| container::Style {
+                    border: iced::Border::default().width(0),
+                    ..Default::default()
+                })
+            };
+            let filet = || {
+                container(Space::new().width(300).height(4)).style(move |_| container::Style {
+                    background: Some(iced::Background::Color(pal.laiton)),
+                    ..Default::default()
+                })
+            };
+            column![
+                titre("À propos"),
+                carte(column![
+                    text("BARBACANE S'APPUIE SUR").size(26).font(style::TITRE_POLICE),
+                    row![
+                        column![filet(), projet("usbsas", "Lecture isolée des supports USB", "CEA-SEC · GPLv3", "github.com/cea-sec/usbsas")],
+                        column![filet(), projet("ClamAV", "Moteur antivirus et signatures", "Cisco Talos · GPLv2", "clamav.net")],
+                        column![filet(), projet("YARA", "Règles de détection", "VirusTotal · BSD-3-Clause", "virustotal.github.io/yara")],
+                    ]
+                    .spacing(24),
+                    petit("Marques et logos appartenant à leurs détenteurs. Barbacane n'est ni affilié ni approuvé par eux."),
+                ]),
+                petit(&format!("Barbacane {} — station blanche hors ligne", env!("CARGO_PKG_VERSION"))),
+                retour,
             ]
             .spacing(20)
             .align_x(Alignment::Center)

@@ -202,8 +202,11 @@ Sur la clé de destination, on trouve :
 ## Blanchir une clé
 
 Le blanchiment nettoie la clé elle-même : analyse, **effacement complet**, puis réécriture des
-seuls fichiers sains et du rapport. Pendant l'effacement, l'écran affiche la quantité traitée,
-la vitesse de la clé et le temps restant. Une clé lente prend du temps : ne la retirez pas.
+seuls fichiers sains et du rapport. Pour confirmer, gardez le bouton **Maintenir pour effacer**
+enfoncé 2 secondes : un voile le remplit, et le relâcher avant la fin annule (rien n'est effacé).
+Pendant l'effacement, l'écran affiche la quantité traitée, la vitesse de la clé, le temps restant
+et un chronomètre ; la barre reste animée même si un gros fichier la bloque. Une clé lente prend
+du temps : ne la retirez pas.
 
 ![Confirmation du blanchiment](preuves/blanchiment/03-confirmation.png)
 

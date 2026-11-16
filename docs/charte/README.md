@@ -9,7 +9,7 @@ Cette charte vise l'écran de la borne (interface kiosk sous cage, rendu logicie
 1. **Lisible à un mètre.** On utilise la borne debout, souris en main. Corps de texte à 22 px minimum, consignes à 30 px, cibles de 72 px de haut (`cible-min`).
 2. **Une seule chose à faire par écran.** Chaque écran porte une consigne et, au plus, deux boutons. Le bouton principal est toujours en bas à droite.
 3. **L'état d'abord.** Le verdict (sain, écarté, menace) occupe le haut de l'écran, en couleur, avec une icône et un mot. La couleur n'est jamais le seul signal.
-4. **De la pierre taillée.** Le relief se fait par des faces en aplats (face avant, flanc sombre, arête claire, décalage de 45° vers le haut à droite), jamais par des dégradés ou des ombres floues. Les animations racontent l'analyse (voir AnimationAnalyse) et ne décorent jamais.
+4. **De la pierre taillée.** Le relief se fait par des faces en aplats (face avant, flanc sombre, arête claire, décalage de 45° vers le haut à droite), jamais par des dégradés ou des ombres floues. Les animations racontent ce que fait la borne (voir AnimationBorne et AnimationAnalyse) et ne décorent jamais.
 5. **Rien ne vient du réseau.** Polices, icônes et images sont embarquées dans le paquet Debian.
 
 ## Voix et textes
@@ -61,11 +61,18 @@ Icônes au trait de 2 px, coins arrondis, grille de 24 (jeu conseillé : Lucide,
 
 ## Parcours de la borne
 
-Chaque écran reprend la même structure : bandeau d'étapes en haut, consigne au centre, actions en bas.
+Chaque écran reprend la même structure : bandeau d'étapes en haut, consigne au centre, actions en bas. L'animation du moment occupe le centre, au-dessus de la consigne.
 
+0. **Démarrage** : logo qui se construit, puis « Préparation de la borne… » tant que les services ne sont pas prêts. Si un service échoue : « La borne n'est pas prête. Prévenez l'administrateur. » avec le nom du service en mono.
 1. **Accueil** : « Insérez la clé ou le disque à analyser. » Logo, rien d'autre.
 2. **Clé détectée** : nom, taille, nombre de fichiers. Choix : « Copier vers une clé de destination » ou « Effacer cette clé ».
 3. **Destination** : « Insérez la clé de destination. »
 4. **Analyse** : jauge + fichier en cours (mono). Bouton secondaire « Annuler ».
 5. **Verdict** : bandeau de couleur, liste des fichiers écartés avec leur raison.
 6. **Copie terminée** : « Retirez les deux clés. » Retour automatique à l'accueil après le retrait.
+
+Hors parcours :
+
+- **Effacement** : après confirmation, « Effacement en cours. Ne retirez pas la clé. »
+- **Support illisible** : « Cette clé n'est pas lisible. Retirez-la et essayez une autre clé. »
+- **Mise à jour hors ligne** (mode administrateur) : « Mise à jour vérifiée et installée. » ou « Signature invalide : mise à jour refusée. » en `menace`.

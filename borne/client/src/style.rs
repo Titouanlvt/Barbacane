@@ -4,7 +4,7 @@
 //! Le laiton est la couleur d'identité (logo, focus) ; les couleurs d'état
 //! (sain, alerte, menace, analyse) ne servent qu'à leur sens.
 
-use iced::widget::{button, container, progress_bar};
+use iced::widget::{button, container};
 use iced::{Background, Border, Color, Font, Shadow, Theme, border::Radius, font};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -143,39 +143,63 @@ pub const TEXTE_TAILLE: f32 = 22.0;
 pub const PETIT: f32 = 18.0;
 
 fn base(bg: Color, fg: Color, status: button::Status) -> button::Style {
-    let bg = match status {
-        button::Status::Hovered => Color { a: 0.88, ..bg },
-        button::Status::Pressed => Color { a: 0.75, ..bg },
-        button::Status::Disabled => Color { a: 0.35, ..bg },
-        button::Status::Active => bg,
+    relief(bg, fg, None, status)
+}
+
+/// Bouton (charte, composant Bouton) : aplat, la tranche du relief est posée derrière par
+/// `app::bouton` (rectangle plein décalé, comme le logo). L'appui assombrit le bouton.
+fn relief(bg: Color, fg: Color, _tranche: Option<Color>, status: button::Status) -> button::Style {
+    let (fond, texte) = match status {
+        button::Status::Disabled => (c().surface, c().encre_douce),
+        button::Status::Pressed => (Color { a: 0.82, ..bg }, fg),
+        _ => (bg, fg),
     };
     button::Style {
-        background: Some(Background::Color(bg)),
-        text_color: fg,
+        background: Some(Background::Color(fond)),
+        text_color: texte,
         border: Border::default().rounded(Radius::new(8)),
         shadow: Shadow::default(),
         snap: true,
     }
 }
 
+/// Couleur de la tranche du relief selon la variante (principal : laiton, secondaire : trait,
+/// destructif : encre) ; `None` : bouton plat.
+pub fn tranche(s: fn(&Theme, button::Status) -> button::Style) -> Option<Color> {
+    use std::ptr::fn_addr_eq;
+    type F = fn(&Theme, button::Status) -> button::Style;
+    if fn_addr_eq(s, primaire as F) {
+        Some(c().laiton)
+    } else if fn_addr_eq(s, secondaire as F) {
+        Some(c().trait_)
+    } else if fn_addr_eq(s, danger as F) {
+        Some(c().encre)
+    } else {
+        None
+    }
+}
+
 /// Bouton principal : un seul par écran, en bas à droite.
 pub fn primaire(_: &Theme, s: button::Status) -> button::Style {
-    base(c().encre, c().sur_encre, s)
+    relief(c().encre, c().sur_encre, Some(c().laiton), s)
 }
 
 /// Annuler, Retour.
 pub fn secondaire(_: &Theme, s: button::Status) -> button::Style {
-    let mut st = base(c().surface_haute, c().encre, s);
-    st.border = Border::default()
-        .rounded(Radius::new(8))
-        .width(2)
-        .color(c().encre);
+    let mut st = relief(c().surface_haute, c().encre, Some(c().trait_), s);
+    st.border = Border::default().rounded(Radius::new(8)).width(2).color(
+        if matches!(s, button::Status::Disabled) {
+            c().trait_
+        } else {
+            c().encre
+        },
+    );
     st
 }
 
 /// Effacement : toujours suivi d'une confirmation.
 pub fn danger(_: &Theme, s: button::Status) -> button::Style {
-    base(c().menace, c().sur_encre, s)
+    relief(c().menace, c().sur_encre, Some(c().encre), s)
 }
 
 pub fn discret(_: &Theme, s: button::Status) -> button::Style {
@@ -242,14 +266,5 @@ pub fn fond(_: &Theme) -> container::Style {
         background: Some(Background::Color(c().surface)),
         text_color: Some(c().encre),
         ..Default::default()
-    }
-}
-
-/// Jauge des traitements en cours.
-pub fn jauge(_: &Theme) -> progress_bar::Style {
-    progress_bar::Style {
-        background: Background::Color(c().analyse_fond),
-        bar: Background::Color(c().analyse),
-        border: Border::default().rounded(Radius::new(8)),
     }
 }

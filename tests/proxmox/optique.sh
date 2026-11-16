@@ -140,8 +140,8 @@ if test_actif blanchiment; then
     cliquer "Blanchir ce"
     mot_de_passe_si_demande secret
     attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
-    cliquer "Blanchir le disque"; attendre "Effacer et réécrire" 60 "$D/03-confirmation.png"
-    cliquer "Effacer et réécrire"; date +%s > "$D/debut"
+    cliquer "Blanchir le disque"; attendre "Maintenir pour effacer" 60 "$D/03-confirmation.png"
+    "${B[@]}" maintenir "Maintenir pour"; date +%s > "$D/debut"
     sleep 60; capture 04-en-cours; lire 04-en-cours >/dev/null
     attendre "Terminé" 14400 "$D/05-termine.png"; date +%s > "$D/fin"
     ok "blanchiment terminé en $(( $(cat "$D/fin") - $(cat "$D/debut") )) s (effacement complet + gravure + relecture)"

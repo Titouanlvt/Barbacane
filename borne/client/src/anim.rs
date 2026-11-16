@@ -29,6 +29,21 @@ pub fn echelle_bouclier(p: f32) -> f32 {
     }
 }
 
+/// Sceau ou triangle qui apparaît : 0 → 115 % → 100 % (`ease-out`).
+pub fn echelle_sceau(p: f32) -> f32 {
+    let p = p.clamp(0.0, 1.0);
+    if p < 0.6 {
+        1.15 * ease_out(p / 0.6)
+    } else {
+        1.15 - 0.15 * ease_out((p - 0.6) / 0.4)
+    }
+}
+
+/// Changement d'écran : le nouveau contenu arrive de 24 px à droite (300 ms).
+pub fn arrivee(p: f32) -> f32 {
+    24.0 * (1.0 - ease_bezier(p))
+}
+
 /// Herse : chute (0 → 1) pendant 60 % du temps, puis léger tremblement horizontal amorti.
 /// Renvoie (chute, décalage horizontal en px).
 pub fn herse(p: f32) -> (f32, f32) {
@@ -85,6 +100,15 @@ mod tests {
             let y = balayage(i as f32 * 0.07);
             assert!((0.0..=1.0).contains(&y));
         }
+    }
+
+    #[test]
+    fn sceau_et_arrivee() {
+        assert_eq!(echelle_sceau(0.0), 0.0);
+        assert!((echelle_sceau(1.0) - 1.0).abs() < 1e-6);
+        assert!((echelle_sceau(0.6) - 1.15).abs() < 1e-6);
+        assert_eq!(arrivee(1.0), 0.0);
+        assert_eq!(arrivee(0.0), 24.0);
     }
 
     #[test]

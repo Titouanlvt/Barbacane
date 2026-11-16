@@ -366,8 +366,8 @@ if test_actif blanchiment; then
     cliquer "Blanchir cette clé"
     mot_de_passe_si_demande secret
     attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"
-    cliquer "Blanchir la clé"; attendre "Effacer et réécrire" 30 "$D/03-confirmation.png"
-    cliquer "Effacer et réécrire"
+    cliquer "Blanchir la clé"; attendre "Maintenir pour effacer" 30 "$D/03-confirmation.png"
+    "${B[@]}" maintenir "Maintenir pour"
     sleep 90; capture 04-effacement-en-cours
     attendre "Vous pouvez retirer les clés" 10800 "$D/05-termine.png"
     debrancher usb1

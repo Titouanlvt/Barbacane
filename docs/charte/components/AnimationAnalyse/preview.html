@@ -1,0 +1,95 @@
+<!-- @dsCard group="États" height=760 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@700&family=JetBrains+Mono&display=swap">
+<style>
+body{margin:0;background:var(--surface);color:var(--encre);font-family:"Atkinson Hyperlegible","DejaVu Sans",sans-serif}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--pas-2);padding:var(--pas-3)}
+.c{background:var(--surface-haute);border:1px solid var(--trait);border-radius:var(--rayon-l);padding:var(--pas-2);display:grid;gap:var(--pas-1);justify-items:center;text-align:center}
+.c svg{width:150px;height:150px}
+.t{font:700 24px/28px "Barlow Condensed","Arial Narrow",sans-serif}
+.d{font-size:14px;line-height:20px;color:var(--encre-douce)}
+.f{font:400 12px/16px "JetBrains Mono",monospace;color:var(--encre-douce);height:16px}
+.front{fill:var(--encre)}.side{fill:var(--trait)}.lait{fill:var(--laiton)}.door{fill:var(--surface-haute)}
+.an{fill:var(--analyse)}.ok{fill:var(--sain)}.ko{fill:var(--menace)}.wa{fill:var(--alerte)}
+.key{animation:entre 2.4s cubic-bezier(.5,0,.3,1) infinite}
+@keyframes entre{0%{transform:translateX(-60px);opacity:0}15%{opacity:1}60%,100%{transform:translateX(0);opacity:1}}
+.scan{animation:scan 1.6s ease-in-out infinite alternate}
+@keyframes scan{from{transform:translateY(0)}to{transform:translateY(64px)}}
+.bar{transform-origin:0 0;animation:prog 4s linear infinite}
+@keyframes prog{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.herse{animation:herse 2.6s cubic-bezier(.7,0,.2,1) infinite}
+@keyframes herse{0%,20%{transform:translateY(-40px)}45%,100%{transform:translateY(0)}}
+.pop{transform-origin:75px 75px;animation:pop 2.6s ease-out infinite}
+@keyframes pop{0%,20%{transform:scale(.6);opacity:0}40%{transform:scale(1.08);opacity:1}55%,100%{transform:scale(1)}}
+.shake{animation:shake 2.6s ease-in-out infinite}
+@keyframes shake{0%,45%,100%{transform:none}50%{transform:translateX(-4px)}55%{transform:translateX(4px)}60%{transform:translateX(-2px)}65%{transform:none}}
+.files span{animation:defile 1.6s steps(1) infinite}
+.spin{transform-origin:75px 70px;animation:tourne 1.2s linear infinite}
+@keyframes tourne{to{transform:rotate(360deg)}}
+.laser{animation:laser 2.4s ease-in-out infinite alternate}
+@keyframes laser{from{transform:translateX(0)}to{transform:translateX(-34px)}}
+.tiroir{animation:tiroir 2.4s cubic-bezier(.5,0,.3,1) infinite}
+@keyframes tiroir{0%{transform:translateY(-40px);opacity:0}15%{opacity:1}55%,100%{transform:translateY(0)}}
+.disc{fill:var(--trait)}.disc2{fill:var(--surface-haute)}.trou{fill:var(--surface)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<div class="grid">
+
+<div class="c">
+<svg viewBox="0 0 150 150"><g class="key">
+<rect class="side" x="44" y="54" width="60" height="44" rx="6" transform="translate(4 -4)"/>
+<rect class="front" x="44" y="54" width="60" height="44" rx="6"/>
+<rect class="side" x="104" y="64" width="22" height="24" transform="translate(4 -4)"/>
+<rect class="lait" x="104" y="64" width="22" height="24"/>
+<rect class="door" x="110" y="70" width="5" height="4"/><rect class="door" x="110" y="78" width="5" height="4"/>
+</g></svg>
+<div class="t">Clé détectée</div><div class="d">La clé glisse vers la porte</div><div class="f">SanDisk · 32 Go</div>
+</div>
+
+<div class="c">
+<svg viewBox="0 0 150 150">
+<rect class="side" x="38" y="38" width="74" height="84" rx="4" transform="translate(5 -5)"/>
+<rect class="front" x="38" y="38" width="74" height="84" rx="4"/>
+<rect class="door" x="48" y="50" width="54" height="8" rx="2"/><rect class="door" x="48" y="66" width="40" height="8" rx="2"/><rect class="door" x="48" y="82" width="48" height="8" rx="2"/><rect class="door" x="48" y="98" width="30" height="8" rx="2"/>
+<rect class="an scan" x="34" y="44" width="82" height="4" rx="2"/>
+<rect class="side" x="25" y="134" width="100" height="6" rx="3"/><rect class="an bar" x="25" y="134" width="100" height="6" rx="3"/>
+</svg>
+<div class="t" style="color:var(--analyse)">Analyse en cours</div><div class="d">Le faisceau balaie chaque fichier</div><div class="f">Photos/chantier-04.jpg</div>
+</div>
+
+<div class="c">
+<svg viewBox="0 0 150 150"><g class="pop">
+<path class="side" d="M75 130s38-18 38-48V48L75 34 37 48v34c0 30 38 48 38 48Z" transform="translate(5 -5)"/>
+<path class="ok" d="M75 130s38-18 38-48V48L75 34 37 48v34c0 30 38 48 38 48Z"/>
+<path d="m58 82 12 12 24-26" fill="none" stroke="var(--sain-fond)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</g></svg>
+<div class="t" style="color:var(--sain)">Clé saine</div><div class="d">Le bouclier s'impose</div><div class="f">1 038 fichiers copiés</div>
+</div>
+
+<div class="c">
+<svg viewBox="0 0 150 150"><g class="shake">
+<rect class="side" x="35" y="30" width="80" height="100" transform="translate(5 -5)"/>
+<path class="front" fill-rule="evenodd" d="M35 130V30h80v100ZM55 130V80a20 20 0 0 1 40 0v50Z"/>
+<clipPath id="porte"><path d="M55 130V80a20 20 0 0 1 40 0v50Z"/></clipPath>
+<g clip-path="url(#porte)"><rect class="door" x="55" y="60" width="40" height="70"/>
+<g class="herse"><rect class="ko" x="55" y="78" width="40" height="5"/><rect class="ko" x="55" y="94" width="40" height="5"/><rect class="ko" x="55" y="110" width="40" height="5"/><rect class="ko" x="55" y="126" width="40" height="5"/><rect class="ko" x="62" y="60" width="4" height="72"/><rect class="ko" x="73" y="60" width="4" height="72"/><rect class="ko" x="84" y="60" width="4" height="72"/></g></g>
+</g></svg>
+<div class="t" style="color:var(--menace)">Menace retirée</div><div class="d">La herse tombe, la porte se ferme</div><div class="f">Win.Test.EICAR_HDB-1</div>
+</div>
+
+
+<div class="c">
+<svg viewBox="0 0 150 150"><defs><g id="cd"><circle class="disc" cx="75" cy="70" r="46"/><circle class="disc2" cx="75" cy="70" r="40"/><path class="lait" d="M75 30a40 40 0 0 1 34.6 20L75 70Z"/><path class="an" d="M40.4 90A40 40 0 0 1 35 70h40Z" opacity=".55"/><circle class="disc" cx="75" cy="70" r="13"/><circle class="trou" cx="75" cy="70" r="6"/></g></defs><g class="tiroir">
+<rect class="side" x="18" y="112" width="114" height="22" rx="3" transform="translate(5 -5)"/>
+<rect class="front" x="18" y="112" width="114" height="22" rx="3"/><rect class="lait" x="106" y="120" width="16" height="4" rx="2"/>
+<g transform="translate(5 -5)"><circle class="side" cx="75" cy="70" r="46"/></g><use href="#cd"/></g></svg>
+<div class="t">CD-ROM détecté</div><div class="d">Le tiroir se referme sur le disque</div><div class="f">ISO 9660 · 642 Mo</div>
+</div>
+
+<div class="c">
+<svg viewBox="0 0 150 150"><g transform="translate(5 -5)"><circle class="side" cx="75" cy="70" r="46"/></g>
+<g class="spin"><use href="#cd"/></g>
+<g class="laser"><rect class="side" x="108" y="122" width="26" height="16" rx="3"/><rect class="front" x="106" y="124" width="26" height="16" rx="3"/><path class="an" d="M117 124 115 70h4Z" opacity=".8"/><circle class="an" cx="117" cy="70" r="3"/></g>
+<rect class="side" x="25" y="140" width="100" height="5" rx="2.5"/><rect class="an bar" x="25" y="140" width="100" height="5" rx="2.5"/></svg>
+<div class="t" style="color:var(--analyse)">Lecture du disque</div><div class="d">Le disque tourne, le laser parcourt les pistes</div><div class="f">SETUP/data1.cab</div>
+</div>
+</div>
