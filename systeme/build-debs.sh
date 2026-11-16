@@ -2,6 +2,7 @@
 # Construit les paquets de production (sans « mock ») : usbsas-server, usbsas-hid, barbacane.
 # Sortie : systeme/mkosi/paquets/ (utilisés par install.sh --debs et par mkosi).
 set -euo pipefail
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$REPO/systeme/mkosi/paquets"
 # Outils de compilation installés si absents (ex. conteneur debian:trixie vierge).
