@@ -7,13 +7,13 @@ license.workspace = true
 [dependencies]
 usbsas-comm = { path = "../../noyau/usbsas-comm" }
 usbsas-proto = { path = "../../noyau/usbsas-proto" }
-usbsas-process = { path = "../../noyau/usbsas-process" }
 ureq = { version = "3.5.0", features = ["json"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 log = "0.4.34"
 
 [dev-dependencies]
+usbsas-process = { path = "../../noyau/usbsas-process" }
 tempfile = "3.27.0"
 usbsas-fsrw = { path = "../../noyau/usbsas-fsrw" }
 usbsas-mbr = { path = "../../noyau/usbsas-mbr" }
