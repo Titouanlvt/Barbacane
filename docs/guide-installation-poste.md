@@ -14,7 +14,7 @@ Ce guide s'adresse à la personne qui prépare une borne. Durée : environ 30 mi
 
 ## Étape 1 — Fabriquer l'ISO (une seule fois pour toutes les bornes)
 
-Sur le poste administrateur, **en root** (`su -` si `sudo` n'est pas installé) :
+Sur le poste administrateur, **en root** : `su -` (avec le tiret) ou `sudo -i`.
 
 ```sh
 apt-get update && apt-get install -y git minisign

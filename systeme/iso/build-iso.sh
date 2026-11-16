@@ -12,6 +12,8 @@
 #     --yara          règles YARA initiales
 #     --netinst       ISO netinst Debian 13 amd64 déjà téléchargée (défaut : dernière version, empreinte vérifiée)
 set -euo pipefail
+# « su » sans « - » garde le PATH de l'utilisateur, sans /usr/sbin : debootstrap, mkfs… y sont.
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ICI="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$ICI/../.." && pwd)"
 DEBS='' CLE_PUB='' CLAMAV='' YARA='' NETINST='' SORTIE="$PWD/barbacane.iso"
