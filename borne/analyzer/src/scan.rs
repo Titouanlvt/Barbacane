@@ -47,6 +47,11 @@ struct Node {
     limit: bool,
 }
 
+/// En dessous de cette taille extraite, le taux de compression n'est pas un signe de bombe : un
+/// petit fichier très compressible (journal, fichier de zéros) dépasse vite 100 pour 1 dans les
+/// paquets d'une ISO d'installation. Les bombes restent bornées par `max_total_size`.
+const PLANCHER_TAUX: u64 = 64 * 1024 * 1024;
+
 /// Budget partagé par tout le transfert.
 struct Budget {
     files: u64,
@@ -257,21 +262,23 @@ impl Scanner<'_> {
                 ),
             );
         }
+        if listing.unpacked_size > PLANCHER_TAUX && listing.unpacked_size / node.entry.size.max(1) > l.max_ratio
+        {
+            return over_limit(
+                node,
+                format!(
+                    "taux de compression suspect (bombe de décompression, plus de {} pour 1) : {}",
+                    l.max_ratio,
+                    node.entry.path
+                ),
+            );
+        }
         if budget.size.saturating_add(listing.unpacked_size) > l.max_total_size {
             return over_limit(
                 node,
                 format!(
                     "taille décompressée trop grande (maximum {})",
                     human(l.max_total_size)
-                ),
-            );
-        }
-        if listing.unpacked_size / node.entry.size.max(1) > l.max_ratio {
-            return over_limit(
-                node,
-                format!(
-                    "taux de compression suspect (bombe de décompression, plus de {} pour 1)",
-                    l.max_ratio
                 ),
             );
         }
@@ -319,12 +326,14 @@ impl Scanner<'_> {
                 ),
             );
         }
-        if real_size / node.entry.size.max(1) > l.max_ratio {
+        if real_size > PLANCHER_TAUX && real_size / node.entry.size.max(1) > l.max_ratio
+        {
             return over_limit(
                 node,
                 format!(
-                    "taux de compression suspect (bombe de décompression, plus de {} pour 1)",
-                    l.max_ratio
+                    "taux de compression suspect (bombe de décompression, plus de {} pour 1) : {}",
+                    l.max_ratio,
+                    node.entry.path
                 ),
             );
         }

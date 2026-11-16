@@ -44,7 +44,7 @@ done
 (cd "$T" && 7z a -bd -y -psecret -mhe=on chiffre-entetes.7z sain.txt >/dev/null) && mv "$T/chiffre-entetes.7z" .
 
 # Bombes et limites
-head -c 10000000 /dev/zero > "$T/zeros.bin"
+head -c 200000000 /dev/zero > "$T/zeros.bin"   # au-delà du plancher de 64 Mo
 (cd "$T" && zip -q -X -9 bombe-ratio.zip zeros.bin) && mv "$T/bombe-ratio.zip" .
 cp "$T/sain.txt" "$T/n0.txt"
 prev=n0.txt

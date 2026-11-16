@@ -47,6 +47,10 @@ impl From<io::Error> for Error {
         Error::Usbsas(e)
     }
 }
+/// Taille maximale d'une réponse de l'analyseur. ureq coupe à 10 Mo par défaut ; le rapport d'une
+/// ISO d'installation (des milliers de fichiers, paquets extraits) dépasse 18 Mo.
+const LIMITE_REPONSE: u64 = 512 * 1024 * 1024;
+
 impl From<ureq::Error> for Error {
     fn from(e: ureq::Error) -> Self {
         Error::Analyzer(e.to_string())
@@ -157,7 +161,12 @@ impl Analyzer {
         let mut r = self.http.get(format!("{}{path}", self.base)).call()?;
         match r.status().as_u16() {
             404 => Ok(None),
-            200 => Ok(Some(r.body_mut().read_json()?)),
+            200 => Ok(Some(
+                r.body_mut()
+                    .with_config()
+                    .limit(LIMITE_REPONSE)
+                    .read_json()?,
+            )),
             c => Err(Error::Analyzer(format!("{path} : HTTP {c}"))),
         }
     }
@@ -168,7 +177,11 @@ impl Analyzer {
             .post(format!("{}{path}", self.base))
             .send_json(body)?;
         match r.status().as_u16() {
-            200 => Ok(r.body_mut().read_json()?),
+            200 => Ok(r
+                .body_mut()
+                .with_config()
+                .limit(LIMITE_REPONSE)
+                .read_json()?),
             204 => Ok(serde_json::Value::Null),
             c => Err(Error::Analyzer(format!(
                 "{path} : HTTP {c} {}",
