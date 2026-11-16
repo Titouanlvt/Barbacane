@@ -1,0 +1,10 @@
+#!/bin/bash
+# Exécuté par mkosi DANS l'image (suffixe .chroot) : même configuration que l'ISO
+# (systeme/iso/, déposé dans l'image par ExtraTrees), puis retiré de l'image.
+set -euo pipefail
+/usr/libexec/barbacane-configurer
+rm -f /usr/libexec/barbacane-configurer
+# systemd-boot : pas d'édition de la ligne du noyau au démarrage (sinon init=/bin/sh sans PIN),
+# pas de menu ni d'entrées automatiques (équivalent du verrouillage GRUB de l'ISO).
+mkdir -p /efi/loader
+printf 'timeout 0\neditor no\nauto-entries no\nauto-firmware no\n' > /efi/loader/loader.conf

@@ -78,4 +78,5 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 5. « Tout Rust » : ntfs-3g et FatFs (C, `noyau/usbsas-fsrw`, isolés par seccomp) restent ; les remplacer
    (crates `fatfs`, `ntfs`) ferait perdre l'exFAT et l'écriture NTFS (sortie FAT32 seule, 4 Go/fichier).
    Décision du 15/11 : fiabilité d'abord, chantier à part avec sa propre campagne de preuves.
-4. Image mkosi jamais construite ; drop-in tmpfs non supprimé à la purge (mineur).
+4. Image mkosi : construite et démarrée le 16/11 (docs/preuves/mkosi/) ; pas de base ClamAV ni
+   d'agrandissement de la racine ; campagne sur vraies clés non faite (l'ISO reste la référence).

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Purge : retire ce que postinst a créé hors des fichiers du paquet.
+set -e
+if [ "$1" = "purge" ]; then
+    # Drop-in tmpfs de l'analyseur (généré par postinst avec les uid/gid de l'installation)
+    rm -f /etc/systemd/system/barbacane-analyzer.service.d/tmpfs.conf
+    rmdir /etc/systemd/system/barbacane-analyzer.service.d 2>/dev/null || true
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload >/dev/null 2>&1 || true
+    fi
+fi
+#DEBHELPER#
