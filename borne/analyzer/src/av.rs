@@ -12,6 +12,9 @@ pub enum Detection {
     Found { engine: &'static str, name: String },
 }
 
+/// Taille au-delà de laquelle ClamAV refuse d'analyser un fichier (2 Gio - 1).
+pub const CLAMAV_TAILLE_MAX: u64 = (2 << 30) - 1;
+
 pub struct Engines {
     clamd_socket: PathBuf,
     yara: Option<yara_x::Rules>,
@@ -43,6 +46,15 @@ impl Engines {
 
     /// Analyse un fichier. Toute erreur de moteur remonte : l'appelant refuse le fichier.
     pub fn scan(&self, path: &Path) -> Result<Detection> {
+        // ClamAV n'analyse pas un fichier de 2 Gio ou plus (limite du moteur) : clamd coupait la
+        // connexion (« Broken pipe »). Les conteneurs (ISO, WIM, archives) sont ouverts avant
+        // d'arriver ici ; un fichier simple de cette taille est refusé avec une raison claire.
+        let taille = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        if taille >= CLAMAV_TAILLE_MAX {
+            bail!(
+                "fichier trop volumineux pour l'antivirus (2 Go maximum par fichier, hors archives)"
+            );
+        }
         let rep = self.clamd(b"zINSTREAM\0", Some(path))?;
         // Réponse : "stream: OK" ou "stream: <signature> FOUND" ou "... ERROR"
         let rep = rep.strip_prefix("stream: ").unwrap_or(&rep);

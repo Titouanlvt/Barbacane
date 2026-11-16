@@ -1,6 +1,6 @@
 #!/bin/bash
 # Fabrique des images de clés USB « comme sur le terrain » (à lancer en root sur une VM de
-# construction Debian 13 : mkfs.ntfs, mkfs.exfat, mkfs.vfat, sgdisk, 7z, rar, zip, xorriso).
+# construction Debian 13 : mkfs.ntfs, mkfs.exfat, mkfs.vfat, sgdisk, 7z, rar, zip, xorriso, wimlib-imagex).
 #
 #   tests/proxmox/contenu-reel.sh DOSSIER [ISO_LINUX]
 #
@@ -47,7 +47,7 @@ fermer() { # scénario : manifestes puis démontage
     umount "$T/m"; sync; losetup -d "$(cat "$T/loop")"
 }
 # Conteneurs compressés ou chiffrés : piégés si leur nom contient « piege » (fabriqués ainsi).
-conteneur_piege() { case "$1" in *piege*) echo oui ;; esac; }
+conteneur_piege() { case "$1" in *piege*|*refus-attendu*) echo oui ;; esac; }
 rm -f "$OUT"/*.sains "$OUT"/*.pieges
 
 # ------------------------------------------------------------------ documents bureautiques
@@ -108,9 +108,17 @@ if [ -n "$ISO_LINUX" ]; then
 fi
 
 # ------------------------------------------------------------------ rufus-ntfs : Windows, fichier > 4 Go
-image "$OUT/rufus-ntfs.img" 5200 gpt ntfs ESD-USB
+image "$OUT/rufus-ntfs.img" 7600 gpt ntfs ESD-USB
 mkdir -p "$T/m/sources" "$T/m/boot" "$T/m/efi/boot"
-head -c 4600M /dev/urandom > "$T/m/sources/install.wim"            # > 4 Go : impossible en FAT32
+# Vrai fichier WIM (comme install.wim de Windows) de plus de 4 Go, fait de fichiers < 2 Go :
+# l'analyseur doit l'ouvrir (conteneur) et analyser chaque fichier.
+mkdir -p "$T/wim/Windows/System32"
+for i in 1 2 3; do head -c 1400M /dev/urandom > "$T/wim/Windows/System32/donnees-$i.dat"; done
+printf 'Windows image de test\n' > "$T/wim/Windows/lisez-moi.txt"
+wimlib-imagex capture "$T/wim" "$T/m/sources/install.wim" "Test" --compress=none >/dev/null
+rm -rf "$T/wim"
+# Fichier simple > 2 Go (pas une archive) : ClamAV ne peut pas l'analyser → refus attendu, motivé.
+head -c 2200M /dev/urandom > "$T/m/sources/disque-refus-attendu.bin"
 head -c 30M /dev/urandom > "$T/m/sources/boot.wim"
 printf '[AutoRun]\nopen=setup.exe\n' > "$T/m/autorun.inf"
 head -c 2M /dev/urandom > "$T/m/setup.exe"
