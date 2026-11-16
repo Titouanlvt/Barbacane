@@ -4,7 +4,10 @@
 //! passe d'archives au clavier virtuel) → résumé → écriture → fin.
 
 use crate::admin_ui::{self, AdminMsg, AdminUi};
+use crate::anim;
+use crate::barre;
 use crate::config::Config;
+use crate::dessin;
 use crate::keyboard::{Input, Key};
 use crate::mesure::{self, Mesure};
 use crate::style;
@@ -14,7 +17,7 @@ use barbacane_parcours::{
     Analysis, Analyzer, Devices, Event, PasswordRequest,
     proto::common::{Status, UsbDevice},
 };
-use iced::widget::{Column, Space, button, column, container, progress_bar, row, scrollable, text};
+use iced::widget::{Column, Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Element, Length, Subscription, Task};
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
@@ -64,6 +67,10 @@ pub enum Msg {
     Optique(Result<crate::optique::Etat, String>),
     Ejecter,
     Fait(Result<serde_json::Value, String>),
+    /// Image suivante d'une animation (30 images/s au plus)
+    Anim,
+    /// Bouton « Maintenir pour effacer » enfoncé (true) ou relâché (false)
+    Maintien(bool),
 }
 
 pub struct App {
@@ -99,6 +106,15 @@ pub struct App {
     absent_n: u8,
     /// Dernière erreur du service optique journalisée (un message par changement)
     optique_err: Option<String>,
+    /// Entrée dans l'écran courant (départ des animations de la charte)
+    depuis: std::time::Instant,
+    /// Accueil atteint depuis l'écran « Terminé » : animation de retrait des clés
+    retour_fin: bool,
+    /// « Maintenir pour effacer » : début de l'appui
+    maintien: Option<std::time::Instant>,
+    /// Barre de progression : dernière valeur affichée (jamais en recul) et son heure
+    barre_val: f32,
+    barre_maj: std::time::Instant,
 }
 
 pub fn run(cfg: Config) -> iced::Result {
@@ -111,6 +127,7 @@ pub fn run(cfg: Config) -> iced::Result {
         .font(include_bytes!("../ressources/polices/BarlowCondensed-Bold.ttf").as_slice())
         .font(include_bytes!("../ressources/polices/JetBrainsMono.ttf").as_slice())
         .default_font(style::CORPS)
+        .theme(|_: &App| style::theme_iced())
         .subscription(App::subscription)
         .run()
 }
@@ -157,6 +174,11 @@ impl App {
             disque_ecarte: false,
             absent_n: 0,
             optique_err: None,
+            depuis: std::time::Instant::now(),
+            retour_fin: false,
+            maintien: None,
+            barre_val: 0.0,
+            barre_maj: std::time::Instant::now(),
         };
         let t = app.refresh_etat();
         (app, t)
@@ -213,6 +235,9 @@ impl App {
         .map(Msg::Worker);
         let tick = iced::time::every(std::time::Duration::from_secs(60)).map(|_| Msg::Tick);
         let mut subs = vec![w, tick];
+        if let Some(d) = self.anime() {
+            subs.push(iced::time::every(d).map(|_| Msg::Anim));
+        }
         if !self.cfg.optique_socket.is_empty() {
             subs.push(
                 iced::time::every(std::time::Duration::from_secs(2)).map(|_| Msg::OptiqueTick),
@@ -404,6 +429,28 @@ impl App {
     }
 
     fn update(&mut self, m: Msg) -> Task<Msg> {
+        let avant = std::mem::discriminant(&self.screen);
+        let etait_fin = matches!(self.screen, Screen::Fin(_));
+        let etape_avant = self.progress.map(|(s, _, _)| s);
+        let t = self.maj(m);
+        if std::mem::discriminant(&self.screen) != avant {
+            self.depuis = std::time::Instant::now();
+            self.retour_fin = etait_fin && matches!(self.screen, Screen::Accueil);
+            self.maintien = None;
+        }
+        // Barre : jamais en recul ; repart à chaque écran ou étape ; horodatée à chaque avancée
+        // (au-delà de 30 s sans avancée, le message « fichier volumineux » s'affiche).
+        let f = self.fraction().unwrap_or(0.0);
+        let etape = self.progress.map(|(s, _, _)| s);
+        let nouvelle = std::mem::discriminant(&self.screen) != avant || etape != etape_avant;
+        if nouvelle || f > self.barre_val + 0.0005 {
+            self.barre_val = f;
+            self.barre_maj = std::time::Instant::now();
+        }
+        t
+    }
+
+    fn maj(&mut self, m: Msg) -> Task<Msg> {
         match m {
             Msg::Worker(ev) => self.on_worker(ev),
             Msg::Choisir(mode) => {
@@ -469,12 +516,39 @@ impl App {
             }
             Msg::Etat(r) => {
                 match r {
-                    Ok(v) => self.etat = Some(v),
+                    Ok(v) => {
+                        // Préférences d'affichage (thème Nuit, animations réduites)
+                        let p = &v["preferences"];
+                        style::set_nuit(p["theme"].as_str() == Some("nuit"));
+                        style::set_animations_reduites(
+                            p["animations_reduites"].as_bool() == Some(true),
+                        );
+                        self.etat = Some(v)
+                    }
                     Err(e) => log::warn!("état admin : {e}"),
                 }
                 Task::none()
             }
             Msg::Tick => self.refresh_etat(),
+            Msg::Anim => {
+                // « Maintenir pour effacer » : 2 s d'appui continu valent confirmation.
+                if self
+                    .maintien
+                    .is_some_and(|d| d.elapsed() >= std::time::Duration::from_secs(2))
+                {
+                    self.maintien = None;
+                    return self.maj(Msg::Blanchir);
+                }
+                Task::none()
+            }
+            Msg::Maintien(appui) => {
+                self.maintien = if appui && matches!(self.screen, Screen::ConfirmBlanchir) {
+                    self.maintien.or(Some(std::time::Instant::now()))
+                } else {
+                    None
+                };
+                Task::none()
+            }
             Msg::OptiqueTick => Task::perform(
                 crate::optique::etat_async(self.cfg.optique_socket.clone()),
                 Msg::Optique,
@@ -613,13 +687,34 @@ impl App {
 
     fn view(&self) -> Element<'_, Msg> {
         let body: Element<Msg> = match &self.screen {
-            Screen::Connexion => centre(column![
-                titre("Démarrage…"),
-                texte("Connexion au service de lecture des clés USB."),
-            ]),
+            Screen::Connexion => {
+                // Charte : le logo se construit, puis « Préparation de la borne… » tant que les
+                // services ne répondent pas ; au-delà de 2 min, le service en cause est nommé.
+                let logo = if style::est_nuit() { LOGO_NUIT } else { LOGO };
+                let mut c = column![dessin::demarrage(self.avancement(2200), logo, 170.0)];
+                if self.depuis.elapsed().as_secs() < 120 {
+                    c = c.push(texte("Préparation de la borne…"));
+                } else {
+                    c = c
+                        .push(titre("La borne n'est pas prête."))
+                        .push(texte("Prévenez l'administrateur."))
+                        .push(
+                            text("usbsas-server (lecture des clés USB)")
+                                .size(style::PETIT)
+                                .font(style::MONO)
+                                .color(style::c().encre_douce),
+                        );
+                }
+                centre(c)
+            }
             Screen::Accueil => centre(column![
-                icone(LOGO, 150.0),
-                Space::new().height(10),
+                // Charte : en attente, la clé invite à entrer ; après une copie, les clés
+                // repartent et la herse se referme (1,5 s), puis l'attente reprend.
+                if self.retour_fin && self.depuis.elapsed().as_millis() < 1500 {
+                    dessin::retrait(self.avancement(1500), 170.0)
+                } else {
+                    dessin::attente(self.depuis.elapsed().as_secs_f32(), 170.0)
+                },
                 // Charte : « clé à analyser » / « disque à analyser » ; les deux si un lecteur existe
                 titre(if self.optique.is_some() {
                     "Insérez la clé ou le disque à analyser"
@@ -646,7 +741,7 @@ impl App {
                 carte(column![
                     texte_c(
                         "La clé va être ENTIÈREMENT EFFACÉE, puis seuls les fichiers sains y seront réécrits.",
-                        style::ROUGE
+                        style::c().menace
                     ),
                     texte(&format!(
                         "{} fichier(s) seront réécrits.",
@@ -660,9 +755,11 @@ impl App {
                 Space::new().height(20),
                 row![
                     bouton("Annuler", Msg::Terminer, style::secondaire),
-                    bouton("Effacer et réécrire", Msg::Blanchir, style::danger),
+                    self.maintenir("Maintenir pour effacer"),
                 ]
-                .spacing(30),
+                .spacing(30)
+                .align_y(Alignment::Center),
+                petit("Gardez le bouton enfoncé 2 secondes ; le relâcher avant annule."),
             ]),
             Screen::Ecriture => {
                 let disque =
@@ -682,7 +779,7 @@ impl App {
                 )
             }
             Screen::Fin(n) => centre(column![
-                icone_etat(ICONE_SAIN, 110.0, style::SAIN),
+                dessin::sain(self.avancement(500), 130.0),
                 titre("Terminé"),
                 texte(&format!(
                     "{n} fichier(s) sain(s) écrit(s), avec le rapport (rapport-barbacane-…txt / .html)."
@@ -706,7 +803,7 @@ impl App {
                     ));
                 }
                 centre(column![
-                    icone_etat(ICONE_ALERTE, 96.0, style::ALERTE),
+                    dessin::illisible(self.avancement(600), 130.0),
                     titre("Une erreur est survenue"),
                     carte(column![texte(message)]),
                     Space::new().height(20),
@@ -717,8 +814,15 @@ impl App {
         };
         let page = column![
             self.view_header(),
+            self.view_etapes(),
             container(body)
-                .padding(30)
+                .padding(iced::Padding {
+                    top: 30.0,
+                    bottom: 30.0,
+                    // Charte : le nouvel écran arrive de 24 px à droite (300 ms).
+                    left: 30.0 + anim::arrivee(self.avancement(300)),
+                    right: 30.0,
+                })
                 .width(Length::Fill)
                 .height(Length::Fill),
             self.view_footer()
@@ -736,7 +840,7 @@ impl App {
             text(self.cfg.title.to_uppercase())
                 .size(34)
                 .font(style::TITRE_POLICE)
-                .color(style::SUR_ENCRE),
+                .color(style::c().sur_bandeau),
             Space::new().width(Length::Fill)
         ]
         .spacing(14)
@@ -761,7 +865,7 @@ impl App {
                 r = r.push(
                     text(format!("Signatures antivirales : {a} jour(s)"))
                         .size(style::PETIT)
-                        .color(style::SUR_ENCRE),
+                        .color(style::c().sur_bandeau),
                 )
             }
             None if self.etat.is_some() => {
@@ -855,19 +959,20 @@ impl App {
                 Msg::Choisir(Mode::Blanchir),
             ));
         }
+        // Charte : la clé glisse vers la porte, ou le tiroir remonte avec le disque (600 ms).
         let mut c = column![
-            icone_etat(
-                if disque { ICONE_DISQUE } else { ICONE_CLE },
-                72.0,
-                style::ENCRE
-            ),
+            if disque {
+                dessin::disque_detecte(self.avancement(600), 96.0)
+            } else {
+                dessin::cle_detectee(self.avancement(600), 96.0)
+            },
             titre(if disque {
                 "Disque détecté"
             } else {
                 "Clé détectée"
             }),
             texte(&d),
-            Space::new().height(30),
+            Space::new().height(8),
             choix,
         ]
         .max_width(1460);
@@ -879,7 +984,7 @@ impl App {
         if disque {
             // Utiliser une clé alors qu'un disque est dans le lecteur : le disque est ignoré
             // jusqu'à son retrait.
-            c = c.push(Space::new().height(10)).push(bouton(
+            c = c.push(Space::new().height(0)).push(bouton(
                 "Ignorer ce disque",
                 Msg::Terminer,
                 style::secondaire,
@@ -889,64 +994,305 @@ impl App {
     }
 
     fn view_progress(&self, t: &str, sub: &str) -> Element<'_, Msg> {
-        let mut c = column![titre(t), texte(sub), Space::new().height(30)]
-            .spacing(10)
+        let temps = self.depuis.elapsed().as_secs_f32();
+        let disque_source = self.src.as_ref().is_some_and(est_optique);
+        // Animation du moment, au centre, au-dessus de la consigne (charte).
+        let scene: Element<Msg> = match (&self.screen, self.mode) {
+            (Screen::Analyse, _) if disque_source && self.optique_avance.is_some() => {
+                dessin::lecture_disque(temps, 140.0)
+            }
+            (Screen::Analyse, _) => dessin::analyse(temps, 140.0),
+            (Screen::Ecriture, Mode::Graver) => dessin::lecture_disque(temps, 140.0),
+            (Screen::Ecriture, _) if matches!(self.progress, Some((Status::Wipe, _, _))) => {
+                dessin::effacement(self.fraction().unwrap_or(0.0), 140.0)
+            }
+            _ => dessin::copie(temps, 140.0),
+        };
+        let mut c = column![scene, titre(t), texte(sub)]
+            .spacing(8)
             .align_x(Alignment::Center);
+        let mut etape_txt = None;
+        let mut details = None;
         if let Some((s, cur, tot)) = self.progress {
-            c = c.push(texte(etape(s)));
-            if tot > 0 {
-                c = c.push(
-                    progress_bar(0.0..=tot as f32, cur as f32)
-                        .length(Length::Fixed(700.0))
-                        .girth(28)
-                        .style(style::jauge),
+            etape_txt = Some(etape(s).to_string());
+            // Étapes en octets : quantité, vitesse de la clé, temps restant
+            if tot > 0 && matches!(s, Status::ReadSrc | Status::WriteDst | Status::Wipe) {
+                let mut l = format!(
+                    "{} sur {}  ({} %)",
+                    mesure::taille(cur),
+                    mesure::taille(tot),
+                    cur * 100 / tot
                 );
-                // Étapes en octets : quantité, vitesse de la clé, temps restant
-                if matches!(s, Status::ReadSrc | Status::WriteDst | Status::Wipe) {
-                    c = c.push(texte(&format!(
-                        "{} sur {}  ({} %)",
-                        mesure::taille(cur),
-                        mesure::taille(tot),
-                        cur * 100 / tot
-                    )));
-                    if let (Some(v), Some(r)) = (self.mesure.vitesse(), self.mesure.restant(tot)) {
-                        c = c.push(texte(&format!(
-                            "Vitesse de la clé : {}  ·  Temps restant : {}",
-                            mesure::debit(v),
-                            mesure::duree(r)
-                        )));
-                        if v < mesure::CLE_LENTE {
-                            c = c.push(petit(
-                                "Clé lente : l'opération prend du temps, c'est normal. Ne la retirez pas.",
-                            ));
-                        }
-                    }
+                if let (Some(v), Some(r)) = (self.mesure.vitesse(), self.mesure.restant(tot)) {
+                    l.push_str(&format!(
+                        "  ·  {}  ·  reste {}",
+                        mesure::debit(v),
+                        mesure::duree(r)
+                    ));
                 }
+                details = Some(l);
             }
         }
         if let Some((phase, p, restant)) = &self.optique_avance {
-            c = c.push(texte(&format!("Disque : {phase}")));
-            c = c.push(
-                progress_bar(0.0..=100.0, *p)
-                    .length(Length::Fixed(700.0))
-                    .girth(28)
-                    .style(style::jauge),
-            );
+            etape_txt = Some(format!("Disque : {phase}"));
             let mut l = format!("{p:.0} %");
             if let Some(r) = restant {
                 l.push_str(&format!(
-                    "  ·  Temps restant estimé : {}",
+                    "  ·  reste environ {}",
                     mesure::duree(std::time::Duration::from_secs(*r))
                 ));
             }
-            c = c.push(texte(&l));
-            c = c.push(petit("Ne retirez pas le disque pendant l'opération."));
+            details = Some(l);
         }
         let (done, total, scanned) = self.analysis_progress;
         if matches!(self.screen, Screen::Analyse) && total > 0 {
-            c = c.push(texte(&format!("Fichiers de la clé analysés : {done} / {total} ({scanned} au total avec le contenu des archives)")));
+            details = Some(format!(
+                "{done} / {total} fichiers ({scanned} avec le contenu des archives)"
+            ));
+        }
+        if let Some(e) = etape_txt {
+            c = c.push(texte(&e));
+        }
+        // Barre vivante + chronomètre (charte : la borne montre qu'elle travaille).
+        c = c.push(barre::barre(
+            self.fraction().map(|f| f.max(self.barre_val)),
+            temps,
+            700.0,
+        ));
+        c = c.push(
+            row![
+                text(details.unwrap_or_default())
+                    .size(style::PETIT)
+                    .color(style::c().encre_douce)
+                    .shaping(text::Shaping::Advanced),
+                Space::new().width(Length::Fill),
+                text(barre::chrono(self.depuis.elapsed().as_secs()))
+                    .size(style::PETIT)
+                    .font(style::MONO)
+                    .color(style::c().encre_douce),
+            ]
+            .width(Length::Fixed(700.0)),
+        );
+        // Fichier long : la barre n'a pas bougé depuis 30 s.
+        if self.barre_maj.elapsed().as_secs() >= 30 {
+            let pal = style::c();
+            let point_allume = style::animations_reduites() || (temps / 1.2).rem_euclid(1.0) < 0.5;
+            c = c.push(
+                container(
+                    row![
+                        container(Space::new().width(10).height(10)).style(move |_| {
+                            container::Style {
+                                background: Some(iced::Background::Color(if point_allume {
+                                    pal.laiton
+                                } else {
+                                    pal.laiton_pale
+                                })),
+                                border: iced::Border::default().rounded(5),
+                                ..Default::default()
+                            }
+                        }),
+                        text("Ce fichier est volumineux. L'opération continue, la borne n'est pas bloquée.")
+                            .size(style::PETIT)
+                            .color(pal.encre)
+                            .shaping(text::Shaping::Advanced),
+                    ]
+                    .spacing(10)
+                    .align_y(Alignment::Center),
+                )
+                .padding([8, 16])
+                .style(move |_| container::Style {
+                    background: Some(iced::Background::Color(pal.laiton_pale)),
+                    border: iced::Border::default().rounded(4),
+                    ..Default::default()
+                }),
+            );
+        }
+        if self.mesure.vitesse().is_some_and(|v| v < mesure::CLE_LENTE) {
+            c = c.push(petit(
+                "Clé lente : l'opération prend du temps, c'est normal. Ne la retirez pas.",
+            ));
+        }
+        if self.optique_avance.is_some() {
+            c = c.push(petit("Ne retirez pas le disque pendant l'opération."));
         }
         centre(c)
+    }
+
+    /// Avancement affiché par la barre (jamais en recul), `None` tant que le total est inconnu.
+    fn fraction(&self) -> Option<f32> {
+        let (done, total, _) = self.analysis_progress;
+        if let Some((_, p, _)) = &self.optique_avance {
+            return Some(p / 100.0);
+        }
+        if matches!(self.screen, Screen::Analyse) && total > 0 {
+            return Some(done as f32 / total as f32);
+        }
+        match self.progress {
+            Some((_, cur, tot)) if tot > 0 => Some(cur as f32 / tot as f32),
+            _ => None,
+        }
+    }
+
+    // ------------------------------------------------ charte : étapes et animations
+
+    /// Animation à rafraîchir : analyse (en boucle) ou un moment joué une fois, pas encore fini.
+    /// Cadence de rafraîchissement : 30 images/s pendant une animation, 1/s pour le seul
+    /// chronomètre (animations réduites), rien sinon.
+    fn anime(&self) -> Option<std::time::Duration> {
+        use std::time::Duration;
+        let ms = self.depuis.elapsed().as_millis();
+        let en_cours = matches!(
+            self.screen,
+            Screen::Analyse | Screen::Ecriture | Screen::Connexion
+        );
+        if self.maintien.is_some() {
+            return Some(Duration::from_millis(33));
+        }
+        if style::animations_reduites() {
+            return en_cours.then_some(Duration::from_secs(1));
+        }
+        let anime = ms < 300
+            || en_cours
+            || match self.screen {
+                Screen::Accueil => true,
+                Screen::Choix => ms < 600,
+                Screen::Resume => ms < 700,
+                Screen::Fin(_) => ms < 500,
+                Screen::Erreur { .. } => ms < 600,
+                Screen::Sortie => ms < 900,
+                _ => false,
+            };
+        anime.then_some(Duration::from_millis(33))
+    }
+
+    /// Bouton destructif « Maintenir pour effacer » (charte) : un voile encre remplit le bouton
+    /// pendant 2 s ; relâcher avant la fin annule. Animations réduites : compte à rebours.
+    fn maintenir(&self, libelle: &str) -> Element<'_, Msg> {
+        const L: f32 = 380.0;
+        const H: f32 = 72.0;
+        let pal = style::c();
+        let p = self
+            .maintien
+            .map_or(0.0, |d| (d.elapsed().as_secs_f32() / 2.0).min(1.0));
+        let texte_bouton = match self.maintien {
+            Some(d) if style::animations_reduites() => {
+                format!("{}…", 2 - d.elapsed().as_secs().min(1))
+            }
+            _ => libelle.to_string(),
+        };
+        let fond = container(Space::new().width(L).height(H)).style(move |_| container::Style {
+            background: Some(iced::Background::Color(pal.menace)),
+            border: iced::Border::default().rounded(8),
+            ..Default::default()
+        });
+        let voile =
+            container(Space::new().width(L * p).height(H)).style(move |_| container::Style {
+                background: Some(iced::Background::Color(pal.encre)),
+                border: iced::Border::default().rounded(8),
+                ..Default::default()
+            });
+        let etiquette = container(
+            text(texte_bouton)
+                .size(24)
+                .font(style::CORPS_GRAS)
+                .color(pal.sur_encre)
+                .shaping(text::Shaping::Advanced),
+        )
+        .center_x(L)
+        .center_y(H);
+        en_relief(
+            iced::widget::mouse_area(iced::widget::stack![fond, voile, etiquette])
+                .on_press(Msg::Maintien(true))
+                .on_release(Msg::Maintien(false))
+                .on_exit(Msg::Maintien(false))
+                .into(),
+            Some(pal.encre),
+        )
+    }
+
+    /// Avancement (0 → 1) d'une animation de `duree_ms` jouée une fois depuis l'entrée dans
+    /// l'écran ; 1 directement si les animations sont réduites.
+    fn avancement(&self, duree_ms: u64) -> f32 {
+        if style::animations_reduites() {
+            return 1.0;
+        }
+        (self.depuis.elapsed().as_millis() as f32 / duree_ms as f32).clamp(0.0, 1.0)
+    }
+
+    /// Bandeau d'étapes (charte, composant Etapes) : faites en encre avec une coche, en cours
+    /// sur laiton pâle bordée de laiton, à venir en encre douce. Masqué hors du parcours.
+    fn view_etapes(&self) -> Element<'_, Msg> {
+        let actuelle = match self.screen {
+            Screen::Choix => 0,
+            Screen::Analyse | Screen::MotDePasse(_) => 1,
+            Screen::Resume => 2,
+            Screen::Sortie | Screen::ConfirmBlanchir => 3,
+            Screen::Ecriture => 4,
+            Screen::Fin(_) => 5,
+            _ => return Space::new().height(0).into(),
+        };
+        let (dest, ecriture) = match (&self.screen, self.mode) {
+            (Screen::Choix, _) => ("Sortie", "Écriture"),
+            (_, Mode::Copier) => ("Clé de destination", "Écriture"),
+            (_, Mode::Graver) => ("Disque de destination", "Gravure"),
+            (_, Mode::Blanchir) => ("Confirmation", "Blanchiment"),
+        };
+        let support = if self.src.as_ref().is_some_and(est_optique) {
+            "Disque"
+        } else {
+            "Clé"
+        };
+        let noms = [support, "Analyse", "Résultat", dest, ecriture, "Terminé"];
+        let pal = style::c();
+        let mut r = row![].spacing(6).align_y(Alignment::Center);
+        for (i, nom) in noms.iter().enumerate() {
+            if i > 0 {
+                r = r.push(text("›").size(style::PETIT).color(pal.encre_douce));
+            }
+            let (lib, coul) = if i < actuelle {
+                (format!("✓ {nom}"), pal.encre)
+            } else {
+                (
+                    format!("{} {nom}", i + 1),
+                    if i == actuelle {
+                        pal.encre
+                    } else {
+                        pal.encre_douce
+                    },
+                )
+            };
+            let t = text(lib)
+                .size(style::PETIT)
+                .color(coul)
+                .font(if i == actuelle {
+                    style::CORPS_GRAS
+                } else {
+                    style::CORPS
+                })
+                .shaping(text::Shaping::Advanced);
+            let c = container(t).padding([4, 12]);
+            r = r.push(if i == actuelle {
+                c.style(move |_| container::Style {
+                    background: Some(iced::Background::Color(pal.laiton_pale)),
+                    border: iced::Border::default()
+                        .rounded(8)
+                        .width(2)
+                        .color(pal.laiton),
+                    ..Default::default()
+                })
+            } else {
+                c
+            });
+        }
+        container(r)
+            .padding([6, 30])
+            .center_x(Length::Fill)
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(pal.surface_haute)),
+                border: iced::Border::default().width(0),
+                ..Default::default()
+            })
+            .into()
     }
 
     fn view_password(&self, req: &PasswordRequest) -> Element<'_, Msg> {
@@ -985,9 +1331,9 @@ impl App {
         let menaces = refused.iter().filter(|f| est_menace(&f.reason)).count();
         for f in &refused {
             let (ic, c) = if est_menace(&f.reason) {
-                (ICONE_MENACE, style::MENACE)
+                (ICONE_MENACE, style::c().menace)
             } else {
-                (ICONE_ALERTE, style::ALERTE)
+                (ICONE_ALERTE, style::c().alerte)
             };
             list = list.push(
                 row![
@@ -996,7 +1342,7 @@ impl App {
                         text(&f.path)
                             .size(style::PETIT)
                             .font(style::MONO)
-                            .color(style::ENCRE)
+                            .color(style::c().encre)
                             .shaping(text::Shaping::Advanced),
                         petit(&f.reason)
                     ]
@@ -1010,7 +1356,7 @@ impl App {
                 column![
                     text(f.trim_start_matches('/'))
                         .size(style::TEXTE_TAILLE)
-                        .color(style::GRIS)
+                        .color(style::c().encre_douce)
                         .shaping(text::Shaping::Advanced),
                     petit("fichier système écarté")
                 ]
@@ -1028,28 +1374,34 @@ impl App {
         let (ic, c, fond, titre_v) = if menaces > 0 {
             (
                 ICONE_MENACE,
-                style::MENACE,
-                style::MENACE_FOND,
+                style::c().menace,
+                style::c().menace_fond,
                 format!("{menaces} menace(s) détectée(s)"),
             )
         } else if ecartes > 0 {
             (
                 ICONE_ALERTE,
-                style::ALERTE,
-                style::ALERTE_FOND,
+                style::c().alerte,
+                style::c().alerte_fond,
                 format!("{ecartes} fichier(s) écarté(s)"),
             )
         } else {
             (
                 ICONE_SAIN,
-                style::SAIN,
-                style::SAIN_FOND,
+                style::c().sain,
+                style::c().sain_fond,
                 "Aucune menace détectée".to_string(),
             )
         };
         let verdict = container(
             row![
-                icone_etat(ic, 48.0, c),
+                if menaces > 0 {
+                    dessin::menace(self.avancement(700), 72.0)
+                } else if ecartes > 0 {
+                    icone_etat(ic, 48.0, c)
+                } else {
+                    dessin::sain(self.avancement(500), 72.0)
+                },
                 column![
                     text(titre_v).size(36).font(style::TITRE_POLICE).color(c),
                     texte(&format!(
@@ -1079,7 +1431,7 @@ impl App {
                 container(
                     // Hauteur bornée : les boutons doivent rester visibles en 1280×768.
                     scrollable(list)
-                        .height(Length::Fixed(170.0))
+                        .height(Length::Fixed(130.0))
                         .width(Length::Fixed(900.0)),
                 )
                 .padding(16)
@@ -1143,7 +1495,7 @@ impl App {
                 texte_c(
                     "Son contenu actuel sera entièrement effacé (effacement complet), puis les fichiers \
                      gravés à vitesse réduite et relus pour vérification.",
-                    style::ROUGE
+                    style::c().menace
                 ),
             ]));
             go = go.on_press(Msg::Ecrire);
@@ -1152,7 +1504,7 @@ impl App {
             row![
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
                 bouton("Éjecter le disque", Msg::Ejecter, style::secondaire),
-                go
+                en_relief(go.into(), Some(style::c().laiton))
             ]
             .spacing(30),
         );
@@ -1163,7 +1515,14 @@ impl App {
         if self.mode == Mode::Graver {
             return self.view_sortie_disque();
         }
+        // Charte : la clé de confiance (laiton) arrive de la droite, le sceau vert la confirme.
+        let scene = if self.dst.is_some() {
+            dessin::destination(self.avancement(900), 110.0)
+        } else {
+            Space::new().height(0).into()
+        };
         let mut c = column![
+            scene,
             titre("Insérez la clé de destination"),
             texte("sur le port de sortie de la borne.")
         ]
@@ -1185,13 +1544,20 @@ impl App {
                     "Clé de destination : {}",
                     barbacane_parcours::describe(d)
                 )),
-                texte_c("Son contenu actuel sera entièrement effacé.", style::ROUGE),
+                texte_c(
+                    "Son contenu actuel sera entièrement effacé.",
+                    style::c().menace
+                ),
             ]));
             go = go.on_press(Msg::Ecrire);
         }
-        c = c
-            .push(Space::new().height(20))
-            .push(row![bouton("Abandonner", Msg::Terminer, style::secondaire), go].spacing(30));
+        c = c.push(Space::new().height(20)).push(
+            row![
+                bouton("Abandonner", Msg::Terminer, style::secondaire),
+                en_relief(go.into(), Some(style::c().laiton))
+            ]
+            .spacing(30),
+        );
         centre(c)
     }
 }
@@ -1225,9 +1591,6 @@ const LOGO_NUIT: &[u8] = include_bytes!("../ressources/icones/barbacane-relief-n
 pub const ICONE_SAIN: &[u8] = include_bytes!("../ressources/icones/shield-check.svg");
 pub const ICONE_ALERTE: &[u8] = include_bytes!("../ressources/icones/triangle-alert.svg");
 pub const ICONE_MENACE: &[u8] = include_bytes!("../ressources/icones/octagon-x.svg");
-/// Charte : `usb` pour la clé, `disc` pour le disque (Lucide, ISC)
-pub const ICONE_CLE: &[u8] = include_bytes!("../ressources/icones/usb.svg");
-pub const ICONE_DISQUE: &[u8] = include_bytes!("../ressources/icones/disc.svg");
 
 /// Image SVG embarquée, carrée.
 pub fn icone<'a>(svg: &'static [u8], taille: f32) -> Element<'a, Msg> {
@@ -1250,7 +1613,7 @@ pub fn titre<'a>(t: &str) -> Element<'a, Msg> {
     text(t.to_string())
         .size(style::TITRE)
         .font(style::TITRE_POLICE)
-        .color(style::BLEU)
+        .color(style::c().encre)
         .shaping(text::Shaping::Advanced)
         .into()
 }
@@ -1273,7 +1636,7 @@ pub fn texte_c<'a>(t: &str, c: iced::Color) -> Element<'a, Msg> {
 pub fn petit<'a>(t: &str) -> Element<'a, Msg> {
     text(t.to_string())
         .size(style::PETIT)
-        .color(style::GRIS)
+        .color(style::c().encre_douce)
         .shaping(text::Shaping::Advanced)
         .into()
 }
@@ -1291,20 +1654,53 @@ pub fn bouton<'a>(
     s: fn(&iced::Theme, button::Status) -> button::Style,
 ) -> Element<'a, Msg> {
     // Charte : 24 px gras, cible d'au moins 64 px (72 px visés en 1080p)
-    button(
-        text(t.to_string())
-            .size(24)
-            .font(style::CORPS_GRAS)
-            .shaping(text::Shaping::Advanced),
+    en_relief(
+        button(
+            text(t.to_string())
+                .size(24)
+                .font(style::CORPS_GRAS)
+                .shaping(text::Shaping::Advanced),
+        )
+        .padding([18, 32])
+        .style(s)
+        .on_press(m)
+        .into(),
+        style::tranche(s),
     )
-    .padding([18, 32])
-    .style(s)
-    .on_press(m)
-    .into()
+}
+
+/// Relief de la charte : tranche pleine décalée de 6 px vers le bas à droite, posée derrière.
+pub fn en_relief<'a>(b: Element<'a, Msg>, tranche: Option<iced::Color>) -> Element<'a, Msg> {
+    let Some(t) = tranche else { return b };
+    let base = container(b).padding(iced::Padding {
+        right: 6.0,
+        bottom: 6.0,
+        ..iced::Padding::ZERO
+    });
+    let dessous = container(
+        container(Space::new().width(Length::Fill).height(Length::Fill)).style(move |_| {
+            container::Style {
+                background: Some(iced::Background::Color(t)),
+                border: iced::Border::default().rounded(8),
+                ..Default::default()
+            }
+        }),
+    )
+    .padding(iced::Padding {
+        left: 6.0,
+        top: 6.0,
+        ..iced::Padding::ZERO
+    })
+    .width(Length::Fill)
+    .height(Length::Fill);
+    iced::widget::Stack::new()
+        .push(base)
+        .push_under(dessous)
+        .into()
 }
 
 fn grand_choix<'a>(t: &str, d: &str, m: Msg) -> Element<'a, Msg> {
-    button(
+    let b = button(
         column![
             text(t.to_string()).size(style::SOUS_TITRE),
             text(d.to_string()).size(style::PETIT)
@@ -1316,6 +1712,9 @@ fn grand_choix<'a>(t: &str, d: &str, m: Msg) -> Element<'a, Msg> {
     // Largeur partagée : trois choix (clé + lecteur optique) tiennent sur un écran de 1280 px.
     .width(Length::FillPortion(1))
     .style(style::primaire)
-    .on_press(m)
-    .into()
+    .on_press(m);
+    // La carte remplit sa part de largeur : le relief l'accompagne.
+    container(en_relief(b.into(), Some(style::c().laiton)))
+        .width(Length::FillPortion(1))
+        .into()
 }

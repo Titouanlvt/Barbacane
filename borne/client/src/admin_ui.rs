@@ -20,6 +20,10 @@ pub enum Page {
     Enrolement,
     Limites,
     NouveauPin,
+    /// Thème Pierre / Nuit, animations réduites
+    Affichage,
+    /// Crédits : projets sur lesquels repose Barbacane
+    APropos,
     Confirmer(&'static str),
 }
 
@@ -41,6 +45,8 @@ pub enum AdminMsg {
     EnregistrerLimites,
     EnregistrerPin,
     Executer(&'static str),
+    /// Thème (« pierre » ou « nuit ») et animations réduites
+    Affichage(&'static str, bool),
 }
 
 pub struct AdminUi {
@@ -188,6 +194,13 @@ pub fn update(app: &mut App, m: AdminMsg) -> Task<Msg> {
                 }
             }
         }
+        AdminMsg::Affichage(theme, reduites) => {
+            a.message = None;
+            return a.call(
+                "set_preferences",
+                json!({"op": "set_preferences", "theme": theme, "animations_reduites": reduites}),
+            );
+        }
         AdminMsg::LireMaj => {
             a.message = None;
             return a.call("arm_import", json!({"op": "arm_import"}));
@@ -299,7 +312,7 @@ pub fn view(app: &App) -> Element<'_, Msg> {
     let etat = app.etat.clone().unwrap_or(json!({}));
     let msg: Element<Msg> = match &a.message {
         Some((true, m)) => container(texte(m)).padding(12).style(style::carte).into(),
-        Some((false, m)) => container(texte_c(m, style::ROUGE))
+        Some((false, m)) => container(texte_c(m, style::c().menace))
             .padding(12)
             .style(style::alerte)
             .into(),
@@ -331,6 +344,8 @@ pub fn view(app: &App) -> Element<'_, Msg> {
             row![menu_btn("État de la borne", Page::Etat), menu_btn("Mettre à jour", Page::MiseAJour), menu_btn("Exporter les journaux", Page::Export)].spacing(20),
             row![menu_btn("Clés de sortie enrôlées", Page::Enrolement), menu_btn("Limites d'analyse", Page::Limites), menu_btn("Changer le PIN", Page::NouveauPin)].spacing(20),
             row![
+                menu_btn("Affichage", Page::Affichage),
+                menu_btn("À propos", Page::APropos),
                 bouton("Redémarrer", am(AdminMsg::Aller(Page::Confirmer("reboot"))), style::danger),
                 bouton("Éteindre", am(AdminMsg::Aller(Page::Confirmer("poweroff"))), style::danger),
             ]
@@ -371,7 +386,7 @@ pub fn view(app: &App) -> Element<'_, Msg> {
             titre("Exporter les journaux et rapports"),
             carte(column![
                 texte("Branchez la clé administrateur sur le port de sortie."),
-                texte_c("Elle sera effacée et formatée en exFAT.", style::ROUGE),
+                texte_c("Elle sera effacée et formatée en exFAT.", style::c().menace),
             ]),
             msg,
             row![retour, bouton_busy("Exporter", am(AdminMsg::Exporter), a.busy)].spacing(30),
@@ -417,6 +432,94 @@ pub fn view(app: &App) -> Element<'_, Msg> {
                 petit("Pour enrôler une clé, branchez-la : elle apparaît ci-dessous."),
                 add,
                 row![msg, retour].spacing(20).align_y(Alignment::Center),
+            ]
+            .spacing(20)
+            .align_x(Alignment::Center)
+            .into()
+        }
+        Page::Affichage => {
+            let p = &etat["preferences"];
+            let nuit = p["theme"].as_str() == Some("nuit");
+            let reduites = p["animations_reduites"].as_bool() == Some(true);
+            let choix = |lib: &str, actif: bool, m: AdminMsg| {
+                bouton(
+                    &if actif { format!("✓ {lib}") } else { lib.to_string() },
+                    am(m),
+                    if actif { style::primaire } else { style::secondaire },
+                )
+            };
+            column![
+                titre("Affichage"),
+                carte(column![
+                    texte("Thème"),
+                    row![
+                        choix("Pierre (clair)", !nuit, AdminMsg::Affichage("pierre", reduites)),
+                        choix("Nuit (sombre)", nuit, AdminMsg::Affichage("nuit", reduites)),
+                    ]
+                    .spacing(20),
+                    petit("Pierre : bureau éclairé (par défaut). Nuit : salle peu éclairée."),
+                    Space::new().height(10),
+                    texte("Animations"),
+                    row![
+                        choix("Normales", !reduites, AdminMsg::Affichage(if nuit { "nuit" } else { "pierre" }, false)),
+                        choix("Réduites", reduites, AdminMsg::Affichage(if nuit { "nuit" } else { "pierre" }, true)),
+                    ]
+                    .spacing(20),
+                    petit("Réduites : chaque écran s'affiche directement dans son état final."),
+                ]),
+                row![msg, retour].spacing(20).align_y(Alignment::Center),
+            ]
+            .spacing(20)
+            .align_x(Alignment::Center)
+            .into()
+        }
+        Page::APropos => {
+            // Charte, composant Credits : nom, rôle, éditeur, licence et adresse ; pas de logos
+            // redessinés ; mention « non affilié » obligatoire.
+            let pal = style::c();
+            let projet = |nom: &str, role: &str, editeur: &str, adresse: &str| {
+                container(
+                    column![
+                        text(nom.to_string()).size(30).font(style::TITRE_POLICE),
+                        text(role.to_string()).size(style::PETIT),
+                        text(editeur.to_string())
+                            .size(15)
+                            .font(style::MONO)
+                            .color(pal.encre_douce),
+                        text(adresse.to_string())
+                            .size(15)
+                            .font(style::MONO)
+                            .color(pal.encre_douce),
+                    ]
+                    .spacing(4),
+                )
+                .padding(iced::Padding { top: 14.0, ..iced::Padding::ZERO })
+                .width(Length::Fixed(300.0))
+                .style(move |_| container::Style {
+                    border: iced::Border::default().width(0),
+                    ..Default::default()
+                })
+            };
+            let filet = || {
+                container(Space::new().width(300).height(4)).style(move |_| container::Style {
+                    background: Some(iced::Background::Color(pal.laiton)),
+                    ..Default::default()
+                })
+            };
+            column![
+                titre("À propos"),
+                carte(column![
+                    text("BARBACANE S'APPUIE SUR").size(26).font(style::TITRE_POLICE),
+                    row![
+                        column![filet(), projet("usbsas", "Lecture isolée des supports USB", "CEA-SEC · GPLv3", "github.com/cea-sec/usbsas")],
+                        column![filet(), projet("ClamAV", "Moteur antivirus et signatures", "Cisco Talos · GPLv2", "clamav.net")],
+                        column![filet(), projet("YARA", "Règles de détection", "VirusTotal · BSD-3-Clause", "virustotal.github.io/yara")],
+                    ]
+                    .spacing(24),
+                    petit("Marques et logos appartenant à leurs détenteurs. Barbacane n'est ni affilié ni approuvé par eux."),
+                ]),
+                petit(&format!("Barbacane {} — station blanche hors ligne", env!("CARGO_PKG_VERSION"))),
+                retour,
             ]
             .spacing(20)
             .align_x(Alignment::Center)

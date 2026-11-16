@@ -69,6 +69,24 @@ struct Enrolled {
     keys: Vec<Value>,
 }
 
+/// Préférences d'affichage de la borne (charte : thèmes Pierre et Nuit, animations réduites).
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(default)]
+struct Preferences {
+    /// « pierre » (clair, défaut) ou « nuit » (sombre)
+    theme: String,
+    animations_reduites: bool,
+}
+
+impl Default for Preferences {
+    fn default() -> Self {
+        Preferences {
+            theme: "pierre".into(),
+            animations_reduites: false,
+        }
+    }
+}
+
 pub struct Ctx {
     pub conf: Config,
     session: Mutex<Option<(String, Instant)>>,
@@ -304,6 +322,7 @@ impl Ctx {
             "reports": count(&self.conf.reports_dir),
             "limits": self.limits(),
             "pin_set": self.path("pin").exists(),
+            "preferences": self.read_json::<Preferences>("preferences.json"),
         })
     }
 
@@ -474,6 +493,23 @@ impl Ctx {
             "set_limits" => {
                 self.set_limits(&req["limits"])?;
                 "Limites enregistrées.".into()
+            }
+            "set_preferences" => {
+                let theme = req["theme"].as_str().unwrap_or_default();
+                if theme != "pierre" && theme != "nuit" {
+                    bail!("thème inconnu : {theme}");
+                }
+                let p = Preferences {
+                    theme: theme.into(),
+                    animations_reduites: req["animations_reduites"].as_bool().unwrap_or(false),
+                };
+                self.write_json("preferences.json", &p)?;
+                log::info!(
+                    "affichage : thème {}, animations réduites {}",
+                    p.theme,
+                    p.animations_reduites
+                );
+                "Affichage enregistré.".into()
             }
             "prepare_export" => format!("{} fichier(s) prêts", self.prepare_export()?),
             "arm_import" => {

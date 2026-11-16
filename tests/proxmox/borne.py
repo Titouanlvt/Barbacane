@@ -4,6 +4,7 @@
   borne.py VMID capture FICHIER.png
   borne.py VMID attendre "texte" [DÉLAI_S] [CAPTURE.png]   # attend que le texte s'affiche
   borne.py VMID cliquer "texte" [CAPTURE.png]              # clique au centre du texte
+  borne.py VMID maintenir "texte"                          # appui maintenu 2,6 s (« Maintenir pour effacer »)
   borne.py VMID xy X Y                                     # clic à une position absolue
   borne.py VMID lire                                       # texte reconnu à l'écran
   borne.py VMID pin CHIFFRES                               # pavé numérique du PIN
@@ -174,12 +175,14 @@ def lire(png):
                                      text=True).stdout for v in (".n.pgm", ".m.pgm", ".i.pgm"))
 
 
-def clic(vm, x, y, l, h):
+def clic(vm, x, y, l, h, maintien=0.0):
     a = lambda axe, v, m: {"type": "abs", "data": {"axis": axe, "value": v * 32767 // (m - 1)}}
     b = lambda d: {"type": "btn", "data": {"button": "left", "down": d}}
     qmp(vm, ("input-send-event", {"events": [a("x", x, l), a("y", y, h)]}),
-        ("input-send-event", {"events": [b(True)]}),
-        ("input-send-event", {"events": [b(False)]}))
+        ("input-send-event", {"events": [b(True)]}))
+    # « Maintenir pour effacer » (charte) : le bouton doit rester enfoncé 2 s.
+    time.sleep(maintien)
+    qmp(vm, ("input-send-event", {"events": [b(False)]}))
 
 
 def main():
@@ -205,14 +208,15 @@ def main():
             if time.time() > fin:
                 sys.exit(f"ÉCHEC : « {sys.argv[3]} » absent de l'écran après {delai:.0f} s ; écran :\n{lire(tmp)}")
             time.sleep(3)
-    elif op == "cliquer":
+    elif op in ("cliquer", "maintenir"):
+        duree = 2.6 if op == "maintenir" else 0.0
         for _ in range(5):
             l, h = capture(vm, tmp)
             p = trouver(tmp, sys.argv[3])
             if p:
                 if len(sys.argv) > 4:
                     capture(vm, sys.argv[4])
-                clic(vm, p[0], p[1], l, h)
+                clic(vm, p[0], p[1], l, h, duree)
                 time.sleep(1)
                 return
             time.sleep(2)

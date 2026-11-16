@@ -3,8 +3,11 @@
 
 mod admin;
 mod admin_ui;
+mod anim;
 mod app;
+mod barre;
 mod config;
+mod dessin;
 mod keyboard;
 mod mesure;
 mod optique;

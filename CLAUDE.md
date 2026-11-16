@@ -71,10 +71,15 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - Pièges : `pkill -f` dont le motif figure dans la commande tue le shell ; libellés de boutons sur
   deux lignes pour l'OCR (cliquer sur la 1re ligne).
 
+## État au 16/11/2026
+- Charte : thème Nuit (Administration → Affichage, `preferences.json` dans admind, palette
+  runtime `style::c()`), bandeau d'étapes (`view_etapes`), animations (`anim.rs` : clé qui glisse,
+  faisceau d'analyse, bouclier, herse ; option « Animations réduites »). Vérifié sous Xvfb 1280×768.
+- `build-debs.sh` limite `CARGO_BUILD_JOBS` à la mémoire libre (SIGKILL sur cranelift-codegen).
+
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
 2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).
-3. Charte : thème Nuit (option), animations d'analyse, bandeau d'étapes.
 5. « Tout Rust » : ntfs-3g et FatFs (C, `noyau/usbsas-fsrw`, isolés par seccomp) restent ; les remplacer
    (crates `fatfs`, `ntfs`) ferait perdre l'exFAT et l'écriture NTFS (sortie FAT32 seule, 4 Go/fichier).
    Décision du 15/11 : fiabilité d'abord, chantier à part avec sa propre campagne de preuves.
