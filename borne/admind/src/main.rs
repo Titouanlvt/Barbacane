@@ -263,7 +263,7 @@ impl Ctx {
         json!({
             "max_depth": get("max_depth", 5),
             "max_files": get("max_files", 10000),
-            "max_total_size": get("max_total_size", 4 * 1024 * 1024 * 1024),
+            "max_total_size": get("max_total_size", 32 * 1024 * 1024 * 1024),
         })
     }
 

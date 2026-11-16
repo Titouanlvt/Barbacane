@@ -71,6 +71,15 @@ attendre() { "${B[@]}" attendre "$@"; }
 cliquer() { "${B[@]}" cliquer "$@"; }
 # attendre sans faire échouer le script : renvoie 1 si le texte n'est pas apparu
 voir() { "${B[@]}" attendre "$@" >/dev/null 2>&1; }
+# Attend le premier de deux écrans (texte1 texte2 délai) : affiche 1 ou 2, rien si délai dépassé.
+premier() {
+    local fin=$((SECONDS + $3)) t
+    while [ $SECONDS -lt $fin ]; do
+        t=$("${B[@]}" lire 2>/dev/null)
+        case "$t" in *"$1"*) echo 1; return ;; *"$2"*) echo 2; return ;; esac
+        sleep 10
+    done
+}
 
 # --- clés -----------------------------------------------------------------------------
 # Disque côté hôte d'une clé désignée par son numéro de série ; jamais un disque non USB.
@@ -397,7 +406,8 @@ if test_actif volumineux; then
     si [ "$(wc -l < "$D/avant.sha256")" -ge 27 ] -- "clé préparée : $taille, $(wc -l < "$D/avant.sha256") fichiers (zip, tar, iso, txt)" "préparation incomplète"
     brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120 "$D/01-cle-detectee.png"
     cliquer "Blanchir cette clé"
-    if voir "Une erreur est survenue" 5400 "$D/02-erreur.png" && ! voir "Résultat de l'analyse" 5; then
+    if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 5400)" != 2 ]; then
+        capture 02-erreur
         lire 02-erreur >/dev/null; ko "analyse en erreur : $(grep -m1 -i 'aboutir' "$D/02-erreur.txt" || true)"
     else
         attendre "Résultat de l'analyse" 60 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
@@ -432,7 +442,8 @@ if test_actif reel; then
         fi
         cliquer "Copier vers une clé"
         mot_de_passe_si_demande secret
-        if voir "Une erreur est survenue" 7200 "$D/02-erreur.png" && ! voir "Résultat de l'analyse" 5; then
+        if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 7200)" != 2 ]; then
+            capture 02-erreur
             lire 02-erreur >/dev/null; ko "analyse en erreur : $(grep -m1 -i 'aboutir\|lisible' "$D/02-erreur.txt" || true)"
             cliquer "Recommencer depuis le début" || true; debrancher usb1; voir "à analyser" 60 || true; continue
         fi
