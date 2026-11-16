@@ -62,3 +62,9 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
   restent comme en amont (une première version qui les réanalysait cassait le test bout en bout).
 - Test : `tests/proxmox/optique.sh`, étape `image` (EICAR caché dans la 1re session du disque bloqué,
   fichiers sains copiés). Spécifique à l'usage de Barbacane ; proposable au CEA (option de configuration).
+
+### 6. Liaisons ntfs-3g générées : avertissement `unsafe_op_in_unsafe_fn` (`usbsas-fsrw/ntfs3g/src/n3g_c.rs`)
+- Constat : à chaque construction, deux avertissements E0133 dans `bindings.rs`, code **généré**
+  par bindgen (édition 2024), pas écrit à la main ; ils noyaient les messages utiles.
+- Correctif : `#![allow(unsafe_op_in_unsafe_fn)]` dans le module qui inclut les liaisons, comme les
+  autres `allow` déjà présents pour ce code généré. Aucun changement de comportement.
