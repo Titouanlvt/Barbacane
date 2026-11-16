@@ -961,9 +961,9 @@ impl App {
         // Charte : la clé glisse vers la porte, ou le tiroir remonte avec le disque (600 ms).
         let mut c = column![
             if disque {
-                dessin::disque_detecte(self.avancement(600), 120.0)
+                dessin::disque_detecte(self.avancement(600), 96.0)
             } else {
-                dessin::cle_detectee(self.avancement(600), 120.0)
+                dessin::cle_detectee(self.avancement(600), 96.0)
             },
             titre(if disque {
                 "Disque détecté"
@@ -971,7 +971,7 @@ impl App {
                 "Clé détectée"
             }),
             texte(&d),
-            Space::new().height(30),
+            Space::new().height(8),
             choix,
         ]
         .max_width(1460);
@@ -983,7 +983,7 @@ impl App {
         if disque {
             // Utiliser une clé alors qu'un disque est dans le lecteur : le disque est ignoré
             // jusqu'à son retrait.
-            c = c.push(Space::new().height(10)).push(bouton(
+            c = c.push(Space::new().height(0)).push(bouton(
                 "Ignorer ce disque",
                 Msg::Terminer,
                 style::secondaire,
@@ -1550,15 +1550,13 @@ impl App {
             ]));
             go = go.on_press(Msg::Ecrire);
         }
-        c = c
-            .push(Space::new().height(20))
-            .push(
-                row![
-                    bouton("Abandonner", Msg::Terminer, style::secondaire),
-                    en_relief(go.into(), Some(style::c().laiton))
-                ]
-                .spacing(30),
-            );
+        c = c.push(Space::new().height(20)).push(
+            row![
+                bouton("Abandonner", Msg::Terminer, style::secondaire),
+                en_relief(go.into(), Some(style::c().laiton))
+            ]
+            .spacing(30),
+        );
         centre(c)
     }
 }

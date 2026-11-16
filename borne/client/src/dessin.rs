@@ -3,14 +3,14 @@
 //!
 //! Chaque calque est un SVG de formes pleines (face avant, flanc décalé de 45°, laiton), colorié
 //! avec la palette du thème courant ; le mouvement se fait uniquement par placement, échelle
-//! et rotation de calques entiers, ce que tiny-skia rend sans flou ni transparence animée.
+//! de calques entiers (la rotation du disque est dessinée dans le SVG), ce que tiny-skia rend sans flou ni transparence animée.
 //! Coordonnées dans une scène de 150 × 150 unités, comme les aperçus de la charte.
 
 use crate::anim;
 use crate::app::Msg;
 use crate::style::{self, Palette};
 use iced::widget::{Space, column, container, pin, stack, svg};
-use iced::{Color, Element, Length, Point, Radians};
+use iced::{Color, Element, Length, Point};
 
 fn hx(c: Color) -> String {
     let [r, g, b, _] = c.into_rgba8();
@@ -47,7 +47,6 @@ struct Pose {
     y: f32,
     l: f32,
     ht: f32,
-    rotation: f32,
     /// Fenêtre de découpage (x, y, l, h) : seule la partie du calque qui y tombe est visible.
     fenetre: Option<(f32, f32, f32, f32)>,
 }
@@ -59,7 +58,6 @@ fn pose(h: svg::Handle, x: f32, y: f32, l: f32, ht: f32) -> Pose {
         y,
         l,
         ht,
-        rotation: 0.0,
         fenetre: None,
     }
 }
@@ -83,11 +81,7 @@ fn scene<'a>(calques: Vec<Pose>, taille: f32) -> Element<'a, Msg> {
     let k = taille / 150.0;
     let mut s = stack![];
     for c in calques {
-        let image: Element<'a, Msg> = svg(c.h)
-            .width(c.l * k)
-            .height(c.ht * k)
-            .rotation(Radians(c.rotation))
-            .into();
+        let image: Element<'a, Msg> = svg(c.h).width(c.l * k).height(c.ht * k).into();
         let calque = match c.fenetre {
             None => zone(image, c.x * k, c.y * k, taille, taille),
             Some((fx, fy, fl, fh)) => {
@@ -148,14 +142,18 @@ fn fleche(allumee: bool) -> svg::Handle {
     )
 }
 
-/// Disque optique centré (viewBox autour du disque : la rotation se fait autour de son centre).
-fn disque() -> svg::Handle {
+/// Disque optique, tourné de `angle` degrés autour de son centre. La rotation est faite DANS le
+/// dessin (pas de rotation d'image : mal rendue par tiny-skia, qui laissait une traînée).
+fn disque(angle: u32) -> svg::Handle {
     calque(
         "29 24 92 92",
-        "<circle fill=\"{trait}\" cx=\"75\" cy=\"70\" r=\"46\"/><circle fill=\"{haute}\" cx=\"75\" cy=\"70\" r=\"40\"/>\
-         <path fill=\"{laiton}\" d=\"M75 30a40 40 0 0 1 34.6 20L75 70Z\"/>\
-         <path fill=\"{analyse}\" d=\"M40.4 90A40 40 0 0 1 35 70h40Z\"/>\
-         <circle fill=\"{trait}\" cx=\"75\" cy=\"70\" r=\"13\"/><circle fill=\"{surface}\" cx=\"75\" cy=\"70\" r=\"6\"/>",
+        &format!(
+            "<circle fill=\"{{trait}}\" cx=\"75\" cy=\"70\" r=\"46\"/><g transform=\"rotate({angle} 75 70)\">\
+             <circle fill=\"{{haute}}\" cx=\"75\" cy=\"70\" r=\"40\"/>\
+             <path fill=\"{{laiton}}\" d=\"M75 30a40 40 0 0 1 34.6 20L75 70Z\"/>\
+             <path fill=\"{{analyse}}\" d=\"M40.4 90A40 40 0 0 1 35 70h40Z\"/></g>\
+             <circle fill=\"{{trait}}\" cx=\"75\" cy=\"70\" r=\"13\"/><circle fill=\"{{surface}}\" cx=\"75\" cy=\"70\" r=\"6\"/>"
+        ),
     )
 }
 
@@ -349,7 +347,7 @@ pub fn disque_detecte<'a>(p: f32, taille: f32) -> Element<'a, Msg> {
     scene(
         vec![
             pose(tiroir(), 0.0, y, 150.0, 150.0),
-            pose(disque(), 29.0, 24.0 + y, 92.0, 92.0),
+            pose(disque(0), 29.0, 24.0 + y, 92.0, 92.0),
         ],
         taille,
     )
@@ -357,8 +355,9 @@ pub fn disque_detecte<'a>(p: f32, taille: f32) -> Element<'a, Msg> {
 
 /// Lecture du disque : il tourne (1 tour / 1,2 s), la tête laser parcourt les pistes.
 pub fn lecture_disque<'a>(t: f32, taille: f32) -> Element<'a, Msg> {
-    let mut d = pose(disque(), 29.0, 24.0, 92.0, 92.0);
-    d.rotation = (t / 1.2).rem_euclid(1.0) * std::f32::consts::TAU;
+    // Un tour par 1,2 s, par pas de 30° (12 images par tour).
+    let angle = ((t / 1.2).rem_euclid(1.0) * 12.0) as u32 * 30;
+    let d = pose(disque(angle), 29.0, 24.0, 92.0, 92.0);
     let phase = (t / 2.4).rem_euclid(2.0);
     let laser = -34.0 * anim::ease_bezier(if phase < 1.0 { phase } else { 2.0 - phase });
     scene(
