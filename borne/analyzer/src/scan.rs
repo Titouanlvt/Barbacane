@@ -179,7 +179,17 @@ impl Scanner<'_> {
             output: None,
             local: local.to_path_buf(),
         };
-        match self.engines.scan(local) {
+        // Conteneur de 2 Go ou plus (install.wim, ISO d'installation) : ClamAV ne peut pas le lire
+        // d'un bloc ; il est ouvert et chaque fichier qu'il contient est analysé. S'il est sain
+        // fichier par fichier, il est copié intact (une clé Windows reste utilisable).
+        let kind = sniff(local);
+        let trop_gros = kind.is_some() && size >= crate::av::CLAMAV_TAILLE_MAX;
+        let analyse = if trop_gros {
+            Ok(Detection::Clean)
+        } else {
+            self.engines.scan(local)
+        };
+        match analyse {
             Ok(Detection::Clean) => (),
             Ok(Detection::Found { engine, name }) => {
                 entry.verdict = Verdict::Dirty;
@@ -198,8 +208,13 @@ impl Scanner<'_> {
             children: Vec::new(),
             limit: false,
         };
-        if let Some(kind) = sniff(local) {
+        if let Some(kind) = kind {
             self.container(&mut node, kind, depth, budget);
+        }
+        if trop_gros && node.entry.verdict == Verdict::Clean {
+            node.entry.reason = "conteneur de plus de 2 Go : chaque fichier qu'il contient a été \
+                                 analysé, aucune menace"
+                .into();
         }
         node
     }
