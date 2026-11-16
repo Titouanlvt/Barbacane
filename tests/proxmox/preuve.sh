@@ -414,6 +414,51 @@ if test_actif volumineux; then
     attendre "à analyser" 300 || true
 fi
 
+# === contenus réels : clés flashées (Etcher, Rufus) et fichiers de bureau ====================
+# Images fabriquées par tests/proxmox/contenu-reel.sh (CONTENU=dossier : *.img, *.sains, *.pieges),
+# copiées octet par octet sur la clé source comme le ferait Etcher, puis Copier vers la clé de sortie.
+if test_actif reel; then
+    : "${CONTENU:?CONTENU=dossier des images (tests/proxmox/contenu-reel.sh)}"
+    for img in "$CONTENU"/*.img; do
+        nom=$(basename "$img" .img)
+        debut "reel-$nom" "clé « $nom » : $(du -h "$img" | cut -f1) copiés tels quels sur $SERIE_SOURCE, copie vers $SERIE_SORTIE"
+        d=$(disque "$SERIE_SOURCE"); wipefs -qa "$d"
+        dd if="$img" of="$d" bs=4M conv=fsync status=none; partprobe "$d" 2>/dev/null || true; sleep 2
+        debut_s=$(date +%s)
+        brancher usb1 "$SERIE_SOURCE"
+        if ! voir "Clé détectée" 180 "$D/01-cle-detectee.png"; then
+            capture 01-ecran; lire 01-ecran >/dev/null; ko "clé non proposée à l'analyse : $(head -c 200 "$D/01-ecran.txt" | tr '\n' ' ')"
+            debrancher usb1; voir "à analyser" 60 || true; continue
+        fi
+        cliquer "Copier vers une clé"
+        mot_de_passe_si_demande secret
+        if voir "Une erreur est survenue" 7200 "$D/02-erreur.png" && ! voir "Résultat de l'analyse" 5; then
+            lire 02-erreur >/dev/null; ko "analyse en erreur : $(grep -m1 -i 'aboutir\|lisible' "$D/02-erreur.txt" || true)"
+            cliquer "Recommencer depuis le début" || true; debrancher usb1; voir "à analyser" 60 || true; continue
+        fi
+        attendre "Résultat de l'analyse" 60 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
+        npieges=$(wc -l < "$CONTENU/$nom.pieges")
+        if [ "$npieges" -gt 0 ]; then
+            si grep -qiE 'menace|écarté' "$D/02-resultat-analyse.txt" -- "verdict : menace ou écarté affiché ($npieges fichier(s) piégé(s) sur la clé)" "aucune menace affichée"
+        fi
+        cliquer "Choisir la clé de destination"
+        formater "$SERIE_SORTIE" "" DEST; umount "$T/m"
+        brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 90 "$D/03-cle-destination.png"
+        cliquer "Effacer cette clé"
+        attendre "Vous pouvez retirer" 14400 "$D/04-termine.png"
+        ok "durée totale (analyse + écriture) : $(( $(date +%s) - debut_s )) s"
+        debrancher usb1; debrancher usb2
+        monter_ro "$SERIE_SORTIE"; liste_sha "$T/m" > "$D/sortie.sha256"; cp "$T/m"/rapport-barbacane-*.txt "$D/" 2>/dev/null || true
+        manquants=0
+        while read -r h p; do grep -qF "$h  $p" "$D/sortie.sha256" || { manquants=$((manquants + 1)); echo "$p" >> "$D/manquants.txt"; }; done < "$CONTENU/$nom.sains"
+        si [ "$manquants" -eq 0 ] -- "$(wc -l < "$CONTENU/$nom.sains") fichiers sains copiés à l'identique (sha256)" "$manquants fichier(s) sain(s) absents ou modifiés (manquants.txt)"
+        si ! grep -rlaq 'EICAR-STANDARD-ANTIVIRUS-TEST-FILE' "$T/m" -- "aucun EICAR sur la clé de sortie" "EICAR présent sur la clé de sortie"
+        while read -r p; do [ -z "$p" ] || si [ ! -e "$T/m/$p" ] -- "piégé non copié : $p" "piégé copié : $p"; done < "$CONTENU/$nom.pieges"
+        umount "$T/m"
+        voir "à analyser" 120 || true
+    done
+fi
+
 # === export des journaux et rapports =====================================================
 if test_actif export; then
     debut export "export des journaux et rapports sur la clé $SERIE_SORTIE"

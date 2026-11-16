@@ -12,9 +12,10 @@ set -eu
 IMAGE=/var/lib/barbacane-travail.img
 NOM=barbacane-travail
 POINT=/var/lib/barbacane/travail
-# Part de l'espace libre réservée au volume à sa création (fichier creux : rien n'est alloué
+# Part de l'espace libre réservée au volume à sa création (la borne ne sert qu'à ça ; une analyse
+# demande jusqu'à ~4 fois le contenu : tar usbsas brut et nettoyé, copie de l'analyseur, extraction) (fichier creux : rien n'est alloué
 # tant qu'il n'est pas écrit) ; plancher 8 Gio.
-PART=60
+PART=80
 
 demarrer() {
     arreter 2>/dev/null || true
@@ -28,7 +29,7 @@ demarrer() {
     # Clé de 512 bits lue dans /dev/urandom, passée à dm-crypt puis oubliée (mode « plain » :
     # aucun en-tête, rien à conserver).
     cryptsetup open --type plain --cipher aes-xts-plain64 --key-size 512 \
-        --key-file /dev/urandom --keyfile-size 64 "$IMAGE" "$NOM"
+        --key-file /dev/urandom "$IMAGE" "$NOM"
     mkfs.ext4 -q -F -m 0 -E nodiscard,lazy_itable_init=1 -L travail "/dev/mapper/$NOM"
     mkdir -p "$POINT"
     mount -o nodev,nosuid,noexec "/dev/mapper/$NOM" "$POINT"
