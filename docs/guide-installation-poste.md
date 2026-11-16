@@ -9,7 +9,7 @@ Ce guide s'adresse à la personne qui prépare une borne. Durée : environ 30 mi
 |---|---|
 | Un PC x86_64 (HP, Dell…) | 16 Go de RAM recommandés (8 Go testés), disque interne ≥ 32 Go. **Le disque sera entièrement effacé.** |
 | Une clé USB ≥ 2 Go | Elle servira de support d'installation (son contenu sera effacé). |
-| Un poste administrateur connecté à Internet | Debian 13 (testé), ≈ 20 Go libres, droits root. Il fabrique l'ISO et signe les mises à jour. |
+| Un poste administrateur connecté à Internet | Debian 13 (testé), **8 Go de RAM** (4 Go au minimum, voir ci-dessous), ≈ 20 Go libres, droits root. Il fabrique l'ISO et signe les mises à jour. |
 | Un écran tactile, ou un écran et une souris | Le clavier n'est utile qu'au réglage du BIOS. |
 
 ## Étape 1 — Fabriquer l'ISO (une seule fois pour toutes les bornes)
@@ -29,6 +29,19 @@ cp ~/cles-barbacane/barbacane-maj.pub systeme/iso/maj.pub    # ignoré par git
 systeme/iso/build-iso.sh --sortie barbacane.iso              # 30 à 40 min (Rust, paquets, ClamAV)
 sha256sum barbacane.iso                                      # à noter avec la date
 ```
+
+**Mémoire** : la compilation optimisée demande environ 3 Go par tâche ; le script règle seul le
+nombre de tâches parallèles selon la mémoire libre. Si elle échoue avec
+`signal: 9, SIGKILL` (mémoire épuisée), ajouter un fichier d'échange puis relancer la même commande
+(la compilation reprend où elle s'est arrêtée) :
+
+```sh
+fallocate -l 8G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+systeme/iso/build-iso.sh --sortie barbacane.iso
+swapoff /swapfile && rm /swapfile      # une fois l'ISO construite
+```
+
+On peut aussi imposer le nombre de tâches : `CARGO_BUILD_JOBS=1 systeme/iso/build-iso.sh …`.
 
 Sans `maj.pub`, l'ISO fonctionne mais **aucune mise à jour ne pourra jamais être appliquée**
 aux bornes ainsi installées (signatures antivirales comprises).

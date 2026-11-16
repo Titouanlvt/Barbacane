@@ -22,6 +22,22 @@ cd "$REPO"
 export USBSAS_BIN_PATH=/usr/libexec
 # Répertoire distinct des binaires « mock » des tests.
 export CARGO_TARGET_DIR="$REPO/target/production"
+# Compilation optimisée (LTO complète, une unité par crate) : certaines crates (cranelift,
+# wasmtime via yara-x) demandent ~3 Go chacune. Sans limite, cargo lance une tâche par cœur et
+# le noyau tue le compilateur faute de mémoire (« signal: 9, SIGKILL »). On limite donc le nombre
+# de tâches parallèles à la mémoire disponible (1 tâche par 3 Go), sauf si CARGO_BUILD_JOBS est fixé.
+if [ -z "${CARGO_BUILD_JOBS:-}" ]; then
+    MEM_GO=$(( $(awk '/^MemAvailable:/ {print $2}' /proc/meminfo) / 1024 / 1024 ))
+    SWAP_GO=$(( $(awk '/^SwapFree:/ {print $2}' /proc/meminfo) / 1024 / 1024 ))
+    JOBS=$(( (MEM_GO + SWAP_GO / 2) / 3 )); [ "$JOBS" -ge 1 ] || JOBS=1
+    [ "$JOBS" -le "$(nproc)" ] || JOBS=$(nproc)
+    export CARGO_BUILD_JOBS=$JOBS
+    echo "Mémoire disponible : ${MEM_GO} Go (+ ${SWAP_GO} Go d'échange) → ${JOBS} compilation(s) en parallèle"
+    if [ $(( MEM_GO + SWAP_GO )) -lt 4 ]; then
+        echo "ATTENTION : moins de 4 Go de mémoire disponible ; la compilation risque d'échouer." >&2
+        echo "Fermer d'autres programmes ou ajouter un fichier d'échange (voir le guide d'installation)." >&2
+    fi
+fi
 cargo build --release --locked -p usbsas-usbsas -p usbsas-net -p usbsas-cmdexec -p usbsas-dev2scsi \
     -p usbsas-files2fs -p usbsas-files2tar -p usbsas-local2files -p usbsas-fs2dev -p usbsas-identifier \
     -p usbsas-scsi2files -p usbsas-tar2files -p usbsas-usbdev -p usbsas-hid
