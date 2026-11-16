@@ -44,13 +44,12 @@ duree() { printf '%d min %02d s' $(($1 / 60)) $(($1 % 60)); }
 etape() {
     fin_etape
     N=$((N + 1)) ETAPE="$1" ETAPE_DEBUT=$(date +%s)
-    printf '%s[%d/%d]%s %s… ' "$GRAS" "$N" "$TOTAL" "$FIN" "$ETAPE"
-    [ "$VERBEUX" = 1 ] && echo
+    printf '%s[%d/%d]%s %s\n' "$GRAS" "$N" "$TOTAL" "$FIN" "$ETAPE"
     echo "=== [$N/$TOTAL] $ETAPE ($(date -Is))" >> "$JOURNAL"
 }
 fin_etape() {
     [ -n "$ETAPE" ] || return 0
-    printf '%sOK%s (%s)\n' "$VERT" "$FIN" "$(duree $(($(date +%s) - ETAPE_DEBUT)))"
+    printf '      %sOK%s (%s)\n' "$VERT" "$FIN" "$(duree $(($(date +%s) - ETAPE_DEBUT)))"
     ETAPE=""
 }
 note() { printf '      %s\n' "$*"; echo "--- $*" >> "$JOURNAL"; }
@@ -63,7 +62,7 @@ journal() {
 echec() {
     local code=$?
     trap - ERR
-    printf '%sÉCHEC%s\n\n' "$ROUGE" "$FIN"
+    printf '      %sÉCHEC%s\n\n' "$ROUGE" "$FIN"
     echo "La construction s'est arrêtée à l'étape « ${ETAPE:-préparation} » (code $code)."
     if [ -s "$JOURNAL" ]; then
         echo "Dernières lignes du journal ($JOURNAL) :"
@@ -144,10 +143,10 @@ mkdir -p "$T/donnees/var/lib/clamav" "$T/donnees/var/lib/barbacane/yara"
 if [ -n "$CLAMAV" ]; then
     cp "$CLAMAV"/*.c[lv]d "$T/donnees/var/lib/clamav/"
 else
-    # DNSDatabaseInfo no : version lue directement sur le miroir (pas d'avertissement DNS).
-    printf 'DatabaseMirror database.clamav.net\nDNSDatabaseInfo no\nDatabaseDirectory %s\nDatabaseOwner root\n' \
+    printf 'DatabaseMirror database.clamav.net\nDatabaseDirectory %s\nDatabaseOwner root\n' \
         "$T/donnees/var/lib/clamav" > "$T/freshclam.conf"
-    journal freshclam --config-file="$T/freshclam.conf" --foreground --stdout \
+    # --no-dns : version lue directement sur le miroir (pas d'avertissement « DNS Update Info »).
+    journal freshclam --config-file="$T/freshclam.conf" --foreground --stdout --no-dns \
         || attention "base ClamAV non téléchargée : la borne refusera tout jusqu'à une mise à jour"
 fi
 note "base ClamAV : $(find "$T/donnees/var/lib/clamav" -name '*.c[lv]d' | wc -l) fichier(s)"
