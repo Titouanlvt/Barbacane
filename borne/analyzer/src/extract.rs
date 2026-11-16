@@ -85,6 +85,43 @@ pub struct Listing {
     pub dangerous_names: bool,
 }
 
+/// Lignes « ERROR: Dangerous link path was ignored : CHEMIN : CIBLE » de 7-Zip.
+fn liens_ignores(sortie: &str) -> Vec<(String, String)> {
+    sortie
+        .lines()
+        .filter_map(|l| l.split_once("Dangerous link path was ignored : "))
+        .filter_map(|(_, reste)| reste.rsplit_once(" : "))
+        .map(|(p, t)| (p.trim().to_string(), t.trim().to_string()))
+        .collect()
+}
+
+/// Vrai si le lien `chemin` → `cible` reste à l'intérieur de l'archive (cible relative qui ne
+/// remonte jamais au-dessus de la racine). Faux pour une cible absolue ou sortante.
+pub fn lien_interne(chemin: &str, cible: &str) -> bool {
+    if cible.starts_with('/') || cible.contains('\\') || cible.contains(':') {
+        return false;
+    }
+    let mut niveau: i64 = chemin
+        .trim_start_matches("./")
+        .split('/')
+        .filter(|c| !c.is_empty() && *c != ".")
+        .count() as i64
+        - 1;
+    for c in cible.split('/') {
+        match c {
+            "" | "." => (),
+            ".." => {
+                niveau -= 1;
+                if niveau < 0 {
+                    return false;
+                }
+            }
+            _ => niveau += 1,
+        }
+    }
+    true
+}
+
 #[derive(Debug)]
 pub enum Outcome {
     Ok,
@@ -276,10 +313,24 @@ impl Extractor {
         if let Some(l) = stderr.lines().find(|l| l.starts_with("bwrap:")) {
             bail!("bac à sable indisponible ({l})");
         }
+        // Liens symboliques que 7-Zip ignore en les jugeant « dangereux » (toute remontée « ../ »,
+        // même vers un autre dossier de l'archive) : il sort alors en code 2. Les paquets Debian
+        // et les micrologiciels en sont pleins. Liens restant dans l'archive : sans danger (jamais
+        // extraits ni suivis) ; lien sortant de l'archive ou absolu : archive refusée.
+        let liens = liens_ignores(&all);
+        let seulement_liens = status.code() == Some(2)
+            && !liens.is_empty()
+            && all
+                .lines()
+                .filter(|l| l.contains("ERROR"))
+                .all(|l| l.contains("Dangerous link path was ignored"));
+        let sortant = liens.iter().find(|(p, t)| !lien_interne(p, t));
         let outcome =
             if all.contains("Wrong password") || all.contains("Can not open encrypted archive") {
                 Outcome::WrongPassword
-            } else if status.code() == Some(0) {
+            } else if let Some((p, t)) = sortant {
+                Outcome::Failed(format!("lien symbolique sortant de l'archive ({p} → {t})"))
+            } else if status.code() == Some(0) || seulement_liens {
                 Outcome::Ok
             } else if all.contains("ERROR") && all.contains("Can not open the file as archive")
                 || all.contains("Cannot open the file as archive")
@@ -337,6 +388,22 @@ fn sanitize_basename(p: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn liens_internes_et_sortants() {
+        assert!(lien_interne(
+            "./usr/lib/firmware/radeon/a.bin",
+            "../amdgpu/a.bin"
+        ));
+        assert!(lien_interne("lib/libx.so", "libx.so.1"));
+        assert!(!lien_interne("a/b", "../../etc/passwd"));
+        assert!(!lien_interne("x", "/etc/passwd"));
+        assert!(!lien_interne("x", "../y"));
+        assert_eq!(
+            liens_ignores("ERROR: Dangerous link path was ignored : ./a/b.bin : ../c/b.bin\n"),
+            vec![("./a/b.bin".to_string(), "../c/b.bin".to_string())]
+        );
+    }
 
     #[test]
     fn basename() {

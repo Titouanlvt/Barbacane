@@ -455,7 +455,13 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<Found>) -> std::io::Result<()> {
             continue;
         }
         let problem = if md.file_type().is_symlink() {
-            Some("lien symbolique : non copié")
+            // Lien resté dans l'archive : sans danger, ni suivi ni copié séparément (l'archive
+            // d'origine le conserve). Lien sortant ou absolu : refus.
+            let cible = std::fs::read_link(&p).unwrap_or_default();
+            if crate::extract::lien_interne(&rel, &cible.to_string_lossy()) {
+                continue;
+            }
+            Some("lien symbolique sortant de l'archive : non copié")
         } else if !md.is_file() {
             Some("fichier spécial : non copié")
         } else if rel_raw.to_str().is_none() {
