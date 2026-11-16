@@ -23,6 +23,8 @@ cd "$REPO"
 export USBSAS_BIN_PATH=/usr/libexec
 # Répertoire distinct des binaires « mock » des tests.
 export CARGO_TARGET_DIR="$REPO/target/production"
+# Note « future-incompat » de dépendances tierces (binrw) : sans action possible ici.
+export CARGO_FUTURE_INCOMPAT_REPORT_FREQUENCY=never
 # Compilation optimisée (LTO complète, une unité par crate) : certaines crates (cranelift,
 # wasmtime via yara-x) demandent ~3 Go chacune. Sans limite, cargo lance une tâche par cœur et
 # le noyau tue le compilateur faute de mémoire (« signal: 9, SIGKILL »). On limite donc le nombre

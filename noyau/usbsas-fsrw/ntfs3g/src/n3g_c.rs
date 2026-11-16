@@ -5,4 +5,6 @@
 #![allow(clippy::useless_transmute)]
 #![allow(unnecessary_transmutes)]
 #![allow(dead_code)]
+// Liaisons générées par bindgen (édition 2024) : avertissement sur du code généré, pas sur le nôtre.
+#![allow(unsafe_op_in_unsafe_fn)]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
