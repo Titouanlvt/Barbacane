@@ -1,7 +1,8 @@
 [Unit]
 Description=Barbacane : analyseur de fichiers (ClamAV + YARA, archives)
-After=clamav-daemon.service
+After=clamav-daemon.service barbacane-travail.service
 Wants=clamav-daemon.service
+Requires=barbacane-travail.service
 
 [Service]
 ExecStart=/usr/bin/barbacane-analyzer -c /etc/barbacane/analyzer.toml
@@ -10,8 +11,9 @@ User=barbacane-analyzer
 Group=barbacane
 SupplementaryGroups=clamav
 UMask=0027
-# Fichiers en cours d'analyse : en mémoire, taille bornée, effacés à l'arrêt.
-# TemporaryFileSystem= est posé par le postinst (tmpfs exige l'uid numérique du compte).
+# Fichiers en cours d'analyse : volume chiffré éphémère (barbacane-travail), sur disque mais
+# illisible après redémarrage ; la taille suit le disque, pas la RAM (8 Go : tmpfs de 6 Go plein).
+ReadWritePaths=/var/lib/barbacane/travail/analyse
 StateDirectory=barbacane/rapports barbacane/sortie barbacane/import
 StateDirectoryMode=0750
 MemoryMax=10G

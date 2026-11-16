@@ -380,6 +380,40 @@ if test_actif blanchiment; then
     attendre "à analyser" 120
 fi
 
+# === blanchiment d'une clé volumineuse (5,6 Go d'archives et de fichiers, borne à 8 Go de RAM)
+# Cas signalé le 16/11/2026 sur un Dell OptiPlex 7090 (8 Go) : « Remote server error ».
+if test_actif volumineux; then
+    debut volumineux "blanchiment d'une clé de 5,6 Go (zip, tar, iso, txt) sur $SERIE_SOURCE"
+    formater "$SERIE_SOURCE" "" GROSSE; m="$T/m"; mkdir -p "$m/archives" "$m/images" "$m/textes"
+    g="$T/gros"; mkdir -p "$g"
+    for i in 1 2 3; do head -c 600M /dev/urandom > "$g/donnees-$i.bin"; (cd "$g" && zip -q -0 "$m/archives/lot-$i.zip" "donnees-$i.bin"); rm "$g/donnees-$i.bin"; done
+    printf '%s' "$EICAR" > "$g/eicar.com"; printf 'sain\n' > "$g/sain.txt"
+    (cd "$g" && zip -q -X "$m/archives/mixte.zip" eicar.com sain.txt)
+    for i in 1 2; do head -c 700M /dev/urandom > "$g/bloc-$i.bin"; tar -cf "$m/archives/sauvegarde-$i.tar" -C "$g" "bloc-$i.bin"; rm "$g/bloc-$i.bin"; done
+    mkdir -p "$g/iso"; head -c 1100M /dev/urandom > "$g/iso/disque.bin"
+    xorriso -as mkisofs -quiet -o "$m/images/installation.iso" "$g/iso" 2>/dev/null; rm -rf "$g/iso"
+    for i in $(seq 1 20); do head -c 25M /dev/urandom | base64 > "$m/textes/journal-$i.txt"; done
+    taille=$(du -sh "$m" | cut -f1); demonter "$D/avant.sha256"
+    si [ "$(wc -l < "$D/avant.sha256")" -ge 27 ] -- "clé préparée : $taille, $(wc -l < "$D/avant.sha256") fichiers (zip, tar, iso, txt)" "préparation incomplète"
+    brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120 "$D/01-cle-detectee.png"
+    cliquer "Blanchir cette clé"
+    if voir "Une erreur est survenue" 5400 "$D/02-erreur.png" && ! voir "Résultat de l'analyse" 5; then
+        lire 02-erreur >/dev/null; ko "analyse en erreur : $(grep -m1 -i 'aboutir' "$D/02-erreur.txt" || true)"
+    else
+        attendre "Résultat de l'analyse" 60 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
+        ok "analyse aboutie sur 5,6 Go avec $MEMOIRE Mo de RAM"
+        cliquer "Blanchir la clé"
+        if voir "Maintenir pour effacer" 30 "$D/03-confirmation.png"; then "${B[@]}" maintenir "Maintenir pour"
+        else attendre "Effacer et réécrire" 30 "$D/03-confirmation.png"; cliquer "Effacer et réécrire"; fi
+        attendre "Vous pouvez retirer les clés" 14400 "$D/04-termine.png"
+        debrancher usb1
+        monter_ro "$SERIE_SOURCE"; liste_sha "$T/m" > "$D/apres.sha256"; cp "$T/m"/rapport-barbacane-*.txt "$D/" 2>/dev/null || true; umount "$T/m"
+        si ! grep -q 'mixte.zip$' "$D/apres.sha256" -- "archive contenant EICAR non réécrite" "archive avec EICAR réécrite"
+        si grep -q "$(grep 'textes/journal-1.txt' "$D/avant.sha256" | cut -c1-64)" "$D/apres.sha256" -- "fichiers sains réécrits à l'identique (sha256)" "fichier sain absent ou modifié"
+    fi
+    attendre "à analyser" 300 || true
+fi
+
 # === export des journaux et rapports =====================================================
 if test_actif export; then
     debut export "export des journaux et rapports sur la clé $SERIE_SORTIE"

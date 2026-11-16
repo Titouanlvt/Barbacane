@@ -573,7 +573,8 @@ impl App {
             Ev::Analysed(Err(e)) => {
                 self.screen = Screen::Erreur {
                     message: format!(
-                        "L'analyse n'a pas pu aboutir : {e}. Aucun fichier n'a été copié."
+                        "L'analyse n'a pas pu aboutir : {}. Aucun fichier n'a été copié, rien n'a été effacé.",
+                        explique_erreur(&e)
                     ),
                     retry: false,
                 }
@@ -1196,6 +1197,20 @@ impl App {
 }
 
 // ---------------------------------------------------------------- briques
+
+/// Erreurs brutes d'usbsas (en anglais) traduites en consigne compréhensible (charte : dire ce
+/// qui s'est passé et quoi faire). Le texte d'origine reste entre parenthèses pour le support.
+fn explique_erreur(e: &str) -> String {
+    if e.contains("Remote server error") {
+        format!(
+            "l'analyseur n'a pas pu traiter le contenu de la clé (espace de travail plein ou \
+             service redémarré). Réessayez ; si l'erreur revient, prévenez l'administrateur \
+             avec l'export des journaux ({e})"
+        )
+    } else {
+        e.to_string()
+    }
+}
 
 pub fn centre<'a>(c: Column<'a, Msg>) -> Element<'a, Msg> {
     container(c.spacing(16).align_x(Alignment::Center))

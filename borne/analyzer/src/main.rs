@@ -54,6 +54,17 @@ async fn main() -> anyhow::Result<()> {
         config::Config::load(&conf_path).with_context(|| format!("configuration {conf_path}"))?;
     std::fs::create_dir_all(&conf.work_dir)
         .with_context(|| format!("dossier de travail {}", conf.work_dir.display()))?;
+    // Restes d'une analyse interrompue (arrêt brutal du service) : supprimés au démarrage.
+    if let Ok(entrees) = std::fs::read_dir(&conf.work_dir) {
+        for e in entrees.flatten() {
+            let p = e.path();
+            let _ = if p.is_dir() {
+                std::fs::remove_dir_all(&p)
+            } else {
+                std::fs::remove_file(&p)
+            };
+        }
+    }
     let _ = rustls::crypto::ring::default_provider().install_default();
     if let Some(r) = &conf.relay {
         let router = relay::router(

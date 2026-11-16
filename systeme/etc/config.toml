@@ -1,6 +1,6 @@
 # Configuration usbsas de la borne Barbacane (installée en /etc/usbsas/config.toml)
 
-out_directory = "/var/lib/usbsas/tmp"
+out_directory = "/var/lib/barbacane/travail/usbsas"   # volume chiffré éphémère
 keep_tmp_files = false
 lang = "fr"
 window_title = "Barbacane"

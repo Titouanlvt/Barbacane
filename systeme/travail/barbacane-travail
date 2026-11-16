@@ -1,0 +1,50 @@
+#!/bin/sh
+# Espace de travail chiffré éphémère de la borne (usbsas + analyseur).
+#
+# Les fichiers lus sur les clés passent par le disque (archive tar de session d'usbsas, copie de
+# l'analyseur, extraction des archives). Pour qu'il n'en reste RIEN de lisible après un
+# redémarrage, ils sont écrits dans un volume chiffré par une clé aléatoire tirée à chaque
+# démarrage et jamais écrite : au redémarrage suivant, l'ancien contenu est indéchiffrable.
+# Adossé à un fichier creux (pas de partition dédiée) : la taille suit le disque, pas la RAM.
+#
+#   barbacane-travail demarrer | arreter
+set -eu
+IMAGE=/var/lib/barbacane-travail.img
+NOM=barbacane-travail
+POINT=/var/lib/barbacane/travail
+# Part de l'espace libre réservée au volume à sa création (fichier creux : rien n'est alloué
+# tant qu'il n'est pas écrit) ; plancher 8 Gio.
+PART=60
+
+demarrer() {
+    arreter 2>/dev/null || true
+    if [ ! -f "$IMAGE" ]; then
+        libre=$(df -Pk "$(dirname "$IMAGE")" | awk 'NR==2 {print $4}')
+        taille=$((libre * PART / 100))
+        [ "$taille" -ge $((8 * 1024 * 1024)) ] || taille=$((8 * 1024 * 1024))
+        truncate -s "${taille}K" "$IMAGE"
+        chmod 600 "$IMAGE"
+    fi
+    # Clé de 512 bits lue dans /dev/urandom, passée à dm-crypt puis oubliée (mode « plain » :
+    # aucun en-tête, rien à conserver).
+    cryptsetup open --type plain --cipher aes-xts-plain64 --key-size 512 \
+        --key-file /dev/urandom --keyfile-size 64 "$IMAGE" "$NOM"
+    mkfs.ext4 -q -F -m 0 -E nodiscard,lazy_itable_init=1 -L travail "/dev/mapper/$NOM"
+    mkdir -p "$POINT"
+    mount -o nodev,nosuid,noexec "/dev/mapper/$NOM" "$POINT"
+    chmod 755 "$POINT"
+    install -d -m 0700 -o usbsas -g usbsas "$POINT/usbsas"
+    install -d -m 0700 -o barbacane-analyzer -g barbacane "$POINT/analyse"
+    rmdir "$POINT/lost+found" 2>/dev/null || true
+}
+
+arreter() {
+    if mountpoint -q "$POINT"; then umount "$POINT"; fi
+    if [ -e "/dev/mapper/$NOM" ]; then cryptsetup close "$NOM"; fi
+}
+
+case "${1:-}" in
+    demarrer) demarrer ;;
+    arreter) arreter ;;
+    *) echo "usage : $0 demarrer|arreter" >&2; exit 2 ;;
+esac

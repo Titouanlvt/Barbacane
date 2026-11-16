@@ -6,6 +6,9 @@ clamav-daemon
 7zip
 7zip-rar
 bubblewrap
+# Espace de travail chiffré éphémère (barbacane-travail)
+cryptsetup-bin
+e2fsprogs
 # Disques optiques (barbacane-optique) : lecture, gravure, effacement
 xorriso
 cage
