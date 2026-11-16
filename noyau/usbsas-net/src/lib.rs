@@ -163,6 +163,10 @@ impl HttpClient {
         let client = Client::builder()
             .gzip(true)
             .connect_timeout(Duration::from_secs(30))
+            // Barbacane (écart n° 8) : pas de délai global. Le client bloquant de reqwest coupe
+            // sinon toute requête au bout de 30 s, ce qui tronque l'envoi d'un gros contenu à
+            // l'analyseur (« Remote server error » sur une clé de plusieurs Go).
+            .timeout(None::<Duration>)
             .build()?;
         Ok(Self {
             client,

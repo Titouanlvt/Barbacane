@@ -78,3 +78,13 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
   présente, la partition qui démarre au secteur 0 (ou une partition ajoutée couvrant le
   périphérique) est déclarée ISO9660. La borne choisit la plus grande partition lisible : l'ISO.
 - Test : `tests/proxmox/preuve.sh`, étape `reel` (scénario `etcher`).
+
+### 8. Envoi à l'analyseur coupé au bout de 30 s (`usbsas-net/src/lib.rs`)
+- Constat (Dell OptiPlex 7090, puis campagne du 16/11/2026 sur une clé de 4,9 Go) : « Remote server
+  error » / « reqwest error: error sending request ». Le client HTTP **bloquant** de reqwest applique
+  par défaut un délai global de 30 s à chaque requête ; l'envoi de l'archive de session (plusieurs Go)
+  à l'analyseur local dure plus longtemps et était coupé net (l'analyseur journalise « end of file
+  before message length reached », alors que l'espace de travail était largement libre).
+- Correctif : `timeout(None)` sur le client (le délai de connexion de 30 s est conservé). L'analyseur
+  est local (127.0.0.1) ; un arrêt du service ferme la connexion et l'erreur remonte toujours.
+- Test : `tests/proxmox/preuve.sh`, étape `volumineux`.
