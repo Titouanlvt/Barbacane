@@ -150,6 +150,23 @@ fn enrolement_et_limites() {
     req(&c, json!({"op": "enroll_remove", "key": {"vendorid": 4660, "productid": 22136, "serial": "ABC123"}, "token": tok})).unwrap();
     assert_eq!(c.status()["enrolled"].as_array().unwrap().len(), 0);
 
+    // Préférences d'affichage : défaut Pierre, Nuit enregistrée, thème inconnu refusé.
+    assert_eq!(c.status()["preferences"]["theme"], "pierre");
+    req(&c, json!({"op": "set_preferences", "theme": "nuit", "animations_reduites": true, "token": tok})).unwrap();
+    assert_eq!(c.status()["preferences"]["theme"], "nuit");
+    assert_eq!(c.status()["preferences"]["animations_reduites"], true);
+    assert!(
+        req(
+            &c,
+            json!({"op": "set_preferences", "theme": "rose", "token": tok})
+        )
+        .is_err()
+    );
+    assert!(
+        req(&c, json!({"op": "set_preferences", "theme": "pierre"})).is_err(),
+        "sans jeton"
+    );
+    assert_eq!(c.status()["preferences"]["theme"], "nuit");
     assert!(req(&c, json!({"op": "set_limits", "limits": {"max_depth": 0, "max_files": 10, "max_total_size": 1}, "token": tok})).is_err());
     req(&c, json!({"op": "set_limits", "limits": {"max_depth": 7, "max_files": 20000, "max_total_size": 8589934592u64}, "token": tok})).unwrap();
     let l = c.limits();

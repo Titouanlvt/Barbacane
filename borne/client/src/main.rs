@@ -3,6 +3,7 @@
 
 mod admin;
 mod admin_ui;
+mod anim;
 mod app;
 mod config;
 mod keyboard;

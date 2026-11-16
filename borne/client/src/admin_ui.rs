@@ -20,6 +20,8 @@ pub enum Page {
     Enrolement,
     Limites,
     NouveauPin,
+    /// Thème Pierre / Nuit, animations réduites
+    Affichage,
     Confirmer(&'static str),
 }
 
@@ -41,6 +43,8 @@ pub enum AdminMsg {
     EnregistrerLimites,
     EnregistrerPin,
     Executer(&'static str),
+    /// Thème (« pierre » ou « nuit ») et animations réduites
+    Affichage(&'static str, bool),
 }
 
 pub struct AdminUi {
@@ -188,6 +192,13 @@ pub fn update(app: &mut App, m: AdminMsg) -> Task<Msg> {
                 }
             }
         }
+        AdminMsg::Affichage(theme, reduites) => {
+            a.message = None;
+            return a.call(
+                "set_preferences",
+                json!({"op": "set_preferences", "theme": theme, "animations_reduites": reduites}),
+            );
+        }
         AdminMsg::LireMaj => {
             a.message = None;
             return a.call("arm_import", json!({"op": "arm_import"}));
@@ -299,7 +310,7 @@ pub fn view(app: &App) -> Element<'_, Msg> {
     let etat = app.etat.clone().unwrap_or(json!({}));
     let msg: Element<Msg> = match &a.message {
         Some((true, m)) => container(texte(m)).padding(12).style(style::carte).into(),
-        Some((false, m)) => container(texte_c(m, style::ROUGE))
+        Some((false, m)) => container(texte_c(m, style::c().menace))
             .padding(12)
             .style(style::alerte)
             .into(),
@@ -331,6 +342,7 @@ pub fn view(app: &App) -> Element<'_, Msg> {
             row![menu_btn("État de la borne", Page::Etat), menu_btn("Mettre à jour", Page::MiseAJour), menu_btn("Exporter les journaux", Page::Export)].spacing(20),
             row![menu_btn("Clés de sortie enrôlées", Page::Enrolement), menu_btn("Limites d'analyse", Page::Limites), menu_btn("Changer le PIN", Page::NouveauPin)].spacing(20),
             row![
+                menu_btn("Affichage", Page::Affichage),
                 bouton("Redémarrer", am(AdminMsg::Aller(Page::Confirmer("reboot"))), style::danger),
                 bouton("Éteindre", am(AdminMsg::Aller(Page::Confirmer("poweroff"))), style::danger),
             ]
@@ -371,7 +383,7 @@ pub fn view(app: &App) -> Element<'_, Msg> {
             titre("Exporter les journaux et rapports"),
             carte(column![
                 texte("Branchez la clé administrateur sur le port de sortie."),
-                texte_c("Elle sera effacée et formatée en exFAT.", style::ROUGE),
+                texte_c("Elle sera effacée et formatée en exFAT.", style::c().menace),
             ]),
             msg,
             row![retour, bouton_busy("Exporter", am(AdminMsg::Exporter), a.busy)].spacing(30),
@@ -416,6 +428,42 @@ pub fn view(app: &App) -> Element<'_, Msg> {
                 container(scrollable(list).height(Length::Fixed(120.0)).width(Length::Fixed(1000.0))).padding(12).style(style::carte),
                 petit("Pour enrôler une clé, branchez-la : elle apparaît ci-dessous."),
                 add,
+                row![msg, retour].spacing(20).align_y(Alignment::Center),
+            ]
+            .spacing(20)
+            .align_x(Alignment::Center)
+            .into()
+        }
+        Page::Affichage => {
+            let p = &etat["preferences"];
+            let nuit = p["theme"].as_str() == Some("nuit");
+            let reduites = p["animations_reduites"].as_bool() == Some(true);
+            let choix = |lib: &str, actif: bool, m: AdminMsg| {
+                bouton(
+                    &if actif { format!("✓ {lib}") } else { lib.to_string() },
+                    am(m),
+                    if actif { style::primaire } else { style::secondaire },
+                )
+            };
+            column![
+                titre("Affichage"),
+                carte(column![
+                    texte("Thème"),
+                    row![
+                        choix("Pierre (clair)", !nuit, AdminMsg::Affichage("pierre", reduites)),
+                        choix("Nuit (sombre)", nuit, AdminMsg::Affichage("nuit", reduites)),
+                    ]
+                    .spacing(20),
+                    petit("Pierre : bureau éclairé (par défaut). Nuit : salle peu éclairée."),
+                    Space::new().height(10),
+                    texte("Animations"),
+                    row![
+                        choix("Normales", !reduites, AdminMsg::Affichage(if nuit { "nuit" } else { "pierre" }, false)),
+                        choix("Réduites", reduites, AdminMsg::Affichage(if nuit { "nuit" } else { "pierre" }, true)),
+                    ]
+                    .spacing(20),
+                    petit("Réduites : chaque écran s'affiche directement dans son état final."),
+                ]),
                 row![msg, retour].spacing(20).align_y(Alignment::Center),
             ]
             .spacing(20)

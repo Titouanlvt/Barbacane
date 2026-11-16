@@ -115,6 +115,18 @@ et mémoire 2 Go par extraction, délai de saisie du mot de passe 300 s, 3 essai
 se règlent dans `/etc/barbacane/analyzer.toml`. Dépasser une limite **refuse tout
 le conteneur racine**.
 
+## 5 bis. Affichage : thème et animations
+
+**Administration → Affichage** :
+- **Thème** : *Pierre* (clair, par défaut, bureau éclairé) ou *Nuit* (sombre, salle peu
+  éclairée). Mêmes couleurs d'état et mêmes contrastes (≥ 4,5:1) dans les deux thèmes
+  (charte, `docs/charte/tokens.json`).
+- **Animations** : *Normales* ou *Réduites*. Réduites, chaque écran s'affiche directement dans son
+  état final (aucune information n'est jamais retardée par une animation).
+
+Le choix est enregistré par `barbacane-admind` (`/var/lib/barbacane/admin/preferences.json`) et
+conservé après redémarrage ; il s'applique immédiatement.
+
 ## 6. Analyseur central (plusieurs bornes)
 
 Désactivé par défaut. Un serveur Barbacane peut analyser pour plusieurs bornes :
