@@ -164,7 +164,7 @@ if test_actif gravure; then
     brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 60 "$D/01-cle-detectee.png"
     cliquer "Analyser"
     attendre "Résultat de l'analyse" 1800 "$D/02-resultat-analyse.png"
-    cliquer "Graver sur un disque"
+    cliquer "Graver un disque"
     attendre "Effacer ce disque" 120 "$D/03-disque-destination.png"
     cliquer "Effacer ce disque"; date +%s > "$D/debut"
     sleep 60; capture 04-gravure-en-cours; lire 04-gravure-en-cours >/dev/null

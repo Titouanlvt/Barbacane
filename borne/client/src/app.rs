@@ -1370,6 +1370,13 @@ impl App {
         };
         let copied = a.report.copied().count();
         let refused: Vec<_> = a.report.refused().collect();
+        // Hauteur en 1280×768-800 : la liste des refus cède la place à la 2e ligne de boutons
+        // (clé Ventoy) et à l'avertissement des clés Rufus/Etcher ; les boutons ne s'écrasent pas.
+        let optique_src = self.src.as_ref().is_some_and(est_optique);
+        let deux_lignes = !optique_src && a.ventoy;
+        let avertissement = !optique_src && a.demarrable_autre;
+        let hauteur_liste =
+            130.0 - if deux_lignes { 74.0 } else { 0.0 } - if avertissement { 46.0 } else { 0.0 };
         let mut list = Column::new().spacing(8);
         let est_menace = |r: &str| r.contains("menace");
         let menaces = refused.iter().filter(|f| est_menace(&f.reason)).count();
@@ -1475,7 +1482,7 @@ impl App {
                 container(
                     // Hauteur bornée : les boutons doivent rester visibles en 1280×768.
                     scrollable(list)
-                        .height(Length::Fixed(130.0))
+                        .height(Length::Fixed(hauteur_liste.max(40.0)))
                         .width(Length::Fixed(900.0)),
                 )
                 .padding(16)
@@ -1484,7 +1491,8 @@ impl App {
         }
         let disque = self.src.as_ref().is_some_and(est_optique);
         let reinscriptible = self.optique.as_ref().is_some_and(|e| e.reinscriptible);
-        // Deux lignes : ce qui ne touche pas le support analysé, puis le blanchiment (1280 px).
+        // Une ligne (libellés courts, tient en 1280 px) ; le blanchiment démarrable d'une clé
+        // Ventoy, 5e choix, passe sur une seconde ligne.
         let mut actions = row![bouton("Arrêter ici", Msg::Terminer, style::secondaire)].spacing(24);
         actions = actions.push(bouton(
             "Copier vers une clé connue",
@@ -1493,14 +1501,13 @@ impl App {
         ));
         if self.optique.is_some() {
             actions = actions.push(bouton(
-                "Graver sur un disque",
+                "Graver un disque",
                 Msg::Action(Mode::Graver),
                 style::secondaire,
             ));
         }
-        let mut blanchir = row![].spacing(24);
         if !disque || reinscriptible {
-            blanchir = blanchir.push(bouton(
+            actions = actions.push(bouton(
                 if disque {
                     "Blanchir le disque"
                 } else {
@@ -1510,21 +1517,21 @@ impl App {
                 style::danger,
             ));
         }
-        if !disque && a.demarrable_autre {
+        if avertissement {
             c = c.push(petit(
                 "Clé démarrable (image Rufus ou Etcher) : sa partie démarrage ne peut pas être \
                  vérifiée. Un blanchiment la rendra non démarrable ; recréez-la ensuite depuis \
                  une image officielle.",
             ));
         }
-        if !disque && self.analysis.as_ref().is_some_and(|a| a.ventoy) {
-            blanchir = blanchir.push(bouton(
+        c = c.push(Space::new().height(10)).push(actions);
+        if deux_lignes {
+            c = c.push(bouton(
                 "Blanchir en gardant démarrable",
                 Msg::ActionDemarrable,
                 style::danger,
             ));
         }
-        c = c.push(Space::new().height(10)).push(actions).push(blanchir);
         centre(c)
     }
 

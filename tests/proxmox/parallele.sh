@@ -123,6 +123,10 @@ for g in "${GROUPES[@]}"; do
         done
         sleep 10
     done
+    # Pool plein = VM figées (io-error) : un clone ne part que s'il reste ESPACE_MIN Go libres
+    while [ "$(zpool list -Hpo free "$STOCKAGE" 2>/dev/null || echo 0)" -lt $(( ${ESPACE_MIN:-40} * 1024 * 1024 * 1024 )) ]; do
+        echo "$(date +%H:%M) attente : moins de ${ESPACE_MIN:-40} Go libres sur $STOCKAGE"; sleep 60
+    done
     if [ ${#libres[@]} -gt 0 ]; then id=${libres[0]}; libres=("${libres[@]:1}"); else id=$vm; vm=$((vm + 1)); fi
     lancer "$nom" "$tests" "$id"; en_cours=$((en_cours + 1))
 done
