@@ -73,6 +73,8 @@ pub enum Msg {
     Fait(Result<serde_json::Value, String>),
     /// Image suivante d'une animation (30 images/s au plus)
     Anim,
+    /// Écran de veille : un appui ou un toucher réveille la borne
+    Reveil,
     /// Bouton « Maintenir pour effacer » enfoncé (true) ou relâché (false)
     Maintien(bool),
 }
@@ -248,6 +250,13 @@ impl App {
         let mut subs = vec![w, tick];
         if let Some(d) = self.anime() {
             subs.push(iced::time::every(d).map(|_| Msg::Anim));
+        }
+        if self.en_veille() {
+            subs.push(iced::event::listen_with(|e, _, _| match e {
+                iced::Event::Mouse(iced::mouse::Event::ButtonPressed(_))
+                | iced::Event::Touch(iced::touch::Event::FingerPressed { .. }) => Some(Msg::Reveil),
+                _ => None,
+            }));
         }
         if !self.cfg.optique_socket.is_empty() {
             subs.push(
@@ -587,6 +596,12 @@ impl App {
                 }
                 Task::none()
             }
+            Msg::Reveil => {
+                if self.en_veille() {
+                    self.depuis = std::time::Instant::now();
+                }
+                Task::none()
+            }
             Msg::Maintien(appui) => {
                 self.maintien = if appui && matches!(self.screen, Screen::ConfirmBlanchir) {
                     self.maintien.or(Some(std::time::Instant::now()))
@@ -733,6 +748,9 @@ impl App {
     // ---------------------------------------------------------------- vue
 
     fn view(&self) -> Element<'_, Msg> {
+        if self.en_veille() {
+            return self.view_veille();
+        }
         let body: Element<Msg> = match &self.screen {
             Screen::Connexion => {
                 // Charte : le logo se construit, puis « Préparation de la borne… » tant que les
@@ -940,6 +958,42 @@ impl App {
             .style(style::bandeau)
             .width(Length::Fill)
             .into()
+    }
+
+    /// Veille : fond encre, logo nuit qui se déplace lentement (pas d'image fixe marquée à
+    /// l'écran), consigne lisible.
+    fn view_veille(&self) -> Element<'_, Msg> {
+        let t = self.depuis.elapsed().as_secs_f32();
+        let (dx, dy) = position_veille(t);
+        let logo = iced::widget::svg(iced::widget::svg::Handle::from_memory(LOGO_NUIT))
+            .width(120)
+            .height(120);
+        let bloc = column![
+            logo,
+            text("Insérez une clé ou touchez l'écran")
+                .size(22)
+                .color(style::c().sur_bandeau)
+                .shaping(text::Shaping::Advanced),
+        ]
+        .spacing(16)
+        .align_x(Alignment::Center);
+        container(
+            column![
+                Space::new().height(Length::FillPortion((100.0 + dy * 100.0) as u16)),
+                row![
+                    Space::new().width(Length::FillPortion((100.0 + dx * 100.0) as u16)),
+                    bloc,
+                    Space::new().width(Length::FillPortion((100.0 - dx * 100.0) as u16)),
+                ],
+                Space::new().height(Length::FillPortion((100.0 - dy * 100.0) as u16)),
+            ]
+            .width(Length::Fill)
+            .height(Length::Fill),
+        )
+        .style(style::bandeau)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
     }
 
     fn view_footer(&self) -> Element<'_, Msg> {
@@ -1170,8 +1224,17 @@ impl App {
     /// Animation à rafraîchir : analyse (en boucle) ou un moment joué une fois, pas encore fini.
     /// Cadence de rafraîchissement : 30 images/s pendant une animation, 1/s pour le seul
     /// chronomètre (animations réduites), rien sinon.
+    /// Écran de veille : accueil sans activité depuis `VEILLE` (écran préservé, processeur au
+    /// repos : l'accueil anime à 30 images par seconde). Une clé insérée ou un toucher réveille.
+    fn en_veille(&self) -> bool {
+        matches!(self.screen, Screen::Accueil) && self.depuis.elapsed() >= VEILLE
+    }
+
     fn anime(&self) -> Option<std::time::Duration> {
         use std::time::Duration;
+        if self.en_veille() {
+            return Some(Duration::from_secs(1));
+        }
         let ms = self.depuis.elapsed().as_millis();
         let en_cours = matches!(
             self.screen,
@@ -1832,4 +1895,23 @@ fn grand_choix<'a>(t: &str, d: &str, m: Msg) -> Element<'a, Msg> {
     container(en_relief(b.into(), Some(style::c().laiton)))
         .width(Length::FillPortion(1))
         .into()
+}
+
+/// Délai sans activité avant l'écran de veille.
+const VEILLE: std::time::Duration = std::time::Duration::from_secs(600);
+
+/// Décalage du logo de veille (-0,8‥0,8 en largeur et en hauteur), lent et sans saut.
+fn position_veille(t: f32) -> (f32, f32) {
+    (0.8 * (t / 37.0).sin(), 0.8 * (t / 53.0).cos())
+}
+
+#[cfg(test)]
+mod tests_veille {
+    #[test]
+    fn logo_reste_a_l_ecran() {
+        for i in 0..10_000 {
+            let (x, y) = super::position_veille(i as f32);
+            assert!((-0.8..=0.8).contains(&x) && (-0.8..=0.8).contains(&y));
+        }
+    }
 }
