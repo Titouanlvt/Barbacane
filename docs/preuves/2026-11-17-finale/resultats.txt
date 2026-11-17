@@ -1,0 +1,35 @@
+OK [installation] : ISO copiée sur la clé (relecture identique)
+OK [installation] : VM sans carte réseau
+OK [installation] : installation automatique depuis la clé USB, interface affichée (8192 Mo de RAM)
+OK [grub] : Échap tenu au démarrage : pas de menu GRUB, démarrage direct de la borne
+OK [pin] : premier PIN choisi, menu d'administration ouvert
+OK [pin] : mauvais PIN refusé (essais restants affichés)
+OK [pin] : bon PIN accepté après une erreur
+OK [enrolement] : clé enrôlée : elle figure dans la liste
+OK [enrolement] : mode « clés enrôlées » activé
+OK [transfert] : mot de passe d'archive demandé (clavier virtuel)
+OK [transfert] : écran : menaces détectées
+OK [transfert] : clé non enrôlée refusée en sortie
+OK [transfert] : clé non enrôlée intacte (rien n'y a été écrit)
+OK [transfert] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [transfert] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [transfert] : aucun fichier de la sortie ne contient EICAR
+OK [transfert] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [transfert] : archive chiffrée (bon mot de passe) copiée
+OK [transfert] : archive mixte : seul son fichier sain est extrait
+OK [transfert] : noms piégés (traversée, absolu) non écrits
+OK [transfert] : contenu précédent de la destination effacé (témoin absent)
+OK [transfert] : rapport : EICAR détecté et refusé
+OK [blanchiment] : avant : EICAR sur la clé (octets 16547868 16556060 16564291 16572522 )
+OK [blanchiment] : mot de passe d'archive demandé (clavier virtuel)
+OK [blanchiment] : empreinte de la clé entière modifiée
+OK [blanchiment] : après : aucune trace d'EICAR sur TOUTE la clé
+OK [blanchiment] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [blanchiment] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [blanchiment] : aucun fichier de la sortie ne contient EICAR
+OK [blanchiment] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [blanchiment] : archive chiffrée (bon mot de passe) copiée
+OK [blanchiment] : archive mixte : seul son fichier sain est extrait
+OK [blanchiment] : noms piégés (traversée, absolu) non écrits
+OK [volumineux] : clé préparée : 4.9G, 27 fichiers (zip, tar, iso, txt)
+OK [volumineux] : analyse aboutie sur 5,6 Go avec 8192 Mo de RAM

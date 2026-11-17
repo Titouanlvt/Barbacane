@@ -120,6 +120,12 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
   bitvec construit par usbsas) ; liste blanche étendue à « sha256  taille  nom ». En attendant :
   blanchiment classique + avertissement, Ventoy proposé comme alternative démarrable.
 
+## État au 17/11 au soir
+- Transfert et blanchiment reprouvés sur l'ISO e888495 : `docs/preuves/2026-11-17-finale/`. Suite : `AVANCEMENT.md`.
+- cranelift-codegen : SIGKILL à la compilation (mémoire), corrigé le 16/11 dans `build-debs.sh` ;
+  ne concerne pas la borne (rien n'y est compilé).
+- Ancien clone `/root/BARBACANE/usbsas` obsolète (choix : captures rapatriées, branche non recréée).
+
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
 2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).
