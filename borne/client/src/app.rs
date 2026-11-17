@@ -1732,7 +1732,12 @@ pub fn bouton<'a>(
                 .font(style::CORPS_GRAS)
                 .shaping(text::Shaping::Advanced),
         )
-        .padding([18, 32])
+        .padding(iced::Padding {
+            top: 16.0,
+            right: 32.0,
+            bottom: 20.0,
+            left: 32.0,
+        }) // police : plus de marge en haut des lettres
         .style(s)
         .on_press(m)
         .into(),
