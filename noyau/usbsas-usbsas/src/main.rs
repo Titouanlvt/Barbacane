@@ -140,6 +140,14 @@ fn main() -> Result<()> {
         pipes_write.push(c.output_fd())
     });
 
+    // Barbacane (écart n° 9) : trusted Ventoy boot area, read before the sandbox
+    if let Some(dir) = &config.ventoy {
+        match usbsas_config::VentoyData::load(dir) {
+            Ok(v) => config.ventoy_data = Some(std::sync::Arc::new(v)),
+            Err(err) => log::error!("Ventoy boot area {dir}: {err}"),
+        }
+    }
+
     let fs_stats = nix::sys::statvfs::statvfs(config.out_directory.as_str())?;
     let available = fs_stats.block_size() * fs_stats.blocks_available();
     config.available_space = Some(available);

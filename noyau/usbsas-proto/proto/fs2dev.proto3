@@ -32,6 +32,14 @@ message RequestLoadBitVec {
   bool last = 2;
 };
 
+// Barbacane (écart n° 9) : after WriteFs, write raw sectors (boot area of a
+// bootable key rebuilt by the kiosk, e.g. Ventoy). `data` is a whole number of
+// sectors and must fit in the device.
+message RequestWriteRaw {
+  uint64 sector = 1;
+  bytes data = 2;
+};
+
 message Request {
   oneof msg {
     RequestEnd End = 1;
@@ -39,6 +47,7 @@ message Request {
     RequestWriteFs WriteFs = 3;
     RequestWipe wipe = 4;
     RequestLoadBitVec LoadBitVec = 5;
+    RequestWriteRaw WriteRaw = 6;
   }
 };
 
@@ -59,6 +68,9 @@ message ResponseWipe {
 message ResponseLoadBitVec {
 };
 
+message ResponseWriteRaw {
+};
+
 message Response {
   oneof msg {
     common.ResponseEnd End = 1;
@@ -68,5 +80,6 @@ message Response {
     ResponseWipe Wipe = 5;
     ResponseLoadBitVec LoadBitVec = 6;
     common.ResponseStatus Status = 7;
+    ResponseWriteRaw WriteRaw = 8;
   }
 };

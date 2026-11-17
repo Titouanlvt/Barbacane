@@ -88,3 +88,25 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
 - Correctif : `timeout(None)` sur le client (le délai de connexion de 30 s est conservé). L'analyseur
   est local (127.0.0.1) ; un arrêt du service ferme la connexion et l'erreur remonte toujours.
 - Test : `tests/proxmox/preuve.sh`, étape `volumineux`.
+
+### 9. Clé Ventoy reconstruite : écriture de secteurs bruts après le système de fichiers (`usbsas-fs2dev`, `usbsas-usbsas`, protocoles)
+- Besoin (17/11/2026) : blanchir une clé Ventoy **sans la rendre inutilisable**, sans jamais
+  recopier sa zone de démarrage (non vérifiable). usbsas ne savait écrire qu'un système de
+  fichiers couvrant toute la clé.
+- Correctif :
+  - `RequestInitTransfer.bootable` ; refusé si la destination n'est pas une clé USB ou si la zone
+    de démarrage de confiance n'a pas été chargée ;
+  - configuration `ventoy = "<dossier>"` (`boot.img`, `core.img`, `ventoy.disk.img`, décompressés,
+    issus de la version de Ventoy embarquée dans la borne), lue **avant** l'application du bac à
+    sable de la session ;
+  - files2fs crée la partition de données du secteur 2048 jusqu'à la partition `VTOYEFI`
+    (fin de clé moins 32 Mio, alignée sur 1 Mio) ;
+  - fs2dev : après l'écriture du système de fichiers, nouvel état acceptant `WriteRaw`
+    (secteur, données en secteurs entiers, 120 Kio au plus, dans la clé) puis `End` ;
+  - usbsas écrit le secteur 0 (code de démarrage de `boot.img`, identifiant aléatoire, table :
+    partition 1 active, partition 2 type 0xEF), `core.img` à partir du secteur 1 et
+    `ventoy.disk.img` dans `VTOYEFI` — mêmes emplacements que `Ventoy2Disk.sh` en mode MBR.
+- Limite : table MBR, donc clés de 2 Tio au plus (`ventoy::part2_start` refuse au-delà).
+- Tests : `usbsas-usbsas/src/ventoy.rs` (disposition, découpage) ; `tests/proxmox/preuve.sh`,
+  étape `ventoy` (clé reconstruite comparée octet par octet à la version embarquée, puis démarrée
+  dans une VM).

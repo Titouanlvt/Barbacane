@@ -820,6 +820,7 @@ dependencies = [
 name = "barbacane-parcours"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "log",
  "serde",
  "serde_json",
@@ -7850,6 +7851,7 @@ dependencies = [
  "toml",
  "usbsas-comm",
  "usbsas-config",
+ "usbsas-mbr",
  "usbsas-mock",
  "usbsas-process",
  "usbsas-proto",

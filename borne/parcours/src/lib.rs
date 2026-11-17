@@ -481,6 +481,7 @@ fn analyse_source(
         destination: sink,
         fstype: None,
         pin: None,
+        bootable: false,
     })?;
     if usb {
         let parts = comm
@@ -579,6 +580,7 @@ pub fn write(
         destination: dst,
         fstype: Some(FsType::Exfat.into()),
         pin: None,
+        bootable: false,
     })?;
     comm.selectfiles(proto::usbsas::RequestSelectFiles {
         selected: vec!["/".into()],

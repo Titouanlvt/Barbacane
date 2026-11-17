@@ -418,7 +418,14 @@ impl InitState {
                 false
             };
 
+            // Barbacane (écart n° 9) : clé Ventoy reconstruite, seulement vers une clé USB et si la
+            // zone de démarrage de confiance a été chargée au démarrage de la session.
+            if req.bootable && !(matches!(dst, Device::Usb(_)) && self.config.ventoy_data.is_some())
+            {
+                bail!("bootable destination requested but no trusted Ventoy boot area");
+            }
             let transfer = Transfer {
+                bootable: req.bootable,
                 src,
                 dst,
                 userid: userid.ok_or(anyhow!("Unidentified"))?,
@@ -1044,6 +1051,15 @@ impl RunState for WriteDstFileState {
     fn run(mut self, comm: &mut impl ProtoRespUsbsas, children: &mut Children) -> Result<State> {
         if let Device::Usb(ref usbdev) = self.transfer.dst {
             if let (Some(dev_size), Some(fstype)) = (usbdev.dev_size, self.transfer.outfstype) {
+                // Barbacane (écart n° 9) : la partition de données s'arrête avant VTOYEFI
+                let dev_size = match (self.transfer.bootable, &self.config.ventoy_data) {
+                    (true, Some(v)) => {
+                        crate::ventoy::part2_start(dev_size, v.disk.len() as u64)
+                            .ok_or(anyhow!("key size unsuitable for Ventoy"))?
+                            * crate::ventoy::SECTOR
+                    }
+                    _ => dev_size,
+                };
                 children.files2fs.comm.init(proto::writedst::RequestInit {
                     dev_size,
                     fstype: fstype.into(),
@@ -1255,6 +1271,43 @@ impl TransferDstState {
             .comm
             .writefs(proto::fs2dev::RequestWriteFs {})?;
         self.forward_status(comm, &mut children.fs2dev.comm)?;
+        if self.transfer.bootable {
+            self.write_ventoy(children)?;
+        }
+        Ok(())
+    }
+
+    /// Barbacane (écart n° 9) : zone de démarrage Ventoy de confiance (secteur 0, core.img,
+    /// partition VTOYEFI), écrite après le système de fichiers des fichiers sains.
+    fn write_ventoy(&self, children: &mut Children) -> Result<()> {
+        let (Device::Usb(usbdev), Some(v), Some(fstype)) = (
+            &self.transfer.dst,
+            &self.config.ventoy_data,
+            self.transfer.outfstype,
+        ) else {
+            bail!("bootable transfer without USB destination or Ventoy data");
+        };
+        let dev_size = usbdev.dev_size.ok_or(anyhow!("unknown device size"))?;
+        let disk_len = v.disk.len() as u64;
+        let p2 = crate::ventoy::part2_start(dev_size, disk_len)
+            .ok_or(anyhow!("key size unsuitable for Ventoy"))?;
+        let ptype = match fstype {
+            FsType::Fat => 0x0c,
+            _ => 0x07,
+        };
+        let uuid = *uuid::Uuid::new_v4().as_bytes();
+        let mbr = crate::ventoy::mbr(&v.boot, ptype, p2, disk_len, uuid);
+        let max = 240 * 512;
+        let mut writes = vec![(0u64, mbr.to_vec())];
+        writes.extend(crate::ventoy::ecritures(1, &v.core, max));
+        writes.extend(crate::ventoy::ecritures(p2, &v.disk, max));
+        for (sector, data) in writes {
+            children
+                .fs2dev
+                .comm
+                .writeraw(proto::fs2dev::RequestWriteRaw { sector, data })?;
+        }
+        log::info!("Ventoy boot area written (VTOYEFI at sector {p2})");
         Ok(())
     }
 

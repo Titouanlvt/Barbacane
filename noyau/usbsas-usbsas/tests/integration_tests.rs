@@ -191,6 +191,7 @@ impl IntegrationTester {
                 destination: out_dev.id,
                 fstype: Some(FsType::Ntfs.into()),
                 pin: None,
+                bootable: false,
             })?;
         let parts = self
             .comm()
@@ -285,6 +286,7 @@ impl IntegrationTester {
                 destination: out_dev.id,
                 fstype: None,
                 pin: None,
+                bootable: false,
             })?;
         let parts = self
             .comm()
@@ -351,6 +353,7 @@ impl IntegrationTester {
                 destination: out_dev.id,
                 fstype: Some(FsType::Exfat.into()),
                 pin: Some("123456".into()),
+                bootable: false,
             })?;
 
         loop {
@@ -404,6 +407,7 @@ impl IntegrationTester {
                 destination: out_dev.id,
                 fstype: Some(FsType::Ntfs.into()),
                 pin: None,
+                bootable: false,
             })?;
         let parts = self
             .comm()

@@ -55,6 +55,7 @@ enum State {
     BitVecLoaded(BitVecLoadedState),
     Copying(CopyingState),
     Wiping(WipingState),
+    Written(WrittenState),
     WaitEnd(WaitEndState),
     End,
 }
@@ -65,6 +66,7 @@ impl State {
             State::Init(s) => s.run(comm),
             State::DevOpened(s) => s.run(comm),
             State::BitVecLoaded(s) => s.run(comm),
+            State::Written(s) => s.run(comm),
             State::WaitEnd(s) => s.run(comm),
             State::Copying(s) => s.run(comm),
             State::Wiping(s) => s.run(comm),
@@ -91,6 +93,12 @@ struct BitVecLoadedState {
 struct CopyingState {
     fs: File,
     fs_bv: BitVecIterOnes,
+    mass_storage: MassStorage,
+}
+
+/// Barbacane (écart n° 9) : file system written; raw sectors (boot area of a
+/// bootable key rebuilt by the kiosk) may follow before End.
+struct WrittenState {
     mass_storage: MassStorage,
 }
 
@@ -256,7 +264,45 @@ impl CopyingState {
             }
         }
         comm.done(Status::WriteDst)?;
-        Ok(State::WaitEnd(WaitEndState))
+        Ok(State::Written(WrittenState {
+            mass_storage: self.mass_storage,
+        }))
+    }
+}
+
+impl WrittenState {
+    fn run(mut self, comm: &mut ComRpFs2Dev) -> Result<State> {
+        match comm.recv_req()? {
+            Msg::WriteRaw(req) => {
+                let len = req.data.len() as u64;
+                let end = req
+                    .sector
+                    .checked_mul(SECTOR_SIZE)
+                    .and_then(|o| o.checked_add(len));
+                if len == 0
+                    || !len.is_multiple_of(SECTOR_SIZE)
+                    || len > BUFFER_MAX_WRITE_SIZE
+                    || end.is_none_or(|e| e > self.mass_storage.dev_size)
+                {
+                    error!("bad raw write: sector {} len {len}", req.sector);
+                    comm.error("bad raw write")?;
+                    return Ok(State::WaitEnd(WaitEndState));
+                }
+                self.mass_storage
+                    .scsi_write_10(&req.data, req.sector, len / SECTOR_SIZE)?;
+                comm.writeraw(fs2dev::ResponseWriteRaw {})?;
+                Ok(State::Written(self))
+            }
+            Msg::End(_) => {
+                comm.end()?;
+                Ok(State::End)
+            }
+            _ => {
+                error!("bad request");
+                comm.error("bad request")?;
+                Err(Error::State)
+            }
+        }
     }
 }
 

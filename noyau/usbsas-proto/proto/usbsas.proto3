@@ -34,6 +34,9 @@ message RequestInitTransfer {
   optional common.FsType fstype = 3;
   // PIN identifying the archive to download, required for a network source
   optional string pin = 4;
+  // Barbacane (écart n° 9) : rebuild the USB destination as a bootable Ventoy
+  // key (trusted boot area loaded from the `ventoy` directory of the config)
+  bool bootable = 5;
 };
 
 // Open a partition of the source USB device.

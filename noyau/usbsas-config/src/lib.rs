@@ -133,11 +133,61 @@ pub struct Config {
     pub menu_img: Option<String>,
     /// Keep the session's working files after the session (false by default)
     pub keep_tmp_files: Option<bool>,
+    /// Barbacane (écart n° 9) : directory of the trusted Ventoy boot area
+    /// (`boot.img`, `core.img`, `ventoy.disk.img`, uncompressed) used to rebuild
+    /// a bootable key. Loaded before the sandbox is applied.
+    pub ventoy: Option<String>,
+    /// Ventoy boot area loaded from `ventoy` (set by usbsas at runtime)
+    #[serde(skip)]
+    pub ventoy_data: Option<std::sync::Arc<VentoyData>>,
     // filled by usbsas process
     /// Free space in `out_directory`, in bytes (set by usbsas at runtime)
     pub available_space: Option<u64>,
     /// Id of the session (set by usbsas at runtime)
     pub session_id: Option<String>,
+}
+
+/// Trusted Ventoy boot area (see `Config::ventoy`).
+pub struct VentoyData {
+    /// MBR boot code (`boot/boot.img`, 512 bytes; the first 440 are used)
+    pub boot: Vec<u8>,
+    /// GRUB core image written from sector 1 (`boot/core.img`, at most 2047 sectors)
+    pub core: Vec<u8>,
+    /// VTOYEFI partition image (`ventoy/ventoy.disk.img`, 32 MiB)
+    pub disk: Vec<u8>,
+}
+
+impl std::fmt::Debug for VentoyData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "VentoyData(boot {} B, core {} B, disk {} B)",
+            self.boot.len(),
+            self.core.len(),
+            self.disk.len()
+        )
+    }
+}
+
+impl VentoyData {
+    /// Read and check the Ventoy boot area files in `dir`.
+    pub fn load(dir: &str) -> io::Result<Self> {
+        let d = std::path::Path::new(dir);
+        let data = VentoyData {
+            boot: fs::read(d.join("boot.img"))?,
+            core: fs::read(d.join("core.img"))?,
+            disk: fs::read(d.join("ventoy.disk.img"))?,
+        };
+        if data.boot.len() < 440
+            || data.core.is_empty()
+            || data.core.len() > 2047 * 512
+            || data.disk.is_empty()
+            || !data.disk.len().is_multiple_of(512)
+        {
+            return Err(io::Error::other("invalid Ventoy boot area"));
+        }
+        Ok(data)
+    }
 }
 
 fn default_out_dir() -> String {

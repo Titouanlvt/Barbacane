@@ -17,6 +17,7 @@ thiserror = "2.0"
 time = { version = "0.3", features = ["macros"] }
 usbsas-comm = { path = "../usbsas-comm" }
 usbsas-config = { path = "../usbsas-config" }
+usbsas-mbr = { path = "../usbsas-mbr" }
 usbsas-mock = { path = "../usbsas-mock", optional = true }
 usbsas-process = { path = "../usbsas-process" }
 usbsas-proto = { path = "../usbsas-proto" }

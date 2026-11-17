@@ -9,6 +9,7 @@ pub mod children;
 use crate::children::Children;
 pub mod filter;
 pub mod states;
+pub mod ventoy;
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -129,6 +130,8 @@ struct Transfer {
     analyze: bool,
     files: TransferFiles,
     analyze_report: Option<AnalyzeReport>,
+    /// Barbacane (écart n° 9) : USB destination rebuilt as a bootable Ventoy key
+    bootable: bool,
 }
 
 impl Transfer {
