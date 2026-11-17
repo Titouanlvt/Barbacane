@@ -989,7 +989,8 @@ impl App {
             },
             Msg::Choisir(Mode::Copier)
         )]
-        .width(Length::Fill);
+        // Seul choix : largeur d'une carte, pas tout l'écran
+        .width(Length::Fixed(620.0));
         // Charte : la clé glisse vers la porte, ou le tiroir remonte avec le disque (600 ms).
         let mut c = column![
             if disque {
@@ -1004,7 +1005,7 @@ impl App {
             }),
             texte(&d),
             Space::new().height(8),
-            choix,
+            container(choix).center_x(Length::Fill),
         ]
         .max_width(1460);
         if disque && !reinscriptible {
@@ -1766,7 +1767,10 @@ fn grand_choix<'a>(t: &str, d: &str, m: Msg) -> Element<'a, Msg> {
     let b = button(
         column![
             text(t.to_string()).size(style::SOUS_TITRE),
-            text(d.to_string()).size(style::PETIT)
+            text(d.to_string())
+                .size(style::PETIT)
+                .align_x(Alignment::Center)
+                .width(Length::Fill)
         ]
         .spacing(14)
         .align_x(Alignment::Center),
