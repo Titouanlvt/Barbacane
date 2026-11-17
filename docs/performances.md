@@ -28,6 +28,14 @@ Débits déduits :
 qu'une clé de 6,3 Go faite de quelques gros fichiers. L'analyse traite aujourd'hui les fichiers
 **un par un** ; la paralléliser sur les cœurs de la borne est la prochaine amélioration (à mesurer).
 
+### Analyse parallèle (17/11/2026, 436abd8)
+
+Les fichiers simples d'un conteneur sont analysés sur 4 fils. Premier passage (n° 8, deux bornes
+en même temps sur l'hôte, ISO 1ba2780) : Etcher 1 918 s (avant : 1 190 à 2 054 s), Rufus FAT32
+2 029 s (avant : 1 931 à 2 211 s). **Pas de gain mesurable** dans ces conditions : soit la lecture
+de la clé par usbsas (fichier par fichier, avant l'analyse) domine, soit l'hôte partagé masque le
+gain. À mesurer sur une borne seule, en séparant « Lecture de la clé » et « Analyse des fichiers ».
+
 ## Cible théorique : SSD interne de 4 To, disque externe NVMe de 2 à 4 To (boîtier USB)
 
 Ce qui est prêt :

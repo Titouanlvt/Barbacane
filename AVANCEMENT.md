@@ -1,6 +1,8 @@
 # Avancement — mission du 17/11/2026 (mis à jour par Claude)
 
 ## En cours
+- **BLOQUÉ** (19 h) : /etc/pve en lecture seule → campagne finale 920 arrêtée à « volumineux » (35 OK, 0 échec avant l'arrêt), preuve Etcher 2 non démarrée. Attente de `systemctl restart pve-cluster`.
+- Passage 8 : reel-etcher OK, reel-rufus-fat32 OK (25 OK) ; limites interrompu par le blocage.
 - Passage parallèle 7 (ISO 7de2d18 : ventoy, usb, limites) — `logs/parallele-7.log`.
 - Écart n° 11 (réécriture d'image Etcher vérifiée), branche `etcher-image` : code + tests unitaires OK ;
   preuve VM 961 (ISO de test, clé du lab) chaînée après la construction — `logs/preuve-etcher.log`.
