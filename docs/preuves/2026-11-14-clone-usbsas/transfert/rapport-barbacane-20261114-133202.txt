@@ -1,0 +1,19 @@
+BARBACANE — RAPPORT DE TRANSFERT
+================================
+
+Date            : 14/11/2026 13:32:02
+Clé source      :          USB DISK 2.0     (n° de série CA003B87786AA493, 13fe:4200)
+Identifiant     : 381960c3-dc43-4d4f-83c0-cd6fcae0d41f
+Antivirus       : ClamAV ClamAV 1.4.3 (base 28183 du Sat Nov 14 07:24:17 2026) + YARA
+
+FICHIERS COPIÉS (4)
+  [OK]     docs/donnees.csv  (106.3 Ko)
+  [OK]     docs/rapport.txt  (56 o)
+  [OK]     docs/sous dossier/note.txt  (18 o)
+  [OK]     photos/image.bin  (293.0 Ko)
+
+FICHIERS REFUSÉS (1)
+  [REFUSÉ] docs/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+
+Les fichiers refusés ne sont pas copiés. En cas de doute, contactez votre administrateur.
