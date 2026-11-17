@@ -1,7 +1,7 @@
 # Avancement — 17/11/2026, 21 h (mis à jour par Claude)
 
 Dépôt de travail : `/root/BARBACANE/wt-main`, branche `integration` (GitHub Titouanlvt/Barbacane).
-`main` = e438f52 (CI verte). L'ancien clone `/root/BARBACANE/usbsas` (branche
+`main` = b9614a5 (CI et ISO vertes ; Etcher 141f78f et la suite attendent leur CI). L'ancien clone `/root/BARBACANE/usbsas` (branche
 `claude/affectionate-galileo-w0bjm2`, supprimée du distant) est obsolète : ses captures non suivies
 sont dans `docs/preuves/2026-11-14-clone-usbsas/`. Ne plus y travailler.
 
