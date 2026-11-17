@@ -285,7 +285,7 @@ if test_actif installation && [ "${REPRISE:-0}" != 1 ] && [ -z "${CLONE_DE:-}" ]
         qm stop "$VMID" >/dev/null 2>&1 || true; qm destroy "$VMID" --purge >/dev/null
     fi
     if est_virt "$SERIE_INSTALL"; then
-        # Clé d'installation émulée : image de l'ISO, branchée au démarrage (bootindex), retirée par QMP
+        # Clé d installation émulée : image de l ISO, démarrée APRÈS le disque (bootindex 200 > 100), retirée par QMP
         img=$(virt_img "$SERIE_INSTALL"); mkdir -p "$(dirname "$img")"; liberer "$img"
         cp --sparse=always "$ISO" "$img"; truncate -s "$VIRT_TAILLE" "$img"
         si cmp -n "$(stat -c %s "$ISO")" "$ISO" "$img" -- "ISO copiée sur la clé émulée (relecture identique)" "copie de l'ISO incorrecte"
@@ -301,7 +301,7 @@ if test_actif installation && [ "${REPRISE:-0}" != 1 ] && [ -z "${CLONE_DE:-}" ]
         --efidisk0 "$STOCKAGE:1,efitype=4m,pre-enrolled-keys=0" --memory "$MEMOIRE" --cores "${COEURS:-2}" --cpu host \
         --scsihw virtio-scsi-single --scsi0 "$STOCKAGE:$DISQUE" --vga std --ostype l26 >/dev/null
     if est_virt "$SERIE_INSTALL"; then
-        qm set "$VMID" --args "$XHCI_ARGS -drive if=none,id=cvusb0,file=$img,format=raw,cache=none -device usb-storage,bus=xv.0,drive=cvusb0,id=cvusb0dev,serial=$(virt_serie "$SERIE_INSTALL"),removable=on,bootindex=0" >/dev/null
+        qm set "$VMID" --args "$XHCI_ARGS -drive if=none,id=cvusb0,file=$img,format=raw,cache=none -device usb-storage,bus=xv.0,drive=cvusb0,id=cvusb0dev,serial=$(virt_serie "$SERIE_INSTALL"),removable=on,bootindex=200" >/dev/null
         qm set "$VMID" --boot 'order=scsi0' >/dev/null; VSLOT[usb0]=cvusb0
     else
         qm set "$VMID" --args "$XHCI_ARGS" >/dev/null
@@ -389,13 +389,13 @@ if test_actif transfert; then
     formater "$SERIE_SOURCE" "" SOURCE; contenu_test; demonter "$D/source.sha256"
     formater "$SERIE_SORTIE" "" DEST; echo "témoin à effacer" > "$T/m/TEMOIN-AVANT.txt"; demonter "$D/destination-avant.sha256"
     brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 60 "$D/01-cle-detectee.png"
-    cliquer "Copier vers une clé"
+    cliquer "Analyser"
     mot_de_passe_si_demande secret
     attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"
     lire 02-resultat-analyse >/dev/null
     si grep -qi 'menace' "$D/02-resultat-analyse.txt" -- "écran : menaces détectées" "écran : aucune menace affichée"
     formater "$SERIE_AUTRE" "" AUTRE; echo "témoin non enrôlée" > "$T/m/TEMOIN-AUTRE.txt"; demonter "$D/non-enrolee-avant.sha256"
-    cliquer "Choisir la clé de destination"
+    cliquer "Copier vers une clé connue"
     brancher usb2 "$SERIE_AUTRE"
     si voir "pas enrôlée" 60 "$D/03-cle-non-enrolee-refusee.png" -- "clé non enrôlée refusée en sortie" "clé non enrôlée : refus non affiché"
     capture 03-cle-non-enrolee-ecran; lire 03-cle-non-enrolee-ecran >/dev/null
@@ -422,7 +422,7 @@ if test_actif blanchiment; then
     empreinte_cle "$SERIE_SOURCE" cle-avant
     si [ -s "$D/cle-avant-eicar-offsets.txt" ] -- "avant : EICAR sur la clé (octets $(tr '\n' ' ' < "$D/cle-avant-eicar-offsets.txt"))" "avant : EICAR introuvable"
     brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 60 "$D/01-cle-detectee.png"
-    cliquer "Blanchir cette clé"
+    cliquer "Analyser"
     mot_de_passe_si_demande secret
     attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"
     cliquer "Blanchir la clé"; attendre "Maintenir pour effacer" 30 "$D/03-confirmation.png"
@@ -455,7 +455,7 @@ if test_actif volumineux; then
     taille=$(du -sh "$m" | cut -f1); demonter "$D/avant.sha256"
     si [ "$(wc -l < "$D/avant.sha256")" -ge 27 ] -- "clé préparée : $taille, $(wc -l < "$D/avant.sha256") fichiers (zip, tar, iso, txt)" "préparation incomplète"
     brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120 "$D/01-cle-detectee.png"
-    cliquer "Blanchir cette clé"
+    cliquer "Analyser"
     if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 5400)" != 2 ]; then
         capture 02-erreur
         lire 02-erreur >/dev/null; ko "analyse en erreur : $(grep -m1 -i 'aboutir' "$D/02-erreur.txt" || true)"
@@ -481,6 +481,7 @@ if test_actif reel; then
     : "${CONTENU:?CONTENU=dossier des images (tests/proxmox/contenu-reel.sh)}"
     for img in "$CONTENU"/*.img; do
         nom=$(basename "$img" .img)
+        [ "$nom" != ventoy ] || continue   # étape « ventoy » (blanchiment démarrable)
         debut "reel-$nom" "clé « $nom » : $(du -h "$img" | cut -f1) copiés tels quels sur $SERIE_SOURCE, copie vers $SERIE_SORTIE"
         d=$(disque "$SERIE_SOURCE"); wipefs -qa "$d"
         dd if="$img" of="$d" bs=4M conv=fsync status=none; partprobe "$d" 2>/dev/null || true; sleep 2
@@ -490,7 +491,7 @@ if test_actif reel; then
             capture 01-ecran; lire 01-ecran >/dev/null; ko "clé non proposée à l'analyse : $(head -c 200 "$D/01-ecran.txt" | tr '\n' ' ')"
             debrancher usb1; voir "à analyser" 60 || true; continue
         fi
-        cliquer "Copier vers une clé"
+        cliquer "Analyser"
         # Ces clés ne contiennent pas d'archive chiffrée : aucune demande de mot de passe attendue.
         if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 7200)" != 2 ]; then
             capture 02-erreur
@@ -502,7 +503,7 @@ if test_actif reel; then
         if [ "$npieges" -gt 0 ]; then
             si grep -qiE 'menace|écarté' "$D/02-resultat-analyse.txt" -- "verdict : menace ou écarté affiché ($npieges fichier(s) piégé(s) sur la clé)" "aucune menace affichée"
         fi
-        cliquer "Choisir la clé de destination"
+        cliquer "Copier vers une clé connue"
         formater "$SERIE_SORTIE" "" DEST; umount "$T/m"
         brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 90 "$D/03-cle-destination.png"
         cliquer "Effacer cette clé"
@@ -518,6 +519,57 @@ if test_actif reel; then
         umount "$T/m"
         voir "à analyser" 120 || true
     done
+fi
+
+# === ventoy : clé multiboot blanchie en restant démarrable (écart n° 9) =====================
+# CONTENU/ventoy.img (tests/proxmox/contenu-reel.sh, VENTOY=archive officielle) ; VENTOY_REF :
+# dossier boot.img, core.img, ventoy.disk.img de la version embarquée (systeme/ventoy/preparer.sh).
+if test_actif ventoy; then
+    debut ventoy "clé Ventoy (ISO saine, ISO piégée, ventoy.json) blanchie en gardant démarrable"
+    : "${CONTENU:?CONTENU}" "${VENTOY_REF:?VENTOY_REF=dossier de la zone de démarrage de référence}"
+    d=$(disque "$SERIE_SOURCE"); wipefs -qa "$d"
+    dd if="$CONTENU/ventoy.img" of="$d" bs=4M conv=fsync status=none; partprobe "$d" 2>/dev/null || true
+    xxd -l 512 "$d" > "$D/avant-secteur0.hex"
+    brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120 "$D/01-cle-detectee.png"
+    cliquer "Analyser"
+    attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
+    si grep -q "gardant démarrable" "$D/02-resultat-analyse.txt" -- "clé Ventoy reconnue : « Blanchir en gardant démarrable » proposé" "choix démarrable absent"
+    cliquer "Blanchir en gardant"
+    attendre "Maintenir pour effacer" 60 "$D/03-confirmation.png"; lire 03-confirmation >/dev/null
+    "${B[@]}" maintenir "Maintenir pour"
+    attendre "Vous pouvez retirer" 10800 "$D/04-termine.png"
+    debrancher usb1
+    d=$(disque "$SERIE_SOURCE"); partx -u "$d" 2>/dev/null || true; sleep 2
+    sfdisk -d "$d" > "$D/table.txt"; xxd -l 512 "$d" > "$D/apres-secteur0.hex"
+    # Zone de démarrage : octet pour octet celle de la version embarquée (hors identifiant aléatoire)
+    si cmp -s -n 384 "$VENTOY_REF/boot.img" "$d" -- "secteur 0 : code de démarrage = boot.img embarqué" "secteur 0 différent de boot.img"
+    si cmp -s -n 40 -i 400:400 "$VENTOY_REF/boot.img" "$d" -- "secteur 0 (octets 400-439) = boot.img embarqué" "fin du code de démarrage différente"
+    si cmp -s -n "$(stat -c %s "$VENTOY_REF/core.img")" -i 0:512 "$VENTOY_REF/core.img" "$d" -- "secteurs 1-2047 = core.img embarqué" "core.img différent"
+    p2=$(awk -F'[=,]' '/type=ef/ { gsub(/ /, "", $2); print $2 }' "$D/table.txt" | head -1)
+    si [ -n "$p2" ] -- "partition VTOYEFI (type ef) à partir du secteur $p2" "partition VTOYEFI absente"
+    [ -z "$p2" ] || si cmp -s -n "$(stat -c %s "$VENTOY_REF/ventoy.disk.img")" -i 0:$((p2 * 512)) "$VENTOY_REF/ventoy.disk.img" "$d" \
+        -- "partition VTOYEFI = ventoy.disk.img embarqué" "partition VTOYEFI différente"
+    si ! cmp -s "$D/avant-secteur0.hex" "$D/apres-secteur0.hex" -- "secteur 0 d'origine remplacé" "secteur 0 identique à l'original"
+    monter_ro "$SERIE_SOURCE"; liste_sha "$T/m" > "$D/apres.sha256"; cp "$T/m"/rapport-barbacane-*.txt "$D/" 2>/dev/null || true
+    while read -r h p; do si grep -qF "$h  $p" "$D/apres.sha256" -- "conservé à l'identique : $p" "absent ou modifié : $p"; done < "$CONTENU/ventoy.sains"
+    while read -r p; do [ -z "$p" ] || si [ ! -e "$T/m/$p" ] -- "non conservé : $p" "conservé à tort : $p"; done < "$CONTENU/ventoy.pieges"
+    si [ ! -e "$T/m/ventoy" ] -- "dossier ventoy/ (configuration, greffons) absent" "dossier ventoy/ recopié"
+    si ! grep -rlaq 'EICAR-STANDARD-ANTIVIRUS-TEST-FILE' "$T/m" -- "aucun EICAR sur la clé" "EICAR présent"
+    umount "$T/m"
+    # Démarrage : copie de la clé dans une VM jetable (BIOS), menu Ventoy listant l'ISO conservée
+    VMD=${VMID_DEMARRAGE:-$((VMID + 50))}
+    if [ "$VMD" -le 999 ] && ! qm status "$VMD" >/dev/null 2>&1; then
+        img="$T/demarrage.img"; dd if="$d" of="$img" bs=4M conv=sparse status=none
+        zfs snapshot "rpool/ROOT/pve-1@avant-ventoy-$VMD-$(date +%H%M%S)"
+        qm create "$VMD" --name barbacane-ventoy-test --memory 2048 --cores 2 --vga std \
+            --args "-drive if=none,id=vk,file=$img,format=raw -device usb-ehci,id=ve -device usb-storage,bus=ve.0,drive=vk,bootindex=0" >/dev/null
+        qm start "$VMD"; sleep 40
+        B2=(python3 "$ICI/borne.py" "$VMD"); "${B2[@]}" capture "$D/05-demarrage-ventoy.png"
+        "${B2[@]}" lire "$D/05-demarrage-ventoy.png" > "$D/05-demarrage-ventoy.txt" 2>/dev/null || true
+        si grep -qi "debian\|ventoy" "$D/05-demarrage-ventoy.txt" -- "la clé démarre : menu Ventoy affiché (05-demarrage-ventoy.png)" "menu Ventoy non lu à l'écran (voir 05-demarrage-ventoy.png)"
+        qm stop "$VMD" >/dev/null; qm destroy "$VMD" --purge >/dev/null; rm -f "$img"
+    else non_teste "démarrage : VM $VMD indisponible"; fi
+    attendre "à analyser" 300 || true
 fi
 
 # === export des journaux et rapports =====================================================
@@ -582,7 +634,7 @@ fi
 if test_actif vide; then
     debut vide "clé vide"
     formater "$SERIE_AUTRE" "" VIDE; demonter "$D/cle.sha256"
-    brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Copier vers une clé"
+    brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Analyser"
     if voir "Résultat de l'analyse" 300 "$D/01-resultat.png" || voir "erreur" 5 "$D/01-resultat.png"; then
         lire 01-resultat >/dev/null; ok "clé vide : la borne affiche un résultat sans planter"
     else ko "clé vide : aucun résultat"; fi
@@ -597,7 +649,7 @@ if test_actif pleine; then
     i=0; while head -c 16M /dev/urandom > "$T/m/remplissage-$i.bin" 2>/dev/null; do i=$((i + 1)); done
     head -c 1M /dev/urandom > "$T/m/dernier.bin" 2>/dev/null || true
     df -h "$T/m" > "$D/occupation.txt"; demonter "$D/cle.sha256"
-    brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Copier vers une clé"
+    brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Analyser"
     si voir "Résultat de l'analyse" 1800 "$D/01-resultat.png" -- "clé pleine analysée ($(grep -c . "$D/cle.sha256") fichiers)" "clé pleine : pas de résultat"
     lire 01-resultat >/dev/null; cliquer "Abandonner"; debrancher usb1
     si voir "à analyser" 60 -- "retour à l'accueil" "borne bloquée après la clé pleine"
@@ -608,7 +660,7 @@ if test_actif illisible; then
     xxd -l 512 "$d" > "$D/secteur0.hex"
     brancher usb1 "$SERIE_AUTRE"; sleep 10; capture 01-branchee; lire 01-branchee >/dev/null
     if grep -q "Clé détectée" "$D/01-branchee.txt"; then
-        cliquer "Copier vers une clé"; sleep 30; capture 02-apres-lecture; lire 02-apres-lecture >/dev/null
+        cliquer "Analyser"; sleep 30; capture 02-apres-lecture; lire 02-apres-lecture >/dev/null
     fi
     debrancher usb1; sleep 5
     if voir "à analyser" 30 || { cliquer "Recommencer" && voir "à analyser" 30; }; then
@@ -618,7 +670,7 @@ fi
 if test_actif retrait; then
     debut retrait "clé retirée pendant la lecture"
     formater "$SERIE_AUTRE" "" GROS; head -c 1500M /dev/urandom > "$T/m/gros.bin"; demonter "$D/cle.sha256"
-    brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Copier vers une clé"
+    brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Analyser"
     sleep 15; capture 01-lecture-en-cours
     debrancher usb1; sleep 15; capture 02-apres-retrait; lire 02-apres-retrait >/dev/null
     if voir "à analyser" 20 || { cliquer "Recommencer" && voir "à analyser" 30; } \

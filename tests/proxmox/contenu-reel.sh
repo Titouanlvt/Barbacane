@@ -13,6 +13,7 @@
 #   etcher      ISO hybride copiée brute sur la clé (Etcher, Rufus « mode DD », dd)
 #   rufus-fat32 partition FAT32, contenu de l'ISO extrait + EICAR caché (Rufus « mode ISO »)
 #   rufus-ntfs  GPT : partition NTFS avec un fichier de 4,5 Go + petite partition UEFI:NTFS (Rufus, Windows)
+#   ventoy      clé Ventoy (VENTOY=archive officielle) : ISO saine, ISO piégée, ventoy.json
 #   bureau      exFAT : tar, tar.gz, zip, rar, 7z, pdf, docx, pptx, xlsx, docm (macro), images,
 #               ISO en tant que fichier ; pour chaque conteneur, une variante piégée par l'EICAR
 set -euo pipefail
@@ -49,7 +50,9 @@ fermer() { # scénario : manifestes puis démontage
 # Conteneurs compressés ou chiffrés : piégés si leur nom contient « piege » (fabriqués ainsi).
 # Refus attendus : pièges, fichier trop gros pour ClamAV, autorun.inf (filtré par usbsas).
 conteneur_piege() { case "$1" in *piege*|*refus-attendu*|autorun.inf) echo oui ;; esac; }
-rm -f "$OUT"/*.sains "$OUT"/*.pieges
+# SCENARIOS="ventoy bureau" : ne fabriquer que ceux-là (défaut : tous)
+actif() { [ -z "${SCENARIOS:-}" ] || [[ " $SCENARIOS " == *" $1 "* ]]; }
+for n in ${SCENARIOS:-etcher rufus-fat32 rufus-ntfs ventoy bureau}; do rm -f "$OUT/$n.sains" "$OUT/$n.pieges"; done
 
 # ------------------------------------------------------------------ documents bureautiques
 ooxml() { # fichier.docx|pptx|xlsx|docm  [piege]
@@ -93,7 +96,7 @@ PY
 }
 
 # ------------------------------------------------------------------ etcher : ISO brute
-if [ -n "$ISO_LINUX" ]; then
+if actif etcher && [ -n "$ISO_LINUX" ]; then
     cp "$ISO_LINUX" "$OUT/etcher.img"
     mkdir -p "$T/iso"; xorriso -osirrox on -indev "$ISO_LINUX" -extract / "$T/iso" >/dev/null 2>&1
     (cd "$T/iso" && find . -type f | sort | sed 's|^\./||' | while read -r p; do sha256sum "$p"; done) > "$OUT/etcher.sains"
@@ -101,7 +104,7 @@ if [ -n "$ISO_LINUX" ]; then
 fi
 
 # ------------------------------------------------------------------ rufus-fat32 : ISO extraite
-if [ -n "$ISO_LINUX" ]; then
+if actif rufus-fat32 && [ -n "$ISO_LINUX" ]; then
     image "$OUT/rufus-fat32.img" 2048 mbr vfat RUFUS
     cp -rL "$T/iso"/. "$T/m/" 2>/dev/null || true; chmod -R u+w "$T/m"   # Rufus copie la cible des liens
     mkdir -p "$T/m/tools"; printf '%s' "$EICAR" > "$T/m/tools/memtest.efi"   # piège caché parmi l'ISO
@@ -109,6 +112,7 @@ if [ -n "$ISO_LINUX" ]; then
 fi
 
 # ------------------------------------------------------------------ rufus-ntfs : Windows, fichier > 4 Go
+if actif rufus-ntfs; then
 image "$OUT/rufus-ntfs.img" 7600 gpt ntfs ESD-USB
 mkdir -p "$T/m/sources" "$T/m/boot" "$T/m/efi/boot"
 # Vrai fichier WIM (comme install.wim de Windows) de plus de 4 Go, fait de fichiers < 2 Go :
@@ -127,8 +131,32 @@ printf '%s' "$EICAR" > "$T/m/sources/\$OEM\$.cmd"
 fermer rufus-ntfs
 # Petite partition « UEFI:NTFS » ajoutée par Rufus après la partition principale
 sgdisk -e "$OUT/rufus-ntfs.img" >/dev/null
+fi
+
+# ------------------------------------------------------------------ ventoy : clé multiboot
+# VENTOY=ventoy-X.Y.Z-linux.tar.gz (archive officielle) : vraie clé Ventoy (Ventoy2Disk.sh, MBR)
+# portant une ISO saine, une ISO piégée, une note et une configuration ventoy/ventoy.json, qui
+# ne doit JAMAIS être recopiée (les greffons Ventoy peuvent injecter des fichiers dans l'OS démarré).
+if actif ventoy && [ -n "${VENTOY:-}" ] && [ -n "$ISO_LINUX" ]; then
+    rm -f "$OUT/ventoy.img"; truncate -s 3000M "$OUT/ventoy.img"
+    l=$(losetup -fP --show "$OUT/ventoy.img")
+    mkdir -p "$T/vt"; tar -xzf "$VENTOY" -C "$T/vt"
+    (cd "$T"/vt/ventoy-* && sh Ventoy2Disk.sh -I "$l" < <(yes) 2>&1 | grep -q "successfully finished") || { echo "Ventoy2Disk a échoué" >&2; exit 1; }
+    partx -u "$l" 2>/dev/null || true; sleep 1
+    mount "${l}p1" "$T/m"; echo "$l" > "$T/loop"
+    mkdir -p "$T/m/ISO" "$T/m/ventoy"
+    cp "$ISO_LINUX" "$T/m/ISO/"
+    mkdir -p "$T/isopiege2"; printf '%s' "$EICAR" > "$T/isopiege2/outil.com"; printf 'note\n' > "$T/isopiege2/lisez-moi.txt"
+    xorriso -as mkisofs -quiet -V OUTILS -o "$T/m/ISO/outils-piege.iso" "$T/isopiege2" 2>/dev/null
+    printf 'Clé de dépannage du service\n' > "$T/m/notes.txt"
+    printf '{"control":[{"VTOY_DEFAULT_MENU_MODE":"0"}],"injection":[{"image":"/ISO/x.iso","archive":"/ventoy/inject.tar.gz"}]}\n' > "$T/m/ventoy/ventoy.json"
+    fermer ventoy
+    echo "ventoy/ventoy.json" >> "$OUT/ventoy.pieges"
+    grep -v '  ventoy/' "$OUT/ventoy.sains" > "$OUT/ventoy.sains.tmp" && mv "$OUT/ventoy.sains.tmp" "$OUT/ventoy.sains"
+fi
 
 # ------------------------------------------------------------------ bureau : fichiers courants
+if actif bureau; then
 image "$OUT/bureau.img" 3000 mbr exfat BUREAU
 m="$T/m"; mkdir -p "$m/Documents/Chantier 46" "$m/Archives" "$m/Images" "$m/ISO"
 s="$T/src"; mkdir -p "$s/projet/plans"
@@ -154,5 +182,6 @@ mkdir -p "$s/isopiege"; cp "$s/eicar.com" "$s/projet/note.txt" "$s/isopiege/"
 xorriso -as mkisofs -quiet -V PIEGE -o "$m/ISO/donnees-piege.iso" "$s/isopiege" 2>/dev/null
 [ -z "$ISO_LINUX" ] || cp "$ISO_LINUX" "$m/ISO/"
 fermer bureau
+fi
 
 ls -lh "$OUT"

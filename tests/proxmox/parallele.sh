@@ -1,7 +1,7 @@
 #!/bin/bash
 # Lanceur parallèle des preuves de bout en bout (hôte Proxmox VE, en root).
 #
-#   ISO=barbacane.iso [CONTENU=dossier] [MAJ=dossier] [CONSTRUIRE=1] tests/proxmox/parallele.sh DOSSIER
+#   ISO=barbacane.iso [CONTENU=dossier] [MAJ=dossier] [VENTOY_REF=dossier] [CONSTRUIRE=1] tests/proxmox/parallele.sh DOSSIER
 #
 # 1. (CONSTRUIRE=1) construit l'ISO sur la VM bu pendant que les images de test sont préparées ;
 # 2. installe UNE borne modèle (VM BASE, 940 par défaut) depuis une clé ÉMULÉE : installation,
@@ -51,7 +51,8 @@ GROUPES+=("usb:transfert blanchiment export maj clavier verrouillage journal")
 GROUPES+=("limites:volumineux vide pleine illisible retrait journal")
 if [ -n "${CONTENU:-}" ]; then
     while read -r img; do
-        n=$(basename "$img" .img); d="$OUT/.contenu/$n"; mkdir -p "$d"
+        n=$(basename "$img" .img)
+        if [ "$n" = ventoy ]; then GROUPES=("ventoy:ventoy journal" "${GROUPES[@]}"); continue; fi; d="$OUT/.contenu/$n"; mkdir -p "$d"
         ln -sf "$img" "$d/"; for x in sains pieges; do ln -sf "$CONTENU/$n.$x" "$d/"; done
         GROUPES=("reel-$n:reel journal" "${GROUPES[@]}")
     done < <(ls -rS "$CONTENU"/*.img)   # du plus petit au plus gros : le plus gros finit en tête
@@ -88,11 +89,11 @@ declare -A PID=() NOM=()
 vm=$((BASE + 1)); en_cours=0
 lancer() { # nom tests vmid
     local nom=$1 tests=$2 id=$3 contenu=""
-    case "$nom" in reel-*) contenu="$OUT/.contenu/${nom#reel-}" ;; esac
+    case "$nom" in reel-*) contenu="$OUT/.contenu/${nom#reel-}" ;; ventoy) contenu="$CONTENU" ;; esac
     rm -rf "${VIRT:?}/$id"; mkdir -p "$VIRT/$id"
     # shellcheck disable=SC2046
     env $(cles) VMID="$id" CLONE_DE="$BASE" STOCKAGE="$STOCKAGE" MEMOIRE="$MEMOIRE" COEURS="$COEURS" \
-        VIRT_DIR="$VIRT/$id" VIRT_TAILLE=12G ISO="$ISO" TESTS="$tests" CONTENU="$contenu" MAJ="${MAJ:-}" \
+        VIRT_DIR="$VIRT/$id" VIRT_TAILLE=12G ISO="$ISO" TESTS="$tests" CONTENU="$contenu" MAJ="${MAJ:-}" VENTOY_REF="${VENTOY_REF:-}" \
         "$ICI/preuve.sh" "$OUT/$nom" > "$OUT/$nom.log" 2>&1 &
     PID[$id]=$!; NOM[$id]=$nom
     echo "$(date +%H:%M) lancé : $nom (VM $id)"

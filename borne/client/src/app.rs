@@ -1483,6 +1483,7 @@ impl App {
         }
         let disque = self.src.as_ref().is_some_and(est_optique);
         let reinscriptible = self.optique.as_ref().is_some_and(|e| e.reinscriptible);
+        // Deux lignes : ce qui ne touche pas le support analysé, puis le blanchiment (1280 px).
         let mut actions = row![bouton("Arrêter ici", Msg::Terminer, style::secondaire)].spacing(24);
         actions = actions.push(bouton(
             "Copier vers une clé connue",
@@ -1496,8 +1497,9 @@ impl App {
                 style::secondaire,
             ));
         }
+        let mut blanchir = row![].spacing(24);
         if !disque || reinscriptible {
-            actions = actions.push(bouton(
+            blanchir = blanchir.push(bouton(
                 if disque {
                     "Blanchir le disque"
                 } else {
@@ -1508,13 +1510,13 @@ impl App {
             ));
         }
         if !disque && self.analysis.as_ref().is_some_and(|a| a.ventoy) {
-            actions = actions.push(bouton(
+            blanchir = blanchir.push(bouton(
                 "Blanchir en gardant démarrable",
                 Msg::ActionDemarrable,
                 style::danger,
             ));
         }
-        c = c.push(Space::new().height(10)).push(actions);
+        c = c.push(Space::new().height(10)).push(actions).push(blanchir);
         centre(c)
     }
 
