@@ -1551,7 +1551,12 @@ impl App {
         .spacing(14)
         .align_x(Alignment::Center);
         if let Some(r) = &self.dst_refused {
-            c = c.push(container(texte(r)).padding(12).style(style::alerte));
+            c = c.push(
+                container(texte(r))
+                    .padding(12)
+                    .max_width(900)
+                    .style(style::alerte),
+            );
         }
         let mut go = button(
             text("Effacer ce disque et y graver les fichiers")
@@ -1613,7 +1618,12 @@ impl App {
         .spacing(14)
         .align_x(Alignment::Center);
         if let Some(r) = &self.dst_refused {
-            c = c.push(container(texte(r)).padding(12).style(style::alerte));
+            c = c.push(
+                container(texte(r))
+                    .padding(12)
+                    .max_width(900)
+                    .style(style::alerte),
+            );
         }
         let mut go = button(
             text("Effacer cette clé et y copier les fichiers")
