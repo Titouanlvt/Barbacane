@@ -366,6 +366,7 @@ pub fn view(app: &App) -> Element<'_, Msg> {
             c = c.push(line("Règles YARA", etat["yara_rules"].as_u64().map(|n| format!("{n} fichier(s)")).unwrap_or("?".into())));
             c = c.push(line("Version du dernier paquet de mise à jour", etat["update_version"].as_u64().map(|n| n.to_string()).unwrap_or("aucun".into())));
             c = c.push(line("Espace disque libre", etat["disk_free"].as_str().unwrap_or("?").into()));
+            c = c.push(line("Espace de travail (analyse)", espace_travail(&etat["espace_travail"])));
             c = c.push(line("Transferts journalisés", etat["reports"].as_u64().map(|n| n.to_string()).unwrap_or("?".into())));
             column![titre("État de la borne"), carte(c), retour].spacing(20).align_x(Alignment::Center).into()
         }
@@ -589,5 +590,18 @@ fn bouton_busy<'a>(t: &str, m: Msg, busy: bool) -> Element<'a, Msg> {
             .into()
     } else {
         bouton(t, m, style::primaire)
+    }
+}
+
+/// « 120,3 Go libres sur 128,0 Go : contenu analysable jusqu'à 40,1 Go environ »
+fn espace_travail(v: &serde_json::Value) -> String {
+    match (v["libre"].as_u64(), v["total"].as_u64()) {
+        (Some(libre), Some(total)) => format!(
+            "{} libres sur {} : contenu analysable jusqu'à {} environ",
+            barbacane_parcours::go(libre),
+            barbacane_parcours::go(total),
+            barbacane_parcours::go(libre / barbacane_parcours::FACTEUR_ESPACE)
+        ),
+        _ => "non monté".into(),
     }
 }

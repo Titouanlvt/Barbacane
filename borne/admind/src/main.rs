@@ -319,6 +319,7 @@ impl Ctx {
             "yara_rules": count(&self.conf.yara_dir),
             "update_version": self.update_version(),
             "disk_free": free,
+            "espace_travail": espace_travail(),
             "reports": count(&self.conf.reports_dir),
             "limits": self.limits(),
             "pin_set": self.path("pin").exists(),
@@ -428,6 +429,14 @@ impl Ctx {
         let op = req["op"].as_str().unwrap_or_default().to_string();
         if op == "status" {
             return Ok(self.status());
+        }
+        // Fin de session utilisateur (interface revenue à l'accueil) : l'espace de travail chiffré
+        // est recréé avec une clé neuve. Sans PIN : ne fait que jeter des données de session.
+        if op == "nouvelle_session" {
+            let _g = self.op.lock().unwrap();
+            self.run(&["/usr/lib/barbacane/barbacane-travail", "nouvelle-session"])?;
+            log::info!("espace de travail recréé (nouvelle clé de session)");
+            return Ok(json!({"ok": true, "message": "Espace de travail recréé."}));
         }
         let _g = self.op.lock().unwrap();
         if op == "login" {
@@ -627,3 +636,20 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests;
+
+/// Espace de travail chiffré (analyse) : taille et espace libre en octets ; nul s'il n'est pas monté.
+fn espace_travail() -> Value {
+    let p = std::path::Path::new("/var/lib/barbacane/travail");
+    let Ok(c) = std::ffi::CString::new(p.as_os_str().as_encoded_bytes()) else {
+        return Value::Null;
+    };
+    let mut st: libc::statvfs = unsafe { std::mem::zeroed() };
+    // SAFETY : chemin terminé par NUL, structure de sortie initialisée.
+    if unsafe { libc::statvfs(c.as_ptr(), &mut st) } != 0 {
+        return Value::Null;
+    }
+    json!({
+        "total": st.f_blocks as u64 * st.f_frsize as u64,
+        "libre": st.f_bavail as u64 * st.f_frsize as u64,
+    })
+}

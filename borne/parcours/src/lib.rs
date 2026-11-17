@@ -369,10 +369,70 @@ pub struct Analysis {
     pub filtered: Vec<String>,
 }
 
+/// Dossier de l'espace de travail chiffré de la borne (usbsas et analyseur).
+pub const ESPACE_TRAVAIL: &str = "/var/lib/barbacane/travail";
+
+/// Une analyse occupe environ 3 fois le contenu dans l'espace de travail : archive de session
+/// d'usbsas, copie reçue par l'analyseur, extraction des archives (mesuré le 16/11/2026 : la
+/// réception seule prend 2 fois le contenu).
+pub const FACTEUR_ESPACE: u64 = 3;
+
+/// (taille totale, espace libre) du système de fichiers qui porte `chemin`, en octets.
+pub fn espace(chemin: &str) -> Option<(u64, u64)> {
+    let c = std::ffi::CString::new(chemin).ok()?;
+    let mut st: libc::statvfs = unsafe { std::mem::zeroed() };
+    // SAFETY : chemin terminé par NUL, structure de sortie initialisée.
+    (unsafe { libc::statvfs(c.as_ptr(), &mut st) } == 0).then(|| {
+        (
+            st.f_blocks as u64 * st.f_frsize as u64,
+            st.f_bavail as u64 * st.f_frsize as u64,
+        )
+    })
+}
+
+/// Go lisibles (1 décimale)
+pub fn go(octets: u64) -> String {
+    format!("{:.1} Go", octets as f64 / 1e9).replace('.', ",")
+}
+
+/// Refus clair, avant toute copie, d'un contenu que l'espace de travail ne peut pas contenir.
+pub fn verifier_espace(contenu: u64, libre: u64) -> Result<()> {
+    if contenu.saturating_mul(FACTEUR_ESPACE) > libre {
+        return Err(Error::User(format!(
+            "contenu trop volumineux pour cette borne : {} à analyser, il faut environ {} \
+             d'espace de travail et {} sont disponibles. Rien n'a été copié.",
+            go(contenu),
+            go(contenu.saturating_mul(FACTEUR_ESPACE)),
+            go(libre)
+        )));
+    }
+    Ok(())
+}
+
 fn wait_done(comm: &mut impl ProtoReqUsbsas, ev: &Sender<Event>) -> io::Result<()> {
+    wait_done_espace(comm, ev, None).map_err(|e| match e {
+        Error::Usbsas(e) => e,
+        e => io::Error::other(e.to_string()),
+    })
+}
+
+/// Comme `wait_done` ; avec `libre`, interrompt la lecture dès que usbsas annonce la taille
+/// totale du contenu si elle dépasse l'espace de travail.
+fn wait_done_espace(
+    comm: &mut impl ProtoReqUsbsas,
+    ev: &Sender<Event>,
+    libre: Option<u64>,
+) -> Result<()> {
+    let mut verifie = libre.is_none();
     loop {
         let st = comm.recv_status()?;
         let status = Status::try_from(st.status).unwrap_or(Status::Unknown);
+        if !verifie && status == Status::ReadSrc && st.total > 0 {
+            verifie = true;
+            if let Some(libre) = libre {
+                verifier_espace(st.total, libre)?;
+            }
+        }
         let _ = ev.send(Event::Progress {
             status,
             current: st.current,
@@ -467,7 +527,8 @@ fn analyse_source(
             }
         })
     };
-    let res = wait_done(comm, ev);
+    let libre = espace(ESPACE_TRAVAIL).map(|(_, l)| l);
+    let res = wait_done_espace(comm, ev, libre);
     stop.store(true, Ordering::Relaxed);
     let _ = watcher.join();
     let filtered = match res {
@@ -479,9 +540,13 @@ fn analyse_source(
             .unwrap_or_default(),
         // Rien de sain parmi les fichiers de la clé : le contenu extrait des archives peut l'être.
         Err(e) if e.to_string().contains("Nothing to copy after analyzer") => Vec::new(),
+        Err(e @ Error::User(_)) => {
+            let _ = comm.end();
+            return Err(e);
+        }
         Err(e) => {
             let _ = comm.end();
-            return Err(e.into());
+            return Err(e);
         }
     };
     let _ = comm.end();
@@ -549,6 +614,21 @@ pub fn wipe(comm: &mut impl ProtoReqUsbsas, dev: u64, ev: &Sender<Event>) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn espace_insuffisant_refuse_clairement() {
+        // 20 Go de contenu demandent environ 60 Go ; 45 Go libres : refus avant copie
+        let e = verifier_espace(20_000_000_000, 45_000_000_000).unwrap_err();
+        let m = e.to_string();
+        assert!(
+            m.contains("20,0 Go") && m.contains("60,0 Go") && m.contains("45,0 Go"),
+            "{m}"
+        );
+        assert!(matches!(e, Error::User(_)));
+        assert!(verifier_espace(10_000_000_000, 45_000_000_000).is_ok());
+        // tailles 64 bits : un NVMe de 4 To ne déborde pas
+        assert!(verifier_espace(4_000_000_000_000, u64::MAX).is_ok());
+    }
 
     #[test]
     fn partition_choice() {

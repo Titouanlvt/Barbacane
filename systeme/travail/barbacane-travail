@@ -2,30 +2,51 @@
 # Espace de travail chiffré éphémère de la borne (usbsas + analyseur).
 #
 # Les fichiers lus sur les clés passent par le disque (archive tar de session d'usbsas, copie de
-# l'analyseur, extraction des archives). Pour qu'il n'en reste RIEN de lisible après un
-# redémarrage, ils sont écrits dans un volume chiffré par une clé aléatoire tirée à chaque
-# démarrage et jamais écrite : au redémarrage suivant, l'ancien contenu est indéchiffrable.
-# Adossé à un fichier creux (pas de partition dédiée) : la taille suit le disque, pas la RAM.
+# l'analyseur, extraction des archives). Ils sont écrits dans un volume dm-crypt dont la clé est
+# tirée de /dev/urandom et jamais écrite. Le volume est RECRÉÉ (nouvelle clé) :
+#   - à chaque démarrage de la borne ;
+#   - à la fin de chaque session utilisateur (`barbacane-travail nouvelle-session`, demandé par
+#     l'interface au retour à l'accueil, via le service d'administration).
+# L'ancienne clé n'existant plus, rien de ce qui a été lu sur une clé ne reste lisible sur le
+# disque, même si le fichier support n'est pas effacé octet par octet (choix justifié dans
+# docs/conception-espace-travail.md : effacer des centaines de Go à chaque session serait trop long
+# et usant pour un SSD ; jeter la clé a le même effet pour un attaquant).
 #
-#   barbacane-travail demarrer | arreter
+# Taille, calculée à chaque démarrage (fichier creux : rien n'est alloué tant qu'il n'est pas
+# écrit), réglable dans /etc/barbacane/travail.conf :
+#   PART      part du disque interne (défaut 50 %)
+#   PLANCHER  taille minimale en Gio (défaut 8)
+#   PLAFOND   taille maximale en Gio (défaut : aucune)
+# et toujours au plus 80 % de l'espace libre (le système doit garder de la place).
+#
+#   barbacane-travail demarrer | arreter | nouvelle-session | taille
 set -eu
 IMAGE=/var/lib/barbacane-travail.img
 NOM=barbacane-travail
 POINT=/var/lib/barbacane/travail
-# Part de l'espace libre réservée au volume à sa création (la borne ne sert qu'à ça ; une analyse
-# demande jusqu'à ~4 fois le contenu : tar usbsas brut et nettoyé, copie de l'analyseur, extraction) (fichier creux : rien n'est alloué
-# tant qu'il n'est pas écrit) ; plancher 8 Gio.
-PART=80
+PART=50 PLANCHER=8 PLAFOND=0
+# shellcheck disable=SC1091 # fichier de la borne
+[ ! -r /etc/barbacane/travail.conf ] || . /etc/barbacane/travail.conf
+
+# Taille du volume en Kio
+taille() {
+    d=$(dirname "$IMAGE")
+    disque=$(df -Pk "$d" | awk 'NR==2 {print $2}')
+    libre=$(df -Pk "$d" | awk 'NR==2 {print $4}')
+    [ ! -f "$IMAGE" ] || libre=$((libre + $(du -k "$IMAGE" | cut -f1)))
+    t=$((disque * PART / 100))
+    [ "$PLAFOND" -eq 0 ] || [ "$t" -le $((PLAFOND * 1024 * 1024)) ] || t=$((PLAFOND * 1024 * 1024))
+    [ "$t" -le $((libre * 80 / 100)) ] || t=$((libre * 80 / 100))
+    [ "$t" -ge $((PLANCHER * 1024 * 1024)) ] || t=$((PLANCHER * 1024 * 1024))
+    echo "$t"
+}
 
 demarrer() {
     arreter 2>/dev/null || true
-    if [ ! -f "$IMAGE" ]; then
-        libre=$(df -Pk "$(dirname "$IMAGE")" | awk 'NR==2 {print $4}')
-        taille=$((libre * PART / 100))
-        [ "$taille" -ge $((8 * 1024 * 1024)) ] || taille=$((8 * 1024 * 1024))
-        truncate -s "${taille}K" "$IMAGE"
-        chmod 600 "$IMAGE"
-    fi
+    t=$(taille)
+    rm -f "$IMAGE"                       # blocs rendus au disque ; leur contenu est indéchiffrable
+    truncate -s "${t}K" "$IMAGE"
+    chmod 600 "$IMAGE"
     # Clé de 512 bits lue dans /dev/urandom, passée à dm-crypt puis oubliée (mode « plain » :
     # aucun en-tête, rien à conserver).
     cryptsetup open --type plain --cipher aes-xts-plain64 --key-size 512 \
@@ -37,6 +58,7 @@ demarrer() {
     install -d -m 0700 -o usbsas -g usbsas "$POINT/usbsas"
     install -d -m 0700 -o barbacane-analyzer -g barbacane "$POINT/analyse"
     rmdir "$POINT/lost+found" 2>/dev/null || true
+    echo "espace de travail : $((t / 1024 / 1024)) Gio (clé neuve)"
 }
 
 arreter() {
@@ -47,5 +69,8 @@ arreter() {
 case "${1:-}" in
     demarrer) demarrer ;;
     arreter) arreter ;;
-    *) echo "usage : $0 demarrer|arreter" >&2; exit 2 ;;
+    # Fin de session : usbsas et l'analyseur dépendent du volume (Requires=) et redémarrent avec lui
+    nouvelle-session) systemctl restart barbacane-travail.service ;;
+    taille) echo "$(($(taille) / 1024 / 1024)) Gio" ;;
+    *) echo "usage : $0 demarrer|arreter|nouvelle-session|taille" >&2; exit 2 ;;
 esac

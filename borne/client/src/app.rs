@@ -110,6 +110,9 @@ pub struct App {
     depuis: std::time::Instant,
     /// Accueil atteint depuis l'écran « Terminé » : animation de retrait des clés
     retour_fin: bool,
+    /// Une analyse a eu lieu depuis le dernier retour à l'accueil : l'espace de travail chiffré
+    /// sera recréé (clé neuve) au retour à l'accueil.
+    session_sale: bool,
     /// « Maintenir pour effacer » : début de l'appui
     maintien: Option<std::time::Instant>,
     /// Barre de progression : dernière valeur affichée (jamais en recul) et son heure
@@ -176,6 +179,7 @@ impl App {
             optique_err: None,
             depuis: std::time::Instant::now(),
             retour_fin: false,
+            session_sale: false,
             maintien: None,
             barre_val: 0.0,
             barre_maj: std::time::Instant::now(),
@@ -432,7 +436,28 @@ impl App {
         let avant = std::mem::discriminant(&self.screen);
         let etait_fin = matches!(self.screen, Screen::Fin(_));
         let etape_avant = self.progress.map(|(s, _, _)| s);
-        let t = self.maj(m);
+        let mut t = self.maj(m);
+        if matches!(self.screen, Screen::Analyse) {
+            self.session_sale = true;
+        }
+        if self.session_sale && matches!(self.screen, Screen::Accueil) {
+            // Fin de session : les données lues ne doivent pas rester sur le disque
+            self.session_sale = false;
+            let sock = self.cfg.admin_socket.clone();
+            t = Task::batch([
+                t,
+                Task::perform(
+                    async move {
+                        let op = serde_json::json!({"op": "nouvelle_session"});
+                        if let Err(e) = crate::admin::call(sock.clone(), op).await {
+                            log::error!("espace de travail non recréé : {e}");
+                        }
+                        crate::admin::call(sock, serde_json::json!({"op": "status"})).await
+                    },
+                    Msg::Etat,
+                ),
+            ]);
+        }
         if std::mem::discriminant(&self.screen) != avant {
             self.depuis = std::time::Instant::now();
             self.retour_fin = etait_fin && matches!(self.screen, Screen::Accueil);
