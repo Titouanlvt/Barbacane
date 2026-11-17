@@ -145,7 +145,10 @@ for g in "${GROUPES[@]}"; do
     if [ ${#libres[@]} -gt 0 ]; then id=${libres[0]}; libres=("${libres[@]:1}"); else id=$vm; vm=$((vm + 1)); fi
     lancer "$nom" "$tests" "$id"; en_cours=$((en_cours + 1))
 done
-for id in "${!PID[@]}"; do wait "${PID[$id]}" && r=OK || r=ÉCHEC; echo "$(date +%H:%M) fini : ${NOM[$id]} ($r)"; done
+for id in "${!PID[@]}"; do
+    wait "${PID[$id]}" && r=OK || r=ÉCHEC; echo "$(date +%H:%M) fini : ${NOM[$id]} ($r)"
+    qm stop "$id" >/dev/null 2>&1 || true; qm destroy "$id" --purge >/dev/null 2>&1 || true
+done
 
 # --- 4. résultats -------------------------------------------------------------------------------
 R="$OUT/resultats.txt"; : > "$R"
