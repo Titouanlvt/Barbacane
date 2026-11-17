@@ -10,6 +10,7 @@
 #    ses clés émulées (tests/proxmox/preuve.sh, clés « virt:NOM ») ;
 # 4. rassemble DOSSIER/resultats.txt (une ligne par vérification, préfixée du scénario).
 #
+# SCENARIOS="ventoy usb" : seulement ces scénarios.
 # MODELE_EXISTANT=1 : reprend la borne modèle BASE déjà faite (pas de réinstallation).
 # Ressources : laisse à l'hôte au moins 2 cœurs et 8 Go de RAM (PARALLELE, COEURS, MEMOIRE).
 # Aucune vraie clé n'est utilisée : la campagne sur vraies clés (preuve.sh) reste la référence
@@ -62,6 +63,12 @@ if [ -n "${CONTENU:-}" ]; then
         ln -sf "$img" "$d/"; for x in sains pieges; do ln -sf "$CONTENU/$n.$x" "$d/"; done
         GROUPES=("reel-$n:reel journal" "${GROUPES[@]}")
     done < <(ls -rS "$CONTENU"/*.img)   # du plus petit au plus gros : le plus gros finit en tête
+fi
+# SCENARIOS="ventoy usb" : ne rejouer que ces scénarios (après une correction ciblée)
+if [ -n "${SCENARIOS:-}" ]; then
+    declare -a choisis=()
+    for g in "${GROUPES[@]}"; do case " $SCENARIOS " in *" ${g%%:*} "*) choisis+=("$g") ;; esac; done
+    GROUPES=("${choisis[@]}")
 fi
 
 if [ "${CONSTRUIRE:-0}" = 1 ]; then
