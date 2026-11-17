@@ -1558,7 +1558,12 @@ impl App {
                 .size(24)
                 .font(style::CORPS_GRAS),
         )
-        .padding([18, 30])
+        .padding(iced::Padding {
+            top: 16.0,
+            right: 30.0,
+            bottom: 20.0,
+            left: 30.0,
+        })
         .style(style::primaire);
         if let Some(d) = &self.dst {
             c = c.push(carte(column![
@@ -1575,7 +1580,15 @@ impl App {
             row![
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
                 bouton("Éjecter le disque", Msg::Ejecter, style::secondaire),
-                en_relief(go.into(), Some(style::c().laiton))
+                // Désactivé (pas de clé enrôlée) : tranche grise, pas laiton, pour ne pas paraître actif
+                en_relief(
+                    go.into(),
+                    Some(if self.dst.is_some() {
+                        style::c().laiton
+                    } else {
+                        style::c().trait_
+                    })
+                )
             ]
             .spacing(30),
         );
@@ -1607,7 +1620,12 @@ impl App {
                 .size(24)
                 .font(style::CORPS_GRAS),
         )
-        .padding([18, 30])
+        .padding(iced::Padding {
+            top: 16.0,
+            right: 30.0,
+            bottom: 20.0,
+            left: 30.0,
+        })
         .style(style::primaire);
         if let Some(d) = &self.dst {
             c = c.push(carte(column![
@@ -1625,7 +1643,15 @@ impl App {
         c = c.push(Space::new().height(20)).push(
             row![
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
-                en_relief(go.into(), Some(style::c().laiton))
+                // Désactivé (pas de clé enrôlée) : tranche grise, pas laiton, pour ne pas paraître actif
+                en_relief(
+                    go.into(),
+                    Some(if self.dst.is_some() {
+                        style::c().laiton
+                    } else {
+                        style::c().trait_
+                    })
+                )
             ]
             .spacing(30),
         );
