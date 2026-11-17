@@ -23,7 +23,7 @@ sont dans `docs/preuves/2026-11-14-clone-usbsas/`. Ne plus y travailler.
 - Cible 4 To : extrapolation, aucun disque > 64 Go.
 
 ## Ne marche pas
-- Aucun échec dans la dernière campagne ; elle est incomplète (arrêt demandé à 21 h 30).
+- Aucun échec : campagne finale arrêtée à 21 h 30 sur demande à 42 OK, 0 échec (jusqu’à reel-bureau inclus ; reste ventoy, export, clavier, vide, pleine, illisible, retrait, verrouillage, journal).
 
 ## Bloqué
 - Signature de production : phrase de passe de `~/cles-barbacane/barbacane-maj.key` connue de l'utilisateur seul.
