@@ -1599,7 +1599,11 @@ impl RunState for RewriteImageState {
         info!("official image recognised ({taille} bytes), rewriting");
         comm.status(taille, taille, true, Status::DiskImg)?;
 
-        // 2. Effacement complet, puis réécriture des octets hachés
+        // 2. Effacement complet, puis réécriture des octets hachés. scsi2files garde la clé
+        // ouverte (interface USB réservée) : il est arrêté d'abord, sinon fs2dev obtient
+        // « Resource busy » (constaté sur la borne de preuve, 17/11/2026).
+        children.scsi2files.end()?;
+        children.scsi2files.wait()?;
         children
             .fs2dev
             .unlock_with((u64::from(self.device.devnum) << 32) | u64::from(self.device.busnum))?;

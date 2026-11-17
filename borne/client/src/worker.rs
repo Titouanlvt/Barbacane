@@ -300,7 +300,12 @@ impl Worker {
             .or_else(|| devs.find(src, false))
             .ok_or("la clé a été retirée")?;
         parcours::reecrire_image(&mut s, id, &images, ev).map_err(|e| {
-            format!("{e} — la clé n'a pas été modifiée ; choisissez « Blanchir la clé »")
+            let e = e.to_string();
+            if e.contains("image non reconnue") || e.contains("aucune image") {
+                format!("{e} — la clé n'a pas été modifiée ; choisissez « Blanchir la clé »")
+            } else {
+                e
+            }
         })?;
         Ok(n)
     }
