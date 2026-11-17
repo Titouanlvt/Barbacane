@@ -150,14 +150,9 @@ fn base(bg: Color, fg: Color, status: button::Status) -> button::Style {
 /// `app::bouton` (rectangle plein décalé, comme le logo). L'appui assombrit le bouton.
 fn relief(bg: Color, fg: Color, _tranche: Option<Color>, status: button::Status) -> button::Style {
     let (fond, texte) = match status {
-        // Désactivé : grisé franc (encre à 35 %), jamais de la couleur du fond
-        button::Status::Disabled => (
-            Color {
-                a: 0.35,
-                ..c().encre
-            },
-            c().sur_encre,
-        ),
+        // Désactivé : gris franc OPAQUE, jamais de la couleur du fond. Une encre transparente
+        // laissait voir la tranche laiton posée derrière : le bouton paraissait marron et actif.
+        button::Status::Disabled => (c().trait_, c().encre_douce),
         button::Status::Pressed => (Color { a: 0.82, ..bg }, fg),
         _ => (bg, fg),
     };
