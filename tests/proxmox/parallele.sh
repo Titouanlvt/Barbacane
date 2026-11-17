@@ -119,6 +119,9 @@ for g in "${GROUPES[@]}"; do
             if ! kill -0 "${PID[$id]}" 2>/dev/null; then
                 wait "${PID[$id]}" && r=OK || r=ÉCHEC
                 echo "$(date +%H:%M) fini : ${NOM[$id]} ($r)"; unset "PID[$id]"; en_cours=$((en_cours - 1)); libres+=("$id")
+                # Le clone fini garde son disque (espace de travail rempli) : le rendre au pool
+                # tout de suite, sinon l'attente d'espace ci-dessous ne se libère jamais.
+                qm stop "$id" >/dev/null 2>&1 || true; qm destroy "$id" --purge >/dev/null 2>&1 || true
             fi
         done
         sleep 10
