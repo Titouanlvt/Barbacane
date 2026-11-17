@@ -29,6 +29,9 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     rm -f /etc/systemd/system/barbacane-analyzer.service.d/tmpfs.conf
     rmdir /etc/systemd/system/barbacane-analyzer.service.d 2>/dev/null || true
     install -d -m 0700 -o usbsas -g usbsas /var/lib/usbsas/tmp 2>/dev/null || true
+    # Anciens dossiers de session EN CLAIR (fichiers sains préparés, contenu des disques
+    # optiques) : déplacés dans le volume chiffré éphémère le 17/11/2026 ; restes supprimés.
+    rm -rf /var/lib/barbacane/sortie /var/lib/barbacane/optique/entree /var/lib/barbacane/optique/travail
 
     # clamd : limites d'analyse imposées (fichier généré par debconf, réglages remplacés ligne à ligne)
     if [ -f /etc/clamav/clamd.conf ]; then

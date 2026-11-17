@@ -1,6 +1,8 @@
 [Unit]
 Description=Barbacane : disques optiques (lecture de toutes les sessions, gravure vérifiée, effacement complet)
-After=local-fs.target
+After=local-fs.target barbacane-travail.service
+# Contenu des disques extrait dans le volume chiffré éphémère (recréé à chaque session)
+Requires=barbacane-travail.service
 
 [Service]
 ExecStart=/usr/bin/barbacane-optique -c /etc/barbacane/optique.toml
@@ -12,10 +14,11 @@ UMask=0027
 RuntimeDirectory=barbacane-optique
 RuntimeDirectoryPreserve=yes
 RuntimeDirectoryMode=0755
-StateDirectory=barbacane/optique barbacane/optique/entree barbacane/optique/travail
+StateDirectory=barbacane/optique
 StateDirectoryMode=0750
+ReadWritePaths=/var/lib/barbacane/travail/optique
 # Lit les fichiers sains à graver (dossier de préparation de l'analyseur)
-ReadOnlyPaths=/var/lib/barbacane/sortie
+ReadOnlyPaths=/var/lib/barbacane/travail/sortie
 # Seul le lecteur optique : sr (bloc) et sg (SCSI générique, commandes de gravure)
 DevicePolicy=closed
 DeviceAllow=block-sr rw

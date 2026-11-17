@@ -461,7 +461,22 @@ async fn stage_req(
         return StatusCode::NOT_FOUND.into_response();
     };
     let dir = app.conf.stage_dir.clone();
-    let res = tokio::task::spawn_blocking(move || stage::stage(&dir, &j, &b.device)).await;
+    let res = tokio::task::spawn_blocking(move || {
+        let mut deja = j.staged.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(n) = *deja {
+            return Ok(n); // « Réessayer l'écriture » : dossier de préparation déjà prêt
+        }
+        let n = stage::stage(&dir, &j, &b.device)?;
+        *deja = Some(n);
+        j.vider_travail();
+        log::info!(
+            "{n} fichier(s) sain(s) préparé(s) ; copie de travail vidée (espace libre : {})",
+            espace_libre(j.work.path())
+                .map_or("inconnu".into(), |o| format!("{} Mo", o / 1_000_000))
+        );
+        Ok::<_, anyhow::Error>(n)
+    })
+    .await;
     match res {
         Ok(Ok(n)) => Json(json!({"files": n})).into_response(),
         Ok(Err(e)) => err(StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}")),

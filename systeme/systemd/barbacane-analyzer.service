@@ -13,8 +13,9 @@ SupplementaryGroups=clamav
 UMask=0027
 # Fichiers en cours d'analyse : volume chiffré éphémère (barbacane-travail), sur disque mais
 # illisible après redémarrage ; la taille suit le disque, pas la RAM (8 Go : tmpfs de 6 Go plein).
-ReadWritePaths=/var/lib/barbacane/travail/analyse
-StateDirectory=barbacane/rapports barbacane/sortie barbacane/import
+# Dossier de préparation des fichiers sains : lui aussi dans le volume chiffré éphémère.
+ReadWritePaths=/var/lib/barbacane/travail/analyse /var/lib/barbacane/travail/sortie
+StateDirectory=barbacane/rapports barbacane/import
 StateDirectoryMode=0750
 MemoryMax=10G
 CPUQuota=300%

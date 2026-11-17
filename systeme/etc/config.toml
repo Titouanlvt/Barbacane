@@ -24,13 +24,13 @@ command_args = []
 
 # Transfert B : dossier de préparation rempli par barbacane-analyzer
 [[src_local_dirs]]
-path = "/var/lib/barbacane/sortie"
+path = "/var/lib/barbacane/travail/sortie"
 description = "Fichiers sains"
 longdescr = "Fichiers sains préparés par Barbacane"
 
 # Disque optique extrait par barbacane-optique (toutes les sessions) : source inconnue
 [[src_local_dirs]]
-path = "/var/lib/barbacane/optique/entree"
+path = "/var/lib/barbacane/travail/optique/entree"
 description = "Disque optique"
 longdescr = "CD, DVD ou BD inséré dans le lecteur"
 

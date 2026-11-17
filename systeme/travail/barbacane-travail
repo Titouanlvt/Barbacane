@@ -57,6 +57,13 @@ demarrer() {
     chmod 755 "$POINT"
     install -d -m 0700 -o usbsas -g usbsas "$POINT/usbsas"
     install -d -m 0700 -o barbacane-analyzer -g barbacane "$POINT/analyse"
+    # Fichiers sains préparés (lus par usbsas et le graveur) et contenu des disques optiques :
+    # données de session, donc dans le volume chiffré aussi.
+    install -d -m 0750 -o barbacane-analyzer -g barbacane "$POINT/sortie"
+    if id barbacane-optique >/dev/null 2>&1; then
+        install -d -m 0750 -o barbacane-optique -g barbacane "$POINT/optique" \
+            "$POINT/optique/entree" "$POINT/optique/travail"
+    fi
     rmdir "$POINT/lost+found" 2>/dev/null || true
     echo "espace de travail : $((t / 1024 / 1024)) Gio (clé neuve)"
 }

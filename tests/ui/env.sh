@@ -59,7 +59,7 @@ stage_dir = "$W/sortie"
 export_dir = "$W/export"
 EOF
 sed -e "s|/var/lib/usbsas/tmp|$W/usbsas|" -e "s|/var/lib/usbsas/reports|$W/rapports-usbsas|" \
-    -e "s|/var/lib/barbacane/sortie|$W/sortie|" -e "s|/var/lib/barbacane/export|$W/export|" \
+    -e "s|/var/lib/barbacane/travail/sortie|$W/sortie|" -e "s|/var/lib/barbacane/export|$W/export|" \
     -e "s|127.0.0.1:8042|127.0.0.1:18242|" "$B/systeme/etc/config.toml" > "$W/usbsas.toml"
 
 /usr/sbin/clamd --config-file "$W/clamd.conf" & echo $! > "$W/pids"

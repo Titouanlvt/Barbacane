@@ -83,7 +83,7 @@ impl Default for Config {
             yara_rules_dir: Some("/var/lib/barbacane/yara".into()),
             seven_zip: "/usr/bin/7z".into(),
             bwrap: Some("/usr/bin/bwrap".into()),
-            stage_dir: "/var/lib/barbacane/sortie".into(),
+            stage_dir: "/var/lib/barbacane/travail/sortie".into(),
             reports_dir: Some("/var/lib/barbacane/rapports".into()),
             import_dir: "/var/lib/barbacane/import".into(),
             max_reports: 5000,

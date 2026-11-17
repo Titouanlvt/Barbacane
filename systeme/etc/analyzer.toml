@@ -6,7 +6,7 @@ clamd_socket = "/run/clamav/clamd.ctl"
 yara_rules_dir = "/var/lib/barbacane/yara"
 seven_zip = "/usr/bin/7z"
 bwrap = "/usr/bin/bwrap"
-stage_dir = "/var/lib/barbacane/sortie"      # déclaré dans [[src_local_dirs]] d'usbsas
+stage_dir = "/var/lib/barbacane/travail/sortie"      # déclaré dans [[src_local_dirs]] d'usbsas
 reports_dir = "/var/lib/barbacane/rapports"
 max_reports = 5000
 

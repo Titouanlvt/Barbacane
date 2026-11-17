@@ -52,7 +52,11 @@ pub fn stage(dir: &Path, job: &Job, device: &str) -> Result<usize> {
         }
         match src {
             Source::File(f) => {
-                std::fs::copy(f, &dst)?;
+                // Même volume (espace de travail) : déplacement, sans doubler la place occupée.
+                // La copie de travail est vidée juste après.
+                if std::fs::rename(&f, &dst).is_err() {
+                    std::fs::copy(f, &dst)?;
+                }
                 n += 1;
             }
             Source::Data(d) => std::fs::write(&dst, d)?,

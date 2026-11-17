@@ -59,6 +59,9 @@ pub struct Job {
     pub state: Mutex<State>,
     cond: Condvar,
     pub work: tempfile::TempDir,
+    /// Fichiers sains déjà préparés (nombre) : la copie de travail a alors été vidée ; une
+    /// nouvelle préparation (« Réessayer l'écriture ») réutilise le dossier de préparation.
+    pub staged: Mutex<Option<usize>>,
 }
 
 impl Job {
@@ -82,6 +85,25 @@ impl Job {
             }),
             cond: Condvar::new(),
             work,
+            staged: Mutex::new(None),
+        }
+    }
+
+    /// Vide la copie de travail (contenu reçu, archives extraites) une fois les fichiers sains
+    /// préparés : l'écriture qui suit a besoin de cette place dans l'espace de travail.
+    pub fn vider_travail(&self) {
+        if let Ok(entrees) = std::fs::read_dir(self.work.path()) {
+            for e in entrees.flatten() {
+                let p = e.path();
+                let r = if p.is_dir() && !p.is_symlink() {
+                    std::fs::remove_dir_all(&p)
+                } else {
+                    std::fs::remove_file(&p)
+                };
+                if let Err(err) = r {
+                    log::warn!("copie de travail : {} non supprimé : {err}", p.display());
+                }
+            }
         }
     }
 

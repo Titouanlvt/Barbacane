@@ -39,9 +39,9 @@ impl Default for Config {
             socket_group: "barbacane-kiosk".into(),
             device: "/dev/sr0".into(),
             extra_devices: vec![],
-            entree_dir: "/var/lib/barbacane/optique/entree".into(),
-            stage_dir: "/var/lib/barbacane/sortie".into(),
-            travail_dir: "/var/lib/barbacane/optique/travail".into(),
+            entree_dir: "/var/lib/barbacane/travail/optique/entree".into(),
+            stage_dir: "/var/lib/barbacane/travail/sortie".into(),
+            travail_dir: "/var/lib/barbacane/travail/optique/travail".into(),
             bwrap: Some("/usr/bin/bwrap".into()),
         }
     }
