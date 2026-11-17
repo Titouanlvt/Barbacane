@@ -601,7 +601,7 @@ if test_actif ventoy; then
     si ! grep -rlaq 'EICAR-STANDARD-ANTIVIRUS-TEST-FILE' "$T/m" -- "aucun EICAR sur la clé" "EICAR présent"
     umount "$T/m"
     # Démarrage : copie de la clé dans une VM jetable (BIOS), menu Ventoy listant l'ISO conservée
-    VMD=${VMID_DEMARRAGE:-$((VMID + 50))}
+    VMD=${VMID_DEMARRAGE:-$(( VMID + 50 > 999 ? VMID - 50 : VMID + 50 ))}
     if [ "$VMD" -le 999 ] && ! qm status "$VMD" >/dev/null 2>&1; then
         img="$T/demarrage.img"; dd if="$d" of="$img" bs=4M conv=sparse status=none
         zfs snapshot "rpool/ROOT/pve-1@avant-ventoy-$VMD-$(date +%H%M%S)"
@@ -622,7 +622,7 @@ fi
 if test_actif etcher; then
     debut etcher "clé Etcher : image officielle relue, vérifiée puis réécrite (reste démarrable)"
     : "${CONTENU:?CONTENU}"
-    img_ref="$CONTENU/etcher.img"; n=$(stat -c %s "$img_ref")
+    img_ref="$CONTENU/etcher.img"; n=$(stat -L -c %s "$img_ref")   # -L : CONTENU peut être fait de liens
     d=$(disque "$SERIE_SOURCE"); wipefs -qa "$d"
     dd if=/dev/urandom of="$d" bs=1M count=64 seek=$(( n / 1048576 + 8 )) conv=fsync status=none   # témoin après l'image
     dd if="$img_ref" of="$d" bs=4M conv=fsync status=none; partprobe "$d" 2>/dev/null || true
@@ -639,7 +639,7 @@ if test_actif etcher; then
     si cmp -s -n "$n" "$img_ref" "$d" -- "les $n premiers octets de la clé = l'image officielle (zone de démarrage comprise)" "contenu de la clé différent de l'image officielle"
     si [ "$(dd if="$d" bs=1M count=64 skip=$(( n / 1048576 + 8 )) status=none | tr -d '\0' | wc -c)" -eq 0 ] \
         -- "après l'image : effacé (témoin aléatoire remplacé par des zéros)" "après l'image : données d'origine encore présentes"
-    VMD=${VMID_DEMARRAGE:-$((VMID + 50))}
+    VMD=${VMID_DEMARRAGE:-$(( VMID + 50 > 999 ? VMID - 50 : VMID + 50 ))}
     if [ "$VMD" -le 999 ] && ! qm status "$VMD" >/dev/null 2>&1; then
         img="$T/demarrage.img"; dd if="$d" of="$img" bs=4M count=$(( n / 4194304 + 2 )) status=none
         zfs snapshot "rpool/ROOT/pve-1@avant-etcher-$VMD-$(date +%H%M%S)"
