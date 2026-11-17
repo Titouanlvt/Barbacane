@@ -82,6 +82,17 @@ message RequestImgDisk {
   uint64 id = 1;
 };
 
+// Barbacane (écart n° 11) : réécrire sur une clé l'image qu'elle porte déjà (clé Etcher, Rufus
+// « mode DD »), seulement si l'empreinte SHA-256 de ses premiers octets (à une frontière de
+// 2048 octets) figure dans la liste donnée (images officielles de l'administrateur). Rien n'est
+// écrit si aucune empreinte ne correspond. Réponses d'état ensuite, comme pour Wipe.
+message RequestRewriteImage {
+  uint64 id = 1;
+  repeated bytes sha256 = 2;
+  // Lecture limitée à cette taille (octets)
+  uint64 max_size = 3;
+};
+
 message Request {
   reserved 4; // removed opendevice
   oneof msg {
@@ -97,6 +108,7 @@ message Request {
     RequestImgDisk ImgDisk = 11;
     RequestWipe Wipe = 12;
     RequestEnd End = 13;
+    RequestRewriteImage RewriteImage = 14;
   }
 };
 
@@ -147,6 +159,9 @@ message ResponseImgDisk {
 message ResponseWipe {
 };
 
+message ResponseRewriteImage {
+};
+
 message Response {
   reserved 4; // removed opendevice
   oneof msg {
@@ -164,5 +179,6 @@ message Response {
     common.ResponseEnd End = 13;
     common.ResponseError Error = 14;
     common.ResponseStatus Status = 15;
+    ResponseRewriteImage RewriteImage = 16;
   }
 };

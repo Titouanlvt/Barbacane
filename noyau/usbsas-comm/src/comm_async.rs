@@ -147,5 +147,6 @@ protorequest_async!(
     SelectFiles,
     Report,
     UserId,
-    Wipe
+    Wipe,
+    RewriteImage
 );
