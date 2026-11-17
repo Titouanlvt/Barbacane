@@ -154,10 +154,20 @@ fn relief(bg: Color, fg: Color, _tranche: Option<Color>, status: button::Status)
         button::Status::Pressed => (Color { a: 0.82, ..bg }, fg),
         _ => (bg, fg),
     };
+    // Désactivé (ex. « Effacer cette clé… » avant le branchement) : fond proche de la page, donc
+    // bordure grise pour que le bouton reste visible.
+    let border = if matches!(status, button::Status::Disabled) {
+        Border::default()
+            .rounded(Radius::new(8))
+            .width(2)
+            .color(c().trait_)
+    } else {
+        Border::default().rounded(Radius::new(8))
+    };
     button::Style {
         background: Some(Background::Color(fond)),
         text_color: texte,
-        border: Border::default().rounded(Radius::new(8)),
+        border,
         shadow: Shadow::default(),
         snap: true,
     }
