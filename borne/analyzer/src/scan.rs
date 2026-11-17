@@ -277,14 +277,14 @@ impl Scanner<'_> {
                 ),
             );
         }
-        if listing.unpacked_size > PLANCHER_TAUX && listing.unpacked_size / node.entry.size.max(1) > l.max_ratio
+        if listing.unpacked_size > PLANCHER_TAUX
+            && listing.unpacked_size / node.entry.size.max(1) > l.max_ratio
         {
             return over_limit(
                 node,
                 format!(
                     "taux de compression suspect (bombe de décompression, plus de {} pour 1) : {}",
-                    l.max_ratio,
-                    node.entry.path
+                    l.max_ratio, node.entry.path
                 ),
             );
         }
@@ -341,14 +341,12 @@ impl Scanner<'_> {
                 ),
             );
         }
-        if real_size > PLANCHER_TAUX && real_size / node.entry.size.max(1) > l.max_ratio
-        {
+        if real_size > PLANCHER_TAUX && real_size / node.entry.size.max(1) > l.max_ratio {
             return over_limit(
                 node,
                 format!(
                     "taux de compression suspect (bombe de décompression, plus de {} pour 1) : {}",
-                    l.max_ratio,
-                    node.entry.path
+                    l.max_ratio, node.entry.path
                 ),
             );
         }
