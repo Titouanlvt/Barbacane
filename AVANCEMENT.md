@@ -1,7 +1,7 @@
 # Avancement — mission du 17/11/2026 (mis à jour par Claude)
 
 ## En cours
-- **BLOQUÉ** (19 h) : /etc/pve en lecture seule → campagne finale 920 arrêtée à « volumineux » (35 OK, 0 échec avant l'arrêt), preuve Etcher 2 non démarrée. Attente de `systemctl restart pve-cluster`.
+- Campagne finale 920 relancée (`logs/campagne-finale-2.log`) et preuve Etcher 3 (VM 961, `logs/preuve-etcher-3.log`) après redémarrage de pve-cluster.
 - Passage 8 : reel-etcher OK, reel-rufus-fat32 OK (25 OK) ; limites interrompu par le blocage.
 - Passage parallèle 7 (ISO 7de2d18 : ventoy, usb, limites) — `logs/parallele-7.log`.
 - Écart n° 11 (réécriture d'image Etcher vérifiée), branche `etcher-image` : code + tests unitaires OK ;
@@ -23,7 +23,6 @@
 - Correctifs d'interface : boutons sur une ligne, gris opaque + tranche grise, centrage, barre, bandeau.
 
 ## Bloquants
-- `/etc/pve` en lecture seule depuis la saturation de rpool : `systemctl restart pve-cluster` à faire par l'utilisateur (refusé à Claude).
 - Signature de production : phrase de passe de `barbacane-maj.key` inconnue (choix : clé de test du lab pour les preuves).
 
 ## Prochaines étapes
