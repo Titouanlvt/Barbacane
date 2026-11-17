@@ -1,5 +1,39 @@
 # Preuves : ce qui marche, ce qui ne marche pas, ce qui n'a pas pu être testé
 
+## Demandes du 17/11/2026 (clés démarrables, tests parallèles, espace de travail, 4 To, parcours)
+
+### Marche (avec la preuve)
+| Fonction | Preuve |
+|---|---|
+| Parcours unique : « Analyser » puis Copier vers une clé connue / Graver / Blanchir / Arrêter ici (4 boutons sur une ligne en 1280 px) | passages parallèles 5 et 6 (`parallele-*/`), captures `ventoy/02-resultat-analyse.png` |
+| Clé Ventoy blanchie **en gardant démarrable** : zone de démarrage reconstruite depuis le Ventoy embarqué (octet par octet), ISO piégée et `ventoy/` écartés, **la clé démarre** | [ventoy/](ventoy/) |
+| Liste blanche d'images officielles livrée par paquet signé (autre clé et version ancienne refusées) ; ISO Windows 11 de 8,3 Go copiée intacte | [liste-blanche/](liste-blanche/) (clé de signature de **test** du lab) |
+| Clés Rufus (FAT32, NTFS 6,3 Go), Etcher, bureau : sains intacts (sha256), piégés écartés, aucun EICAR | passage parallèle 5 (clés émulées) ; campagne 920 (vraies clés) |
+| Espace de travail chiffré éphémère (dm-crypt, clé jetée à chaque session), espace re-mesuré avant la copie, refus clair si trop gros | `docs/conception-espace-travail.md` ; Rufus NTFS 6,3 Go OK après correctif 90e720f |
+| Clé de 5,6 Go analysée et blanchie avec 8 Go de RAM (correctif « Remote server error », écart n° 8) | campagne 920 (`volumineux`) |
+| Tests en parallèle : borne modèle + clones liés, clés émulées, 3 bornes à la fois | `tests/proxmox/parallele.sh` ; passage 6 : 74 OK en 44 min |
+| Mesures de débit et extrapolation 4 To | [../performances.md](../performances.md) |
+
+### Ne marche pas (encore)
+| Point | État |
+|---|---|
+| Clé Rufus « mode ISO » / Etcher non reconnue : redevient non démarrable après blanchiment | voulu (zone de démarrage non vérifiable) ; avertissement à l'écran ; alternative sûre : Ventoy |
+| Réécriture d'une image Etcher vérifiée (liste blanche de l'image entière) | conçue (`docs/conception-demarrable.md`), pas encore faite (écart noyau à écrire) |
+| ISO Windows sans liste blanche | refusée avec une raison claire (« trop volumineux pour être ouvert ») : 1,8 million de fichiers dans `install.wim` |
+
+### Pas testé, et pourquoi
+| Point | Raison |
+|---|---|
+| Disque de 2 à 4 To, boîtier NVMe USB, UAS | pas de matériel ; limites connues dans `docs/performances.md` |
+| Signature avec la clé de **production** | phrase de passe connue de l'administrateur seul ; preuve faite avec une clé de test |
+| Borne physique | lab en VM ; clés USB réelles passées à la VM |
+
+### Bloquants
+- Aucun en cours.
+
+---
+
+
 Campagne du 15/11/2026, sur une borne installée **depuis une vraie clé USB** avec l'ISO
 `3189c66596521a81baaf0edaff1ebeeecdc95d0fed5cc08cedb0306dbd1c4259` (commit `a003c80`),
 pilotée uniquement par l'écran (souris QMP + OCR), produite par
