@@ -1375,7 +1375,7 @@ impl App {
         let optique_src = self.src.as_ref().is_some_and(est_optique);
         let deux_lignes = !optique_src && a.ventoy;
         let avertissement = !optique_src && a.demarrable_autre;
-        let hauteur_liste =
+        let hauteur_liste: f32 =
             130.0 - if deux_lignes { 74.0 } else { 0.0 } - if avertissement { 46.0 } else { 0.0 };
         let mut list = Column::new().spacing(8);
         let est_menace = |r: &str| r.contains("menace");
