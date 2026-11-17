@@ -92,7 +92,16 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - Tests : `tests/proxmox/parallele.sh` (borne modèle 940 installée depuis une clé émulée, clones
   941+ en parallèle, clés `virt:NOM`, copie figée des scripts). Les VMs de test sur le pool `nvme`.
   Piège : un script bash en cours d'exécution relit son fichier ; ne jamais le réécrire en place
-  (sed -i ou écriture + mv seulement).
+  (sed -i ou écriture + mv seulement). Le lanceur se relance depuis sa copie figée (`FIGE=1`),
+  détruit chaque clone fini ; `SCENARIOS="ventoy usb"` pour ne rejouer que certains scénarios.
+- Écart n° 10 : étiquette FAT12/16 lue à 0x2B (sinon `VTOYEFI` jamais reconnue). Ventoy prouvé
+  jusqu'au démarrage (`docs/preuves/ventoy/`).
+- Liste blanche d'images officielles prouvée avec une clé de signature de TEST du lab
+  (`~/cles-test` sur bu, ISO `barbacane-TEST-cle-lab.iso`) : `docs/preuves/liste-blanche/`.
+- Analyseur : fichiers simples d'un conteneur analysés sur 4 fils ; compteur en direct.
+- Écart n° 11 (branche `etcher-image`) : `RewriteImage` relit l'image d'une clé Etcher/Rufus DD,
+  empreinte à chaque frontière de 2048 octets, réécriture seulement si elle est dans la liste.
+- CI publique lisible sans `gh` : `curl api.github.com/repos/Titouanlvt/Barbacane/actions/runs`.
 
 ## Travail autonome (règles de l'utilisateur, 17/11/2026)
 - Toute commande longue : `timeout`, en arrière-plan avec journal dans `/root/BARBACANE/logs/`,
