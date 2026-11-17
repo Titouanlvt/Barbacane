@@ -225,7 +225,7 @@ fn job_for(app: &App, id: &str, b: &Option<Extension<Borne>>) -> Option<Arc<Job>
 }
 
 /// Octets libres sur le système de fichiers de `p` (statvfs).
-fn espace_libre(p: &std::path::Path) -> Option<u64> {
+pub(crate) fn espace_libre(p: &std::path::Path) -> Option<u64> {
     let c = std::ffi::CString::new(p.as_os_str().as_encoded_bytes()).ok()?;
     let mut st: libc::statvfs = unsafe { std::mem::zeroed() };
     // SAFETY : chemin terminé par NUL, structure de sortie initialisée.
@@ -324,6 +324,7 @@ fn run_scan(app: &App, job: &Job, tar_path: &std::path::Path, import: Option<std
         job,
         work: job.work.path().to_path_buf(),
         import,
+        officielles: scan::charger_officielles(app.conf.images_officielles.as_deref()),
     };
     // Sans antivirus, rien ne passe : l'analyse échoue (usbsas avorte le transfert).
     let res = av.and_then(|_| scanner.run(tar_path));

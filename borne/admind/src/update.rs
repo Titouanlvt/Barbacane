@@ -6,6 +6,7 @@
 //! manifest.json   {"format":1,"version":N,"date":"…","files":{"chemin":"sha256",…}}
 //! clamav/*.cvd|cld|cud   signatures ClamAV
 //! yara/*.yar|yara        règles YARA
+//! listes/images-officielles.sha256  images officielles (ISO, IMG, WIM) reconnues sans extraction
 //! debs/*.deb             paquets Debian (OS, usbsas, Barbacane)
 //! cles/maj.pub           (facultatif) nouvelle clé publique de signature
 //! ```
@@ -134,7 +135,7 @@ pub fn unpack(pkg: &Path, dst: &Path) -> Result<Manifest> {
         }
     }
     // Rien d'autre que le manifeste et les fichiers listés.
-    for dir in ["clamav", "yara", "debs", "cles"] {
+    for dir in ["clamav", "yara", "listes", "debs", "cles"] {
         if let Ok(rd) = std::fs::read_dir(dst.join(dir)) {
             for e in rd {
                 let rel = format!("{dir}/{}", e?.file_name().to_string_lossy());
@@ -219,9 +220,11 @@ pub fn apply(ctx: &Ctx) -> Result<Outcome> {
     );
     let yara = files_in(&work.path().join("yara"), &["yar", "yara"]);
     let debs = files_in(&work.path().join("debs"), &["deb"]);
+    let listes = files_in(&work.path().join("listes"), &["sha256"]);
 
     let mut done_clam = false;
     let mut done_yara = false;
+    let mut done_listes = false;
     let res: Result<()> = (|| {
         if !clam.is_empty() {
             replace_dir(&clam, &c.clamav_dir, &backup.join("clamav"))?;
@@ -234,7 +237,18 @@ pub fn apply(ctx: &Ctx) -> Result<Outcome> {
             done_yara = true;
             report += &format!("- règles YARA : {} fichier(s)\n", yara.len());
         }
-        if done_clam || done_yara {
+        if !listes.is_empty() {
+            for l in &listes {
+                verifier_liste(l)?;
+            }
+            replace_dir(&listes, &c.listes_dir, &backup.join("listes"))?;
+            done_listes = true;
+            report += &format!(
+                "- liste d'images officielles : {} image(s)\n",
+                listes.iter().map(|l| compter_lignes(l)).sum::<usize>()
+            );
+        }
+        if done_clam || done_yara || done_listes {
             ctx.run(&["systemctl", "restart", "barbacane-analyzer"])?;
         }
         Ok(())
@@ -246,6 +260,9 @@ pub fn apply(ctx: &Ctx) -> Result<Outcome> {
         }
         if done_yara {
             let _ = restore_dir(&c.yara_dir, &backup.join("yara"));
+        }
+        if done_listes {
+            let _ = restore_dir(&c.listes_dir, &backup.join("listes"));
         }
         let _ = ctx.run(&["systemctl", "restart", "clamav-daemon"]);
         let _ = ctx.run(&["systemctl", "restart", "barbacane-analyzer"]);
@@ -300,4 +317,29 @@ pub fn apply(ctx: &Ctx) -> Result<Outcome> {
         report,
         reboot,
     })
+}
+
+/// Liste d'images officielles : une ligne « <sha256 hexadécimal>  <nom> » par image, rien d'autre.
+fn verifier_liste(p: &Path) -> Result<()> {
+    let texte = std::fs::read_to_string(p).with_context(|| format!("{}", p.display()))?;
+    for (i, l) in texte.lines().enumerate() {
+        if l.trim().is_empty() || l.starts_with('#') {
+            continue;
+        }
+        let (h, nom) = l.split_once(char::is_whitespace).unwrap_or((l, ""));
+        if h.len() != 64 || !h.bytes().all(|b| b.is_ascii_hexdigit()) || nom.trim().is_empty() {
+            bail!("liste d'images officielles, ligne {} invalide", i + 1);
+        }
+    }
+    Ok(())
+}
+
+fn compter_lignes(p: &Path) -> usize {
+    std::fs::read_to_string(p)
+        .map(|t| {
+            t.lines()
+                .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+                .count()
+        })
+        .unwrap_or(0)
 }

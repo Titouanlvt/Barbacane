@@ -23,7 +23,7 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     # Analyseur : socket clamd
     if getent group clamav >/dev/null; then adduser --quiet barbacane-analyzer clamav; fi
 
-    install -d -m 0755 /var/lib/barbacane /var/lib/barbacane/yara
+    install -d -m 0755 /var/lib/barbacane /var/lib/barbacane/yara /var/lib/barbacane/listes
     # Ancien tmpfs de 6 Go de l'analyseur (débordait avec une clé de 5,5 Go sur 8 Go de RAM) :
     # remplacé par le volume chiffré éphémère barbacane-travail.
     rm -f /etc/systemd/system/barbacane-analyzer.service.d/tmpfs.conf

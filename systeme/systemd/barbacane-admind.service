@@ -10,7 +10,7 @@ RuntimeDirectory=barbacane
 RuntimeDirectoryMode=0755
 StateDirectory=barbacane/admin barbacane/export
 # Règles YARA : lisibles par l'analyseur (0755, créé par le postinst), pas en StateDirectory (0750)
-ReadWritePaths=/var/lib/barbacane/yara
+ReadWritePaths=/var/lib/barbacane/yara /var/lib/barbacane/listes
 StateDirectoryMode=0750
 UMask=0022
 NoNewPrivileges=no

@@ -67,6 +67,24 @@ pub struct Scanner<'a> {
     /// Lecture de la clé admin : les paquets `*.bcu` / `*.bcu.minisig` sont déposés ici, sans analyse
     /// (leur signature est vérifiée par barbacane-admind).
     pub import: Option<PathBuf>,
+    /// Images officielles reconnues sans extraction (sha256 → nom), voir `charger_officielles`
+    pub officielles: std::collections::HashMap<String, String>,
+}
+
+/// Lit la liste d'images officielles ; absente ou illisible : liste vide (rien n'est reconnu).
+pub fn charger_officielles(p: Option<&Path>) -> std::collections::HashMap<String, String> {
+    let Some(texte) = p.and_then(|p| std::fs::read_to_string(p).ok()) else {
+        return Default::default();
+    };
+    texte
+        .lines()
+        .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+        .filter_map(|l| {
+            let (h, nom) = l.split_once(char::is_whitespace)?;
+            (h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()))
+                .then(|| (h.to_ascii_lowercase(), nom.trim().to_string()))
+        })
+        .collect()
 }
 
 const TAR_DATA_DIR: &str = "data/";
@@ -182,6 +200,18 @@ impl Scanner<'_> {
         // Conteneur de 2 Go ou plus (install.wim, ISO d'installation) : ClamAV ne peut pas le lire
         // d'un bloc ; il est ouvert et chaque fichier qu'il contient est analysé. S'il est sain
         // fichier par fichier, il est copié intact (une clé Windows reste utilisable).
+        // Image officielle de la liste de l'administrateur (mise à jour signée) : reconnue par son
+        // empreinte, ni ouverte ni analysée (une ISO Windows contient plus d'un million de
+        // fichiers dans install.wim : impossible à extraire dans l'espace de travail).
+        if let Some(nom) = self.officielles.get(&entry.sha256) {
+            entry.reason = format!("image officielle reconnue (liste de l'administrateur : {nom})");
+            entry.engine = Some("liste blanche".into());
+            return Node {
+                entry,
+                children: Vec::new(),
+                limit: false,
+            };
+        }
         let kind = sniff(local);
         let trop_gros = kind.is_some() && size >= crate::av::CLAMAV_TAILLE_MAX;
         let analyse = if trop_gros {
@@ -313,6 +343,15 @@ impl Scanner<'_> {
                 return refuse(node, "archive chiffrée : mot de passe incorrect".into());
             }
             Ok(Outcome::Failed(why)) => {
+                // Espace de travail plein pendant l'extraction : le dire, c'est la vraie cause.
+                if crate::espace_libre(&out).is_some_and(|l| l < 256 * 1024 * 1024) {
+                    return refuse(
+                        node,
+                        "trop volumineux pour être ouvert sur cette borne (espace de travail \
+                         plein pendant l'extraction)"
+                            .into(),
+                    );
+                }
                 return refuse(node, format!("extraction impossible ({why})"));
             }
             Err(err) => return over_limit(node, format!("extraction refusée : {err}")),

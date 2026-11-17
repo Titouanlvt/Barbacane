@@ -17,6 +17,9 @@
 #     --sans-clamav            ne pas inclure de signatures ClamAV
 #     --yara-sources FICHIER   une source par ligne : URL git (https://…git) ou URL d'un fichier .yar
 #     --yara DOSSIER           règles locales (*.yar, *.yara)
+#     --images-officielles FICHIER  liste « sha256  nom » d'images officielles (ISO Windows,
+#                              Debian…) que la borne reconnaît sans les ouvrir ; calculer chaque
+#                              empreinte sur l'image téléchargée chez l'éditeur (sha256sum)
 #     --etat-borne FICHIER     dpkg-status exporté par la borne : inclut les mises à jour Debian
 #     --debs DOSSIER           paquets .deb supplémentaires (usbsas, Barbacane)
 #     --nouvelle-cle FICHIER   clé publique minisign remplaçant l'actuelle après application
@@ -27,7 +30,7 @@ set -euo pipefail
 die() { echo "ERREUR : $*" >&2; exit 1; }
 etape() { echo; echo "== $*"; }
 
-CLE='' SORTIE='' VERSION='' CLAMAV='' SANS_CLAMAV=0 YARA_SRC='' YARA_DIR='' ETAT='' DEBS='' NOUVELLE_CLE=''
+CLE='' SORTIE='' VERSION='' CLAMAV='' SANS_CLAMAV=0 YARA_SRC='' YARA_DIR='' ETAT='' DEBS='' NOUVELLE_CLE='' IMAGES=''
 while [ $# -gt 0 ]; do
     case "$1" in
         --cle) CLE="$2"; shift 2 ;;
@@ -37,6 +40,7 @@ while [ $# -gt 0 ]; do
         --sans-clamav) SANS_CLAMAV=1; shift ;;
         --yara-sources) YARA_SRC="$2"; shift 2 ;;
         --yara) YARA_DIR="$2"; shift 2 ;;
+        --images-officielles) IMAGES="$2"; shift 2 ;;
         --etat-borne) ETAT="$2"; shift 2 ;;
         --debs) DEBS="$2"; shift 2 ;;
         --nouvelle-cle) NOUVELLE_CLE="$2"; shift 2 ;;
@@ -106,6 +110,16 @@ if [ -n "$YARA_SRC$YARA_DIR" ]; then
         done
     fi
     echo "$(find "$P/yara" -type f | wc -l) fichier(s) de règles"
+fi
+
+if [ -n "$IMAGES" ]; then
+    etape "Images officielles"
+    [ -f "$IMAGES" ] || die "--images-officielles : fichier introuvable"
+    grep -vE '^\s*(#|$)' "$IMAGES" | while read -r h nom; do
+        if ! [[ "$h" =~ ^[0-9a-fA-F]{64}$ ]] || [ -z "$nom" ]; then die "ligne invalide : $h $nom (attendu : sha256  nom)"; fi
+    done
+    mkdir -p "$P/listes"; grep -vE '^\s*(#|$)' "$IMAGES" > "$P/listes/images-officielles.sha256"
+    echo "$(wc -l < "$P/listes/images-officielles.sha256") image(s) officielle(s)"
 fi
 
 if [ -n "$ETAT" ]; then

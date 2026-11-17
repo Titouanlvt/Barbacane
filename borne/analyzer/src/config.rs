@@ -14,6 +14,9 @@ pub struct Config {
     pub clamd_socket: PathBuf,
     /// Répertoire des règles YARA (*.yar, *.yara), facultatif
     pub yara_rules_dir: Option<PathBuf>,
+    /// Liste d'images officielles (« sha256  nom » par ligne), livrée par mise à jour signée :
+    /// une image dont l'empreinte y figure est reconnue sans être ouverte.
+    pub images_officielles: Option<PathBuf>,
     /// Exécutable 7-Zip
     pub seven_zip: PathBuf,
     /// Exécutable bubblewrap ; vide = pas de bac à sable (tests uniquement)
@@ -81,6 +84,7 @@ impl Default for Config {
             work_dir: "/var/lib/barbacane/analyzer".into(),
             clamd_socket: "/run/clamav/clamd.ctl".into(),
             yara_rules_dir: Some("/var/lib/barbacane/yara".into()),
+            images_officielles: Some("/var/lib/barbacane/listes/images-officielles.sha256".into()),
             seven_zip: "/usr/bin/7z".into(),
             bwrap: Some("/usr/bin/bwrap".into()),
             stage_dir: "/var/lib/barbacane/travail/sortie".into(),

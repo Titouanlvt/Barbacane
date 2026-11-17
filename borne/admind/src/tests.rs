@@ -13,6 +13,7 @@ fn ctx(dir: &Path) -> Ctx {
         reports_dir: dir.join("rapports"),
         clamav_dir: dir.join("clamav"),
         yara_dir: dir.join("yara"),
+        listes_dir: dir.join("listes"),
         update_pubkey: dir.join("maj.pub"),
         dry_run: true,
         ..Config::default()
@@ -23,6 +24,7 @@ fn ctx(dir: &Path) -> Ctx {
         &conf.reports_dir,
         &conf.clamav_dir,
         &conf.yara_dir,
+        &conf.listes_dir,
     ] {
         std::fs::create_dir_all(d).unwrap();
     }
@@ -232,7 +234,17 @@ fn paquet_x(
     )
     .unwrap();
     std::fs::write(src.join("yara/regles.yar"), "rule r { condition: false }").unwrap();
-    let mut rels = vec!["clamav/daily.cld", "yara/regles.yar"];
+    std::fs::create_dir_all(src.join("listes")).unwrap();
+    std::fs::write(
+        src.join("listes/images-officielles.sha256"),
+        format!("{}  Win11_26H2_French_x64.iso\n", "ab".repeat(32)),
+    )
+    .unwrap();
+    let mut rels = vec![
+        "clamav/daily.cld",
+        "yara/regles.yar",
+        "listes/images-officielles.sha256",
+    ];
     if let Some(c) = cle {
         std::fs::create_dir_all(src.join("cles")).unwrap();
         std::fs::copy(c, src.join("cles/maj.pub")).unwrap();
@@ -326,6 +338,15 @@ fn mises_a_jour() {
             .contains(":2:")
     );
     assert!(c.conf.yara_dir.join("regles.yar").is_file());
+    assert!(
+        std::fs::read_to_string(c.conf.listes_dir.join("images-officielles.sha256"))
+            .unwrap()
+            .contains("Win11")
+    );
+    assert!(
+        r["report"].as_str().unwrap_or_default().contains("1 image"),
+        "{r}"
+    );
     assert_eq!(c.update_version(), 2);
     assert!(c.status()["signatures_age_days"].as_u64().is_some());
 

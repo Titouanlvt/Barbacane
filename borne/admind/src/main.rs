@@ -32,6 +32,8 @@ pub struct Config {
     pub reports_dir: PathBuf,
     pub clamav_dir: PathBuf,
     pub yara_dir: PathBuf,
+    /// Listes fournies par les mises à jour signées (images officielles reconnues)
+    pub listes_dir: PathBuf,
     pub update_pubkey: PathBuf,
     /// Tests : n'exécute aucune commande système (systemctl, apt-get, reboot…)
     pub dry_run: bool,
@@ -50,6 +52,7 @@ impl Default for Config {
             reports_dir: "/var/lib/barbacane/rapports".into(),
             clamav_dir: "/var/lib/clamav".into(),
             yara_dir: "/var/lib/barbacane/yara".into(),
+            listes_dir: "/var/lib/barbacane/listes".into(),
             update_pubkey: "/etc/barbacane/maj.pub".into(),
             dry_run: false,
         }
