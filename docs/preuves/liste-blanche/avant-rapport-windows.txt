@@ -1,0 +1,15 @@
+BARBACANE — RAPPORT DE TRANSFERT
+================================
+
+Date            : 17/11/2026 16:37:54
+Clé source      : QEMU QEMU USB HARDDRIVE (n° de série BBVIRTSOURCE, 46f4:0001)
+Identifiant     : 02b8cbb5-8452-46de-a6c6-c2fb876c94e0
+Antivirus       : ClamAV ClamAV 1.4.3 (base 28186 du Tue Nov 17 07:30:05 2026) + YARA
+
+FICHIERS COPIÉS (0)
+
+FICHIERS REFUSÉS (1)
+  [REFUSÉ] Win11_26H2_French_x64.iso
+           raison : trop volumineux pour être ouvert sur cette borne (espace de travail plein pendant l'extraction)
+
+Les fichiers refusés ne sont pas copiés. En cas de doute, contactez votre administrateur.

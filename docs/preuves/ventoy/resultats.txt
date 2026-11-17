@@ -1,0 +1,18 @@
+OK [clone] : borne clonée de 940 (installée, PIN choisi, clé de sortie enrôlée) : accueil affiché
+OK [ventoy] : clé Ventoy reconnue : « Blanchir en gardant démarrable » proposé
+OK [ventoy] : secteur 0 : code de démarrage = boot.img embarqué
+OK [ventoy] : secteur 0 (octets 400-439) = boot.img embarqué
+OK [ventoy] : secteurs 1-2047 = core.img embarqué
+OK [ventoy] : partition VTOYEFI (type ef) à partir du secteur 25100288
+OK [ventoy] : partition VTOYEFI = ventoy.disk.img embarqué
+OK [ventoy] : secteur 0 d'origine remplacé
+OK [ventoy] : conservé à l'identique : ISO/debian-13.7.0-amd64-netinst.iso
+OK [ventoy] : conservé à l'identique : notes.txt
+OK [ventoy] : non conservé : ISO/outils-piege.iso
+OK [ventoy] : non conservé : ventoy/ventoy.json
+OK [ventoy] : dossier ventoy/ (configuration, greffons) absent
+OK [ventoy] : aucun EICAR sur la clé
+OK [ventoy] : la clé démarre : menu Ventoy affiché (05-demarrage-ventoy.png)
+OK [journal] : grub.cfg : super-utilisateur et mot de passe (édition protégée)
+OK [journal] : grub.cfg : entrée par défaut démarrable sans mot de passe
+OK [journal] : journal : clavier USB vu par hid-dealer
