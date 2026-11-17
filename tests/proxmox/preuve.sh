@@ -652,7 +652,7 @@ if test_actif vide; then
         lire 01-resultat >/dev/null; ok "clé vide : la borne affiche un résultat sans planter"
     else ko "clé vide : aucun résultat"; fi
     capture 01-resultat
-    cliquer "Abandonner" || cliquer "Recommencer"
+    cliquer "Arrêter ici" || cliquer "Abandonner" || cliquer "Recommencer"
     debrancher usb1
     si voir "à analyser" 60 -- "retour à l'accueil" "borne bloquée après la clé vide"
 fi
@@ -664,7 +664,7 @@ if test_actif pleine; then
     df -h "$T/m" > "$D/occupation.txt"; demonter "$D/cle.sha256"
     brancher usb1 "$SERIE_AUTRE"; attendre "Clé détectée" 60; cliquer "Analyser"
     si voir "Résultat de l'analyse" 1800 "$D/01-resultat.png" -- "clé pleine analysée ($(grep -c . "$D/cle.sha256") fichiers)" "clé pleine : pas de résultat"
-    lire 01-resultat >/dev/null; cliquer "Abandonner"; debrancher usb1
+    lire 01-resultat >/dev/null; { cliquer "Arrêter ici" || cliquer "Abandonner"; }; debrancher usb1
     si voir "à analyser" 60 -- "retour à l'accueil" "borne bloquée après la clé pleine"
 fi
 if test_actif illisible; then
