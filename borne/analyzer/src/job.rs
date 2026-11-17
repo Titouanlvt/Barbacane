@@ -121,6 +121,13 @@ impl Job {
         }
     }
 
+    /// Un fichier de plus analysé (contenu des archives et des images compris) : le compteur
+    /// « avec le contenu des archives » avance pendant l'analyse d'une grosse ISO, au lieu de
+    /// rester figé jusqu'à la fin du fichier racine.
+    pub fn compter_analyse(&self) {
+        self.lock().scanned += 1;
+    }
+
     /// Bloque le fil d'analyse jusqu'à la réponse de l'utilisateur ou l'expiration du délai.
     pub fn ask_password(
         &self,

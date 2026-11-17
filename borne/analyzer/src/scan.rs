@@ -223,6 +223,7 @@ impl Scanner<'_> {
         } else {
             self.engines.scan(local)
         };
+        self.job.compter_analyse();
         match analyse {
             Ok(Detection::Clean) => (),
             Ok(Detection::Found { engine, name }) => {
