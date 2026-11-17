@@ -657,6 +657,7 @@ impl App {
             dst,
             wipe,
             demarrable: self.demarrable && self.mode == Mode::Blanchir,
+            image: self.demarrable && self.mode == Mode::Blanchir && an.demarrable_autre,
             job: an.report.id.clone(),
         });
         Task::none()
@@ -816,13 +817,22 @@ impl App {
                             .unwrap_or(0)
                     )),
                     petit("Les fichiers refusés seront définitivement supprimés de la clé."),
-                    petit(if self.demarrable {
-                        "Clé démarrable : Ventoy est réinstallé depuis la version de la borne ; \
+                    petit(
+                        match (
+                            self.demarrable,
+                            self.analysis.as_ref().is_some_and(|a| a.demarrable_autre)
+                        ) {
+                            (true, false) =>
+                                "Clé démarrable : Ventoy est réinstallé depuis la version de la borne ; \
                          la partie démarrage d'origine, la configuration et les greffons Ventoy \
-                         (dossier ventoy) ne sont pas conservés."
-                    } else {
-                        ""
-                    }),
+                         (dossier ventoy) ne sont pas conservés.",
+                            (true, true) =>
+                                "Clé démarrable : la borne relit l'image de la clé ; si c'est une \
+                         image officielle déclarée par l'administrateur, la clé est effacée puis \
+                         cette image est réécrite à l'identique. Sinon, rien n'est modifié.",
+                            _ => "",
+                        }
+                    ),
                 ]),
                 Space::new().height(20),
                 row![
@@ -1436,7 +1446,12 @@ impl App {
         // Hauteur en 1280×768-800 : la liste des refus cède la place à la 2e ligne de boutons
         // (clé Ventoy) et à l'avertissement des clés Rufus/Etcher ; les boutons ne s'écrasent pas.
         let optique_src = self.src.as_ref().is_some_and(est_optique);
-        let deux_lignes = !optique_src && a.ventoy;
+        // Clé Etcher / Rufus « mode DD » : proposé seulement si l'administrateur a déclaré des
+        // images officielles (écart n° 11) ; la borne vérifie l'image avant d'écrire.
+        let image_possible = !optique_src
+            && a.demarrable_autre
+            && !barbacane_parcours::images_officielles(barbacane_parcours::LISTE_IMAGES).is_empty();
+        let deux_lignes = !optique_src && (a.ventoy || image_possible);
         let avertissement = !optique_src && a.demarrable_autre;
         let hauteur_liste: f32 =
             130.0 - if deux_lignes { 74.0 } else { 0.0 } - if avertissement { 46.0 } else { 0.0 };

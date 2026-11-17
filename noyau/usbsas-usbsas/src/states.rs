@@ -51,6 +51,7 @@ pub enum State {
     TransferDst(TransferDstState),
     ImgDisk(ImgDiskState),
     Wipe(WipeState),
+    RewriteImage(RewriteImageState),
     End(EndState),
     /// Children are ended, the server exits
     Exit,
@@ -70,6 +71,7 @@ impl State {
             State::TransferDst(s) => s.run(comm, children),
             State::Wipe(s) => s.run(comm, children),
             State::ImgDisk(s) => s.run(comm, children),
+            State::RewriteImage(s) => s.run(comm, children),
             State::End(s) => s.run(comm, children),
             State::Exit => Ok(State::Exit),
         }
@@ -284,6 +286,26 @@ impl RunState for InitState {
                     }
                     _ => {
                         comm.error("no matching device for imaging")?;
+                        continue;
+                    }
+                },
+                // Barbacane (écart n° 11)
+                Msg::RewriteImage(req) => match devices.remove(&req.id) {
+                    Some(Device::Usb(dev)) => {
+                        let mut hashes = Vec::new();
+                        for h in &req.sha256 {
+                            hashes.push(<[u8; 32]>::try_from(h.as_slice()).map_err(|_| {
+                                anyhow!("SHA-256 de {} octets au lieu de 32", h.len())
+                            })?);
+                        }
+                        return Ok(State::RewriteImage(RewriteImageState {
+                            device: dev,
+                            hashes,
+                            max_size: req.max_size,
+                        }));
+                    }
+                    _ => {
+                        comm.error("no matching device for image rewrite")?;
                         continue;
                     }
                 },
@@ -1463,6 +1485,182 @@ impl RunState for WipeState {
         Ok(State::End(EndState {
             report: Some(report),
         }))
+    }
+}
+
+/// Barbacane (écart n° 11) : la clé porte une image disque (Etcher, Rufus « mode DD »). Ses
+/// premiers octets sont lus dans l'image de session de files2fs et hachés au fil de la lecture ;
+/// à chaque frontière de 2048 octets, l'empreinte est comparée à la liste des images officielles.
+/// Aucune correspondance : erreur, **rien n'est écrit**. Correspondance sur N octets : la clé est
+/// entièrement effacée, puis ces N octets, ceux-là mêmes qui ont été hachés, sont réécrits.
+/// La zone de démarrage réécrite est donc exactement celle de l'image officielle.
+pub struct RewriteImageState {
+    device: UsbDevice,
+    hashes: Vec<[u8; 32]>,
+    max_size: u64,
+}
+
+/// Taille d'un bloc ISO 9660 : une image officielle en fait un nombre entier.
+const BLOC_IMAGE: usize = 2048;
+
+/// Hache `data` par blocs de `BLOC_IMAGE` à la suite de `hasher` (déjà `deja` octets) ; renvoie
+/// la longueur totale à la première empreinte de `hashes` atteinte à une frontière de bloc.
+pub(crate) fn chercher_image(
+    hasher: &mut Sha256,
+    deja: u64,
+    data: &[u8],
+    hashes: &[[u8; 32]],
+) -> Option<u64> {
+    let mut n = deja;
+    let mut reste = data;
+    while !reste.is_empty() {
+        // jusqu'à la prochaine frontière de bloc (la lecture précédente a pu s'arrêter avant)
+        let jusqu = BLOC_IMAGE - (n % BLOC_IMAGE as u64) as usize;
+        let (bloc, suite) = reste.split_at(jusqu.min(reste.len()));
+        hasher.update(bloc);
+        n += bloc.len() as u64;
+        reste = suite;
+        if n.is_multiple_of(BLOC_IMAGE as u64) {
+            let d: [u8; 32] = hasher.clone().finalize().into();
+            if hashes.contains(&d) {
+                return Some(n);
+            }
+        }
+    }
+    None
+}
+
+/// Vecteur de bits (ordre Lsb0, comme files2fs) des `secteurs` premiers secteurs.
+pub(crate) fn bitvec_debut(secteurs: u64) -> Vec<u8> {
+    let mut v = vec![0xFFu8; secteurs.div_ceil(8) as usize];
+    if secteurs % 8 != 0
+        && let Some(last) = v.last_mut()
+    {
+        *last = (1u8 << (secteurs % 8)) - 1;
+    }
+    v
+}
+
+impl RunState for RewriteImageState {
+    fn run(mut self, comm: &mut impl ProtoRespUsbsas, children: &mut Children) -> Result<State> {
+        info!(
+            "rewrite image {} ({} known images)",
+            self.device,
+            self.hashes.len()
+        );
+        comm.rewriteimage(proto::usbsas::ResponseRewriteImage {})?;
+        if self.hashes.is_empty() {
+            bail!("aucune image officielle connue");
+        }
+        let rep = children
+            .scsi2files
+            .comm
+            .opendevice(proto::files::RequestOpenDevice {
+                busnum: self.device.busnum,
+                devnum: self.device.devnum,
+            })?;
+        let (block_size, dev_size) = (rep.block_size, rep.dev_size);
+        if block_size == 0 || BLOC_IMAGE as u64 % block_size != 0 {
+            bail!("taille de secteur non prise en charge : {block_size}");
+        }
+        self.device.block_size = Some(block_size);
+        self.device.dev_size = Some(dev_size);
+        children
+            .files2fs
+            .comm
+            .writeraw(proto::writedst::RequestWriteRaw {})?;
+
+        // 1. Lecture et empreinte, sans rien écrire sur la clé
+        let limite = self.max_size.min(dev_size) / block_size * block_size;
+        let mut hasher = Sha256::new();
+        let (mut lu, mut offset) = (0u64, 0u64);
+        let mut trouve = None;
+        while lu < limite {
+            let count = (READ_FILE_MAX_SIZE.min(limite - lu)) / block_size;
+            let rep = children
+                .scsi2files
+                .comm
+                .readsectors(proto::files::RequestReadSectors { offset, count })?;
+            trouve = chercher_image(&mut hasher, lu, &rep.data, &self.hashes);
+            lu += rep.data.len() as u64;
+            offset += count;
+            children
+                .files2fs
+                .comm
+                .writedata(proto::writedst::RequestWriteData { data: rep.data })?;
+            comm.status(lu, limite, false, Status::DiskImg)?;
+            if trouve.is_some() {
+                break;
+            }
+        }
+        let Some(taille) = trouve else {
+            bail!("image non reconnue : elle ne figure pas dans la liste de l'administrateur");
+        };
+        info!("official image recognised ({taille} bytes), rewriting");
+        comm.status(taille, taille, true, Status::DiskImg)?;
+
+        // 2. Effacement complet, puis réécriture des octets hachés. scsi2files garde la clé
+        // ouverte (interface USB réservée) : il est arrêté d'abord, sinon fs2dev obtient
+        // « Resource busy » (constaté sur la borne de preuve, 17/11/2026).
+        children.scsi2files.end()?;
+        children.scsi2files.wait()?;
+        children
+            .fs2dev
+            .unlock_with((u64::from(self.device.devnum) << 32) | u64::from(self.device.busnum))?;
+        children.fs2dev.comm.wipe(proto::fs2dev::RequestWipe {})?;
+        self.forward_status(comm, &mut children.fs2dev.comm)?;
+        let bv = bitvec_debut(taille.div_ceil(512));
+        let mut morceaux = bv.chunks(1024 * 1024).peekable();
+        while let Some(m) = morceaux.next() {
+            children
+                .fs2dev
+                .comm
+                .loadbitvec(proto::fs2dev::RequestLoadBitVec {
+                    chunk: m.to_vec(),
+                    last: morceaux.peek().is_none(),
+                })?;
+        }
+        children
+            .fs2dev
+            .comm
+            .writefs(proto::fs2dev::RequestWriteFs {})?;
+        self.forward_status(comm, &mut children.fs2dev.comm)?;
+        let report = crate::report_wipe(self.device);
+        info!("image rewrite done");
+        comm.done(Status::AllDone)?;
+        Ok(State::End(EndState {
+            report: Some(report),
+        }))
+    }
+}
+
+#[cfg(test)]
+mod tests_image {
+    use super::*;
+
+    #[test]
+    fn image_reconnue_a_la_bonne_frontiere() {
+        let image: Vec<u8> = (0..10_240u32).map(|i| (i % 251) as u8).collect();
+        let h: [u8; 32] = Sha256::digest(&image).into();
+        let mut cle = image.clone();
+        cle.extend(std::iter::repeat_n(7u8, 8192)); // reste de la clé
+        // lecture en deux morceaux, coupés hors frontière de bloc
+        let mut hs = Sha256::new();
+        assert_eq!(chercher_image(&mut hs, 0, &cle[..3000], &[h]), None);
+        assert_eq!(
+            chercher_image(&mut hs, 3000, &cle[3000..], &[h]),
+            Some(10_240)
+        );
+        // empreinte inconnue : jamais reconnue
+        let mut hs = Sha256::new();
+        assert_eq!(chercher_image(&mut hs, 0, &cle, &[[0u8; 32]]), None);
+    }
+
+    #[test]
+    fn bitvec_des_premiers_secteurs() {
+        assert_eq!(bitvec_debut(8), vec![0xFF]);
+        assert_eq!(bitvec_debut(10), vec![0xFF, 0b11]);
+        assert_eq!(bitvec_debut(20).len(), 3);
     }
 }
 

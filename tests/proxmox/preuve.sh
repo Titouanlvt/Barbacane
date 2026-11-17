@@ -601,7 +601,7 @@ if test_actif ventoy; then
     si ! grep -rlaq 'EICAR-STANDARD-ANTIVIRUS-TEST-FILE' "$T/m" -- "aucun EICAR sur la clé" "EICAR présent"
     umount "$T/m"
     # Démarrage : copie de la clé dans une VM jetable (BIOS), menu Ventoy listant l'ISO conservée
-    VMD=${VMID_DEMARRAGE:-$((VMID + 50))}
+    VMD=${VMID_DEMARRAGE:-$(( VMID + 50 > 999 ? VMID - 50 : VMID + 50 ))}
     if [ "$VMD" -le 999 ] && ! qm status "$VMD" >/dev/null 2>&1; then
         img="$T/demarrage.img"; dd if="$d" of="$img" bs=4M conv=sparse status=none
         zfs snapshot "rpool/ROOT/pve-1@avant-ventoy-$VMD-$(date +%H%M%S)"
@@ -624,6 +624,44 @@ if test_actif veille; then
     si grep -qi "touchez" "$D/01-veille.txt" -- "écran de veille affiché après 10 min (01-veille.png)" "écran de veille absent"
     "${B[@]}" xy 640 400
     si voir "à analyser" 30 "$D/02-reveil.png" -- "réveil au toucher : accueil de nouveau affiché" "pas de réveil au toucher"
+fi
+
+# === etcher : clé Etcher (ISO hybride brute) réécrite à l'identique (écart n° 11) ============
+# CONTENU/etcher.img = l'ISO officielle elle-même ; son empreinte doit figurer dans la liste des
+# images officielles de la borne (paquet signé appliqué à l'étape maj, MAJ=… avec cette liste).
+if test_actif etcher; then
+    debut etcher "clé Etcher : image officielle relue, vérifiée puis réécrite (reste démarrable)"
+    : "${CONTENU:?CONTENU}"
+    img_ref="$CONTENU/etcher.img"; n=$(stat -L -c %s "$img_ref")   # -L : CONTENU peut être fait de liens
+    d=$(disque "$SERIE_SOURCE"); wipefs -qa "$d"
+    dd if=/dev/urandom of="$d" bs=1M count=64 seek=$(( n / 1048576 + 8 )) conv=fsync status=none   # témoin après l'image
+    dd if="$img_ref" of="$d" bs=4M conv=fsync status=none; partprobe "$d" 2>/dev/null || true
+    brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120 "$D/01-cle-detectee.png"
+    cliquer "Analyser"
+    attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
+    si grep -q "gardant démarrable" "$D/02-resultat-analyse.txt" -- "clé Etcher : « Blanchir en gardant démarrable » proposé (liste d'images non vide)" "choix démarrable absent"
+    cliquer "Blanchir en gardant"
+    attendre "Maintenir pour effacer" 60 "$D/03-confirmation.png"; lire 03-confirmation >/dev/null
+    "${B[@]}" maintenir "Maintenir pour"
+    attendre "Vous pouvez retirer" 10800 "$D/04-termine.png"
+    debrancher usb1
+    d=$(disque "$SERIE_SOURCE"); sleep 2
+    si cmp -s -n "$n" "$img_ref" "$d" -- "les $n premiers octets de la clé = l'image officielle (zone de démarrage comprise)" "contenu de la clé différent de l'image officielle"
+    si [ "$(dd if="$d" bs=1M count=64 skip=$(( n / 1048576 + 8 )) status=none | tr -d '\0' | wc -c)" -eq 0 ] \
+        -- "après l'image : effacé (témoin aléatoire remplacé par des zéros)" "après l'image : données d'origine encore présentes"
+    VMD=${VMID_DEMARRAGE:-$(( VMID + 50 > 999 ? VMID - 50 : VMID + 50 ))}
+    if [ "$VMD" -le 999 ] && ! qm status "$VMD" >/dev/null 2>&1; then
+        img="$T/demarrage.img"; dd if="$d" of="$img" bs=4M count=$(( n / 4194304 + 2 )) status=none
+        zfs snapshot "rpool/ROOT/pve-1@avant-etcher-$VMD-$(date +%H%M%S)"
+        qm create "$VMD" --name barbacane-etcher-test --memory 2048 --cores 2 --vga std \
+            --args "-drive if=none,id=vk,file=$img,format=raw -device usb-ehci,id=ve -device usb-storage,bus=ve.0,drive=vk,bootindex=0" >/dev/null
+        qm start "$VMD"; sleep 20   # menu de l'ISO (Debian lance l'entrée par défaut après 30 s)
+        B2=(python3 "$ICI/borne.py" "$VMD"); "${B2[@]}" capture "$D/05-demarrage.png"
+        "${B2[@]}" lire "$D/05-demarrage.png" > "$D/05-demarrage.txt" 2>/dev/null || true
+        si grep -qiE "debian|install|boot|linux|speech|synthesis" "$D/05-demarrage.txt" -- "la clé démarre : menu de l'image affiché (05-demarrage.png)" "menu de démarrage non lu à l'écran (voir 05-demarrage.png)"
+        qm stop "$VMD" >/dev/null; qm destroy "$VMD" --purge >/dev/null; rm -f "$img"
+    else non_teste "démarrage : VM $VMD indisponible"; fi
+    attendre "à analyser" 300 || true
 fi
 
 # === export des journaux et rapports =====================================================

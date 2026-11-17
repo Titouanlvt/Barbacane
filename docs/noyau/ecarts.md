@@ -119,3 +119,20 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
   série) au lieu de 0x2B..0x36.
 - Correctif : lecture aux octets 0x2B..0x36 (même structure que FAT32, décalée de 0x1C).
 - Test : `tests/proxmox/preuve.sh`, étape `ventoy` (choix « démarrable » affiché).
+
+### 11. Réécriture d'une image officielle vérifiée (`usbsas-usbsas`, protocole)
+- Besoin (17/11/2026) : une clé Etcher ou Rufus « mode DD » porte une image disque complète
+  (ISO hybride). Le blanchiment classique la rend non démarrable ; sa zone de démarrage ne peut
+  pas être analysée. Si l'image est une image **officielle** déclarée par l'administrateur (liste
+  signée, la même que celle de l'analyseur), la remettre à l'identique est sûr.
+- Correctif : requête `RewriteImage { id, sha256[], max_size }`, état `RewriteImageState` :
+  1. lecture des secteurs de la clé (scsi2files) vers l'image de session (files2fs en mode
+     brut, comme `ImgDisk`), avec une empreinte SHA-256 calculée au fil de la lecture et
+     comparée à la liste à chaque frontière de 2048 octets (taille d'un bloc ISO 9660) ;
+  2. **aucune correspondance** : erreur, rien n'est écrit sur la clé ;
+  3. correspondance sur N octets : effacement complet (fs2dev), puis écriture des N premiers
+     octets de l'image de session — exactement ceux qui ont été hachés — avec un vecteur de
+     bits construit par usbsas.
+- Limite : lecture bornée à `max_size` (16 Gio côté borne).
+- Tests : `states.rs` (`image_reconnue_a_la_bonne_frontiere`, `bitvec_des_premiers_secteurs`),
+  `parcours` (`liste_images_lue`).

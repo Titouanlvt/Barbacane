@@ -620,6 +620,48 @@ pub fn write_demarrable(
     write_mode(comm, stage, dst, true, ev)
 }
 
+/// Liste des images officielles livrée par mise à jour signée (aussi lue par l'analyseur).
+pub const LISTE_IMAGES: &str = "/var/lib/barbacane/listes/images-officielles.sha256";
+
+/// Lecture d'une image disque limitée à 16 Gio (les ISO d'installation font moins de 10 Go).
+pub const IMAGE_MAX: u64 = 16 << 30;
+
+/// Empreintes SHA-256 de la liste (« sha256  nom » par ligne) ; absente : liste vide.
+pub fn images_officielles(chemin: &str) -> Vec<[u8; 32]> {
+    let Ok(t) = std::fs::read_to_string(chemin) else {
+        return Vec::new();
+    };
+    t.lines()
+        .filter_map(|l| l.split_whitespace().next())
+        .filter(|h| h.len() == 64)
+        .filter_map(|h| {
+            let mut o = [0u8; 32];
+            for (i, b) in o.iter_mut().enumerate() {
+                *b = u8::from_str_radix(h.get(2 * i..2 * i + 2)?, 16).ok()?;
+            }
+            Some(o)
+        })
+        .collect()
+}
+
+/// Clé Etcher / Rufus « mode DD » : réécrit l'image qu'elle porte si ses premiers octets sont
+/// une image officielle de la liste (écart n° 11). Sinon erreur, et la clé n'est pas modifiée.
+pub fn reecrire_image(
+    comm: &mut impl ProtoReqUsbsas,
+    dev: u64,
+    images: &[[u8; 32]],
+    ev: &Sender<Event>,
+) -> Result<()> {
+    comm.rewriteimage(proto::usbsas::RequestRewriteImage {
+        id: dev,
+        sha256: images.iter().map(|h| h.to_vec()).collect(),
+        max_size: IMAGE_MAX,
+    })?;
+    let res = wait_done(comm, ev);
+    let _ = comm.end();
+    Ok(res?)
+}
+
 /// Sélection : tout, sauf `ventoy/` à la racine pour une clé Ventoy reconstruite.
 pub fn selection(racine: &[String], demarrable: bool) -> Vec<String> {
     if !demarrable {
@@ -717,6 +759,23 @@ mod tests {
         let r = ["/ISO".to_string(), "/ventoy".into(), "/notes.txt".into()];
         assert_eq!(selection(&r, true), ["/ISO", "/notes.txt"]);
         assert_eq!(selection(&r, false), ["/"]);
+    }
+
+    #[test]
+    fn liste_images_lue() {
+        let d = tempfile::tempdir().unwrap();
+        let f = d.path().join("l.sha256");
+        std::fs::write(
+            &f,
+            "6f1e0c6b714f041eb55f852d2c8622ea57e4a20e67d086a1ecb6109d8e47da4d  Win11.iso\n\
+             # commentaire\nzz  mauvais\n",
+        )
+        .unwrap();
+        let l = images_officielles(f.to_str().unwrap());
+        assert_eq!(l.len(), 1);
+        assert_eq!(l[0][0], 0x6f);
+        assert_eq!(l[0][31], 0x4d);
+        assert!(images_officielles("/nexiste/pas").is_empty());
     }
 
     #[test]

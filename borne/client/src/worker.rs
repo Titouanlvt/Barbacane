@@ -23,6 +23,8 @@ pub enum Cmd {
         wipe: bool,
         /// Clé Ventoy reconstruite démarrable (écart n° 9)
         demarrable: bool,
+        /// Clé Etcher / Rufus « mode DD » : son image officielle réécrite (écart n° 11)
+        image: bool,
         job: String,
     },
     /// Écrire un dossier local (export admin) sur une clé
@@ -170,9 +172,14 @@ impl Worker {
                 dst,
                 wipe,
                 demarrable,
+                image,
                 job,
             } => {
-                let r = self.write(&src, &dst, wipe, demarrable, &job, &etx);
+                let r = if image {
+                    self.reecrire_image(&src, &job, &etx)
+                } else {
+                    self.write(&src, &dst, wipe, demarrable, &job, &etx)
+                };
                 self.send(Ev::Written(r.map_err(|e| e.to_string())));
             }
             Cmd::Export { dst } => {
@@ -265,6 +272,41 @@ impl Worker {
         }
         let stage = self.dirs.stage.clone();
         self.write_stage_mode(dst, ev, &stage, demarrable)?;
+        Ok(n)
+    }
+
+    /// Clé Etcher / Rufus « mode DD » : la borne relit l'image de la clé, la compare à la liste
+    /// des images officielles et, si elle y figure, efface la clé et réécrit exactement cette
+    /// image (zone de démarrage comprise). Sinon : erreur claire, clé non modifiée.
+    fn reecrire_image(
+        &mut self,
+        src: &UsbDevice,
+        job: &str,
+        ev: &Sender<Event>,
+    ) -> Result<u64, String> {
+        // Préparation des fichiers sains (non écrits ici) : vide la copie de travail
+        let n = self
+            .analyzer
+            .stage(job, &parcours::describe(src))
+            .map_err(|e| e.to_string())?;
+        let images = parcours::images_officielles(parcours::LISTE_IMAGES);
+        if images.is_empty() {
+            return Err("aucune image officielle déclarée par l'administrateur".into());
+        }
+        let mut s = self.fresh()?;
+        let devs = parcours::devices(&mut s).map_err(|e| e.to_string())?;
+        let id = devs
+            .same_as_dst(src)
+            .or_else(|| devs.find(src, false))
+            .ok_or("la clé a été retirée")?;
+        parcours::reecrire_image(&mut s, id, &images, ev).map_err(|e| {
+            let e = e.to_string();
+            if e.contains("image non reconnue") || e.contains("aucune image") {
+                format!("{e} — la clé n'a pas été modifiée ; choisissez « Blanchir la clé »")
+            } else {
+                e
+            }
+        })?;
         Ok(n)
     }
 

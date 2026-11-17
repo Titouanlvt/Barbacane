@@ -412,7 +412,8 @@ protoresponse!(
     SelectFiles,
     Report,
     UserId,
-    Wipe
+    Wipe,
+    RewriteImage
 );
 protoresponse!(Uploader, Upload);
 protoresponse!(
@@ -448,7 +449,8 @@ protorequest!(
     SelectFiles,
     Report,
     UserId,
-    Wipe
+    Wipe,
+    RewriteImage
 );
 protorequest!(Scsi, Partitions, ReadSectors);
 protorequest!(UsbDev, Devices);

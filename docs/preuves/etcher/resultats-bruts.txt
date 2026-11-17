@@ -1,0 +1,15 @@
+OK [installation] : ISO copiée sur la clé émulée (relecture identique)
+OK [installation] : VM sans carte réseau
+OK [installation] : installation automatique depuis la clé USB, interface affichée (8192 Mo de RAM)
+OK [pin] : premier PIN choisi, menu d'administration ouvert
+OK [pin] : mauvais PIN refusé (essais restants affichés)
+OK [pin] : bon PIN accepté après une erreur
+OK [enrolement] : clé enrôlée : elle figure dans la liste
+OK [enrolement] : mode « clés enrôlées » activé
+OK [maj] : paquet signé valide appliqué (écran : « Paquet de mise à jour version … »)
+OK [maj] : paquet signé par une autre clé refusé
+OK [maj] : version plus ancienne refusée
+OK [etcher] : clé Etcher : « Blanchir en gardant démarrable » proposé (liste d'images non vide)
+OK [etcher] : les 24 premiers octets de la clé = l'image officielle (zone de démarrage comprise)
+ÉCHEC [etcher] : après l'image : données d'origine encore présentes
+NON TESTÉ [etcher] : démarrage : VM 1011 indisponible
