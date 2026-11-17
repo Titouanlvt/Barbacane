@@ -110,3 +110,11 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
 - Tests : `usbsas-usbsas/src/ventoy.rs` (disposition, découpage) ; `tests/proxmox/preuve.sh`,
   étape `ventoy` (clé reconstruite comparée octet par octet à la version embarquée, puis démarrée
   dans une VM).
+
+### 10. Étiquette des partitions FAT12/FAT16 lue au bon endroit (`usbsas-dev2scsi`)
+- Constat (17/11/2026, passages parallèles n° 4 et 5) : une clé Ventoy n'était jamais reconnue,
+  si bien que « Blanchir en gardant démarrable » n'était pas proposé. La partition `VTOYEFI` est en
+  FAT16 ; usbsas lisait son étiquette aux octets 0x26..0x31 (signature de secteur étendu et numéro de
+  série) au lieu de 0x2B..0x36.
+- Correctif : lecture aux octets 0x2B..0x36 (même structure que FAT32, décalée de 0x1C).
+- Test : `tests/proxmox/preuve.sh`, étape `ventoy` (choix « démarrable » affiché).
