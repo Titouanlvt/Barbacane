@@ -369,6 +369,21 @@ pub struct Analysis {
     pub filtered: Vec<String>,
     /// Clé Ventoy (partition `VTOYEFI`) : peut être reconstruite démarrable
     pub ventoy: bool,
+    /// Autre clé démarrable (image Rufus/Etcher : ISO hybride, partition EFI) : sa partie
+    /// démarrage n'est pas vérifiable ; un blanchiment ne la garde pas démarrable.
+    pub demarrable_autre: bool,
+}
+
+/// Image démarrable écrite par Rufus « mode DD », balenaEtcher ou dd : ISO 9660 lue sur la
+/// clé, ou partition EFI (type 0xEF, ou étiquette EFI) ; hors Ventoy.
+pub fn est_image_demarrable(parts: &[PartitionInfo]) -> bool {
+    !est_ventoy(parts)
+        && parts.iter().any(|p| {
+            p.type_str == "ISO9660"
+                || p.ptype == 0xEF
+                || p.name_str.trim().eq_ignore_ascii_case("EFI")
+                || p.name_str.trim().eq_ignore_ascii_case("UEFI_NTFS")
+        })
 }
 
 /// Clé Ventoy : une partition étiquetée `VTOYEFI` à côté de la partition de données.
@@ -494,11 +509,13 @@ fn analyse_source(
         bootable: false,
     })?;
     let mut ventoy = false;
+    let mut demarrable_autre = false;
     if usb {
         let parts = comm
             .partitions(proto::usbsas::RequestPartitions {})?
             .partitions;
         ventoy = est_ventoy(&parts);
+        demarrable_autre = est_image_demarrable(&parts);
         let Some(index) = default_partition(&parts) else {
             let _ = comm.end();
             return Err(Error::User(
@@ -577,6 +594,7 @@ fn analyse_source(
         report,
         filtered,
         ventoy,
+        demarrable_autre,
     })
 }
 
@@ -688,6 +706,9 @@ mod tests {
         assert!(est_ventoy(&[p("Ventoy"), p("VTOYEFI")]));
         assert!(!est_ventoy(&[p("VTOYEFI")]));
         assert!(!est_ventoy(&[p("DONNEES"), p("EFI")]));
+        assert!(est_image_demarrable(&[p("DONNEES"), p("EFI")]));
+        assert!(!est_image_demarrable(&[p("Ventoy"), p("VTOYEFI")]));
+        assert!(!est_image_demarrable(&[p("CLE")]));
         let r = ["/ISO".to_string(), "/ventoy".into(), "/notes.txt".into()];
         assert_eq!(selection(&r, true), ["/ISO", "/notes.txt"]);
         assert_eq!(selection(&r, false), ["/"]);

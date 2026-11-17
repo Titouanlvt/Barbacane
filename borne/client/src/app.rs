@@ -1509,6 +1509,13 @@ impl App {
                 style::danger,
             ));
         }
+        if !disque && a.demarrable_autre {
+            c = c.push(petit(
+                "Clé démarrable (image Rufus ou Etcher) : sa partie démarrage ne peut pas être \
+                 vérifiée. Un blanchiment la rendra non démarrable ; recréez-la ensuite depuis \
+                 une image officielle.",
+            ));
+        }
         if !disque && self.analysis.as_ref().is_some_and(|a| a.ventoy) {
             blanchir = blanchir.push(bouton(
                 "Blanchir en gardant démarrable",

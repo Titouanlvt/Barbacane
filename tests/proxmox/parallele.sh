@@ -10,6 +10,7 @@
 #    ses clés émulées (tests/proxmox/preuve.sh, clés « virt:NOM ») ;
 # 4. rassemble DOSSIER/resultats.txt (une ligne par vérification, préfixée du scénario).
 #
+# MODELE_EXISTANT=1 : reprend la borne modèle BASE déjà faite (pas de réinstallation).
 # Ressources : laisse à l'hôte au moins 2 cœurs et 8 Go de RAM (PARALLELE, COEURS, MEMOIRE).
 # Aucune vraie clé n'est utilisée : la campagne sur vraies clés (preuve.sh) reste la référence
 # matérielle ; ce lanceur sert à aller vite et à tout rejouer à chaque correction.
@@ -70,6 +71,10 @@ zfs snapshot "rpool/ROOT/pve-1@avant-parallele-$(date +%Y%m%d-%H%M%S)"
 
 # --- 2. borne modèle ---------------------------------------------------------------------------
 cles() { echo "SERIE_INSTALL=virt:install SERIE_SOURCE=virt:source SERIE_SORTIE=virt:sortie SERIE_AUTRE=virt:autre"; }
+if [ -n "${MODELE_EXISTANT:-}" ]; then
+    qm config "$BASE" | grep -q '^template: 1' || { echo "MODELE_EXISTANT : $BASE n'est pas un modèle" >&2; exit 1; }
+    debut=$(date +%s); echo "Borne modèle $BASE reprise telle quelle"
+else
 if qm config "$BASE" 2>/dev/null | grep -q '^template: 1'; then
     [ "$(qm config "$BASE" | awk '/^name:/ { print $2 }')" = barbacane-borne ] || { echo "VM $BASE n'est pas une borne" >&2; exit 1; }
     qm destroy "$BASE" --purge >/dev/null
@@ -81,8 +86,10 @@ env $(cles) VMID="$BASE" STOCKAGE="$STOCKAGE" DISQUE="$DISQUE" MEMOIRE="$MEMOIRE
     VIRT_DIR="$VIRT/$BASE" ISO="$ISO" TESTS="installation grub pin enrolement" \
     "$ICI/preuve.sh" "$OUT/modele" > "$OUT/modele.log" 2>&1 || { echo "borne modèle en échec (modele.log)" >&2; tail -5 "$OUT/modele.log" >&2; exit 1; }
 qm shutdown "$BASE" --timeout 180 >/dev/null 2>&1 || qm stop "$BASE"
+qm delsnapshot "$BASE" installee >/dev/null 2>&1 || true   # un modèle ne peut pas avoir d instantané
 qm template "$BASE" >/dev/null
 echo "Borne modèle prête en $(( $(date +%s) - debut )) s"
+fi
 
 # --- 3. scénarios en parallèle ---------------------------------------------------------------
 declare -A PID=() NOM=()

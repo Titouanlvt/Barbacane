@@ -77,6 +77,23 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
   faisceau d'analyse, bouclier, herse ; option « Animations réduites »). Vérifié sous Xvfb 1280×768.
 - `build-debs.sh` limite `CARGO_BUILD_JOBS` à la mémoire libre (SIGKILL sur cranelift-codegen).
 
+## État au 17/11/2026
+- Espace de travail : dm-crypt éphémère sur fichier creux, clé neuve à chaque démarrage ET à chaque
+  fin de session (op `nouvelle_session` d'admind) ; taille 50 % du disque (`/etc/barbacane/travail.conf`) ;
+  refus avant copie si 3 × contenu > libre (`parcours::verifier_espace`). `docs/conception-espace-travail.md`.
+- Parcours unique : « Analyser » puis Copier vers une clé connue / Graver / Blanchir / Arrêter ici.
+- Clés Ventoy : écart n° 9 (fs2dev `WriteRaw`, `RequestInitTransfer.bootable`, `ventoy = ` dans la
+  config usbsas) ; Ventoy 1.1.18 embarqué (`systeme/ventoy/`, empreinte épinglée). Rufus/Etcher :
+  détectées, avertissement (liste blanche d'images : conçue, pas encore faite).
+  `docs/conception-demarrable.md`.
+- Corrigés : délai global reqwest 30 s (écart n° 8, vraie cause du « Remote server error »),
+  reconnexion usbsas après effacement, ClamAV MaxScanTime 30 min, rapports > 10 Mo, ISO prise pour
+  une bombe (plancher 64 Mo), conteneur > 2 Go sain copié intact.
+- Tests : `tests/proxmox/parallele.sh` (borne modèle 940 installée depuis une clé émulée, clones
+  941+ en parallèle, clés `virt:NOM`, copie figée des scripts). Les VMs de test sur le pool `nvme`.
+  Piège : un script bash en cours d'exécution relit son fichier ; ne jamais le réécrire en place
+  (sed -i ou écriture + mv seulement).
+
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
 2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).

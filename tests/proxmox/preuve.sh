@@ -226,8 +226,15 @@ monter_ro() {
     mount -o ro "$p" "$T/m"
 }
 
+# Clic qui ouvre un écran : nouvel essai si l'écran attendu n'est pas venu (clic trop tôt après un
+# démarrage, interface encore en train de se charger).
+ouvrir() { # libellé texte_attendu
+    local i
+    for i in 1 2 3; do cliquer "$1" || true; voir "$2" 20 && return 0; done
+    attendre "$2" 10
+}
 admin() { # ouvre le mode administrateur (PIN déjà choisi)
-    cliquer "Administration"; attendre "Saisissez le PIN" 30
+    ouvrir "Administration" "Saisissez le PIN"
     "${B[@]}" pin "$PIN"; cliquer "Valider"; attendre "Quitter le mode administrateur" 30
 }
 quitter_admin() { cliquer "Quitter le mode administrateur"; attendre "à analyser" 30; }
@@ -356,7 +363,7 @@ fi
 # === pin : premier PIN, mauvais PIN ======================================================
 if test_actif pin; then
     debut pin "premier démarrage (choix du PIN), mauvais PIN, bon PIN"
-    cliquer "Administration"; attendre "choisissez le PIN" 30 "$D/01-premier-pin.png"
+    ouvrir "Administration" "choisissez le PIN"; capture 01-premier-pin
     "${B[@]}" pin "$PIN"; cliquer "Valider"; attendre "Quitter le mode administrateur" 30 "$D/02-menu-admin.png"
     ok "premier PIN choisi, menu d'administration ouvert"
     quitter_admin
