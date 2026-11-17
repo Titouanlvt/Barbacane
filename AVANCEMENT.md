@@ -21,6 +21,7 @@
 - Correctifs d'interface : boutons sur une ligne, gris opaque + tranche grise, centrage, barre, bandeau.
 
 ## Bloquants
+- `/etc/pve` en lecture seule depuis la saturation de rpool : `systemctl restart pve-cluster` à faire par l'utilisateur (refusé à Claude).
 - Signature de production : phrase de passe de `barbacane-maj.key` inconnue (choix : clé de test du lab pour les preuves).
 
 ## Prochaines étapes

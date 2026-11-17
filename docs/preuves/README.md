@@ -29,7 +29,12 @@
 | Borne physique | lab en VM ; clés USB réelles passées à la VM |
 
 ### Bloquants
-- Aucun en cours.
+- **17/11 vers 19 h : `/etc/pve` en lecture seule** (pmxcfs : « database or disk is full » pendant la
+  saturation de `rpool`, espace depuis libéré). Création ou modification de VM impossible tant que
+  `pve-cluster` n'est pas redémarré ; ce redémarrage d'un service de l'hôte m'est refusé dans la
+  session. À faire par l'administrateur : `systemctl restart pve-cluster` (aucun effet sur les VM
+  en marche). Bloqué en attendant : nouvelle preuve Etcher (VM 961), suite du lanceur parallèle
+  (destruction/clonage), étapes de preuve qui modifient la configuration d'une VM.
 
 ---
 
