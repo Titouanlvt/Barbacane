@@ -101,6 +101,9 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - Analyseur : fichiers simples d'un conteneur analysés sur 4 fils ; compteur en direct.
 - Écart n° 11 (branche `etcher-image`) : `RewriteImage` relit l'image d'une clé Etcher/Rufus DD,
   empreinte à chaque frontière de 2048 octets, réécriture seulement si elle est dans la liste.
+- `rpool` (système de l'hôte + local-zfs, 109 Go) s'est rempli le 17/11 (clés émulées de 12 Go dans
+  /var/lib/vz) : bu (disque sur local-zfs) en `io-error` → `qm resume 902` après nettoyage. Clés
+  émulées désormais sur `/nvme/virt` ; ne rien mettre de gros dans /var/lib/vz.
 - CI publique lisible sans `gh` : `curl api.github.com/repos/Titouanlvt/Barbacane/actions/runs`.
 
 ## Travail autonome (règles de l'utilisateur, 17/11/2026)
