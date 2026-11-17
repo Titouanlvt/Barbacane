@@ -188,7 +188,7 @@ de **graver**, de **blanchir** le support analysé ou d'**arrêter ici**.
 2. Si une archive est protégée par un mot de passe, la borne le demande. Saisir le mot de passe
    au clavier virtuel, ou **Ignorer cette archive**.
 3. Le résultat s'affiche : menaces, fichiers écartés et raison de chaque refus, puis les choix
-   **Arrêter ici**, **Copier vers une clé connue**, **Graver sur un disque** (si la borne a un
+   **Arrêter ici**, **Copier vers une clé connue**, **Graver un disque** (si la borne a un
    graveur) et **Blanchir la clé**.
 
 ![Résultat de l'analyse](preuves/transfert/02-resultat-analyse.png)
@@ -205,6 +205,11 @@ Sur la clé de destination, on trouve :
   le sont, dans `<archive>.extrait/` ;
 - le rapport `rapport-barbacane-<date>.txt` (et `.html`).
 
+Une analyse a besoin d'environ **3 fois** la taille du contenu sur le disque interne (espace de
+travail chiffré, vidé à chaque fin de session). Si la clé est trop volumineuse pour la borne, le
+refus s'affiche dès le début, avant toute copie. L'espace disponible est indiqué dans
+Administration → État de la borne.
+
 ## Blanchir une clé
 
 Choix **Blanchir la clé** sur l'écran de résultat. Le blanchiment nettoie la clé elle-même : analyse, **effacement complet**, puis réécriture des
@@ -217,6 +222,24 @@ du temps : ne la retirez pas.
 ![Confirmation du blanchiment](preuves/blanchiment/03-confirmation.png)
 
 ![Effacement en cours](preuves/blanchiment/04-effacement-en-cours.png)
+
+## Clés démarrables (Ventoy, Rufus, Etcher)
+
+La partie « démarrage » d'une clé (secteur 0, chargeur EFI) ne peut pas être analysée comme un
+fichier. La borne ne la recopie donc **jamais**.
+
+- **Clé Ventoy** : l'écran de résultat propose en plus **Blanchir en gardant démarrable**. La
+  borne efface la clé, réinstalle la version de Ventoy **embarquée dans la borne** (vérifiée à la
+  construction de l'ISO), puis recopie seulement les images saines. Le dossier `ventoy/`
+  (configuration, greffons) n'est pas recopié. La clé démarre ensuite comme avant.
+
+![Clé Ventoy : choix « Blanchir en gardant démarrable »](preuves/ventoy/02-resultat-analyse.png)
+
+![Clé Ventoy blanchie : elle démarre](preuves/ventoy/05-demarrage-ventoy.png)
+
+- **Clé Rufus ou Etcher** : la borne l'indique par un avertissement. Le blanchiment la rend non
+  démarrable ; recréez-la ensuite depuis une image officielle, ou copiez l'image (ISO) saine sur
+  une clé Ventoy.
 
 ## Disques optiques (CD, DVD, BD)
 
@@ -277,6 +300,21 @@ la version installée :
 ![Paquet signé par une autre clé : refusé](preuves/maj/02-mauvaise-signature.png)
 
 ![Version plus ancienne : refusée](preuves/maj/03-version-ancienne.png)
+
+### Images officielles (ISO Windows, Debian…)
+
+Une ISO d'installation Windows contient plus d'un million de fichiers : trop pour être ouverte
+sur la borne, elle est refusée. L'administrateur peut déclarer les images qu'il a téléchargées
+chez l'éditeur ; la borne les reconnaît alors par leur empreinte et les copie **intactes**, sans
+les ouvrir :
+
+```sh
+sha256sum Win11_26H2_French_x64.iso > images-officielles.sha256
+borne/update/barbacane-update-prepare --cle ~/cles-barbacane/barbacane-maj.key --sortie ./maj \
+    --images-officielles images-officielles.sha256
+```
+
+La liste n'entre sur la borne que dans un paquet **signé** (preuve : `preuves/liste-blanche/`).
 
 ## Rotation de la clé de signature
 

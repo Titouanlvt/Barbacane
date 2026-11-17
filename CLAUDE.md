@@ -102,6 +102,11 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - Suivi : `/root/BARBACANE/AVANCEMENT.md` ; commit + push au moins toutes les heures.
 - Choix faits sans l'utilisateur : preuve de la liste blanche avec une clé de signature de TEST du lab
   (la phrase de passe de production n'est connue que de l'utilisateur).
+- Réécriture d'image Etcher vérifiée : REPORTÉE après la fusion dans main. Plan retenu : requête usbsas
+  `RewriteImage{id, taille, sha256}` (lecture scsi2files → files2fs en mode brut avec empreinte calculée
+  au vol par usbsas ; comparaison AVANT toute écriture ; puis effacement fs2dev et écriture avec un
+  bitvec construit par usbsas) ; liste blanche étendue à « sha256  taille  nom ». En attendant :
+  blanchiment classique + avertissement, Ventoy proposé comme alternative démarrable.
 
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
