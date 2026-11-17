@@ -102,11 +102,19 @@ impl Worker {
 
     /// Session neuve pour une opération (l'ancienne est terminée par l'opération précédente).
     fn fresh(&mut self) -> Result<Usbsas, String> {
-        if let Some(s) = self.session.take() {
+        if let Some(mut s) = self.session.take()
+            && parcours::devices(&mut s).is_ok()
+        {
             return Ok(s);
         }
+        // Juste après la fin d'une session, la connexion peut encore aboutir chez l'ancien
+        // processus usbsas qui se termine (« Connection reset by peer » au premier échange,
+        // constaté après un effacement de 13 min) : la session n'est rendue qu'après une
+        // première requête réussie.
         for _ in 0..50 {
-            if let Some(s) = self.connect() {
+            if let Some(mut s) = self.connect()
+                && parcours::devices(&mut s).is_ok()
+            {
                 return Ok(s);
             }
             std::thread::sleep(Duration::from_millis(200));
