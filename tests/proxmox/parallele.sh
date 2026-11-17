@@ -55,7 +55,7 @@ fi
 # Découpage des images de contenus réels : un scénario par image (le plus long : windows, rufus-ntfs)
 declare -a GROUPES=()
 GROUPES+=("usb:transfert blanchiment export maj clavier verrouillage journal")
-GROUPES+=("limites:volumineux vide pleine illisible retrait journal")
+GROUPES+=("limites:volumineux vide pleine illisible retrait veille journal")
 if [ -n "${CONTENU:-}" ]; then
     while read -r img; do
         n=$(basename "$img" .img)
