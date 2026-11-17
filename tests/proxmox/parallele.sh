@@ -17,7 +17,7 @@
 # matérielle ; ce lanceur sert à aller vite et à tout rejouer à chaque correction.
 set -euo pipefail
 ICI="$(cd "$(dirname "$0")" && pwd)"
-REPO="$(cd "$ICI/../.." && pwd)"
+REPO=${REPO:-"$(cd "$ICI/../.." && pwd)"}
 OUT="$(realpath -m "${1:?DOSSIER des preuves (neuf)}")"
 BASE=${BASE:-940} STOCKAGE=${STOCKAGE:-nvme} DISQUE=${DISQUE:-64}
 MEMOIRE=${MEMOIRE:-8192} COEURS=${COEURS:-3}
@@ -30,7 +30,7 @@ if [ -z "${FIGE:-}" ]; then
     [ ! -e "$OUT" ] || [ -z "$(ls -A "$OUT")" ] || { echo "$OUT n'est pas vide" >&2; exit 1; }
     mkdir -p "$OUT"
     cp -r "$ICI" "$OUT/.scripts"
-    FIGE=1 exec "$OUT/.scripts/parallele.sh" "$@"
+    FIGE=1 REPO="$REPO" exec "$OUT/.scripts/parallele.sh" "$@"
 fi
 ICI="$OUT/.scripts"
 
