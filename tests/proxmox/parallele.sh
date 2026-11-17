@@ -21,7 +21,7 @@ REPO=${REPO:-"$(cd "$ICI/../.." && pwd)"}
 OUT="$(realpath -m "${1:?DOSSIER des preuves (neuf)}")"
 BASE=${BASE:-940} STOCKAGE=${STOCKAGE:-nvme} DISQUE=${DISQUE:-64}
 MEMOIRE=${MEMOIRE:-8192} COEURS=${COEURS:-3}
-VIRT=${VIRT:-/var/lib/vz/barbacane/virt}
+VIRT=${VIRT:-/nvme/virt}   # pool nvme : rpool (système de l hôte) saturé le 17/11/2026
 [ "$(id -u)" -eq 0 ] || { echo "À lancer en root." >&2; exit 1; }
 # Copie figée des scripts : une modification du dépôt pendant le passage ne doit changer ni les
 # scénarios ni CE lanceur (bash relit son fichier en cours de route : une réécriture l'a arrêté le
