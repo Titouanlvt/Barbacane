@@ -367,6 +367,16 @@ pub struct Analysis {
     pub report: Report,
     /// Fichiers écartés par les filtres usbsas (fichiers système)
     pub filtered: Vec<String>,
+    /// Clé Ventoy (partition `VTOYEFI`) : peut être reconstruite démarrable
+    pub ventoy: bool,
+}
+
+/// Clé Ventoy : une partition étiquetée `VTOYEFI` à côté de la partition de données.
+pub fn est_ventoy(parts: &[PartitionInfo]) -> bool {
+    parts.len() >= 2
+        && parts
+            .iter()
+            .any(|p| p.name_str.trim().eq_ignore_ascii_case("VTOYEFI"))
 }
 
 /// Dossier de l'espace de travail chiffré de la borne (usbsas et analyseur).
@@ -483,10 +493,12 @@ fn analyse_source(
         pin: None,
         bootable: false,
     })?;
+    let mut ventoy = false;
     if usb {
         let parts = comm
             .partitions(proto::usbsas::RequestPartitions {})?
             .partitions;
+        ventoy = est_ventoy(&parts);
         let Some(index) = default_partition(&parts) else {
             let _ = comm.end();
             return Err(Error::User(
@@ -564,6 +576,7 @@ fn analyse_source(
         uid,
         report,
         filtered,
+        ventoy,
     })
 }
 
@@ -574,16 +587,65 @@ pub fn write(
     dst: u64,
     ev: &Sender<Event>,
 ) -> Result<proto::common::TransferReport> {
+    write_mode(comm, stage, dst, false, ev)
+}
+
+/// Écrit le dossier de préparation sur `dst` reconstruite en clé Ventoy démarrable (écart n° 9) :
+/// zone de démarrage de la version embarquée, fichiers sains seulement, dossier `ventoy/`
+/// (configuration et greffons de la clé d'origine) jamais recopié.
+pub fn write_demarrable(
+    comm: &mut impl ProtoReqUsbsas,
+    stage: u64,
+    dst: u64,
+    ev: &Sender<Event>,
+) -> Result<proto::common::TransferReport> {
+    write_mode(comm, stage, dst, true, ev)
+}
+
+/// Sélection : tout, sauf `ventoy/` à la racine pour une clé Ventoy reconstruite.
+pub fn selection(racine: &[String], demarrable: bool) -> Vec<String> {
+    if !demarrable {
+        return vec!["/".into()];
+    }
+    racine
+        .iter()
+        .filter(|p| {
+            !p.trim_matches('/')
+                .rsplit('/')
+                .next()
+                .unwrap_or_default()
+                .eq_ignore_ascii_case("ventoy")
+        })
+        .cloned()
+        .collect()
+}
+
+fn write_mode(
+    comm: &mut impl ProtoReqUsbsas,
+    stage: u64,
+    dst: u64,
+    demarrable: bool,
+    ev: &Sender<Event>,
+) -> Result<proto::common::TransferReport> {
     comm.userid(proto::usbsas::RequestUserId {})?;
     comm.inittransfer(proto::usbsas::RequestInitTransfer {
         source: stage,
         destination: dst,
         fstype: Some(FsType::Exfat.into()),
         pin: None,
-        bootable: false,
+        bootable: demarrable,
     })?;
+    let racine: Vec<String> = if demarrable {
+        comm.readdir(proto::usbsas::RequestReadDir { path: "/".into() })?
+            .filesinfo
+            .into_iter()
+            .map(|f| f.path)
+            .collect()
+    } else {
+        Vec::new()
+    };
     comm.selectfiles(proto::usbsas::RequestSelectFiles {
-        selected: vec!["/".into()],
+        selected: selection(&racine, demarrable),
     })?;
     let res = wait_done(comm, ev);
     let report = res.and_then(|_| comm.report(proto::usbsas::RequestReport {}));
@@ -616,6 +678,20 @@ pub fn wipe(comm: &mut impl ProtoReqUsbsas, dev: u64, ev: &Sender<Event>) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ventoy_detecte_et_dossier_ventoy_ecarte() {
+        let p = |n: &str| PartitionInfo {
+            name_str: n.into(),
+            ..Default::default()
+        };
+        assert!(est_ventoy(&[p("Ventoy"), p("VTOYEFI")]));
+        assert!(!est_ventoy(&[p("VTOYEFI")]));
+        assert!(!est_ventoy(&[p("DONNEES"), p("EFI")]));
+        let r = ["/ISO".to_string(), "/ventoy".into(), "/notes.txt".into()];
+        assert_eq!(selection(&r, true), ["/ISO", "/notes.txt"]);
+        assert_eq!(selection(&r, false), ["/"]);
+    }
 
     #[test]
     fn espace_insuffisant_refuse_clairement() {

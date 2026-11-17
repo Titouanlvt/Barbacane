@@ -52,6 +52,8 @@ pub enum Msg {
     Choisir(Mode),
     /// Choix fait sur l'écran de résultat (copier, graver, blanchir)
     Action(Mode),
+    /// Blanchir une clé Ventoy en la gardant démarrable
+    ActionDemarrable,
     Key(Key),
     Valider,
     Ignorer,
@@ -115,6 +117,8 @@ pub struct App {
     /// Une analyse a eu lieu depuis le dernier retour à l'accueil : l'espace de travail chiffré
     /// sera recréé (clé neuve) au retour à l'accueil.
     session_sale: bool,
+    /// Blanchiment « en gardant démarrable » choisi (clé Ventoy reconstruite)
+    demarrable: bool,
     /// « Maintenir pour effacer » : début de l'appui
     maintien: Option<std::time::Instant>,
     /// Barre de progression : dernière valeur affichée (jamais en recul) et son heure
@@ -182,6 +186,7 @@ impl App {
             depuis: std::time::Instant::now(),
             retour_fin: false,
             session_sale: false,
+            demarrable: false,
             maintien: None,
             barre_val: 0.0,
             barre_maj: std::time::Instant::now(),
@@ -432,6 +437,7 @@ impl App {
         self.progress = None;
         self.dst_refused = None;
         self.input = Input::text(128);
+        self.demarrable = false;
     }
 
     fn update(&mut self, m: Msg) -> Task<Msg> {
@@ -528,7 +534,13 @@ impl App {
                 self.choisir_disque();
                 Task::none()
             }
+            Msg::ActionDemarrable => {
+                self.demarrable = true;
+                self.mode = Mode::Blanchir;
+                self.maj(Msg::Blanchir)
+            }
             Msg::Action(mode) => {
+                self.demarrable = false;
                 self.mode = mode;
                 match mode {
                     Mode::Blanchir => self.maj(Msg::Blanchir),
@@ -629,6 +641,7 @@ impl App {
             src,
             dst,
             wipe,
+            demarrable: self.demarrable && self.mode == Mode::Blanchir,
             job: an.report.id.clone(),
         });
         Task::none()
@@ -785,6 +798,13 @@ impl App {
                             .unwrap_or(0)
                     )),
                     petit("Les fichiers refusés seront définitivement supprimés de la clé."),
+                    petit(if self.demarrable {
+                        "Clé démarrable : Ventoy est réinstallé depuis la version de la borne ; \
+                         la partie démarrage d'origine, la configuration et les greffons Ventoy \
+                         (dossier ventoy) ne sont pas conservés."
+                    } else {
+                        ""
+                    }),
                 ]),
                 Space::new().height(20),
                 row![
@@ -1484,6 +1504,13 @@ impl App {
                     "Blanchir la clé"
                 },
                 Msg::Action(Mode::Blanchir),
+                style::danger,
+            ));
+        }
+        if !disque && self.analysis.as_ref().is_some_and(|a| a.ventoy) {
+            actions = actions.push(bouton(
+                "Blanchir en gardant démarrable",
+                Msg::ActionDemarrable,
                 style::danger,
             ));
         }

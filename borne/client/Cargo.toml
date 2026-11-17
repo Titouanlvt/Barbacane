@@ -63,4 +63,9 @@ assets = [
   ["../../systeme/journald/barbacane.conf", "etc/systemd/journald.conf.d/", "644"],
   ["../update/barbacane-update-prepare", "usr/share/barbacane/outils/", "755"],
   ["../update/barbacane-update-keygen", "usr/share/barbacane/outils/", "755"],
+  ["../../systeme/ventoy/dist/boot.img", "usr/share/barbacane/ventoy/", "644"],
+  ["../../systeme/ventoy/dist/core.img", "usr/share/barbacane/ventoy/", "644"],
+  ["../../systeme/ventoy/dist/ventoy.disk.img", "usr/share/barbacane/ventoy/", "644"],
+  ["../../systeme/ventoy/dist/VERSION", "usr/share/barbacane/ventoy/", "644"],
+  ["../../systeme/ventoy/dist/SHA256SUMS", "usr/share/barbacane/ventoy/", "644"],
 ]

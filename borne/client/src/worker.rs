@@ -21,6 +21,8 @@ pub enum Cmd {
         src: UsbDevice,
         dst: UsbDevice,
         wipe: bool,
+        /// Clé Ventoy reconstruite démarrable (écart n° 9)
+        demarrable: bool,
         job: String,
     },
     /// Écrire un dossier local (export admin) sur une clé
@@ -167,9 +169,10 @@ impl Worker {
                 src,
                 dst,
                 wipe,
+                demarrable,
                 job,
             } => {
-                let r = self.write(&src, &dst, wipe, &job, &etx);
+                let r = self.write(&src, &dst, wipe, demarrable, &job, &etx);
                 self.send(Ev::Written(r.map_err(|e| e.to_string())));
             }
             Cmd::Export { dst } => {
@@ -228,6 +231,7 @@ impl Worker {
         src: &UsbDevice,
         dst: &UsbDevice,
         wipe: bool,
+        demarrable: bool,
         job: &str,
         ev: &Sender<Event>,
     ) -> Result<u64, String> {
@@ -252,7 +256,7 @@ impl Worker {
             parcours::wipe(&mut s, id, ev).map_err(|e| format!("effacement : {e}"))?;
         }
         let stage = self.dirs.stage.clone();
-        self.write_stage(dst, ev, &stage)?;
+        self.write_stage_mode(dst, ev, &stage, demarrable)?;
         Ok(n)
     }
 
@@ -263,6 +267,17 @@ impl Worker {
         ev: &Sender<Event>,
         dir: &str,
     ) -> Result<(), String> {
+        self.write_stage_mode(dst, ev, dir, false)
+    }
+
+    /// `demarrable` : clé Ventoy reconstruite (zone de démarrage de la borne, écart n° 9)
+    fn write_stage_mode(
+        &mut self,
+        dst: &UsbDevice,
+        ev: &Sender<Event>,
+        dir: &str,
+        demarrable: bool,
+    ) -> Result<(), String> {
         let mut s = self.fresh()?;
         let devs = parcours::devices(&mut s).map_err(|e| e.to_string())?;
         let id = devs
@@ -272,7 +287,12 @@ impl Worker {
         let stage = devs
             .local_dir(dir)
             .ok_or_else(|| format!("configuration usbsas incomplète ([[src_local_dirs]] {dir})"))?;
-        parcours::write(&mut s, stage, id, ev)
+        let w = if demarrable {
+            parcours::write_demarrable
+        } else {
+            parcours::write
+        };
+        w(&mut s, stage, id, ev)
             .map(|_| ())
             .map_err(|e| format!("écriture : {e}"))
     }

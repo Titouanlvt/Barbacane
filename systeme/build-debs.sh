@@ -47,6 +47,8 @@ cargo build --release --locked -p usbsas-usbsas -p usbsas-net -p usbsas-cmdexec 
 cargo-deb --no-build -p usbsas-usbsas
 cargo-deb --no-build -p usbsas-hid
 cargo build --release --locked -p barbacane-client -p barbacane-analyzer -p barbacane-admind -p barbacane-optique
+# Zone de démarrage Ventoy de confiance (clés démarrables reconstruites) : empreinte vérifiée
+"$REPO/systeme/ventoy/preparer.sh" "$REPO/systeme/ventoy/dist"
 cargo-deb --no-build -p barbacane-client
 mkdir -p "$OUT"
 cp "$CARGO_TARGET_DIR"/debian/usbsas-server_*.deb "$CARGO_TARGET_DIR"/debian/usbsas-hid_*.deb "$CARGO_TARGET_DIR"/debian/barbacane_*.deb "$OUT/"

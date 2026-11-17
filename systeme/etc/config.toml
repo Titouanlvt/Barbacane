@@ -1,6 +1,8 @@
 # Configuration usbsas de la borne Barbacane (installée en /etc/usbsas/config.toml)
 
 out_directory = "/var/lib/barbacane/travail/usbsas"   # volume chiffré éphémère
+# Zone de démarrage Ventoy de confiance (clés démarrables reconstruites, écart n° 9)
+ventoy = "/usr/share/barbacane/ventoy"
 keep_tmp_files = false
 lang = "fr"
 window_title = "Barbacane"
