@@ -1,0 +1,83 @@
+[limites] OK [clone] : borne clonée de 940 (installée, PIN choisi, clé de sortie enrôlée) : accueil affiché
+[limites] OK [volumineux] : clé préparée : 4.9G, 27 fichiers (zip, tar, iso, txt)
+[limites] OK [volumineux] : analyse aboutie sur 5,6 Go avec 8192 Mo de RAM
+[limites] OK [volumineux] : archive contenant EICAR non réécrite
+[limites] OK [volumineux] : fichiers sains réécrits à l'identique (sha256)
+[limites] OK [vide] : clé vide : la borne affiche un résultat sans planter
+[limites] OK [vide] : retour à l'accueil
+[limites] OK [pleine] : clé pleine analysée (17 fichiers)
+[limites] OK [pleine] : retour à l'accueil
+[limites] OK [illisible] : clé illisible : message affiché, borne de nouveau utilisable
+[limites] OK [retrait] : retrait en cours de lecture : erreur affichée, aucune copie, borne de nouveau utilisable
+[limites] OK [journal] : grub.cfg : super-utilisateur et mot de passe (édition protégée)
+[limites] OK [journal] : grub.cfg : entrée par défaut démarrable sans mot de passe
+[limites] OK [journal] : journal : détections EICAR consignées
+[limites] OK [journal] : journal : clavier USB vu par hid-dealer
+[modele] OK [installation] : ISO copiée sur la clé émulée (relecture identique)
+[modele] OK [installation] : VM sans carte réseau
+[modele] OK [installation] : installation automatique depuis la clé USB, interface affichée (8192 Mo de RAM)
+[modele] OK [grub] : Échap tenu au démarrage : pas de menu GRUB, démarrage direct de la borne
+[modele] OK [pin] : premier PIN choisi, menu d'administration ouvert
+[modele] OK [pin] : mauvais PIN refusé (essais restants affichés)
+[modele] OK [pin] : bon PIN accepté après une erreur
+[modele] OK [enrolement] : clé enrôlée : elle figure dans la liste
+[modele] OK [enrolement] : mode « clés enrôlées » activé
+[usb] OK [clone] : borne clonée de 940 (installée, PIN choisi, clé de sortie enrôlée) : accueil affiché
+[usb] OK [transfert] : mot de passe d'archive demandé (clavier virtuel)
+[usb] OK [transfert] : écran : menaces détectées
+[usb] OK [transfert] : clé non enrôlée refusée en sortie
+[usb] OK [transfert] : clé non enrôlée intacte (rien n'y a été écrit)
+[usb] OK [transfert] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+[usb] OK [transfert] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+[usb] OK [transfert] : aucun fichier de la sortie ne contient EICAR
+[usb] OK [transfert] : fichiers EICAR (dont le .jpg déguisé) absents
+[usb] OK [transfert] : archive chiffrée (bon mot de passe) copiée
+[usb] OK [transfert] : archive mixte : seul son fichier sain est extrait
+[usb] OK [transfert] : noms piégés (traversée, absolu) non écrits
+[usb] OK [transfert] : contenu précédent de la destination effacé (témoin absent)
+[usb] OK [transfert] : rapport : EICAR détecté et refusé
+[usb] OK [blanchiment] : avant : EICAR sur la clé (octets 14123036 14131228 14139459 14147690 )
+[usb] OK [blanchiment] : mot de passe d'archive demandé (clavier virtuel)
+[usb] OK [blanchiment] : empreinte de la clé entière modifiée
+[usb] OK [blanchiment] : après : aucune trace d'EICAR sur TOUTE la clé
+[usb] OK [blanchiment] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+[usb] OK [blanchiment] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+[usb] OK [blanchiment] : aucun fichier de la sortie ne contient EICAR
+[usb] OK [blanchiment] : fichiers EICAR (dont le .jpg déguisé) absents
+[usb] OK [blanchiment] : archive chiffrée (bon mot de passe) copiée
+[usb] OK [blanchiment] : archive mixte : seul son fichier sain est extrait
+[usb] OK [blanchiment] : noms piégés (traversée, absolu) non écrits
+[usb] OK [maj] : paquet signé valide appliqué (écran : « Paquet de mise à jour version … »)
+[usb] OK [maj] : paquet signé par une autre clé refusé
+[usb] OK [maj] : version plus ancienne refusée
+[usb] OK [export] : export terminé
+[usb] OK [export] : journal de la borne exporté
+[usb] OK [export] : rapports exportés (5 rapports JSON)
+[usb] OK [export] : rapports exportés : détections EICAR présentes
+[usb] OK [clavier] : frappes et combinaisons sans effet : l'écran du PIN est inchangé
+[usb] OK [clavier] : aucun chiffre saisi dans le champ PIN
+[usb] OK [verrouillage] : administration verrouillée après 5 échecs
+[usb] OK [verrouillage] : même le bon PIN est refusé pendant le verrouillage
+[usb] OK [journal] : grub.cfg : super-utilisateur et mot de passe (édition protégée)
+[usb] OK [journal] : grub.cfg : entrée par défaut démarrable sans mot de passe
+[usb] OK [journal] : journal : détections EICAR consignées
+[usb] OK [journal] : journal : mise à jour 202611151049 appliquée
+[usb] OK [journal] : journal : clavier USB vu par hid-dealer
+[ventoy] OK [clone] : borne clonée de 940 (installée, PIN choisi, clé de sortie enrôlée) : accueil affiché
+[ventoy] OK [ventoy] : clé Ventoy reconnue : « Blanchir en gardant démarrable » proposé
+[ventoy] OK [ventoy] : secteur 0 : code de démarrage = boot.img embarqué
+[ventoy] OK [ventoy] : secteur 0 (octets 400-439) = boot.img embarqué
+[ventoy] OK [ventoy] : secteurs 1-2047 = core.img embarqué
+[ventoy] OK [ventoy] : partition VTOYEFI (type ef) à partir du secteur 25100288
+[ventoy] OK [ventoy] : partition VTOYEFI = ventoy.disk.img embarqué
+[ventoy] OK [ventoy] : secteur 0 d'origine remplacé
+[ventoy] OK [ventoy] : conservé à l'identique : ISO/debian-13.7.0-amd64-netinst.iso
+[ventoy] OK [ventoy] : conservé à l'identique : notes.txt
+[ventoy] OK [ventoy] : non conservé : ISO/outils-piege.iso
+[ventoy] OK [ventoy] : non conservé : ventoy/ventoy.json
+[ventoy] OK [ventoy] : dossier ventoy/ (configuration, greffons) absent
+[ventoy] OK [ventoy] : aucun EICAR sur la clé
+[ventoy] OK [ventoy] : la clé démarre : menu Ventoy affiché (05-demarrage-ventoy.png)
+[ventoy] OK [journal] : grub.cfg : super-utilisateur et mot de passe (édition protégée)
+[ventoy] OK [journal] : grub.cfg : entrée par défaut démarrable sans mot de passe
+[ventoy] OK [journal] : journal : clavier USB vu par hid-dealer
