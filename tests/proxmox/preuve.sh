@@ -616,6 +616,16 @@ if test_actif ventoy; then
     attendre "à analyser" 300 || true
 fi
 
+# === veille : écran de veille après 10 min à l'accueil, réveil au toucher ====================
+if test_actif veille; then
+    debut veille "écran de veille (10 min sans activité), réveil par un toucher"
+    attendre "à analyser" 120 || true
+    sleep 630; capture 01-veille; lire 01-veille >/dev/null
+    si grep -qi "touchez" "$D/01-veille.txt" -- "écran de veille affiché après 10 min (01-veille.png)" "écran de veille absent"
+    "${B[@]}" xy 640 400
+    si voir "à analyser" 30 "$D/02-reveil.png" -- "réveil au toucher : accueil de nouveau affiché" "pas de réveil au toucher"
+fi
+
 # === export des journaux et rapports =====================================================
 if test_actif export; then
     debut export "export des journaux et rapports sur la clé $SERIE_SORTIE"
