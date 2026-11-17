@@ -22,11 +22,16 @@ BASE=${BASE:-940} STOCKAGE=${STOCKAGE:-nvme} DISQUE=${DISQUE:-64}
 MEMOIRE=${MEMOIRE:-8192} COEURS=${COEURS:-3}
 VIRT=${VIRT:-/var/lib/vz/barbacane/virt}
 [ "$(id -u)" -eq 0 ] || { echo "À lancer en root." >&2; exit 1; }
-[ ! -e "$OUT" ] || [ -z "$(ls -A "$OUT")" ] || { echo "$OUT n'est pas vide" >&2; exit 1; }
-mkdir -p "$OUT"
-# Copie figée des scripts : une modification du dépôt pendant le passage ne doit pas changer les
-# scénarios déjà lancés ni ceux en attente.
-cp -r "$ICI" "$OUT/.scripts"; ICI="$OUT/.scripts"
+# Copie figée des scripts : une modification du dépôt pendant le passage ne doit changer ni les
+# scénarios ni CE lanceur (bash relit son fichier en cours de route : une réécriture l'a arrêté le
+# 17/11/2026). Le lanceur se relance donc depuis sa copie.
+if [ -z "${FIGE:-}" ]; then
+    [ ! -e "$OUT" ] || [ -z "$(ls -A "$OUT")" ] || { echo "$OUT n'est pas vide" >&2; exit 1; }
+    mkdir -p "$OUT"
+    cp -r "$ICI" "$OUT/.scripts"
+    FIGE=1 exec "$OUT/.scripts/parallele.sh" "$@"
+fi
+ICI="$OUT/.scripts"
 
 # Parallélisme : ce que permettent les cœurs et la RAM une fois réservés 2 cœurs et 8 Go à l'hôte
 coeurs=$(( $(nproc) - 2 )); ram=$(( $(awk '/MemAvailable/ { print int($2 / 1024) }' /proc/meminfo) - 8192 ))
