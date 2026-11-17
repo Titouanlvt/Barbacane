@@ -52,6 +52,10 @@ struct Node {
 /// paquets d'une ISO d'installation. Les bombes restent bornées par `max_total_size`.
 const PLANCHER_TAUX: u64 = 64 * 1024 * 1024;
 
+/// Fils d'analyse au plus pour les fichiers simples d'un conteneur (clamd en sert 10 à la fois ;
+/// l'analyseur est limité à 3 cœurs par systemd, clamd tourne à côté).
+const TRAVAILLEURS: usize = 4;
+
 /// Budget partagé par tout le transfert.
 struct Budget {
     files: u64,
@@ -249,6 +253,49 @@ impl Scanner<'_> {
         node
     }
 
+    /// Analyse les fichiers simples de `found` (indices marqués dans `simples`) sur
+    /// `TRAVAILLEURS` fils au plus ; renvoie un nœud par indice traité, `None` ailleurs.
+    fn analyser_en_parallele(
+        &self,
+        found: &[Found],
+        simples: &[bool],
+        parent: &str,
+        depth: u32,
+    ) -> Vec<Option<Node>> {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let indices: Vec<usize> = (0..found.len()).filter(|&i| simples[i]).collect();
+        let resultats: std::sync::Mutex<Vec<Option<Node>>> =
+            std::sync::Mutex::new((0..found.len()).map(|_| None).collect());
+        let suivant = AtomicUsize::new(0);
+        let fils = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .clamp(1, TRAVAILLEURS)
+            .min(indices.len().max(1));
+        std::thread::scope(|s| {
+            for _ in 0..fils {
+                s.spawn(|| {
+                    loop {
+                        let k = suivant.fetch_add(1, Ordering::Relaxed);
+                        let Some(&i) = indices.get(k) else { break };
+                        let f = &found[i];
+                        // fichier simple : pas de conteneur, le budget n'est pas utilisé
+                        let mut b = Budget { files: 0, size: 0 };
+                        let n = self.node(
+                            &f.local,
+                            format!("{parent}/{}", f.rel),
+                            Some(parent.to_string()),
+                            depth,
+                            &mut b,
+                        );
+                        resultats.lock().unwrap_or_else(|e| e.into_inner())[i] = Some(n);
+                    }
+                });
+            }
+        });
+        resultats.into_inner().unwrap_or_else(|e| e.into_inner())
+    }
+
     /// Ouvre un conteneur ; en cas de refus, tout le conteneur est refusé.
     fn container(&self, node: &mut Node, kind: &str, depth: u32, budget: &mut Budget) {
         let refuse = |node: &mut Node, reason: String| {
@@ -392,7 +439,19 @@ impl Scanner<'_> {
         budget.files += found.len() as u64;
         budget.size += real_size;
         let parent = node.entry.path.clone();
-        for f in found {
+        // Fichiers simples (ni archive ni image) : analysés en parallèle sur plusieurs cœurs ; une
+        // ISO Linux en contient des dizaines de milliers, analysés un par un jusqu'au 17/11/2026.
+        // Les conteneurs restent traités un par un (budget, mot de passe, mémoire de 7-Zip).
+        let simples: Vec<bool> = found
+            .iter()
+            .map(|f| f.problem.is_none() && sniff(&f.local).is_none())
+            .collect();
+        let mut prets = self.analyser_en_parallele(&found, &simples, &parent, depth + 1);
+        for (i, f) in found.into_iter().enumerate() {
+            if let Some(child) = prets[i].take() {
+                node.children.push(child);
+                continue;
+            }
             let path = format!("{parent}/{}", f.rel);
             let child = match f.problem {
                 Some(why) => Node {
