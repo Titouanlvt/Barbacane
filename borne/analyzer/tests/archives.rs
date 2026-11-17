@@ -76,6 +76,11 @@ struct Analyzer {
 }
 
 fn start_analyzer(dir: &Path, port: u16) -> Analyzer {
+    start_analyzer_avec(dir, port, "")
+}
+
+/// `extra` : lignes de configuration ajoutées avant `[limits]`.
+fn start_analyzer_avec(dir: &Path, port: u16, extra: &str) -> Analyzer {
     let (clamd, sock) = start_clamd(dir);
     let stage = dir.join("sortie");
     let conf = dir.join("analyzer.toml");
@@ -91,6 +96,7 @@ bwrap = "{b}"
 stage_dir = "{st}"
 reports_dir = "{r}"
 import_dir = "{i}"
+{extra}
 [limits]
 max_files = 50
 max_total_size = 20000000
@@ -462,4 +468,62 @@ fn walk(d: &Path) -> Vec<PathBuf> {
         }
     }
     v
+}
+
+/// Image officielle (liste de l'administrateur) : reconnue par son empreinte sans être ouverte,
+/// même si son contenu dépasse les limites d'extraction ; une image inconnue de même forme est
+/// refusée.
+#[test]
+fn image_officielle_reconnue() {
+    let tmp = tempfile::tempdir().unwrap();
+    let cle = tmp.path().join("cle");
+    let src = tmp.path().join("src");
+    std::fs::create_dir_all(&cle).unwrap();
+    std::fs::create_dir_all(&src).unwrap();
+    // 60 fichiers : au-delà de max_files = 50, une image inconnue est refusée
+    for i in 0..60 {
+        std::fs::write(src.join(format!("f{i}.txt")), format!("fichier {i}\n")).unwrap();
+    }
+    let zip = |nom: &str, extra: &str| {
+        std::fs::write(src.join("version.txt"), extra).unwrap();
+        let st = Command::new("zip")
+            .current_dir(&src)
+            .args(["-q", "-r", cle.join(nom).to_str().unwrap(), "."])
+            .status()
+            .unwrap();
+        assert!(st.success());
+    };
+    zip("officielle.zip", "officielle");
+    zip("inconnue.zip", "modifiee");
+    let sha = {
+        use sha2::{Digest, Sha256};
+        hex::encode(Sha256::digest(
+            std::fs::read(cle.join("officielle.zip")).unwrap(),
+        ))
+    };
+    let liste = tmp.path().join("images-officielles.sha256");
+    std::fs::write(&liste, format!("# test\n{sha}  Image officielle de test\n")).unwrap();
+    let tar = tmp.path().join("b.tar");
+    make_tar(&cle, &tar);
+    let a = start_analyzer_avec(
+        tmp.path(),
+        18045,
+        &format!("images_officielles = \"{}\"", liste.display()),
+    );
+    let id = scan(&a, &tar, &HashMap::new());
+    let u: Value = a
+        .http
+        .get(format!("{}/api/scanbundle/borne1/{id}", a.url))
+        .send()
+        .unwrap()
+        .json()
+        .unwrap();
+    assert_eq!(u["files"]["officielle.zip"]["status"], "CLEAN", "{u}");
+    assert_eq!(u["files"]["inconnue.zip"]["status"], "DIRTY", "{u}");
+    let rep = std::fs::read_dir(tmp.path().join("rapports"))
+        .unwrap()
+        .flatten()
+        .map(|e| std::fs::read_to_string(e.path()).unwrap_or_default())
+        .collect::<String>();
+    assert!(rep.contains("image officielle reconnue"), "rapport : {rep}");
 }
