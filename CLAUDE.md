@@ -94,6 +94,15 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
   Piège : un script bash en cours d'exécution relit son fichier ; ne jamais le réécrire en place
   (sed -i ou écriture + mv seulement).
 
+## Travail autonome (règles de l'utilisateur, 17/11/2026)
+- Toute commande longue : `timeout`, en arrière-plan avec journal dans `/root/BARBACANE/logs/`,
+  attente par `lab/attendre.sh JOURNAL MOTIF ÉCHÉANCE [BLOCAGE]` (jamais `pgrep -f` : se trouve lui-même).
+- Rien d'interactif ; ssh en BatchMode (`lab/ssh_config`). VM figée > 15 min : screendump, arrêt, diagnostic.
+- 3 échecs sur un même problème : section « Bloquants » de `docs/preuves/README.md`, puis tâche suivante.
+- Suivi : `/root/BARBACANE/AVANCEMENT.md` ; commit + push au moins toutes les heures.
+- Choix faits sans l'utilisateur : preuve de la liste blanche avec une clé de signature de TEST du lab
+  (la phrase de passe de production n'est connue que de l'utilisateur).
+
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
 2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).

@@ -481,6 +481,37 @@ if test_actif volumineux; then
     attendre "à analyser" 300 || true
 fi
 
+# === maj : mise à jour signée valide, puis refus ==========================================
+# (avant les contenus réels : une liste d'images officielles livrée par la mise à jour doit
+#  servir à l'étape reel ; ordre corrigé le 17/11/2026)
+maj_appliquer() { # fichier.bcu sous-dossier attendu
+    formater "$SERIE_AUTRE" "" MAJ; cp "$1" "$1.minisig" "$T/m/"; demonter "$D/$2-cle.sha256"
+    admin; cliquer "Mettre à jour"; attendre "Mise à jour hors ligne" 30
+    brancher usb1 "$SERIE_AUTRE"; sleep 5; cliquer "Lire et appliquer"
+    if voir "$3" 900 "$D/$2.png"; then lire "$2" >/dev/null; return 0; fi
+    lire "$2" >/dev/null; return 1
+}
+if test_actif maj; then
+    debut maj "mises à jour signées"
+    if [ -z "${MAJ:-}" ] || [ ! -d "$MAJ" ]; then
+        non_teste "MAJ non fourni (tests/proxmox/paquets-maj.sh)"
+    else
+        valide=$(ls "$MAJ"/valide/*.bcu); sig=$(ls "$MAJ"/mauvaise-signature/*.bcu); vieux=$(ls "$MAJ"/ancienne/*.bcu)
+        v=$(basename "$valide" .bcu | grep -o '[0-9]*$')
+        # Chiffres à zéro barré (police de la borne) mal lus par l'OCR : la phrase suffit à l'écran,
+        # le numéro exact est vérifié dans le journal de la borne (étape journal, sans OCR).
+        si maj_appliquer "$valide" 01-valide "Paquet de mise à jour version" -- "paquet signé valide appliqué (écran : « Paquet de mise à jour version … »)" "paquet valide non appliqué"
+        echo "$v" > "$OUT/version-maj-attendue.txt"
+        cliquer "Retour au menu"; debrancher usb1; quitter_admin
+        si maj_appliquer "$sig" 02-mauvaise-signature "signature invalide" -- "paquet signé par une autre clé refusé" "mauvaise signature acceptée"
+        cliquer "Retour au menu"; debrancher usb1; quitter_admin
+        si maj_appliquer "$vieux" 03-version-ancienne "retour arrière" -- "version plus ancienne refusée" "retour arrière accepté"
+        cliquer "Retour au menu"; debrancher usb1
+        cliquer "État de la borne"; capture 04-etat-borne; lire 04-etat-borne >/dev/null
+        cliquer "Retour au menu"; quitter_admin
+    fi
+fi
+
 # === contenus réels : clés flashées (Etcher, Rufus) et fichiers de bureau ====================
 # Images fabriquées par tests/proxmox/contenu-reel.sh (CONTENU=dossier : *.img, *.sains, *.pieges),
 # copiées octet par octet sur la clé source comme le ferait Etcher, puis Copier vers la clé de sortie.
@@ -598,35 +629,6 @@ if test_actif export; then
     si grep -q 'journal' "$D/contenu-cle.txt" -- "journal de la borne exporté" "journal absent de l'export"
     si grep -qE '/rapports/[^/]+\.json$' "$D/contenu-cle.txt" -- "rapports exportés ($(grep -cE '/rapports/[^/]+\.json$' "$D/contenu-cle.txt") rapports JSON)" "rapports absents de l'export"
     si grep -rqi 'eicar' "$D/cle/" --include='*.json' -- "rapports exportés : détections EICAR présentes" "rapports exportés sans les détections"
-fi
-
-# === maj : mise à jour signée valide, puis refus ==========================================
-maj_appliquer() { # fichier.bcu sous-dossier attendu
-    formater "$SERIE_AUTRE" "" MAJ; cp "$1" "$1.minisig" "$T/m/"; demonter "$D/$2-cle.sha256"
-    admin; cliquer "Mettre à jour"; attendre "Mise à jour hors ligne" 30
-    brancher usb1 "$SERIE_AUTRE"; sleep 5; cliquer "Lire et appliquer"
-    if voir "$3" 900 "$D/$2.png"; then lire "$2" >/dev/null; return 0; fi
-    lire "$2" >/dev/null; return 1
-}
-if test_actif maj; then
-    debut maj "mises à jour signées"
-    if [ -z "${MAJ:-}" ] || [ ! -d "$MAJ" ]; then
-        non_teste "MAJ non fourni (tests/proxmox/paquets-maj.sh)"
-    else
-        valide=$(ls "$MAJ"/valide/*.bcu); sig=$(ls "$MAJ"/mauvaise-signature/*.bcu); vieux=$(ls "$MAJ"/ancienne/*.bcu)
-        v=$(basename "$valide" .bcu | grep -o '[0-9]*$')
-        # Chiffres à zéro barré (police de la borne) mal lus par l'OCR : la phrase suffit à l'écran,
-        # le numéro exact est vérifié dans le journal de la borne (étape journal, sans OCR).
-        si maj_appliquer "$valide" 01-valide "Paquet de mise à jour version" -- "paquet signé valide appliqué (écran : « Paquet de mise à jour version … »)" "paquet valide non appliqué"
-        echo "$v" > "$OUT/version-maj-attendue.txt"
-        cliquer "Retour au menu"; debrancher usb1; quitter_admin
-        si maj_appliquer "$sig" 02-mauvaise-signature "signature invalide" -- "paquet signé par une autre clé refusé" "mauvaise signature acceptée"
-        cliquer "Retour au menu"; debrancher usb1; quitter_admin
-        si maj_appliquer "$vieux" 03-version-ancienne "retour arrière" -- "version plus ancienne refusée" "retour arrière accepté"
-        cliquer "Retour au menu"; debrancher usb1
-        cliquer "État de la borne"; capture 04-etat-borne; lire 04-etat-borne >/dev/null
-        cliquer "Retour au menu"; quitter_admin
-    fi
 fi
 
 # === clavier : un clavier USB ne peut rien taper (S-06) ===================================
