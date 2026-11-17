@@ -10,6 +10,8 @@
   68 OK à 17 h 30 ; étape ventoy. Seul échec : reel-windows (attendu sans liste blanche).
 
 ## Fait (avec preuve)
+- Écart n° 11 (Etcher) prouvé : image identique octet par octet, clé démarrable — `docs/preuves/etcher/`, fusionné dans integration (141f78f).
+- Écart n° 8 borné à 12 h — b9614a5.
 - **Fusion dans main** : e438f52 (CI et ISO vertes), 17/11 vers 18 h. Dependabot n° 1-3 inclus (d4ebad6).
 - Écran de veille (10 min, réveil au toucher) — 3ec44be ; étape de preuve `veille` — e438f52.
 - Analyse parallèle des fichiers simples (4 fils) + compteur en direct — 436abd8, d5f301f (tests OK ; mesure à venir).

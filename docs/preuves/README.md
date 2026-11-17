@@ -7,6 +7,7 @@
 |---|---|
 | Parcours unique : « Analyser » puis Copier vers une clé connue / Graver / Blanchir / Arrêter ici (4 boutons sur une ligne en 1280 px) | passages parallèles 5 et 6 (`parallele-*/`), captures `ventoy/02-resultat-analyse.png` |
 | Clé Ventoy blanchie **en gardant démarrable** : zone de démarrage reconstruite depuis le Ventoy embarqué (octet par octet), ISO piégée et `ventoy/` écartés, **la clé démarre** | [ventoy/](ventoy/) |
+| Clé **Etcher** réécrite depuis son image officielle vérifiée (empreinte avant écriture, 792 Mo identiques octet par octet), **elle démarre** | [etcher/](etcher/) (clé de signature de **test** du lab) |
 | Liste blanche d'images officielles livrée par paquet signé (autre clé et version ancienne refusées) ; ISO Windows 11 de 8,3 Go copiée intacte | [liste-blanche/](liste-blanche/) (clé de signature de **test** du lab) |
 | Clés Rufus (FAT32, NTFS 6,3 Go), Etcher, bureau : sains intacts (sha256), piégés écartés, aucun EICAR | passage parallèle 5 (clés émulées) ; campagne 920 (vraies clés) |
 | Espace de travail chiffré éphémère (dm-crypt, clé jetée à chaque session), espace re-mesuré avant la copie, refus clair si trop gros | `docs/conception-espace-travail.md` ; Rufus NTFS 6,3 Go OK après correctif 90e720f |
@@ -17,8 +18,7 @@
 ### Ne marche pas (encore)
 | Point | État |
 |---|---|
-| Clé Rufus « mode ISO » / Etcher non reconnue : redevient non démarrable après blanchiment | voulu (zone de démarrage non vérifiable) ; avertissement à l'écran ; alternative sûre : Ventoy |
-| Réécriture d'une image Etcher vérifiée (liste blanche de l'image entière) | conçue (`docs/conception-demarrable.md`), pas encore faite (écart noyau à écrire) |
+| Clé Rufus « mode ISO », ou Etcher dont l'image n'est pas dans la liste : redevient non démarrable après blanchiment | voulu (zone de démarrage non vérifiable) ; avertissement à l'écran ; alternative sûre : Ventoy |
 | ISO Windows sans liste blanche | refusée avec une raison claire (« trop volumineux pour être ouvert ») : 1,8 million de fichiers dans `install.wim` |
 
 ### Pas testé, et pourquoi
