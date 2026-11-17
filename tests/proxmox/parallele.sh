@@ -77,6 +77,12 @@ if [ -n "${MODELE_EXISTANT:-}" ]; then
 else
 if qm config "$BASE" 2>/dev/null | grep -q '^template: 1'; then
     [ "$(qm config "$BASE" | awk '/^name:/ { print $2 }')" = barbacane-borne ] || { echo "VM $BASE n'est pas une borne" >&2; exit 1; }
+    # Clones liés de l'ancien modèle (bornes de test 941…949) : supprimés d'abord
+    for id in $(seq $((BASE + 1)) $((BASE + 9))); do
+        if [ "$(qm config "$id" 2>/dev/null | awk '/^name:/ { print $2 }')" = barbacane-borne ]; then
+            qm stop "$id" >/dev/null 2>&1 || true; qm destroy "$id" --purge >/dev/null
+        fi
+    done
     qm destroy "$BASE" --purge >/dev/null
 fi
 debut=$(date +%s)
