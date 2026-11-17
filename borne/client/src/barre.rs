@@ -39,7 +39,15 @@ fn aplat<'a>(l: f32, h: f32, c: Color, rayon: f32) -> Element<'a, Msg> {
 pub fn barre<'a>(fraction: Option<f32>, t: f32, largeur: f32) -> Element<'a, Msg> {
     let p = style::c();
     let reduites = style::animations_reduites();
-    let mut couches = stack![aplat(largeur, HAUTEUR, p.analyse_fond, 8.0)];
+    // Fond et contour dans la même couche : un contour posé sur le conteneur extérieur était
+    // dessiné sous les couches et seul son bord haut dépassait (trait bleu, 17/11/2026).
+    let fond =
+        container(Space::new().width(largeur).height(HAUTEUR)).style(move |_| container::Style {
+            background: Some(Background::Color(p.analyse_fond)),
+            border: Border::default().rounded(8).width(1).color(p.trait_),
+            ..Default::default()
+        });
+    let mut couches = stack![fond];
     match fraction {
         Some(f) => {
             let rempli = (largeur * f.clamp(0.0, 1.0)).round();
@@ -105,10 +113,6 @@ pub fn barre<'a>(fraction: Option<f32>, t: f32, largeur: f32) -> Element<'a, Msg
         .width(Length::Fixed(largeur))
         .height(Length::Fixed(HAUTEUR))
         .clip(true)
-        .style(move |_| container::Style {
-            border: Border::default().rounded(8).width(1).color(p.trait_),
-            ..Default::default()
-        })
         .into()
 }
 
