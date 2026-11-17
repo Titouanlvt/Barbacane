@@ -11,6 +11,12 @@
 #                 « virtuelle » : clé USB ÉMULÉE (usb-storage QEMU sur l'image CLE_VIRTUELLE, 4 Go),
 #                 quand il manque une troisième vraie clé ; elle ne sert alors pas à l'installation.
 #   SERIE_INSTALL support d'installation (défaut : SERIE_AUTRE ; obligatoire si elle est virtuelle).
+#   « virt:NOM » (pour n'importe quelle clé, installation comprise) : clé ÉMULÉE sur l'image
+#                 VIRT_DIR/NOM.img (VIRT_TAILLE, 8G par défaut), n° de série « BBVIRT<NOM> » stable :
+#                 une clé enrôlée dans une borne modèle l'est aussi dans ses clones. Sert au lanceur
+#                 tests/proxmox/parallele.sh (plusieurs bornes en même temps, sans vraie clé).
+# CLONE_DE=VMID : la borne est un clone lié de cette borne modèle (déjà installée, PIN choisi,
+#                 clé de sortie enrôlée) au lieu d'être installée ; « installation » est alors sautée.
 #                 Peut être la clé de sortie : l'ISO y est écrite avant l'enrôlement, puis effacée.
 #   SERIE_SOURCE  clé inconnue à analyser, puis à blanchir
 #   SERIE_SORTIE  clé de destination enrôlée (export des journaux aussi)
@@ -32,7 +38,13 @@ TESTS=${TESTS:-"installation grub pin enrolement transfert blanchiment export ma
 : "${ISO:?ISO=chemin de l ISO}" "${SERIE_SOURCE:?}" "${SERIE_SORTIE:?}" "${SERIE_AUTRE:?}"
 SERIE_INSTALL=${SERIE_INSTALL:-$SERIE_AUTRE}
 CLE_VIRTUELLE=${CLE_VIRTUELLE:-/var/lib/vz/barbacane/cle-virtuelle.img}
-[ "$SERIE_INSTALL" != virtuelle ] || { echo "SERIE_INSTALL : une vraie clé est requise pour l'installation" >&2; exit 1; }
+[ "$SERIE_INSTALL" != virtuelle ] || { echo "SERIE_INSTALL : « virtuelle » est réservée à la clé « autre » ; utilisez virt:NOM" >&2; exit 1; }
+VIRT_DIR=${VIRT_DIR:-/var/lib/vz/barbacane/virt} VIRT_TAILLE=${VIRT_TAILLE:-8G}
+# Clés émulées : NOM, image, n° de série, identifiants QMP
+virt_nom() { case "$1" in virt:*) echo "${1#virt:}" ;; virtuelle) echo autre ;; *) return 1 ;; esac; }
+virt_img() { if [ "$1" = virtuelle ]; then echo "$CLE_VIRTUELLE"; else echo "$VIRT_DIR/$(virt_nom "$1").img"; fi; }
+virt_serie() { if [ "$1" = virtuelle ]; then echo BARBACANEVIRT0001; else echo "BBVIRT$(virt_nom "$1" | tr -cd '[:alnum:]' | tr '[:lower:]' '[:upper:]')"; fi; }
+est_virt() { virt_nom "$1" >/dev/null 2>&1; }
 B=(python3 "$ICI/borne.py" "$VMID")
 # shellcheck disable=SC2016 # chaîne EICAR littérale
 EICAR='X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
@@ -49,7 +61,8 @@ fi
 mkdir -p "$OUT"
 R="$OUT/resultats.txt"
 T="$(mktemp -d)"
-liberer_virtuelle() { local l; for l in $(losetup -j "$CLE_VIRTUELLE" -O NAME -n 2>/dev/null); do losetup -d "$l"; done; }
+liberer() { local l; for l in $(losetup -j "$1" -O NAME -n 2>/dev/null); do losetup -d "$l"; done; }
+liberer_virtuelle() { liberer "$CLE_VIRTUELLE"; local f; for f in "$VIRT_DIR"/*.img; do [ -e "$f" ] && liberer "$f"; done; return 0; }
 trap 'umount "$T"/m 2>/dev/null || true; liberer_virtuelle; rm -rf "$T"' EXIT
 mkdir "$T/m"
 
@@ -85,9 +98,11 @@ premier() {
 # Disque côté hôte d'une clé désignée par son numéro de série ; jamais un disque non USB.
 disque() {
     local d
-    if [ "$1" = virtuelle ]; then   # image de la clé émulée, vue par l'hôte comme un périphérique loop
-        d=$(losetup -j "$CLE_VIRTUELLE" -O NAME -n | head -1)
-        [ -n "$d" ] || d=$(losetup -fP --show "$CLE_VIRTUELLE")
+    if est_virt "$1"; then   # image de la clé émulée, vue par l'hôte comme un périphérique loop
+        local img; img=$(virt_img "$1")
+        [ -e "$img" ] || { mkdir -p "$(dirname "$img")"; truncate -s "$VIRT_TAILLE" "$img"; }
+        d=$(losetup -j "$img" -O NAME -n | head -1)
+        [ -n "$d" ] || d=$(losetup -fP --show "$img")
         echo "$d"; return
     fi
     for _ in $(seq 60); do
@@ -111,21 +126,27 @@ port() {
 }
 # Clé émulée : branchée à chaud (QMP blockdev-add + device_add usb-storage), jamais en même temps
 # que l'hôte la lit (loop détaché avant).
-VIRT_SLOT=""
+declare -A VSLOT=()
+# Contrôleur USB 3 dédié aux clés émulées (sinon elles passent par l'UHCI de la tablette, à 1 Mo/s)
+XHCI_ARGS="-device qemu-xhci,id=xv"
+bus_virt() { qm config "$VMID" | grep -q 'qemu-xhci,id=xv' && printf ' "bus": "xv.0",'; return 0; }
 qmp() { python3 -c 'import sys, json; sys.path.insert(0, sys.argv[1]); import borne; borne.qmp(sys.argv[2], *[(c, json.loads(a) if a else None) for c, a in zip(sys.argv[3::2], sys.argv[4::2])])' "$ICI" "$VMID" "$@"; }
 brancher() {
-    if [ "$2" = virtuelle ]; then
-        sync; liberer_virtuelle
-        qmp blockdev-add "{\"driver\": \"raw\", \"node-name\": \"clevirt\", \"file\": {\"driver\": \"file\", \"filename\": \"$CLE_VIRTUELLE\", \"cache\": {\"direct\": true}}}" \
-            device_add '{"driver": "usb-storage", "id": "clevirtdev", "drive": "clevirt", "serial": "BARBACANEVIRT0001", "removable": true}'
-        VIRT_SLOT=$1; sleep 4; return
+    if est_virt "$2"; then
+        local img n; img=$(virt_img "$2"); n="cv$1"
+        [ -e "$img" ] || disque "$2" >/dev/null
+        sync; liberer "$img"
+        qmp blockdev-add "{\"driver\": \"raw\", \"node-name\": \"$n\", \"file\": {\"driver\": \"file\", \"filename\": \"$img\", \"cache\": {\"direct\": true}}}" \
+            device_add "{\"driver\": \"usb-storage\",$(bus_virt) \"id\": \"${n}dev\", \"drive\": \"$n\", \"serial\": \"$(virt_serie "$2")\", \"removable\": true}"
+        VSLOT[$1]=$n; sleep 4; return
     fi
     disque "$2" >/dev/null; qm set "$VMID" "-$1" "host=$(port "$2"),usb3=1" >/dev/null; sleep 4
 }
 debrancher() {
-    if [ "$1" = "$VIRT_SLOT" ]; then
-        qmp device_del '{"id": "clevirtdev"}' || true; sleep 4
-        qmp blockdev-del '{"node-name": "clevirt"}' || true; VIRT_SLOT=""; return
+    if [ -n "${VSLOT[$1]:-}" ]; then
+        local n=${VSLOT[$1]}
+        qmp device_del "{\"id\": \"${n}dev\"}" || true; sleep 4
+        qmp blockdev-del "{\"node-name\": \"$n\"}" || true; unset "VSLOT[$1]"; return
     fi
     qm set "$VMID" --delete "$1" >/dev/null 2>&1 || true; sleep 4
 }
@@ -135,7 +156,7 @@ partition() { lsblk -lnpo NAME,TYPE "$1" | awk '$2 == "part" { print $1; exit }'
 formater() {
     local d; d=$(disque "$1")
     wipefs -qa "$d"; echo "${2:+size=$2,}type=c" | sfdisk -q "$d"; sleep 2; partprobe "$d" 2>/dev/null || true; sleep 1
-    [ "$1" != virtuelle ] || { partx -u "$d" 2>/dev/null || true; sleep 1; }
+    ! est_virt "$1" || { partx -u "$d" 2>/dev/null || true; sleep 1; }
     mkfs.vfat -F32 -n "${3:-CLE}" "$(partition "$d")" >/dev/null
     mount "$(partition "$d")" "$T/m"
 }
@@ -240,25 +261,53 @@ fi
 # Un passage interrompu peut avoir laissé des clés passées à la VM : on les rend à l'hôte.
 if qm status "$VMID" >/dev/null 2>&1; then qm set "$VMID" --delete usb0,usb1,usb2 >/dev/null 2>&1 || true; sleep 3; fi
 
+# === clone d'une borne modèle (lanceur parallèle) =========================================
+if [ -n "${CLONE_DE:-}" ]; then
+    COURANT=clone
+    if qm status "$VMID" >/dev/null 2>&1; then
+        [ "$(qm config "$VMID" | awk '/^name:/ { print $2 }')" = barbacane-borne ] \
+            || { echo "VM $VMID existante qui n'est pas barbacane-borne : abandon" >&2; exit 1; }
+        qm stop "$VMID" >/dev/null 2>&1 || true; qm destroy "$VMID" --purge >/dev/null
+    fi
+    qm clone "$CLONE_DE" "$VMID" --name barbacane-borne >/dev/null
+    qm set "$VMID" --memory "$MEMOIRE" --cores "${COEURS:-2}" >/dev/null
+    qm start "$VMID"
+    if attendre "à analyser" 600 "$OUT/clone-accueil.png"; then ok "borne clonée de $CLONE_DE (installée, PIN choisi, clé de sortie enrôlée) : accueil affiché"
+    else ko "clone de $CLONE_DE : accueil non affiché"; exit 1; fi
+fi
+
 # === installation : ISO copiée sur une clé, VM démarrée sur la clé ========================
-if test_actif installation && [ "${REPRISE:-0}" != 1 ]; then
+if test_actif installation && [ "${REPRISE:-0}" != 1 ] && [ -z "${CLONE_DE:-}" ]; then
     debut installation "ISO copiée sur la clé $SERIE_INSTALL, VM démarrée dessus"
     if qm status "$VMID" >/dev/null 2>&1; then
         [ "$(qm config "$VMID" | awk '/^name:/ { print $2 }')" = barbacane-borne ] \
             || { echo "VM $VMID existante qui n'est pas barbacane-borne : abandon" >&2; exit 1; }
         qm stop "$VMID" >/dev/null 2>&1 || true; qm destroy "$VMID" --purge >/dev/null
     fi
-    d=$(disque "$SERIE_INSTALL")
-    [ "$(blockdev --getsize64 "$d")" -gt "$(stat -c %s "$ISO")" ] || { ko "clé trop petite pour l'ISO"; exit 1; }
-    ! lsblk -no MOUNTPOINT "$d" | grep -q . || { ko "clé d'installation montée sur l'hôte"; exit 1; }
-    lsblk -o NAME,SIZE,TRAN,SERIAL,MODEL "$d" > "$D/cle-avant-dd.txt"
-    dd if="$ISO" of="$d" bs=4M conv=fsync status=none
-    si cmp -n "$(stat -c %s "$ISO")" "$ISO" "$d" -- "ISO copiée sur la clé (relecture identique)" "copie de l'ISO sur la clé incorrecte"
+    if est_virt "$SERIE_INSTALL"; then
+        # Clé d'installation émulée : image de l'ISO, branchée au démarrage (bootindex), retirée par QMP
+        img=$(virt_img "$SERIE_INSTALL"); mkdir -p "$(dirname "$img")"; liberer "$img"
+        cp --sparse=always "$ISO" "$img"; truncate -s "$VIRT_TAILLE" "$img"
+        si cmp -n "$(stat -c %s "$ISO")" "$ISO" "$img" -- "ISO copiée sur la clé émulée (relecture identique)" "copie de l'ISO incorrecte"
+    else
+        d=$(disque "$SERIE_INSTALL")
+        [ "$(blockdev --getsize64 "$d")" -gt "$(stat -c %s "$ISO")" ] || { ko "clé trop petite pour l'ISO"; exit 1; }
+        ! lsblk -no MOUNTPOINT "$d" | grep -q . || { ko "clé d'installation montée sur l'hôte"; exit 1; }
+        lsblk -o NAME,SIZE,TRAN,SERIAL,MODEL "$d" > "$D/cle-avant-dd.txt"
+        dd if="$ISO" of="$d" bs=4M conv=fsync status=none
+        si cmp -n "$(stat -c %s "$ISO")" "$ISO" "$d" -- "ISO copiée sur la clé (relecture identique)" "copie de l'ISO sur la clé incorrecte"
+    fi
     qm create "$VMID" --name barbacane-borne --bios ovmf --machine q35 \
-        --efidisk0 "$STOCKAGE:1,efitype=4m,pre-enrolled-keys=0" --memory "$MEMOIRE" --cores 2 --cpu host \
+        --efidisk0 "$STOCKAGE:1,efitype=4m,pre-enrolled-keys=0" --memory "$MEMOIRE" --cores "${COEURS:-2}" --cpu host \
         --scsihw virtio-scsi-single --scsi0 "$STOCKAGE:$DISQUE" --vga std --ostype l26 >/dev/null
-    qm set "$VMID" -usb0 "host=$(port "$SERIE_INSTALL"),usb3=1" >/dev/null
-    qm set "$VMID" --boot 'order=scsi0;usb0' >/dev/null
+    if est_virt "$SERIE_INSTALL"; then
+        qm set "$VMID" --args "$XHCI_ARGS -drive if=none,id=cvusb0,file=$img,format=raw,cache=none -device usb-storage,bus=xv.0,drive=cvusb0,id=cvusb0dev,serial=$(virt_serie "$SERIE_INSTALL"),removable=on,bootindex=0" >/dev/null
+        qm set "$VMID" --boot 'order=scsi0' >/dev/null; VSLOT[usb0]=cvusb0
+    else
+        qm set "$VMID" --args "$XHCI_ARGS" >/dev/null
+        qm set "$VMID" -usb0 "host=$(port "$SERIE_INSTALL"),usb3=1" >/dev/null
+        qm set "$VMID" --boot 'order=scsi0;usb0' >/dev/null
+    fi
     qm config "$VMID" > "$D/vm.conf"
     si ! grep -q '^net' "$D/vm.conf" -- "VM sans carte réseau" "la VM a une carte réseau"
     qm start "$VMID"
@@ -266,6 +315,7 @@ if test_actif installation && [ "${REPRISE:-0}" != 1 ]; then
     # Fin d'installation : la borne redémarre sur son disque et voit encore la clé d'installation
     attendre "Clé détectée" 3600 "$D/02a-cle-installation-encore-branchee.png"
     debrancher usb0     # le technicien retire la clé
+    qm set "$VMID" --args "$XHCI_ARGS" >/dev/null   # la clé émulée ne revient pas au prochain démarrage
     attendre "à analyser" 120 "$D/02-premier-ecran.png"
     ok "installation automatique depuis la clé USB, interface affichée (${MEMOIRE} Mo de RAM)"
     qm snapshot "$VMID" installee >/dev/null
