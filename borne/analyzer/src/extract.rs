@@ -317,19 +317,25 @@ impl Extractor {
         // même vers un autre dossier de l'archive) : il sort alors en code 2. Les paquets Debian
         // et les micrologiciels en sont pleins. Liens restant dans l'archive : sans danger (jamais
         // extraits ni suivis) ; lien sortant de l'archive ou absolu : archive refusée.
+        // Ces liens ne sont jamais créés (7-Zip les ignore) ni suivis : sans danger pour la borne,
+        // et sans données à analyser ; l'archive conservée les garde tels quels.
         let liens = liens_ignores(&all);
         let seulement_liens = status.code() == Some(2)
-            && !liens.is_empty()
+            && all.lines().any(|l| l.contains("Dangerous link"))
             && all
                 .lines()
                 .filter(|l| l.contains("ERROR"))
-                .all(|l| l.contains("Dangerous link path was ignored"));
-        let sortant = liens.iter().find(|(p, t)| !lien_interne(p, t));
+                .all(|l| l.contains("Dangerous link"));
+        if seulement_liens {
+            let sortants = liens.iter().filter(|(p, t)| !lien_interne(p, t)).count();
+            log::info!(
+                "{} lien(s) symbolique(s) ignoré(s) à l'extraction, dont {sortants} vers l'extérieur",
+                all.lines().filter(|l| l.contains("Dangerous link")).count()
+            );
+        }
         let outcome =
             if all.contains("Wrong password") || all.contains("Can not open encrypted archive") {
                 Outcome::WrongPassword
-            } else if let Some((p, t)) = sortant {
-                Outcome::Failed(format!("lien symbolique sortant de l'archive ({p} → {t})"))
             } else if status.code() == Some(0) || seulement_liens {
                 Outcome::Ok
             } else if all.contains("ERROR") && all.contains("Can not open the file as archive")

@@ -167,11 +167,11 @@ pdf "$m/Documents/devis-0412.pdf"; pdf "$m/Documents/facture-piege.pdf" piege
 for e in docx pptx xlsx docm; do ooxml "$m/Documents/Chantier 46/rapport.$e"; ooxml "$m/Documents/Chantier 46/rapport-piege.$e" piege; done
 tar -cf "$m/Archives/projet.tar" -C "$s" projet; tar -czf "$m/Archives/projet.tar.gz" -C "$s" projet
 tar -czf "$m/Archives/projet-piege.tar.gz" -C "$s" projet eicar.com
-# Lien symbolique sortant de l'archive (attaque classique) : archive refusée. Les liens internes
-# (paquets Debian, micrologiciels) sont, eux, acceptés.
+# Liens symboliques dans une archive (sortant, comme /dev/null dans un paquet Debian, ou interne) :
+# jamais suivis ni créés par la borne ; l'archive saine est conservée telle quelle.
 mkdir -p "$s/lien/docs"; ln -s ../../../../etc/passwd "$s/lien/docs/passwd"; printf 'ok\n' > "$s/lien/docs/lisez-moi.txt"
 ln -s lisez-moi.txt "$s/lien/docs/raccourci.txt"
-tar -cf "$m/Archives/lien-piege.tar" -C "$s" lien; rm -f "$s/lien/docs/passwd"
+tar -cf "$m/Archives/lien-sortant.tar" -C "$s" lien; rm -f "$s/lien/docs/passwd"
 tar -cf "$m/Archives/lien-interne.tar" -C "$s" lien
 (cd "$s" && zip -qr "$m/Archives/projet.zip" projet && zip -qr "$m/Archives/projet-piege.zip" projet eicar.com)
 (cd "$s" && rar a -idq "$m/Archives/projet.rar" projet && rar a -idq "$m/Archives/projet-piege.rar" projet eicar.com)
