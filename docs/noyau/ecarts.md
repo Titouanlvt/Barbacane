@@ -85,7 +85,8 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
   par défaut un délai global de 30 s à chaque requête ; l'envoi de l'archive de session (plusieurs Go)
   à l'analyseur local dure plus longtemps et était coupé net (l'analyseur journalise « end of file
   before message length reached », alors que l'espace de travail était largement libre).
-- Correctif : `timeout(None)` sur le client (le délai de connexion de 30 s est conservé). L'analyseur
+- Correctif : délai global de 12 h au lieu de 30 s (le délai de connexion de 30 s est conservé) ;
+  d'abord `timeout(None)`, borné le 17/11/2026 pour qu'une connexion bloquée ne fige jamais la borne. L'analyseur
   est local (127.0.0.1) ; un arrêt du service ferme la connexion et l'erreur remonte toujours.
 - Test : `tests/proxmox/preuve.sh`, étape `volumineux`.
 
