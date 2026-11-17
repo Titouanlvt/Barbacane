@@ -681,6 +681,11 @@ fn write_mode(
     Ok(report)
 }
 
+/// Termine la session usbsas sans rien faire (le service en démarre une nouvelle).
+pub fn terminer(comm: &mut impl ProtoReqUsbsas) {
+    let _ = comm.end();
+}
+
 /// Efface entièrement la clé (zéros) et crée un système de fichiers exFAT vide.
 pub fn wipe(comm: &mut impl ProtoReqUsbsas, dev: u64, ev: &Sender<Event>) -> Result<()> {
     comm.wipe(proto::usbsas::RequestWipe {

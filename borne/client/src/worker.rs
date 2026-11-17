@@ -249,6 +249,14 @@ impl Worker {
             let _ = crate::optique::requete(&self.dirs.optique_socket, "ejecter");
             return Ok(t["fichiers"].as_u64().unwrap_or(n));
         }
+        if !wipe {
+            // usbsas mesure l'espace de travail libre au début de chaque session ; celle qui
+            // attend a démarré avant que l'analyseur vide sa copie de travail (« Not enough
+            // space » sur une clé de 9 Go) : elle est close, la suivante voit l'espace libéré.
+            // (Un blanchiment passe déjà par une session d'effacement.)
+            let mut s = self.fresh()?;
+            parcours::terminer(&mut s);
+        }
         if wipe {
             let mut s = self.fresh()?;
             let devs = parcours::devices(&mut s).map_err(|e| e.to_string())?;
