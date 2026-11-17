@@ -32,3 +32,4 @@
 2. Mesurer le gain de l'analyse parallèle (ISO suivante).
 3. Écart n° 11 : preuve puis fusion de `etcher-image` dans integration.
 4. Campagne finale vraies clés (`lab/campagne-finale.sh`, `logs/campagne-finale.log`) puis bilan final dans docs/preuves/README.md.
+5. Chaîne de construction (accord du 17/11 soir) : Rust épinglé (paquets Debian ou rustup-init + sha256) au lieu de `curl | sh` ; recopier `rust-fscommon` dans `noyau/`.
