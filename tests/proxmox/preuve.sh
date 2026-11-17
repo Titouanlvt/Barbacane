@@ -489,7 +489,7 @@ if test_actif reel; then
     for img in "$CONTENU"/*.img; do
         nom=$(basename "$img" .img)
         [ "$nom" != ventoy ] || continue   # étape « ventoy » (blanchiment démarrable)
-        debut "reel-$nom" "clé « $nom » : $(du -h "$img" | cut -f1) copiés tels quels sur $SERIE_SOURCE, copie vers $SERIE_SORTIE"
+        debut "reel-$nom" "clé « $nom » : $(du -hL "$img" | cut -f1) copiés tels quels sur $SERIE_SOURCE, copie vers $SERIE_SORTIE"
         d=$(disque "$SERIE_SOURCE"); wipefs -qa "$d"
         dd if="$img" of="$d" bs=4M conv=fsync status=none; partprobe "$d" 2>/dev/null || true; sleep 2
         debut_s=$(date +%s)
@@ -514,7 +514,13 @@ if test_actif reel; then
         formater "$SERIE_SORTIE" "" DEST; umount "$T/m"
         brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 90 "$D/03-cle-destination.png"
         cliquer "Effacer cette clé"
-        attendre "Vous pouvez retirer" 14400 "$D/04-termine.png"
+        if [ "$(premier "Une erreur est survenue" "Vous pouvez retirer" 14400)" != 2 ]; then
+            capture 04-erreur; lire 04-erreur >/dev/null
+            ko "écriture en erreur : $(grep -m1 -i 'échoué\|erreur' "$D/04-erreur.txt" | tail -1 || true)"
+            cliquer "Recommencer depuis le début" || true; debrancher usb1; debrancher usb2
+            voir "à analyser" 60 || true; continue
+        fi
+        capture 04-termine
         ok "durée totale (analyse + écriture) : $(( $(date +%s) - debut_s )) s"
         debrancher usb1; debrancher usb2
         monter_ro "$SERIE_SORTIE"; liste_sha "$T/m" > "$D/sortie.sha256"; cp "$T/m"/rapport-barbacane-*.txt "$D/" 2>/dev/null || true
@@ -713,7 +719,9 @@ if test_actif journal; then
     premiere=$(grep -m1 '^menuentry' "$D/grub-cfg-extrait.txt" || true)
     libre=non; [[ "$premiere" == *--unrestricted* ]] && libre=oui
     si [ "$libre" = oui ] -- "grub.cfg : entrée par défaut démarrable sans mot de passe" "entrée par défaut restreinte"
-    si grep -qi 'eicar' "$D/journal.log" -- "journal : détections EICAR consignées" "journal sans EICAR"
+    if test_actif transfert || test_actif blanchiment || test_actif volumineux; then
+        si grep -qi 'eicar' "$D/journal.log" -- "journal : détections EICAR consignées" "journal sans EICAR"
+    fi
     if [ -s "$OUT/version-maj-attendue.txt" ]; then
         v=$(cat "$OUT/version-maj-attendue.txt")
         si grep -q "$v" "$D/journal.log" -- "journal : mise à jour $v appliquée" "journal : version $v absente"
