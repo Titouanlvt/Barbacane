@@ -23,6 +23,9 @@ VIRT=${VIRT:-/var/lib/vz/barbacane/virt}
 [ "$(id -u)" -eq 0 ] || { echo "À lancer en root." >&2; exit 1; }
 [ ! -e "$OUT" ] || [ -z "$(ls -A "$OUT")" ] || { echo "$OUT n'est pas vide" >&2; exit 1; }
 mkdir -p "$OUT"
+# Copie figée des scripts : une modification du dépôt pendant le passage ne doit pas changer les
+# scénarios déjà lancés ni ceux en attente.
+cp -r "$ICI" "$OUT/.scripts"; ICI="$OUT/.scripts"
 
 # Parallélisme : ce que permettent les cœurs et la RAM une fois réservés 2 cœurs et 8 Go à l'hôte
 coeurs=$(( $(nproc) - 2 )); ram=$(( $(awk '/MemAvailable/ { print int($2 / 1024) }' /proc/meminfo) - 8192 ))

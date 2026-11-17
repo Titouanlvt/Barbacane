@@ -50,6 +50,8 @@ pub enum Screen {
 pub enum Msg {
     Worker(Ev),
     Choisir(Mode),
+    /// Choix fait sur l'écran de résultat (copier, graver, blanchir)
+    Action(Mode),
     Key(Key),
     Valider,
     Ignorer,
@@ -526,6 +528,13 @@ impl App {
                 self.choisir_disque();
                 Task::none()
             }
+            Msg::Action(mode) => {
+                self.mode = mode;
+                match mode {
+                    Mode::Blanchir => self.maj(Msg::Blanchir),
+                    Mode::Copier | Mode::Graver => self.maj(Msg::VersSortie),
+                }
+            }
             Msg::Ecrire => self.start_write(false),
             Msg::Blanchir => match self.screen {
                 Screen::Resume => {
@@ -948,42 +957,19 @@ impl App {
             .map(barbacane_parcours::describe)
             .unwrap_or_default();
         let disque = self.src.as_ref().is_some_and(est_optique);
-        let mut choix = row![grand_choix(
-            "Copier vers une clé de destination",
+        // Parcours unique (17/11/2026) : on analyse d'abord ; copier, graver, blanchir ou arrêter
+        // se décide sur l'écran de résultat, en connaissant ce que contient le support.
+        let reinscriptible = self.optique.as_ref().is_some_and(|e| e.reinscriptible);
+        let choix = row![grand_choix(
+            "Analyser",
             if disque {
-                "Toutes les sessions du disque sont analysées ; les fichiers sains sont copiés sur une clé effacée et formatée."
+                "Toutes les sessions du disque sont lues et analysées. Rien n'est écrit : vous choisirez ensuite quoi faire des fichiers sains."
             } else {
-                "Les fichiers sains sont copiés sur une clé de destination, qui sera effacée et formatée."
+                "Tout le contenu de la clé est lu et analysé. Rien n'est écrit : vous choisirez ensuite quoi faire des fichiers sains."
             },
             Msg::Choisir(Mode::Copier)
         )]
-        .spacing(30)
         .width(Length::Fill);
-        if self.optique.is_some() {
-            choix = choix.push(grand_choix(
-                "Graver sur un disque",
-                if disque {
-                    "Les fichiers sains sont gravés sur un disque réinscriptible (échange de disque demandé), puis vérifiés."
-                } else {
-                    "Les fichiers sains sont gravés sur un disque réinscriptible (CD-RW, DVD-RW, DVD+RW, BD-RE), puis vérifiés."
-                },
-                Msg::Choisir(Mode::Graver),
-            ));
-        }
-        let reinscriptible = self.optique.as_ref().is_some_and(|e| e.reinscriptible);
-        if !disque {
-            choix = choix.push(grand_choix(
-                "Blanchir cette clé",
-                "La clé est analysée, entièrement effacée, puis seuls ses fichiers sains y sont réécrits.",
-                Msg::Choisir(Mode::Blanchir),
-            ));
-        } else if reinscriptible {
-            choix = choix.push(grand_choix(
-                "Blanchir ce disque",
-                "Le disque est analysé, effacé COMPLÈTEMENT (vérifié), puis seuls ses fichiers sains y sont regravés.",
-                Msg::Choisir(Mode::Blanchir),
-            ));
-        }
         // Charte : la clé glisse vers la porte, ou le tiroir remonte avec le disque (600 ms).
         let mut c = column![
             if disque {
@@ -1257,7 +1243,9 @@ impl App {
             _ => return Space::new().height(0).into(),
         };
         let (dest, ecriture) = match (&self.screen, self.mode) {
-            (Screen::Choix, _) => ("Sortie", "Écriture"),
+            (Screen::Choix | Screen::Analyse | Screen::MotDePasse(_) | Screen::Resume, _) => {
+                ("Sortie", "Écriture")
+            }
             (_, Mode::Copier) => ("Clé de destination", "Écriture"),
             (_, Mode::Graver) => ("Disque de destination", "Gravure"),
             (_, Mode::Blanchir) => ("Confirmation", "Blanchiment"),
@@ -1473,29 +1461,33 @@ impl App {
                 .style(style::carte),
             );
         }
-        let action = match self.mode {
-            Mode::Copier => bouton(
-                "Choisir la clé de destination",
-                Msg::VersSortie,
-                style::primaire,
-            ),
-            Mode::Graver => bouton(
-                "Choisir le disque de destination",
-                Msg::VersSortie,
-                style::primaire,
-            ),
-            Mode::Blanchir if self.src.as_ref().is_some_and(est_optique) => {
-                bouton("Blanchir le disque", Msg::Blanchir, style::danger)
-            }
-            Mode::Blanchir => bouton("Blanchir la clé", Msg::Blanchir, style::danger),
-        };
-        c = c.push(Space::new().height(10)).push(
-            row![
-                bouton("Abandonner", Msg::Terminer, style::secondaire),
-                action
-            ]
-            .spacing(30),
-        );
+        let disque = self.src.as_ref().is_some_and(est_optique);
+        let reinscriptible = self.optique.as_ref().is_some_and(|e| e.reinscriptible);
+        let mut actions = row![bouton("Arrêter ici", Msg::Terminer, style::secondaire)].spacing(24);
+        actions = actions.push(bouton(
+            "Copier vers une clé connue",
+            Msg::Action(Mode::Copier),
+            style::primaire,
+        ));
+        if self.optique.is_some() {
+            actions = actions.push(bouton(
+                "Graver sur un disque",
+                Msg::Action(Mode::Graver),
+                style::secondaire,
+            ));
+        }
+        if !disque || reinscriptible {
+            actions = actions.push(bouton(
+                if disque {
+                    "Blanchir le disque"
+                } else {
+                    "Blanchir la clé"
+                },
+                Msg::Action(Mode::Blanchir),
+                style::danger,
+            ));
+        }
+        c = c.push(Space::new().height(10)).push(actions);
         centre(c)
     }
 

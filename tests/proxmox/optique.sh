@@ -99,10 +99,10 @@ if test_actif image; then
     fi
     qm set "$VMID" --ide2 "local:iso/$(basename "$ISO_TEST"),media=cdrom" >/dev/null
     attendre "Disque détecté" 120 "$D/01-disque-detecte.png"
-    cliquer "Copier vers une clé"
+    cliquer "Analyser"
     attendre "Résultat de l'analyse" 1800 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
     si grep -qi 'menace' "$D/02-resultat-analyse.txt" -- "écran : menace détectée sur le disque" "aucune menace affichée"
-    cliquer "Choisir la clé de destination"
+    cliquer "Copier vers une clé connue"
     formater "$SERIE_SORTIE" DEST; umount "$T/m"
     brancher usb1 "$SERIE_SORTIE"; attendre "Clé de destination" 60 "$D/03-cle-destination.png"
     cliquer "Effacer cette clé"
@@ -137,7 +137,7 @@ if test_actif blanchiment; then
     debut blanchiment "blanchiment du disque réinscriptible"
     xorriso -indev /dev/sr0 -toc > "$D/disque-avant.toc.txt" 2>&1 || true
     voir "Disque détecté" 60 || ko "écran disque détecté absent"
-    cliquer "Blanchir ce"
+    cliquer "Analyser"
     mot_de_passe_si_demande secret
     attendre "Résultat de l'analyse" 3600 "$D/02-resultat-analyse.png"; lire 02-resultat-analyse >/dev/null
     cliquer "Blanchir le disque"; attendre "Maintenir pour effacer" 60 "$D/03-confirmation.png"
@@ -162,9 +162,9 @@ if test_actif gravure; then
     liste_sha "$T/m" > "$D/source.sha256"; umount "$T/m"
     voir "Disque détecté" 30 && cliquer "Ignorer ce disque"
     brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 60 "$D/01-cle-detectee.png"
-    cliquer "Graver sur un disque"
+    cliquer "Analyser"
     attendre "Résultat de l'analyse" 1800 "$D/02-resultat-analyse.png"
-    cliquer "Choisir le disque de destination"
+    cliquer "Graver sur un disque"
     attendre "Effacer ce disque" 120 "$D/03-disque-destination.png"
     cliquer "Effacer ce disque"; date +%s > "$D/debut"
     sleep 60; capture 04-gravure-en-cours; lire 04-gravure-en-cours >/dev/null
@@ -184,9 +184,9 @@ fi
 if test_actif relecture; then
     debut relecture "disque gravé par la borne → clé de destination"
     voir "Disque détecté" 120 "$D/01-disque-detecte.png" || ko "disque gravé non détecté"
-    cliquer "Copier vers une clé"
+    cliquer "Analyser"
     attendre "Résultat de l'analyse" 1800 "$D/02-resultat-analyse.png"
-    cliquer "Choisir la clé de destination"
+    cliquer "Copier vers une clé connue"
     formater "$SERIE_SORTIE" DEST; umount "$T/m"
     brancher usb1 "$SERIE_SORTIE"; attendre "Clé de destination" 60
     cliquer "Effacer cette clé"; attendre "Vous pouvez retirer" 1800 "$D/03-termine.png"; debrancher usb1

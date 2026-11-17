@@ -175,19 +175,25 @@ retirée tout de suite. Toute clé non enrôlée est refusée en sortie avec un 
 
 # 6. Utilisation
 
-## Copier vers une clé de destination
+## Analyser d'abord, décider ensuite
 
-1. Brancher la clé à analyser sur le port **ENTRÉE**, cliquer **Copier vers une clé de destination**.
+Le parcours est le même pour une clé USB et pour un disque optique : on **analyse** d'abord, sans
+rien écrire ; on choisit ensuite, en connaissant le résultat, de **copier vers une clé connue**,
+de **graver**, de **blanchir** le support analysé ou d'**arrêter ici**.
+
+1. Brancher la clé à analyser sur le port **ENTRÉE**, cliquer **Analyser**.
 
 ![Clé détectée](preuves/transfert/01-cle-detectee.png)
 
 2. Si une archive est protégée par un mot de passe, la borne le demande. Saisir le mot de passe
    au clavier virtuel, ou **Ignorer cette archive**.
-3. Le résultat s'affiche : menaces, fichiers écartés et raison de chaque refus.
+3. Le résultat s'affiche : menaces, fichiers écartés et raison de chaque refus, puis les choix
+   **Arrêter ici**, **Copier vers une clé connue**, **Graver sur un disque** (si la borne a un
+   graveur) et **Blanchir la clé**.
 
 ![Résultat de l'analyse](preuves/transfert/02-resultat-analyse.png)
 
-4. **Choisir la clé de destination**, la brancher sur le port **SORTIE**, puis **Effacer cette
+4. **Copier vers une clé connue** : brancher la clé de destination sur le port **SORTIE**, puis **Effacer cette
    clé et y copier les fichiers**. Le contenu précédent de cette clé est effacé.
 
 ![Fin de la copie](preuves/transfert/05-termine.png)
@@ -201,7 +207,7 @@ Sur la clé de destination, on trouve :
 
 ## Blanchir une clé
 
-Le blanchiment nettoie la clé elle-même : analyse, **effacement complet**, puis réécriture des
+Choix **Blanchir la clé** sur l'écran de résultat. Le blanchiment nettoie la clé elle-même : analyse, **effacement complet**, puis réécriture des
 seuls fichiers sains et du rapport. Pour confirmer, gardez le bouton **Maintenir pour effacer**
 enfoncé 2 secondes : un voile le remplit, et le relâcher avant la fin annule (rien n'est effacé).
 Pendant l'effacement, l'écran affiche la quantité traitée, la vitesse de la clé, le temps restant
@@ -216,9 +222,9 @@ du temps : ne la retirez pas.
 
 Le lecteur optique de la borne est une source et une destination comme les ports USB.
 
-- **Disque à analyser** : insérer le disque. L'écran « Disque détecté » propose **Copier vers
-  une clé de destination**, **Graver sur un disque** ou **Blanchir ce disque** (disque
-  réinscriptible seulement), ou **Ignorer ce disque** (pour utiliser une clé à la place).
+- **Disque à analyser** : insérer le disque. L'écran « Disque détecté » propose **Analyser**, ou
+  **Ignorer ce disque** (pour utiliser une clé à la place) ; après l'analyse : **Copier vers une
+  clé connue**, **Graver sur un disque** ou **Blanchir le disque** (réinscriptible seulement).
   **Toutes les sessions** du disque sont lues : un fichier caché dans une ancienne session
   est analysé comme les autres. Les CD audio et les disques illisibles sont refusés.
 
@@ -232,7 +238,7 @@ Le lecteur optique de la borne est une source et une destination comme les ports
   puis **relus et comparés** (empreinte SHA-256 de chaque fichier). Un CD-R, DVD-R ou BD-R est
   refusé avec un message. Avec un seul lecteur, la copie disque → disque demande de retirer le
   disque analysé puis d'insérer le disque de destination.
-- **Blanchir ce disque** : analyse, effacement **complet** (jamais l'effacement rapide, qui
+- **Blanchir le disque** : analyse, effacement **complet** (jamais l'effacement rapide, qui
   laisse les données lisibles) vérifié par relecture, puis regravure des seuls fichiers sains.
 - En mode « clés enrôlées », la gravure sur disque est refusée (seules les clés enrôlées sont
   acceptées en sortie).
