@@ -11,8 +11,8 @@ DEST=${DEST:-/nvme/correctifs}; mkdir -p "$DEST"
 N=$(date +%y%m%d%H%M)
 # shellcheck disable=SC2029  # variables développées côté hôte, voulu
 timeout 40m ssh -F "$F" bu "set -e; . ~/.cargo/env; cd ~/barbacane && timeout 60s git fetch -q origin
-    cd ~/iso-test && git fetch -q ~/barbacane +refs/remotes/origin/${REV#origin/}:refs/heads/correctif
-    git checkout -q -f correctif && git log --oneline -1
+    cd ~/iso-test && git fetch -q ~/barbacane refs/remotes/origin/${REV#origin/}
+    git checkout -q -f FETCH_HEAD && git log --oneline -1
     DEB_REVISION=$N CARGO_BUILD_JOBS=\$((\$(nproc) - 2)) timeout 35m systeme/build-debs.sh > ~/correctif-$N.log 2>&1
     rm -rf ~/correctifs/$N; mkdir -p ~/correctifs/$N
     borne/update/barbacane-update-prepare --cle ~/cles-test/test.key --sans-clamav \
