@@ -20,7 +20,7 @@ enrôlée en sortie). Campagne finale : [2026-11-18-finale/](2026-11-18-finale/)
 | Espace de travail dynamique chiffré, clé de 5,6 Go analysée et blanchie avec 8 Go de RAM | `volumineux` de la campagne finale ; `docs/conception-espace-travail.md` |
 | Clés hostiles : vide, pleine, illisible, retirée pendant la lecture ; clavier USB sans effet ; GRUB verrouillé | [2026-11-18-rapide/](2026-11-18-rapide/) |
 | Écran de veille (10 min, réveil au toucher) | [2026-11-18-rapide/veille/](2026-11-18-rapide/veille/) |
-| Disques optiques (vrai graveur, CD-RW) : lecture multisession, disque → clé, gravure, blanchiment | [optique/](optique/) (15/11) |
+| Disques optiques : lecture multisession (EICAR caché trouvé), vrai graveur en scsi-generic, vrai CD-RW → clé (18/11) ; gravure et blanchiment de CD-RW (15/11) | [2026-11-18-optique/](2026-11-18-optique/), [optique/](optique/) |
 | Guide d'installation (PDF) à jour, ISO hors ligne | [../Barbacane-installation.pdf](../Barbacane-installation.pdf), [installation-doc/](installation-doc/) |
 | Bouton désactivé lisible (retour utilisateur du 18/11) | [2026-11-18-bouton-desactive/](2026-11-18-bouton-desactive/) |
 
@@ -38,7 +38,7 @@ redémarrait plus)**, anciennes révisions embarquées dans l'ISO. Détail :
 | Point | Raison |
 |---|---|
 | Signature avec la clé de **production** (paquets, liste blanche, Etcher) | phrase de passe connue de l'administrateur seul ; mêmes chemins prouvés avec une clé de TEST du lab |
-| Disques optiques sur l'ISO du 18/11 | les étapes de gravure exigent de refermer le tiroir à la main (lecteur portable) ; preuve complète du 15/11 |
+| Gravure et blanchiment de CD-RW sur le code du 18/11 | la borne éjecte le disque et ce lecteur portable ne referme pas son tiroir : il faut une personne ; preuve du 15/11 |
 | Disque de 2 à 4 To, boîtier NVMe USB, UAS | pas de matériel ; limites et extrapolation dans `docs/performances.md` |
 | Gain de l'analyse parallèle (4 fils) | non mesurable sur l'hôte partagé ; mesure isolée non faite |
 | Borne physique (BIOS, écran tactile, ports réels) | lab en VM ; seules les clés USB sont réelles |
