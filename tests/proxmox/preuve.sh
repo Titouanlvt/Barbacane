@@ -90,7 +90,9 @@ revenir() {
 }
 debut() {
     COURANT=$1; D="$OUT/$1"; mkdir -p "$D"; echo; echo "== $1 : $2"
-    case " installation grub pin enrolement " in *" $1 "*) ;; *) [ "${PROPRE_PRET:-0}" = 1 ] && { revenir || ko "instantané « propre » non restauré"; } ;; esac
+    if [ "${PROPRE_PRET:-0}" = 1 ] && [[ " installation grub pin enrolement " != *" $1 "* ]]; then
+        revenir || ko "instantané « propre » non restauré"
+    fi
     return 0
 }
 capture() { "${B[@]}" capture "$D/$1.png"; }
@@ -343,7 +345,8 @@ if test_actif installation && [ "${REPRISE:-0}" = 0 ] && [ -z "${CLONE_DE:-}" ];
     qm snapshot "$VMID" installee >/dev/null
 elif [ "${REPRISE:-0}" = propre ]; then
     COURANT=installation; PROPRE_PRET=1
-    revenir && ok "borne remise à l'état « propre » (installée, PIN, clé enrôlée)" || { ko "instantané « propre » absent"; exit 1; }
+    if revenir; then ok "borne remise à l'état « propre » (installée, PIN, clé enrôlée)"
+    else ko "instantané « propre » absent"; exit 1; fi
 elif [ "${REPRISE:-0}" = 1 ]; then
     COURANT=installation
     qm stop "$VMID" >/dev/null 2>&1 || true; qm rollback "$VMID" installee; qm start "$VMID"
