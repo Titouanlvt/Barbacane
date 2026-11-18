@@ -51,9 +51,11 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     done
     systemctl mask getty@tty2.service autovt@tty2.service >/dev/null 2>&1 || true
     systemctl set-default graphical.target >/dev/null 2>&1 || true
-    # Redémarrage des services après une mise à jour (si systemd tourne)
+    # Redémarrage de l'analyseur après une mise à jour (si systemd tourne). JAMAIS d'admind : c'est
+    # lui qui exécute apt pendant une mise à jour hors ligne ; le redémarrer tuerait apt en pleine
+    # installation (lab 18/11 : « réponse invalide : EOF »). admind fait redémarrer la borne ensuite.
     if [ -d /run/systemd/system ]; then
-        systemctl try-restart barbacane-analyzer.service barbacane-admind.service >/dev/null 2>&1 || true
+        systemctl try-restart barbacane-analyzer.service >/dev/null 2>&1 || true
     fi
 fi
 
