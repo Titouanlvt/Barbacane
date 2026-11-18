@@ -174,7 +174,11 @@ formater() {
     local d; d=$(disque "$1")
     wipefs -qa "$d"; echo "${2:+size=$2,}type=c" | sfdisk -q "$d"; sleep 2; partprobe "$d" 2>/dev/null || true; sleep 1
     ! est_virt "$1" || { partx -u "$d" 2>/dev/null || true; sleep 1; }
-    mkfs.vfat -F32 -n "${3:-CLE}" "$(partition "$d")" >/dev/null
+    # La partition d'un périphérique loop apparaît parfois en retard : jusqu'à 10 s, puis partx -a
+    local i p=''
+    for i in $(seq 10); do p=$(partition "$d"); [ -n "$p" ] && [ -b "$p" ] && break; partx -a "$d" 2>/dev/null || true; sleep 1; done
+    [ -n "$p" ] || { echo "partition de $1 introuvable ($d)" >&2; return 1; }
+    mkfs.vfat -F32 -n "${3:-CLE}" "$p" >/dev/null
     mount "$(partition "$d")" "$T/m"
 }
 liste_sha() { (cd "$1" && find . -type f | sort | sed 's|^\./||' | while read -r f; do sha256sum "$f"; done); }
