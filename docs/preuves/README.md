@@ -1,5 +1,52 @@
 # Preuves : ce qui marche, ce qui ne marche pas, ce qui n'a pas pu être testé
 
+## Bilan au 18/11/2026
+
+Borne installée depuis l'ISO de **production** construite depuis `integration` (d4a3641, sha256
+`080f6ff69805adea3c90d5ccaa3f86fa3e0d240596acbcb20375d7d98d7214d1`), VM Proxmox 920 sans réseau,
+**vraies clés USB** passées à la VM au niveau USB (SanDisk 16 Go en source, SanDisk Ultra 64 Go
+enrôlée en sortie). Campagne finale : [2026-11-18-finale/](2026-11-18-finale/) — campagne en cours (résultat reporté à la fin).
+
+### Ce qui marche (avec la preuve)
+| Fonction | Preuve |
+|---|---|
+| Transfert d'une clé inconnue vers une clé connue : EICAR (dont .jpg déguisé) bloqué, sains identiques (sha256), clé non enrôlée refusée et intacte | [2026-11-18-finale/](2026-11-18-finale/), [2026-11-18-rapide/transfert/](2026-11-18-rapide/transfert/) |
+| Blanchiment : sha256 de la clé entière et secteur 0 en hexadécimal avant/après, EICAR effacé de toute la clé | [2026-11-18-rapide/blanchiment/](2026-11-18-rapide/blanchiment/) (`cle-avant-secteur0.hex`, `cle-apres-secteur0.hex`) |
+| Administration : PIN, verrouillage après 5 erreurs, enrôlement, export des journaux et rapports, journal | [2026-11-18-rapide/](2026-11-18-rapide/), [2026-11-18-export-journal/](2026-11-18-export-journal/) |
+| Mises à jour signées : valide appliquée, autre clé et version ancienne refusées | [2026-11-18-export-journal/maj/](2026-11-18-export-journal/maj/) |
+| Mise à jour contenant des **paquets Debian**, borne redémarrée sur la nouvelle version | [2026-11-18-maj-paquets/](2026-11-18-maj-paquets/) (clé de signature de TEST, VM 950) |
+| Clés démarrables : Ventoy blanchie en restant démarrable (et démarre) ; Etcher réécrite depuis son image officielle vérifiée (et démarre) | [2026-11-18-rapide/ventoy/](2026-11-18-rapide/ventoy/), [ventoy/](ventoy/), [etcher/](etcher/) |
+| Liste blanche d'images officielles (ISO Windows 11 de 8,3 Go copiée intacte) | [liste-blanche/](liste-blanche/) (clé de signature de TEST) |
+| Espace de travail dynamique chiffré, clé de 5,6 Go analysée et blanchie avec 8 Go de RAM | `volumineux` de la campagne finale ; `docs/conception-espace-travail.md` |
+| Clés hostiles : vide, pleine, illisible, retirée pendant la lecture ; clavier USB sans effet ; GRUB verrouillé | [2026-11-18-rapide/](2026-11-18-rapide/) |
+| Écran de veille (10 min, réveil au toucher) | [2026-11-18-rapide/veille/](2026-11-18-rapide/veille/) |
+| Disques optiques (vrai graveur, CD-RW) : lecture multisession, disque → clé, gravure, blanchiment | [optique/](optique/) (15/11) |
+| Guide d'installation (PDF) à jour, ISO hors ligne | [../Barbacane-installation.pdf](../Barbacane-installation.pdf), [installation-doc/](installation-doc/) |
+| Bouton désactivé lisible (retour utilisateur du 18/11) | [2026-11-18-bouton-desactive/](2026-11-18-bouton-desactive/) |
+
+### Défauts trouvés et corrigés le 18/11
+Mise à jour avec paquets Debian jamais essayée avant : `--no-download` (erreur apt), postinst qui
+redémarrait admind (apt tué), **initramfs vidé sous le confinement d'admind (borne qui ne
+redémarrait plus)**, anciennes révisions embarquées dans l'ISO. Détail :
+[2026-11-18-maj-paquets/README.md](2026-11-18-maj-paquets/README.md). Bornes installées avant le
+18/11 : réinstaller depuis une ISO récente pour recevoir des paquets (guide, § 7).
+
+### Ce qui ne marche pas
+- Rien de connu à ce jour sur les fonctions prouvées ; à confirmer par la campagne finale.
+
+### Ce qui n'a pas pu être testé, et pourquoi
+| Point | Raison |
+|---|---|
+| Signature avec la clé de **production** (paquets, liste blanche, Etcher) | phrase de passe connue de l'administrateur seul ; mêmes chemins prouvés avec une clé de TEST du lab |
+| Disques optiques sur l'ISO du 18/11 | les étapes de gravure exigent de refermer le tiroir à la main (lecteur portable) ; preuve complète du 15/11 |
+| Disque de 2 à 4 To, boîtier NVMe USB, UAS | pas de matériel ; limites et extrapolation dans `docs/performances.md` |
+| Gain de l'analyse parallèle (4 fils) | non mesurable sur l'hôte partagé ; mesure isolée non faite |
+| Borne physique (BIOS, écran tactile, ports réels) | lab en VM ; seules les clés USB sont réelles |
+| Clé lente Phison, DVD/BD, CD-R | absents du lab |
+| `.github/workflows/iso.yml` avec Rust épinglé | jeton sans droit `workflow` : correctif fourni (`tests/garde-fou/ci-rust-epingle.patch`) |
+
+---
+
 ## Demandes du 17/11/2026 (clés démarrables, tests parallèles, espace de travail, 4 To, parcours)
 
 ### Marche (avec la preuve)
