@@ -92,7 +92,8 @@ debut() {
     COURANT=$1; D="$OUT/$1"; mkdir -p "$D"; echo; echo "== $1 : $2"
     # export et journal vérifient les traces des scénarios précédents (rapports, version de mise à
     # jour) : pas de retour à l'instantané avant eux.
-    if [ "${PROPRE_PRET:-0}" = 1 ] && [[ " installation grub pin enrolement export journal " != *" $1 "* ]]; then
+    # RETOUR=0 : scénarios enchaînés sans retour à l'instantané (après REPRISE=propre).
+    if [ "${RETOUR:-1}" = 1 ] && [ "${PROPRE_PRET:-0}" = 1 ] && [[ " installation grub pin enrolement export journal " != *" $1 "* ]]; then
         revenir || ko "instantané « propre » non restauré"
     fi
     return 0
