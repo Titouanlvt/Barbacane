@@ -194,6 +194,26 @@ fn restore_dir(dir: &Path, backup: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Installation hors ligne : uniquement les paquets fournis, aucune source réseau (listes de
+/// sources vidées). Pas de « --no-download » : avec des .deb locaux qui MONTENT de version, apt
+/// échoue alors (« Internal Error, Pathname to install is not absolute », reproduit au lab le 18/11).
+pub(crate) fn apt_install_argv(debs: &[PathBuf]) -> Vec<String> {
+    let mut argv: Vec<String> = [
+        "apt-get",
+        "install",
+        "-y",
+        "-o",
+        "Dir::Etc::SourceList=/dev/null",
+        "-o",
+        "Dir::Etc::SourceParts=/dev/null",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
+    argv.extend(debs.iter().map(|d| d.display().to_string()));
+    argv
+}
+
 pub fn apply(ctx: &Ctx) -> Result<Outcome> {
     let c = &ctx.conf;
     let (pkg, sig) = find(&c.import_dir)?;
@@ -270,21 +290,7 @@ pub fn apply(ctx: &Ctx) -> Result<Outcome> {
     }
     let mut reboot = false;
     if !debs.is_empty() {
-        // Installation hors ligne : uniquement les paquets fournis, aucune source réseau.
-        let mut argv: Vec<String> = [
-            "apt-get",
-            "install",
-            "-y",
-            "--no-download",
-            "-o",
-            "Dir::Etc::SourceList=/dev/null",
-            "-o",
-            "Dir::Etc::SourceParts=/dev/null",
-        ]
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
-        argv.extend(debs.iter().map(|d| d.display().to_string()));
+        let argv = apt_install_argv(&debs);
         let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
         if let Err(e) = ctx.run(&argv) {
             let _ = ctx.run(&["dpkg", "--configure", "-a"]);
