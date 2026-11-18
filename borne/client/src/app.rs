@@ -1647,7 +1647,7 @@ impl App {
             bottom: 20.0,
             left: 30.0,
         })
-        .style(style::primaire);
+        .style(style::danger);
         if let Some(d) = &self.dst {
             c = c.push(carte(column![
                 texte(&format!("Disque de destination : {}", d.description)),
@@ -1663,12 +1663,12 @@ impl App {
             row![
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
                 bouton("Éjecter le disque", Msg::Ejecter, style::secondaire),
-                // Désactivé (pas de clé enrôlée) : plat (tranche transparente : même encombrement,
-                // le bouton ne bouge pas quand il s'active), pour ne pas paraître actif
+                // Charte (Bouton) : « Effacer » = variante Destructive (fond menace, tranche encre).
+                // Désactivé (pas de destination) : même bouton pâli, sans tranche (même encombrement)
                 en_relief(
                     go.into(),
                     Some(if self.dst.is_some() {
-                        style::c().laiton
+                        style::c().encre
                     } else {
                         iced::Color::TRANSPARENT
                     })
@@ -1715,7 +1715,7 @@ impl App {
             bottom: 20.0,
             left: 30.0,
         })
-        .style(style::primaire);
+        .style(style::danger);
         if let Some(d) = &self.dst {
             c = c.push(carte(column![
                 texte(&format!(
@@ -1732,12 +1732,12 @@ impl App {
         c = c.push(Space::new().height(20)).push(
             row![
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
-                // Désactivé (pas de clé enrôlée) : plat (tranche transparente : même encombrement,
-                // le bouton ne bouge pas quand il s'active), pour ne pas paraître actif
+                // Charte (Bouton) : « Effacer » = variante Destructive (fond menace, tranche encre).
+                // Désactivé (pas de destination) : même bouton pâli, sans tranche (même encombrement)
                 en_relief(
                     go.into(),
                     Some(if self.dst.is_some() {
-                        style::c().laiton
+                        style::c().encre
                     } else {
                         iced::Color::TRANSPARENT
                     })

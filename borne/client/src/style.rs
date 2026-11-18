@@ -212,6 +212,16 @@ pub fn secondaire(_: &Theme, s: button::Status) -> button::Style {
 
 /// Effacement : toujours suivi d'une confirmation.
 pub fn danger(_: &Theme, s: button::Status) -> button::Style {
+    if matches!(s, button::Status::Disabled) {
+        // Indisponible (pas encore de destination) : même bouton rouge, pâli, sans relief
+        return button::Style {
+            background: Some(Background::Color(Color { a: 0.35, ..c().menace })),
+            text_color: c().sur_encre,
+            border: Border::default().rounded(Radius::new(8)),
+            shadow: Shadow::default(),
+            snap: true,
+        };
+    }
     relief(c().menace, c().sur_encre, Some(c().encre), s)
 }
 
