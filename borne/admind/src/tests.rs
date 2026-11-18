@@ -521,7 +521,9 @@ fn rotation_de_cle() {
 
 #[test]
 fn installation_des_paquets_sans_no_download() {
-    let debs = vec![std::path::PathBuf::from("/var/lib/barbacane/admin/maj-x/debs/a_1-2_amd64.deb")];
+    let debs = vec![std::path::PathBuf::from(
+        "/var/lib/barbacane/admin/maj-x/debs/a_1-2_amd64.deb",
+    )];
     let argv = crate::update::apt_install_argv(&debs);
     assert_eq!(argv[..3], ["apt-get", "install", "-y"]);
     assert!(!argv.iter().any(|a| a == "--no-download"));
