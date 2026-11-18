@@ -552,8 +552,11 @@ if test_actif correctif; then
     if [ -z "${CORRECTIF:-}" ] || [ ! -f "$CORRECTIF" ]; then non_teste "CORRECTIF non fourni"
     else
         si maj_appliquer "$CORRECTIF" 01-applique "Paquet de mise à jour version" -- "correctif appliqué (paquets Debian installés)" "correctif non appliqué"
+        si grep -q "Redémarrage nécessaire" "$D/01-applique.txt" -- "rapport : « Redémarrage nécessaire »" "rapport sans demande de redémarrage"
         debrancher usb1
-        # Les paquets Debian imposent un redémarrage ; la borne revient sur l'accueil.
+        # Les paquets Debian imposent un redémarrage, fait par l'administrateur (pas automatique).
+        cliquer "Retour au menu"; cliquer "Redémarrer"; attendre "Redémarrer la borne" 30; cliquer "Confirmer"
+        sleep 20
         si attendre "à analyser" 900 "$D/02-apres-redemarrage.png" -- "borne redémarrée sur les nouveaux binaires" "borne non revenue après le correctif"
         if [ "${PROPRE_PRET:-0}" = 1 ]; then
             timeout 2m qm delsnapshot "$VMID" propre >/dev/null 2>&1 || true
