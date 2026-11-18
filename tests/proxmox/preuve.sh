@@ -86,6 +86,10 @@ revenir() {
     qm stop "$VMID" >/dev/null 2>&1 || true
     timeout 5m qm rollback "$VMID" propre >/dev/null || { echo "rollback propre impossible" >&2; return 1; }
     [ "$(qm status "$VMID" | awk '{print $2}')" = running ] || qm start "$VMID" >/dev/null
+    # La clé d'installation émulée reste dans les « args » de l'instantané (modification faite VM
+    # allumée, donc en attente) : QEMU la recrée à la restauration et la borne la revoit au prochain
+    # redémarrage. On la débranche à chaud, sans effet si elle est absente.
+    qmp device_del '{"id": "cvusb0dev"}' >/dev/null 2>&1 || true
     attendre "à analyser" 300 && echo "   (instantané « propre » restauré en $((SECONDS - t0)) s)"
 }
 debut() {
