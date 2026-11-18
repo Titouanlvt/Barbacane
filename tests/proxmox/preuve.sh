@@ -540,6 +540,24 @@ fi
 # === contenus réels : clés flashées (Etcher, Rufus) et fichiers de bureau ====================
 # Images fabriquées par tests/proxmox/contenu-reel.sh (CONTENU=dossier : *.img, *.sains, *.pieges),
 # copiées octet par octet sur la clé source comme le ferait Etcher, puis Copier vers la clé de sortie.
+# === correctif : nouveaux binaires livrés par mise à jour signée, sans réinstaller (lab) ========
+# CORRECTIF=paquet.bcu (+ .minisig, tests/proxmox/correctif.sh). Avec PROPRE=1, l'instantané
+# « propre » est ensuite repris sur la borne à jour : les scénarios suivants testent le correctif.
+if test_actif correctif; then
+    debut correctif "correctif $(basename "${CORRECTIF:-?}") appliqué par mise à jour signée"
+    if [ -z "${CORRECTIF:-}" ] || [ ! -f "$CORRECTIF" ]; then non_teste "CORRECTIF non fourni"
+    else
+        si maj_appliquer "$CORRECTIF" 01-applique "Paquet de mise à jour version" -- "correctif appliqué (paquets Debian installés)" "correctif non appliqué"
+        debrancher usb1
+        # Les paquets Debian imposent un redémarrage ; la borne revient sur l'accueil.
+        si attendre "à analyser" 900 "$D/02-apres-redemarrage.png" -- "borne redémarrée sur les nouveaux binaires" "borne non revenue après le correctif"
+        if [ "${PROPRE_PRET:-0}" = 1 ]; then
+            timeout 2m qm delsnapshot "$VMID" propre >/dev/null 2>&1 || true
+            timeout 10m qm snapshot "$VMID" propre --vmstate 1 >/dev/null && ok "instantané « propre » repris sur la borne corrigée"
+        fi
+    fi
+fi
+
 if test_actif reel; then
     : "${CONTENU:?CONTENU=dossier des images (tests/proxmox/contenu-reel.sh)}"
     for img in "$CONTENU"/*.img; do
