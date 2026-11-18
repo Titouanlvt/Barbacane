@@ -215,7 +215,8 @@ pub fn danger(_: &Theme, s: button::Status) -> button::Style {
     if matches!(s, button::Status::Disabled) {
         // Indisponible (pas encore de destination) : même bouton rouge, pâli ; le relief (tranche) reste posé par app.rs
         return button::Style {
-            background: Some(Background::Color(Color { a: 0.35, ..c().menace })),
+            // Opaque (mélange menace/surface) : une transparence laissait voir la tranche à travers
+            background: Some(Background::Color(melange(c().menace, c().surface, 0.4))),
             text_color: c().sur_encre,
             border: Border::default().rounded(Radius::new(8)),
             shadow: Shadow::default(),
@@ -289,5 +290,15 @@ pub fn fond(_: &Theme) -> container::Style {
         background: Some(Background::Color(c().surface)),
         text_color: Some(c().encre),
         ..Default::default()
+    }
+}
+
+/// Mélange opaque de deux couleurs : `part` de `a`, le reste de `b`.
+fn melange(a: Color, b: Color, part: f32) -> Color {
+    Color {
+        r: a.r * part + b.r * (1.0 - part),
+        g: a.g * part + b.g * (1.0 - part),
+        b: a.b * part + b.b * (1.0 - part),
+        a: 1.0,
     }
 }
