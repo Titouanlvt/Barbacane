@@ -1,9 +1,18 @@
-# Avancement — 17/11/2026, 21 h (mis à jour par Claude)
+# Avancement — 18/11/2026 (mis à jour par Claude)
 
-Dépôt de travail : `/root/BARBACANE/wt-main`, branche `integration` (GitHub Titouanlvt/Barbacane).
-`main` = b9614a5 (CI et ISO vertes ; Etcher 141f78f et la suite attendent leur CI). L'ancien clone `/root/BARBACANE/usbsas` (branche
-`claude/affectionate-galileo-w0bjm2`, supprimée du distant) est obsolète : ses captures non suivies
-sont dans `docs/preuves/2026-11-14-clone-usbsas/`. Ne plus y travailler.
+## En cours (18/11)
+- 920 (vraies clés) : `tests/proxmox/campagne-rapide.sh` — plus de réinstallation : instantané
+  « propre » (PIN, clé enrôlée, mémoire comprise) restauré avant chaque scénario en **5 s**
+  (`PROPRE=1`, `REPRISE=propre`). Journal `logs/campagne-rapide.log`.
+- Boucle de correctif rapide : borne de développement **950** (ISO signée par la clé de TEST du lab),
+  `tests/proxmox/correctif.sh` (compilation incrémentale sur bu : 189 s ; `DEB_REVISION`) puis
+  scénario `correctif` (mise à jour signée, redémarrage, nouvel instantané « propre »).
+- **Bogue trouvé par cette boucle** : une mise à jour contenant des paquets Debian échoue toujours
+  (`apt-get : E: Internal Error, Pathname to install is not absolute 'usbsas-server_0.3.4-…_amd64.deb'`),
+  cause `--no-download` (reproduit sur bu avec un paquet factice). Corrigé dans admind (test unitaire).
+  Les bornes installées avant ne peuvent pas recevoir ce correctif par mise à jour : ISO de TEST
+  reconstruite une fois pour la 950 (`logs/iso-test-2.log`) ; ISO de production à la fin seulement.
+- bu : 24 Go de RAM, 8 cœurs (compilation à 6 tâches = cœurs − 2).
 
 ## Fait et prouvé (vraies clés sauf mention)
 - Transfert clé inconnue → clé connue, et blanchiment : `docs/preuves/2026-11-17-finale/` (ISO e888495, 35 OK, 0 échec) ;
