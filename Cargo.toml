@@ -32,6 +32,8 @@ members = [
   "borne/admind",
   "borne/optique"
 ]
+# Copie externe (licence MIT), non membre : ni fmt ni clippy du projet, dépendances de test non résolues
+exclude = ["noyau/fscommon"]
 default-members = [
   "noyau/usbsas-utils",
   "noyau/usbsas-comm",

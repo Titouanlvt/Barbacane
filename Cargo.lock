@@ -2649,7 +2649,6 @@ checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 [[package]]
 name = "fscommon"
 version = "0.1.1"
-source = "git+https://github.com/rafalh/rust-fscommon?rev=89706258032efff88689f6083510ed34b845fe46#89706258032efff88689f6083510ed34b845fe46"
 dependencies = [
  "log",
 ]
