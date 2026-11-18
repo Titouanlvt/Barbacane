@@ -362,7 +362,7 @@ pub fn view(app: &App) -> Element<'_, Msg> {
             c = c.push(line("Version Barbacane", etat["versions"]["barbacane"].as_str().unwrap_or("?").into()));
             c = c.push(line("Version usbsas", etat["versions"]["usbsas"].as_str().unwrap_or("?").into()));
             c = c.push(line("ClamAV", etat["versions"]["clamav"].as_str().unwrap_or("?").into()));
-            c = c.push(line("Âge des signatures", format!("{} jour(s)", etat["signatures_age_days"].as_u64().map(|d| d.to_string()).unwrap_or("?".into()))));
+            c = c.push(line("Âge des signatures", etat["signatures_age_days"].as_u64().map(crate::app::age_signatures).unwrap_or("?".into())));
             c = c.push(line("Règles YARA", etat["yara_rules"].as_u64().map(|n| format!("{n} fichier(s)")).unwrap_or("?".into())));
             c = c.push(line("Version du dernier paquet de mise à jour", etat["update_version"].as_u64().map(|n| n.to_string()).unwrap_or("aucun".into())));
             c = c.push(line("Espace disque libre", etat["disk_free"].as_str().unwrap_or("?").into()));

@@ -43,7 +43,7 @@ redémarrait plus)**, anciennes révisions embarquées dans l'ISO. Détail :
 | Gain de l'analyse parallèle (4 fils) | non mesurable sur l'hôte partagé ; mesure isolée non faite |
 | Borne physique (BIOS, écran tactile, ports réels) | lab en VM ; seules les clés USB sont réelles |
 | Clé lente Phison, DVD/BD, CD-R | absents du lab |
-| `.github/workflows/iso.yml` avec Rust épinglé | jeton sans droit `workflow` : correctif fourni (`tests/garde-fou/ci-rust-epingle.patch`) |
+| `.github/workflows/iso.yml` avec Rust épinglé | laissé tel quel (décision du 18/11) : jeton sans droit `workflow`. Risque restant limité à l'ISO construite par la CI (`curl \| sh` de rustup.rs) ; constructions locales et installation sur poste passent par `systeme/rust/installer-rust.sh` (sha256 vérifié). Correctif prêt : `tests/garde-fou/ci-rust-epingle.patch` |
 
 ---
 

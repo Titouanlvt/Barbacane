@@ -331,7 +331,7 @@ impl App {
                         self.dst = Some(c);
                     } else {
                         self.dst_refused = Some(format!(
-                            "Cette clé ({}) n'est pas enrôlée : elle ne peut pas servir de clé de destination.",
+                            "Cette clé n'est pas enrôlée : elle ne peut pas servir de clé de destination.\n{}",
                             barbacane_parcours::describe(&c)
                         ));
                     }
@@ -945,7 +945,7 @@ impl App {
             ),
             Some(a) => {
                 r = r.push(
-                    text(format!("Signatures antivirales : {a} jour(s)"))
+                    text(format!("Signatures antivirales : {}", age_signatures(a)))
                         .size(style::PETIT)
                         .color(style::c().sur_bandeau),
                 )
@@ -1930,5 +1930,24 @@ mod tests_veille {
             let (x, y) = super::position_veille(i as f32);
             assert!((-0.8..=0.8).contains(&x) && (-0.8..=0.8).contains(&y));
         }
+    }
+}
+
+/// Âge des signatures antivirales, lisible : « du jour », « 1 jour », « 3 jours ».
+pub(crate) fn age_signatures(jours: u64) -> String {
+    match jours {
+        0 => "du jour".into(),
+        1 => "1 jour".into(),
+        n => format!("{n} jours"),
+    }
+}
+
+#[cfg(test)]
+mod tests_affichage {
+    #[test]
+    fn age_des_signatures_lisible() {
+        assert_eq!(super::age_signatures(0), "du jour");
+        assert_eq!(super::age_signatures(1), "1 jour");
+        assert_eq!(super::age_signatures(12), "12 jours");
     }
 }
