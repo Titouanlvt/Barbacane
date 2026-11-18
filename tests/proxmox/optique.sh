@@ -49,17 +49,35 @@ lire() { "${B[@]}" lire > "$D/$1.txt"; cat "$D/$1.txt"; }
 attendre() { "${B[@]}" attendre "$@"; }
 cliquer() { "${B[@]}" cliquer "$@"; }
 voir() { "${B[@]}" attendre "$@" >/dev/null 2>&1; }
-disque() { local d; for _ in $(seq 60); do
+# Clé émulée « virt:NOM » (image sur l'hôte, branchée à chaud par QMP), comme dans preuve.sh :
+# permet de jouer les étapes sans vraie clé quand celles-ci servent ailleurs.
+VIRT_DIR=${VIRT_DIR:-/nvme/virt/$VMID}; VIRT_TAILLE=${VIRT_TAILLE:-4G}
+est_virt() { [[ "$1" == virt:* ]]; }
+virt_img() { echo "$VIRT_DIR/${1#virt:}.img"; }
+qmp() { python3 -c 'import sys, json; sys.path.insert(0, sys.argv[1]); import borne; borne.qmp(sys.argv[2], *[(c, json.loads(a) if a else None) for c, a in zip(sys.argv[3::2], sys.argv[4::2])])' "$ICI" "$VMID" "$@"; }
+disque() { local d
+    if est_virt "$1"; then local img; img=$(virt_img "$1"); mkdir -p "$VIRT_DIR"; [ -e "$img" ] || truncate -s "$VIRT_TAILLE" "$img"
+        d=$(losetup -j "$img" -O NAME -n | head -1); [ -n "$d" ] || d=$(losetup -fP --show "$img"); echo "$d"; return; fi
+    for _ in $(seq 60); do
         d=$(lsblk -dnpo NAME,SERIAL,TRAN | awk -v s="$1" '$2 == s && $3 == "usb" { print $1 }')
         if [ -n "$d" ]; then [ "$(lsblk -dbno SIZE "$d")" -gt 0 ] || { eject -t "$d" 2>/dev/null || true; sleep 2; }
             [ "$(lsblk -dbno SIZE "$d")" -gt 0 ] && { echo "$d"; return; }; fi; sleep 1; done
     echo "clé $1 introuvable" >&2; return 1; }
 port() { local f; for f in /sys/bus/usb/devices/*/serial; do
         [ "$(cat "$f")" = "$1" ] && { basename "$(dirname "$f")"; return; }; done; return 1; }
-brancher() { disque "$2" >/dev/null; qm set "$VMID" "-$1" "host=$(port "$2"),usb3=1" >/dev/null; sleep 4; }
-debrancher() { qm set "$VMID" --delete "$1" >/dev/null 2>&1 || true; sleep 4; }
+brancher() {
+    if est_virt "$2"; then local img l; img=$(virt_img "$2"); sync
+        for l in $(losetup -j "$img" -O NAME -n); do losetup -d "$l"; done
+        qmp blockdev-add "{\"driver\": \"raw\", \"node-name\": \"cv$1\", \"file\": {\"driver\": \"file\", \"filename\": \"$img\", \"cache\": {\"direct\": true}}}" \
+            device_add "{\"driver\": \"usb-storage\",$(qm config "$VMID" | grep -q 'qemu-xhci,id=xv' && printf ' \"bus\": \"xv.0\",') \"id\": \"cv$1dev\", \"drive\": \"cv$1\", \"serial\": \"BBVIRT$(echo "${2#virt:}" | tr "[:lower:]" "[:upper:]")\", \"removable\": true}"
+        sleep 4; return; fi
+    disque "$2" >/dev/null; qm set "$VMID" "-$1" "host=$(port "$2"),usb3=1" >/dev/null; sleep 4; }
+debrancher() {
+    qmp device_del "{\"id\": \"cv$1dev\"}" >/dev/null 2>&1 && { sleep 4; qmp blockdev-del "{\"node-name\": \"cv$1\"}" >/dev/null 2>&1 || true; return; }
+    qm set "$VMID" --delete "$1" >/dev/null 2>&1 || true; sleep 4; }
 formater() { local d; d=$(disque "$1"); wipefs -qa "$d"; echo "type=c" | sfdisk -q "$d"; sleep 2
-    partprobe "$d" 2>/dev/null || true; sleep 1; mkfs.vfat -F32 -n "$2" "${d}1" >/dev/null; mount "${d}1" "$T/m"; }
+    partprobe "$d" 2>/dev/null || true; sleep 1; local p; for _ in $(seq 10); do p=$(lsblk -lnpo NAME,TYPE "$d" | awk '$2 == "part" { print $1; exit }'); [ -n "$p" ] && break; partx -a "$d" 2>/dev/null || true; sleep 1; done
+    mkfs.vfat -F32 -n "$2" "$p" >/dev/null; mount "$p" "$T/m"; }
 monter_ro() { local d p; d=$(disque "$1"); sleep 2; partprobe "$d" 2>/dev/null || true; sleep 2
     p=$(lsblk -lnpo NAME,FSTYPE "$d" | awk '$2 != "" { print $1; exit }'); mount -o ro "$p" "$T/m"; }
 liste_sha() { (cd "$1" && find . -type f | sort | sed 's|^\./||' | while read -r f; do sha256sum "$f"; done); }
