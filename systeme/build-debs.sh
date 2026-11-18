@@ -55,5 +55,8 @@ cargo build --release --locked -p barbacane-client -p barbacane-analyzer -p barb
 "$REPO/systeme/ventoy/preparer.sh" "$REPO/systeme/ventoy/dist"
 cargo-deb --no-build "${REV_ARGS[@]}" -p barbacane-client
 mkdir -p "$OUT"
+# Un seul exemplaire de chaque paquet : d'anciennes révisions laissées ici partiraient dans l'ISO
+# ou la mise à jour, et apt/dpkg installerait la plus récente, pas celle qu'on vient de construire.
+rm -f "$OUT"/*.deb
 cp "$CARGO_TARGET_DIR"/debian/usbsas-server_*.deb "$CARGO_TARGET_DIR"/debian/usbsas-hid_*.deb "$CARGO_TARGET_DIR"/debian/barbacane_*.deb "$OUT/"
 ls -l "$OUT"
