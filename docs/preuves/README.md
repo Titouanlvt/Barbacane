@@ -7,7 +7,8 @@
 `4e2bd821466e9ae1c3e3b81f88a86205ce647f332b4436907632ca8cf073cbb2` (clé publique de production
 embarquée). Différence avec l'ISO de la campagne finale (d4a3641) : bouton « Effacer » à la charte
 (affichage seul, [2026-11-18-bouton-destructif/](2026-11-18-bouton-destructif/)), fscommon recopié dans
-le dépôt et Rust épinglé (construction seule) ; CI verte, installation QEMU comprise.
+le dépôt et Rust épinglé (construction seule) ; CI verte. Installation QEMU : un échec ponctuel sur
+GitHub, rejouée 3 fois sur 3 avec succès ([2026-11-18-iso-v1-qemu/](2026-11-18-iso-v1-qemu/)).
 
 Borne installée depuis l'ISO de **production** construite depuis `integration` (d4a3641, sha256
 `080f6ff69805adea3c90d5ccaa3f86fa3e0d240596acbcb20375d7d98d7214d1`), VM Proxmox 920 sans réseau,
