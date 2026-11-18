@@ -14,7 +14,7 @@ if ! command -v cargo >/dev/null; then
     apt-get install -y -q --no-install-recommends pkgconf clang cmake git dpkg-dev curl ca-certificates \
         libssl-dev libkrb5-dev libseccomp-dev libudev-dev libusb-1.0-0-dev protobuf-compiler libdbus-1-dev \
         libwayland-dev libxkbcommon-dev libfuse3-dev build-essential
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+    "$REPO/systeme/rust/installer-rust.sh"   # rustup-init épinglé et vérifié (pas de curl | sh)
     # shellcheck disable=SC1091
     . "${CARGO_HOME:-$HOME/.cargo}/env"
 fi

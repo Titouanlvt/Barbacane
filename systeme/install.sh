@@ -66,7 +66,7 @@ if [ -z "$DEBS" ]; then
         libssl-dev libkrb5-dev libseccomp-dev libudev-dev libusb-1.0-0-dev protobuf-compiler libdbus-1-dev \
         libwayland-dev libxkbcommon-dev
     if ! command -v cargo >/dev/null; then
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+        "$REPO/systeme/rust/installer-rust.sh"   # rustup-init épinglé et vérifié (pas de curl | sh)
     fi
     # shellcheck disable=SC1091
     . "${CARGO_HOME:-$HOME/.cargo}/env"
