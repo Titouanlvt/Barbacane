@@ -1,0 +1,14 @@
+OK [installation] : borne remise à l'état « propre » (installée, PIN, clé enrôlée)
+OK [transfert] : mot de passe d'archive demandé (clavier virtuel)
+OK [transfert] : écran : menaces détectées
+OK [transfert] : clé non enrôlée refusée en sortie
+OK [transfert] : clé non enrôlée intacte (rien n'y a été écrit)
+OK [transfert] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [transfert] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [transfert] : aucun fichier de la sortie ne contient EICAR
+OK [transfert] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [transfert] : archive chiffrée (bon mot de passe) copiée
+OK [transfert] : archive mixte : seul son fichier sain est extrait
+OK [transfert] : noms piégés (traversée, absolu) non écrits
+OK [transfert] : contenu précédent de la destination effacé (témoin absent)
+OK [transfert] : rapport : EICAR détecté et refusé
