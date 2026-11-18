@@ -1,13 +1,17 @@
 # Avancement — 18/11/2026 (mis à jour par Claude, en autonomie)
 
 ## En cours
-- **Campagne finale** (ISO de production d4a3641, sha256 `080f6ff6…14d1`, vraies clés, VM 920) :
-  passe 1 tous les scénarios depuis l'instantané, passe 2 `transfert maj export journal` enchaînés —
-  `lab/campagne-finale-3.sh`, `logs/campagne-finale-3.log`.
-- Branche `fscommon-local` : rust-fscommon recopié dans `noyau/fscommon` + Rust épinglé
-  (`systeme/rust/installer-rust.sh`) ; tests complets sur bu en cours (`logs/vendoring-tests.log`).
-  `.github/workflows/iso.yml` garde `curl | sh` (jeton sans droit workflow).
-- CI d'integration en file d'attente ; fusion dans main dès qu'elle est verte.
+- **Bouton « Effacer cette clé… » à la charte** (retour utilisateur 18/11 après-midi) : variante
+  Destructive (fond `menace`, tranche `encre`) au lieu de Principale — 9a9f124. Correctif signé TEST
+  en construction (`logs/correctif-bouton.log`), puis capture sur la 950 avant/après.
+- Choix noté : on livre une version qui marche avant toute nouveauté. PR Dependabot #4 (nix 0.32)
+  non fusionnée : `installation-qemu` en échec sur la PR, et la version testée doit rester celle livrée.
+- Choix noté : `.github/workflows/iso.yml` laissé avec `curl | sh` (décision utilisateur 18/11).
+
+## Fait et prouvé le 18/11 — campagne finale
+- **121 OK, 0 échec** sur vraies clés, ISO de production d4a3641 (sha256 `080f6ff6…14d1`), VM 920 :
+  `docs/preuves/2026-11-18-finale/` (passe 1 : 95 OK ; passe 2 enchaînée : 26 OK).
+- fscommon recopié dans `noyau/fscommon`, Rust épinglé : fusionnés, CI verte (main 4568f92).
 
 ## Fait et prouvé le 18/11 (suite)
 - Mise à jour avec paquets Debian, borne redémarrée sur les nouveaux binaires : `docs/preuves/2026-11-18-maj-paquets/`.
