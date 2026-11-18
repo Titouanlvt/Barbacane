@@ -1,0 +1,13 @@
+diff --git a/.github/workflows/iso.yml b/.github/workflows/iso.yml
+index 0b75c8d..e99e6fe 100644
+--- a/.github/workflows/iso.yml
++++ b/.github/workflows/iso.yml
+@@ -25,7 +25,7 @@ jobs:
+           apt-get install -y -q --no-install-recommends pkgconf clang cmake git dpkg-dev curl ca-certificates \
+             libssl-dev libkrb5-dev libseccomp-dev libudev-dev libusb-1.0-0-dev protobuf-compiler libdbus-1-dev \
+             libwayland-dev libxkbcommon-dev libfuse3-dev build-essential
+-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
++          systeme/rust/installer-rust.sh   # rustup-init épinglé et vérifié (pas de curl | sh)
+       - uses: actions/cache/restore@v4
+         with:
+           path: target/production
