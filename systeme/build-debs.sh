@@ -41,15 +41,19 @@ if [ -z "${CARGO_BUILD_JOBS:-}" ]; then
         echo "Fermer d'autres programmes ou ajouter un fichier d'échange (voir le guide d'installation)." >&2
     fi
 fi
+# DEB_REVISION (lab) : révision des paquets (défaut 1). Un correctif livré par mise à jour signée doit
+# porter une révision supérieure, sinon apt considère le paquet déjà installé et ne fait rien.
+REV_ARGS=(--deb-revision "${DEB_REVISION:-1}")
+rm -f "$CARGO_TARGET_DIR"/debian/*.deb
 cargo build --release --locked -p usbsas-usbsas -p usbsas-net -p usbsas-cmdexec -p usbsas-dev2scsi \
     -p usbsas-files2fs -p usbsas-files2tar -p usbsas-local2files -p usbsas-fs2dev -p usbsas-identifier \
     -p usbsas-scsi2files -p usbsas-tar2files -p usbsas-usbdev -p usbsas-hid
-cargo-deb --no-build -p usbsas-usbsas
-cargo-deb --no-build -p usbsas-hid
+cargo-deb --no-build "${REV_ARGS[@]}" -p usbsas-usbsas
+cargo-deb --no-build "${REV_ARGS[@]}" -p usbsas-hid
 cargo build --release --locked -p barbacane-client -p barbacane-analyzer -p barbacane-admind -p barbacane-optique
 # Zone de démarrage Ventoy de confiance (clés démarrables reconstruites) : empreinte vérifiée
 "$REPO/systeme/ventoy/preparer.sh" "$REPO/systeme/ventoy/dist"
-cargo-deb --no-build -p barbacane-client
+cargo-deb --no-build "${REV_ARGS[@]}" -p barbacane-client
 mkdir -p "$OUT"
 cp "$CARGO_TARGET_DIR"/debian/usbsas-server_*.deb "$CARGO_TARGET_DIR"/debian/usbsas-hid_*.deb "$CARGO_TARGET_DIR"/debian/barbacane_*.deb "$OUT/"
 ls -l "$OUT"
