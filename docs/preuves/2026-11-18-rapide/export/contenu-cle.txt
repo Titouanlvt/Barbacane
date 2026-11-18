@@ -1,0 +1,3 @@
+./barbacane-export-20261118-075818/dpkg-status
+./barbacane-export-20261118-075818/etat.json
+./barbacane-export-20261118-075818/journal.txt

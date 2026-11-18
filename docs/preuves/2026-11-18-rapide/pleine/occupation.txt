@@ -1,0 +1,2 @@
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/loop0p1    253M  253M     0 100% /tmp/tmp.yxCzmu5fvh/m

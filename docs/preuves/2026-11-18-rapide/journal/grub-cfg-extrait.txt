@@ -1,0 +1,4 @@
+set superusers="barbacane"
+password_pbkdf2 barbacane grub.pbkdf2.sha512.10000.DCD50708C962822510D116263B421EF0C0EAE79
+menuentry --unrestricted 'Debian GNU/Linux' --class debian --class gnu-linux --class gnu -
+submenu 'Advanced options for Debian GNU/Linux' $menuentry_id_option 'gnulinux-advanced-53

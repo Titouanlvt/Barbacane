@@ -1,0 +1,23 @@
+BARBACANE — RAPPORT DE TRANSFERT
+================================
+
+Date            : 18/11/2026 08:00:03
+Clé source      : USB SanDisk 3.2Gen1 (n° de série 03020611111524225725, 0781:5581)
+Identifiant     : 3b069add-2f7c-48d0-8b9f-f9913d7dd8d4
+Antivirus       : ClamAV ClamAV 1.4.3 (base 28186 du Tue Nov 17 07:30:05 2026) + YARA
+
+FICHIERS COPIÉS (4)
+  [OK]     ISO/debian-13.7.0-amd64-netinst.iso  (756.0 Mo)
+  [OK]     ISO/outils-piege.iso.extrait/lisez-moi.txt  (5 o)
+  [OK]     notes.txt  (30 o)
+  [OK]     ventoy/ventoy.json  (116 o)
+
+FICHIERS REFUSÉS (1)
+  [REFUSÉ] ISO/outils-piege.iso/outil.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+
+ARCHIVES NON COPIÉES, REMPLACÉES PAR LEUR CONTENU SAIN (1)
+  [ARCHIVE] ISO/outils-piege.iso  →  ISO/outils-piege.iso.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+
+Les fichiers refusés ne sont pas copiés. En cas de doute, contactez votre administrateur.

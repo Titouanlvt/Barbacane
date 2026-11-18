@@ -1,0 +1,49 @@
+|. BAR BACANE Signatures antivirales : 1 jour(s)
+
+# Clé # Analyse 3 Résultat
+
+tésu tat ce ‘ana yse
+
+FA
+
+4 fichier{(s] sains) à copier . 1 refusé{s)
+
+Ce qui ne passe pas, et pourquoi :
+
+IS0/outils piege.iso/outil.con
+
+Arrêter ici LODICT VérS UNE CIS CONNUE Graver un disque
+
+td BARBACANE Signatures antivirales : 1 jour(s)
+“Clé » + Analyse » (3 Résuttat ) » A Sortie > SÉcriture » 6 Terminé
+
+Résultat de l'analyse
+
+A 1 menace(s) détectée(s)
+
+4 fichier(s} sain(s) à copier : 1 refusé(s)
+
+1 archive(s) contenant des fichiers refusés : Leurs fichiers sains seront copiés dans un dossier « <archivez.extrait ».
+
+Ce qui ne passe pas, et pourquoi :
+
+G 1S0/outils-piege.iso/outil.com
+menace détectée par ClamAY : Eicar-Test-Signature
+
+Arrêter ici Copier vers une clé connue Graver un disque Blanchir La clé
+
+Blanchir en gardant démarrable
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+Clé : Analyse 2 4 Sortie > 5Écriture » 6 Terminé
+
+(@&) IS0/outils-piege.iso/outil.com
+
+menace détectée par ClamAV : Eicar-Test-Signature
+
+D Améter ici Copier vers une clé connue Blanchir La clé
+
+Blanchir en gardant démarrable
+
+
