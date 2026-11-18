@@ -1663,13 +1663,14 @@ impl App {
             row![
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
                 bouton("Éjecter le disque", Msg::Ejecter, style::secondaire),
-                // Désactivé (pas de clé enrôlée) : tranche grise, pas laiton, pour ne pas paraître actif
+                // Désactivé (pas de clé enrôlée) : plat (tranche transparente : même encombrement,
+                // le bouton ne bouge pas quand il s'active), pour ne pas paraître actif
                 en_relief(
                     go.into(),
                     Some(if self.dst.is_some() {
                         style::c().laiton
                     } else {
-                        style::c().trait_
+                        iced::Color::TRANSPARENT
                     })
                 )
             ]
@@ -1731,13 +1732,14 @@ impl App {
         c = c.push(Space::new().height(20)).push(
             row![
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
-                // Désactivé (pas de clé enrôlée) : tranche grise, pas laiton, pour ne pas paraître actif
+                // Désactivé (pas de clé enrôlée) : plat (tranche transparente : même encombrement,
+                // le bouton ne bouge pas quand il s'active), pour ne pas paraître actif
                 en_relief(
                     go.into(),
                     Some(if self.dst.is_some() {
                         style::c().laiton
                     } else {
-                        style::c().trait_
+                        iced::Color::TRANSPARENT
                     })
                 )
             ]
