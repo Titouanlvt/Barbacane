@@ -1659,16 +1659,23 @@ impl App {
             ]));
             go = go.on_press(Msg::Ecrire);
         }
-        // Sans disque utilisable, le bouton de gravure n'est pas affiché (voir view_sortie).
-        let mut actions = row![
-            bouton("Abandonner", Msg::Terminer, style::secondaire),
-            bouton("Éjecter le disque", Msg::Ejecter, style::secondaire),
-        ]
-        .spacing(30);
-        if self.dst.is_some() {
-            actions = actions.push(en_relief(go.into(), Some(style::c().laiton)));
-        }
-        c = c.push(Space::new().height(20)).push(actions);
+        c = c.push(Space::new().height(20)).push(
+            row![
+                bouton("Abandonner", Msg::Terminer, style::secondaire),
+                bouton("Éjecter le disque", Msg::Ejecter, style::secondaire),
+                // Désactivé (pas de clé enrôlée) : plat (tranche transparente : même encombrement,
+                // le bouton ne bouge pas quand il s'active), pour ne pas paraître actif
+                en_relief(
+                    go.into(),
+                    Some(if self.dst.is_some() {
+                        style::c().laiton
+                    } else {
+                        iced::Color::TRANSPARENT
+                    })
+                )
+            ]
+            .spacing(30),
+        );
         centre(c)
     }
 
@@ -1722,13 +1729,22 @@ impl App {
             ]));
             go = go.on_press(Msg::Ecrire);
         }
-        // Sans clé enrôlée, le bouton d'écriture n'est pas affiché : un bouton grisé laissait
-        // croire à un défaut d'affichage. Seul « Abandonner » reste proposé.
-        let mut actions = row![bouton("Abandonner", Msg::Terminer, style::secondaire)].spacing(30);
-        if self.dst.is_some() {
-            actions = actions.push(en_relief(go.into(), Some(style::c().laiton)));
-        }
-        c = c.push(Space::new().height(20)).push(actions);
+        c = c.push(Space::new().height(20)).push(
+            row![
+                bouton("Abandonner", Msg::Terminer, style::secondaire),
+                // Désactivé (pas de clé enrôlée) : plat (tranche transparente : même encombrement,
+                // le bouton ne bouge pas quand il s'active), pour ne pas paraître actif
+                en_relief(
+                    go.into(),
+                    Some(if self.dst.is_some() {
+                        style::c().laiton
+                    } else {
+                        iced::Color::TRANSPARENT
+                    })
+                )
+            ]
+            .spacing(30),
+        );
         centre(c)
     }
 }
