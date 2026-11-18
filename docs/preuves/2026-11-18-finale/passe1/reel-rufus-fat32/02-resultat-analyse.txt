@@ -1,0 +1,42 @@
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+# Clé # Analyse 3 Résultat
+
+tésu tat ce ‘ana yse
+
+FA
+
+1873 fichier(s) sain(s) à copier - 1 refusé{s}
+Ce qui ne passe pas, et pourquoi :
+
+tools/nentest.efi
+
+Arrêter ici LODICT VérS UNE CIS CONNUE Graver un disque
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+# Clé » Analyse » ASortie » SéÉcriture : 6 Terminé
+
+Résultat de l'analyse
+
+A 1 menace(s) détectée(s)
+
+1673 fichier{s) sain(s) à copier - 1 refusé{s)
+
+Ce qui ne passe pas, et pourquoi :
+
+GD tools/memtest.efi
+menace détectée par ClamAY : Eicar-Test-Signature
+
+Arrêter ici Copier vers une clé connue Graver un disque Blanchir La clé
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+Clé : Analyse 2 4 Sortie > 5Écriture » 6 Terminé
+
+(@) tools/mentest.efi
+menace détectée par ClamAV : Eicar-Test-Signature
+
+Copier vers une clé connue Blanchir La clé
+
+Administration
+

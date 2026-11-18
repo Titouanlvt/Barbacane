@@ -1,0 +1,35 @@
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+# Êlé + Analyse # Résu.tat 4 Clé de destination
+
+nsérez acécecestination
+
+sur Le port de sortie de la borne.
+
+Cette clé (QEMU GEMU USB HARDDRIVE (n° de série BARBACANEVIRTO681,
+46f4:86881)) n'est pas enrôlée : elle ne peut pas servir de clé de destination.
+
+Abandonner
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+# Clé ?» Analyse > / Résultat | 4 Clé de destination |» 5 Écriture > 6 Terminé
+
+Insérez la clé de destination
+
+sur le port de sortie de la borne.
+
+Cette clé (GEMU QEMU USB HARDDRIVE {n° de série BARBACANEVIRT#@61,
+
+46f4:8661}) n'est pas enrôêlée : elle ne peut pas servir de clé de destination.
+
+Effacer cette clé et y copier Les fichiers
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+# Clé > Analyse » - Résultat > FE » S5Écriture > 6 Terminé
+
+Effacer cette clé et y copier Les fichiers
+
+Administration
+

@@ -1,0 +1,58 @@
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+# Clé # Analyse 3 Résultat
+
+tésu tat ce ‘ana yse
+
+8 fichier{s) sain{s) à copier : 5 refusé{s)
+
+Ce qui ne passe pas, et pourquoi :
+archives/inbriquec.zip/inner.zip/eicar.con
+archives/mixte.zip/eicar.con
+
+archivrs/nons niraes.zin
+
+Arrêter ici Graver un disque
+
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+“Clé » + Analyse » (3 Résuttat ) » A Sortie > SÉcriture » 6 Terminé
+
+Résultat de l'analyse
+
+A 4 menace(s) détectée{s)
+
+8 fichier(s} sain(s) à copier : 5 refusé(s)
+
+3 archiveisi contenant des fichiers refusés : leurs fichiers sains seront copiés dans un dossier « <archives.extrait ».
+
+Ce qui ne passe pas, et pourquoi :
+
+Q) archives/imbriquee.zip/inner.zip/eicar.com
+menace détectée par ClamAY : Eicar-Test-Signature
+
+G archives/mixte.zip/eicar.cam
+menace détectée par ClamAY : Eicar-Test-Signature
+
+f\ archives/nams-niedes.zin
+
+Arrêter ici Copier vers une clé connue Graver un disque Blanchir La clé
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+> Analyse 2 4 Sortie > 5Écriture » 6 Terminé
+
+archives/imbriquee.zip/inner.zip/eicar.com
+menace détectée par ClamAV : Eicar-Test-Signature
+
+archives/mixte.zip/eicar.com
+menace détectée par ClamAV : Eicar-Test-Signature
+
+arthives/noms-nieoes.zin
+
+Copier vers une clé connue Blanchir La clé
+
+Administration
+
+

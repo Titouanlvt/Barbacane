@@ -1,0 +1,227 @@
+{
+  "id": "681bd9b5-ee3b-44c3-9ed6-ac0fe8de8499",
+  "user_id": "Tartempion",
+  "status": "scanned",
+  "error": null,
+  "started": "2026-11-18T10:18:45.576586219+01:00[Europe/Paris]",
+  "finished": "2026-11-18T10:18:58.84278438+01:00[Europe/Paris]",
+  "antivirus": {
+    "ClamAV": {
+      "version": "ClamAV 1.4.3",
+      "database_version": "28187",
+      "database_timestamp": "Wed Nov 18 07:28:39 2026"
+    },
+    "YARA": true
+  },
+  "summary": {
+    "files": 17,
+    "copied": 8,
+    "refused": 5
+  },
+  "files": [
+    {
+      "path": "archives/chiffre-bon.zip",
+      "container": null,
+      "size": 155,
+      "sha256": "9bcca2901add6ec677c3b8e6c531903eae6e06850b9108c612c8c094434b6bec",
+      "file_type": "application/zip",
+      "verdict": "CLEAN",
+      "reason": "aucune menace détectée",
+      "engine": null,
+      "signature": null,
+      "output": "archives/chiffre-bon.zip"
+    },
+    {
+      "path": "archives/chiffre-bon.zip/sain.txt",
+      "container": "archives/chiffre-bon.zip",
+      "size": 13,
+      "sha256": "c9757749d6db3a6c1b883007d0bd1e597a03f03213813a5955f47697920e3416",
+      "file_type": "application/octet-stream",
+      "verdict": "CLEAN",
+      "reason": "aucune menace détectée",
+      "engine": null,
+      "signature": null,
+      "output": null
+    },
+    {
+      "path": "archives/imbriquee.zip",
+      "container": null,
+      "size": 510,
+      "sha256": "c574b7a58a85839f1095c0f3632a558d1e9754780e7d644c147227da253bf909",
+      "file_type": "application/zip",
+      "verdict": "DIRTY",
+      "reason": "menace détectée par ClamAV : Eicar-Test-Signature",
+      "engine": "ClamAV",
+      "signature": "Eicar-Test-Signature",
+      "output": null
+    },
+    {
+      "path": "archives/imbriquee.zip/inner.zip",
+      "container": "archives/imbriquee.zip",
+      "size": 289,
+      "sha256": "3e0add58837929178161b191f8ad5d7ff3d9b324a5f38492d7e452d1f8df51bc",
+      "file_type": "application/zip",
+      "verdict": "DIRTY",
+      "reason": "menace détectée par ClamAV : Eicar-Test-Signature",
+      "engine": "ClamAV",
+      "signature": "Eicar-Test-Signature",
+      "output": null
+    },
+    {
+      "path": "archives/imbriquee.zip/inner.zip/eicar.com",
+      "container": "archives/imbriquee.zip/inner.zip",
+      "size": 68,
+      "sha256": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+      "file_type": "application/octet-stream",
+      "verdict": "DIRTY",
+      "reason": "menace détectée par ClamAV : Eicar-Test-Signature",
+      "engine": "ClamAV",
+      "signature": "Eicar-Test-Signature",
+      "output": null
+    },
+    {
+      "path": "archives/imbriquee.zip/inner.zip/sain.txt",
+      "container": "archives/imbriquee.zip/inner.zip",
+      "size": 13,
+      "sha256": "c9757749d6db3a6c1b883007d0bd1e597a03f03213813a5955f47697920e3416",
+      "file_type": "application/octet-stream",
+      "verdict": "CLEAN",
+      "reason": "aucune menace détectée",
+      "engine": null,
+      "signature": null,
+      "output": "archives/imbriquee.zip.extrait/inner.zip.extrait/sain.txt"
+    },
+    {
+      "path": "archives/imbriquee.zip/sain.txt",
+      "container": "archives/imbriquee.zip",
+      "size": 13,
+      "sha256": "c9757749d6db3a6c1b883007d0bd1e597a03f03213813a5955f47697920e3416",
+      "file_type": "application/octet-stream",
+      "verdict": "CLEAN",
+      "reason": "aucune menace détectée",
+      "engine": null,
+      "signature": null,
+      "output": "archives/imbriquee.zip.extrait/sain.txt"
+    },
+    {
+      "path": "archives/mixte.zip",
+      "container": null,
+      "size": 289,
+      "sha256": "3e0add58837929178161b191f8ad5d7ff3d9b324a5f38492d7e452d1f8df51bc",
+      "file_type": "application/zip",
+      "verdict": "DIRTY",
+      "reason": "menace détectée par ClamAV : Eicar-Test-Signature",
+      "engine": "ClamAV",
+      "signature": "Eicar-Test-Signature",
+      "output": null
+    },
+    {
+      "path": "archives/mixte.zip/eicar.com",
+      "container": "archives/mixte.zip",
+      "size": 68,
+      "sha256": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+      "file_type": "application/octet-stream",
+      "verdict": "DIRTY",
+      "reason": "menace détectée par ClamAV : Eicar-Test-Signature",
+      "engine": "ClamAV",
+      "signature": "Eicar-Test-Signature",
+      "output": null
+    },
+    {
+      "path": "archives/mixte.zip/sain.txt",
+      "container": "archives/mixte.zip",
+      "size": 13,
+      "sha256": "c9757749d6db3a6c1b883007d0bd1e597a03f03213813a5955f47697920e3416",
+      "file_type": "application/octet-stream",
+      "verdict": "CLEAN",
+      "reason": "aucune menace détectée",
+      "engine": null,
+      "signature": null,
+      "output": "archives/mixte.zip.extrait/sain.txt"
+    },
+    {
+      "path": "archives/noms-pieges.zip",
+      "container": null,
+      "size": 1227,
+      "sha256": "99278d7a381a042988ff0ac26807b6e5c521253ddfbc2028a4e4f1948f4f982f",
+      "file_type": "application/zip",
+      "verdict": "DIRTY",
+      "reason": "extraction impossible (erreur 7-Zip (code Some(2)))",
+      "engine": null,
+      "signature": null,
+      "output": null
+    },
+    {
+      "path": "docs/donnees.csv",
+      "container": null,
+      "size": 108894,
+      "sha256": "f6351f5ead9a700e34275480b3856ea738122a7c57bdeb744a631251c069587a",
+      "file_type": "application/octet-stream",
+      "verdict": "CLEAN",
+      "reason": "aucune menace détectée",
+      "engine": null,
+      "signature": null,
+      "output": "docs/donnees.csv"
+    },
+    {
+      "path": "docs/eicar.com",
+      "container": null,
+      "size": 68,
+      "sha256": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+      "file_type": "application/octet-stream",
+      "verdict": "DIRTY",
+      "reason": "menace détectée par ClamAV : Eicar-Test-Signature",
+      "engine": "ClamAV",
+      "signature": "Eicar-Test-Signature",
+      "output": null
+    },
+    {
+      "path": "docs/rapport.txt",
+      "container": null,
+      "size": 56,
+      "sha256": "64726956483d3f8077d53209d706c6366f4a2eabd946b4a7f8d0a0310159db9b",
+      "file_type": "application/octet-stream",
+      "verdict": "CLEAN",
+      "reason": "aucune menace détectée",
+      "engine": null,
+      "signature": null,
+      "output": "docs/rapport.txt"
+    },
+    {
+      "path": "docs/sous dossier/note.txt",
+      "container": null,
+      "size": 18,
+      "sha256": "4007edc2aa9d98536be505752884c32d8b09629ec110193631901c4cf9736cd2",
+      "file_type": "application/octet-stream",
+      "verdict": "CLEAN",
+      "reason": "aucune menace détectée",
+      "engine": null,
+      "signature": null,
+      "output": "docs/sous dossier/note.txt"
+    },
+    {
+      "path": "photos/image.bin",
+      "container": null,
+      "size": 300000,
+      "sha256": "9a149d2f7de00d557a76af1c1f7a355b2fccbe33bee585566a1e03593f3b56d7",
+      "file_type": "application/octet-stream",
+      "verdict": "CLEAN",
+      "reason": "aucune menace détectée",
+      "engine": null,
+      "signature": null,
+      "output": "photos/image.bin"
+    },
+    {
+      "path": "photos/vacances.jpg",
+      "container": null,
+      "size": 68,
+      "sha256": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+      "file_type": "application/octet-stream",
+      "verdict": "DIRTY",
+      "reason": "menace détectée par ClamAV : Eicar-Test-Signature",
+      "engine": "ClamAV",
+      "signature": "Eicar-Test-Signature",
+      "output": null
+    }
+  ]
+}

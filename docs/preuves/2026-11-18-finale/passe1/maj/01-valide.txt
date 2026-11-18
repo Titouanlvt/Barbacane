@@ -1,0 +1,44 @@
+|. BAR BACANE Signatures antivirales : 3 jour(s)
+
+‘ise à our 10rs igne
+
+1 Branchez la clé administrateur contenant Le paquet de mise à jour (.beu et * beu.minisig} sur Le port d'entrée.
+
+?. Lancez la lecture : le paquet est lu par USb5as, 5a signature et 5a version sont vérifiées, puis il est appliqué.
+
+Paquet de mise à jour version 202611151640 du 2826-11-15 16:49 UTC
+- Signatures ClamAV : 3 fichier{(s)
+
+Retour au menu Ciré ét APRLIQUEI
+
+
+Df BARBACANE
+
+Signatures antivirales : 3 jour(s}
+
+Mise à jour hors ligne
+
+1. Branchez la clé administrateur contenant le paquet de mise à jour (*.beu et *.beu.minisig) sur le port d'entrée.
+
+2. Lancez la lecture : le paquet est Lu par usbsas, sa signature et sa version sont vérifiées, puis il est appliqué.
+
+Un paquet non signé, corrompu où plus ancien que la version installée est refusé.
+
+Paquet de mise à jour version 282611151849 du 2826-11-15 18:49 UTC
+- signatures ClamAY : 3 fichier(s)
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+BARBACANE
+
+1. Branchez la clé administrateur contenant le paquet de mise à jour (*.bcu et “.bcu.minisig) sur le port d'entrée.
+
+2. Lancez la lecture : le paquet est lu par usbsss, s3 signature et sa version sont vérifiées, puis il est appliqué.
+
+Un paquet non signé, corrompu ou plus ancien que la version installée est refusé.
+
+Paquet de mise à jour version 26261115194$ du 2926-11-15 19:49 UTC
+- signatures ClamAY : 3 fichier(s)
+
+Administration
+

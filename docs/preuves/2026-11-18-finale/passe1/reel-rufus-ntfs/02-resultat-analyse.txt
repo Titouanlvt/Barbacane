@@ -1,0 +1,52 @@
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+tésu tat ce ‘ana yse
+
+3 fichier(s) sains) à copier - 3 refusé{s)
+Ce qui ne passe pas, et pourquoi :
+soyrces/S0EMS.cud
+
+soyrces/disque refus attenduy.bin
+
+Arrêter ici CODISr Vers U C Graver un disque
+
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+“Clé » + Analyse » (3 Résuttat ) » A Sortie > SÉcriture » 6 Terminé
+
+Résultat de l'analyse
+
+A 1 menace(s) détectée(s)
+
+3 fichier{s) sain(s} à copier : 3 refuséis)
+
+Ce qui ne passe pas, et pourquoi :
+
+@) sources/$DEM$.cmd
+menace détectée par ClamAY : Eicar-Test-Signature
+
+Â\ sources/disque-refus-attendu.bin
+analyse impossible (fichier trop volumineux pour l'antivirus 12 Go maximum par fichier, hors archives)}
+
+SURF nf
+
+Arrêter ici Copier vers une clé connue Graver un disque Blanchir La clé
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+Clé : Analyse 2 4 Sortie > 5Écriture » 6 Terminé
+
+(&) sources/$0EM$.cmd
+menace détectée par ClamAV : Eicar-Test-Signature
+
+\ sources/disque-refus-attendu.bin
+analyse impossible (fichier trop volumineux pour l'antivirus (2 Go maximum par fichier, hors archives))
+
+Copier vers une clé connue Blanchir La clé
+
+Administration
+
+Ssinnin inf
+
+

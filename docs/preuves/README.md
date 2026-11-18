@@ -5,7 +5,8 @@
 Borne installée depuis l'ISO de **production** construite depuis `integration` (d4a3641, sha256
 `080f6ff69805adea3c90d5ccaa3f86fa3e0d240596acbcb20375d7d98d7214d1`), VM Proxmox 920 sans réseau,
 **vraies clés USB** passées à la VM au niveau USB (SanDisk 16 Go en source, SanDisk Ultra 64 Go
-enrôlée en sortie). Campagne finale : [2026-11-18-finale/](2026-11-18-finale/) — campagne en cours (résultat reporté à la fin).
+enrôlée en sortie). Campagne finale : [2026-11-18-finale/](2026-11-18-finale/) — **121 OK, 0 échec** (95 en passe 1 avec retour à
+l'instantané entre scénarios, 26 en passe 2 enchaînée sans retour : transfert, mise à jour, export, journal).
 
 ### Ce qui marche (avec la preuve)
 | Fonction | Preuve |
@@ -32,7 +33,12 @@ redémarrait plus)**, anciennes révisions embarquées dans l'ISO. Détail :
 18/11 : réinstaller depuis une ISO récente pour recevoir des paquets (guide, § 7).
 
 ### Ce qui ne marche pas
-- Rien de connu à ce jour sur les fonctions prouvées ; à confirmer par la campagne finale.
+- Aucun échec dans la campagne finale (121/121) sur l'ISO de production d4a3641.
+- Charte graphique : « Effacer cette clé et y copier les fichiers » était en variante Principale (noire)
+  au lieu de la variante Destructive (rouge `menace`) ; corrigé après la campagne (9a9f124, affichage seul),
+  non inclus dans l'ISO testée.
+- Écart à la charte non corrigé : l'effacement de la clé de destination n'est pas suivi d'un écran de
+  confirmation (la charte le demande) ; changement de parcours laissé à la décision de l'utilisateur.
 
 ### Ce qui n'a pas pu être testé, et pourquoi
 | Point | Raison |

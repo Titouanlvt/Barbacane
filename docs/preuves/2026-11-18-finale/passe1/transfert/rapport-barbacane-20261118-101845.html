@@ -1,0 +1,27 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Rapport Barbacane</title>
+<style>body{font-family:sans-serif;margin:2em;color:#1b1b1b}h1{font-size:1.4em}table{border-collapse:collapse;width:100%;margin-bottom:2em}
+td,th{border:1px solid #ccc;padding:.3em .6em;text-align:left;vertical-align:top}th{background:#eee}.ok{color:#0a6b2d}.ko{color:#b00020}code{font-size:.8em}</style></head>
+<body><h1>Barbacane — rapport de transfert</h1>
+<p>Date : 18/11/2026 10:18:45<br>Clé source : USB SanDisk 3.2Gen1 (n° de série 03020611111524225725, 0781:5581)<br>Identifiant : 32806513-9cdd-4359-9cb9-dc28fdd1cdcd<br>Antivirus : ClamAV ClamAV 1.4.3 (base 28187 du Wed Nov 18 07:28:39 2026) + YARA</p>
+<h2 class="ok">Fichiers copiés</h2><table><tr><th>Fichier</th><th>Taille</th><th>SHA-256</th></tr>
+<tr><td>archives/chiffre-bon.zip</td><td>155 o</td><td><code>fa99b4c8ad87ed40a3be348fc35945d21424e2ed2be6f6e742aead12b8516177</code></td></tr>
+<tr><td>archives/imbriquee.zip.extrait/inner.zip.extrait/sain.txt</td><td>13 o</td><td><code>c9757749d6db3a6c1b883007d0bd1e597a03f03213813a5955f47697920e3416</code></td></tr>
+<tr><td>archives/imbriquee.zip.extrait/sain.txt</td><td>13 o</td><td><code>c9757749d6db3a6c1b883007d0bd1e597a03f03213813a5955f47697920e3416</code></td></tr>
+<tr><td>archives/mixte.zip.extrait/sain.txt</td><td>13 o</td><td><code>c9757749d6db3a6c1b883007d0bd1e597a03f03213813a5955f47697920e3416</code></td></tr>
+<tr><td>docs/donnees.csv</td><td>106.3 Ko</td><td><code>f6351f5ead9a700e34275480b3856ea738122a7c57bdeb744a631251c069587a</code></td></tr>
+<tr><td>docs/rapport.txt</td><td>56 o</td><td><code>64726956483d3f8077d53209d706c6366f4a2eabd946b4a7f8d0a0310159db9b</code></td></tr>
+<tr><td>docs/sous dossier/note.txt</td><td>18 o</td><td><code>4007edc2aa9d98536be505752884c32d8b09629ec110193631901c4cf9736cd2</code></td></tr>
+<tr><td>photos/image.bin</td><td>293.0 Ko</td><td><code>aeeb8577f80e123a45dc7746c7b006afb76e3af3c2362c9f29fe0ff781ffbfea</code></td></tr>
+</table>
+<h2 class="ko">Fichiers refusés</h2><table><tr><th>Fichier</th><th>Raison</th></tr>
+<tr><td>archives/imbriquee.zip/inner.zip/eicar.com</td><td>menace détectée par ClamAV : Eicar-Test-Signature</td></tr>
+<tr><td>archives/mixte.zip/eicar.com</td><td>menace détectée par ClamAV : Eicar-Test-Signature</td></tr>
+<tr><td>archives/noms-pieges.zip</td><td>extraction impossible (erreur 7-Zip (code Some(2)))</td></tr>
+<tr><td>docs/eicar.com</td><td>menace détectée par ClamAV : Eicar-Test-Signature</td></tr>
+<tr><td>photos/vacances.jpg</td><td>menace détectée par ClamAV : Eicar-Test-Signature</td></tr>
+</table>
+<h2>Archives non copiées, remplacées par leur contenu sain</h2><table><tr><th>Archive</th><th>Raison</th></tr>
+<tr><td>archives/imbriquee.zip</td><td>menace détectée par ClamAV : Eicar-Test-Signature</td></tr>
+<tr><td>archives/imbriquee.zip/inner.zip</td><td>menace détectée par ClamAV : Eicar-Test-Signature</td></tr>
+<tr><td>archives/mixte.zip</td><td>menace détectée par ClamAV : Eicar-Test-Signature</td></tr>
+</table></body></html>

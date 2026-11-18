@@ -1,0 +1,95 @@
+OK [installation] : ISO copiée sur la clé (relecture identique)
+OK [installation] : VM sans carte réseau
+OK [installation] : installation automatique depuis la clé USB, interface affichée (8192 Mo de RAM)
+OK [grub] : Échap tenu au démarrage : pas de menu GRUB, démarrage direct de la borne
+OK [pin] : premier PIN choisi, menu d'administration ouvert
+OK [pin] : mauvais PIN refusé (essais restants affichés)
+OK [pin] : bon PIN accepté après une erreur
+OK [enrolement] : clé enrôlée : elle figure dans la liste
+OK [enrolement] : mode « clés enrôlées » activé
+OK [transfert] : mot de passe d'archive demandé (clavier virtuel)
+OK [transfert] : écran : menaces détectées
+OK [transfert] : clé non enrôlée refusée en sortie
+OK [transfert] : clé non enrôlée intacte (rien n'y a été écrit)
+OK [transfert] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [transfert] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [transfert] : aucun fichier de la sortie ne contient EICAR
+OK [transfert] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [transfert] : archive chiffrée (bon mot de passe) copiée
+OK [transfert] : archive mixte : seul son fichier sain est extrait
+OK [transfert] : noms piégés (traversée, absolu) non écrits
+OK [transfert] : contenu précédent de la destination effacé (témoin absent)
+OK [transfert] : rapport : EICAR détecté et refusé
+OK [blanchiment] : avant : EICAR sur la clé (octets 16547868 16556060 16564291 16572522 )
+OK [blanchiment] : mot de passe d'archive demandé (clavier virtuel)
+OK [blanchiment] : empreinte de la clé entière modifiée
+OK [blanchiment] : après : aucune trace d'EICAR sur TOUTE la clé
+OK [blanchiment] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [blanchiment] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [blanchiment] : aucun fichier de la sortie ne contient EICAR
+OK [blanchiment] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [blanchiment] : archive chiffrée (bon mot de passe) copiée
+OK [blanchiment] : archive mixte : seul son fichier sain est extrait
+OK [blanchiment] : noms piégés (traversée, absolu) non écrits
+OK [volumineux] : clé préparée : 4.9G, 27 fichiers (zip, tar, iso, txt)
+OK [volumineux] : analyse aboutie sur 5,6 Go avec 8192 Mo de RAM
+OK [volumineux] : archive contenant EICAR non réécrite
+OK [volumineux] : fichiers sains réécrits à l'identique (sha256)
+OK [maj] : paquet signé valide appliqué (écran : « Paquet de mise à jour version … »)
+OK [maj] : paquet signé par une autre clé refusé
+OK [maj] : version plus ancienne refusée
+OK [reel-bureau] : verdict : menace ou écarté affiché (10 fichier(s) piégé(s) sur la clé)
+OK [reel-bureau] : durée totale (analyse + écriture) : 1827 s
+OK [reel-bureau] : 17 fichiers sains copiés à l'identique (sha256)
+OK [reel-bureau] : aucun EICAR sur la clé de sortie
+OK [reel-bureau] : piégé non copié : Archives/projet-piege.7z
+OK [reel-bureau] : piégé non copié : Archives/projet-piege.rar
+OK [reel-bureau] : piégé non copié : Archives/projet-piege.tar.gz
+OK [reel-bureau] : piégé non copié : Archives/projet-piege.zip
+OK [reel-bureau] : piégé non copié : Documents/Chantier 46/rapport-piege.docm
+OK [reel-bureau] : piégé non copié : Documents/Chantier 46/rapport-piege.docx
+OK [reel-bureau] : piégé non copié : Documents/Chantier 46/rapport-piege.pptx
+OK [reel-bureau] : piégé non copié : Documents/Chantier 46/rapport-piege.xlsx
+OK [reel-bureau] : piégé non copié : Documents/facture-piege.pdf
+OK [reel-bureau] : piégé non copié : ISO/donnees-piege.iso
+OK [reel-etcher] : durée totale (analyse + écriture) : 1735 s
+OK [reel-etcher] : 1011 fichiers sains copiés à l'identique (sha256)
+OK [reel-etcher] : aucun EICAR sur la clé de sortie
+OK [reel-rufus-fat32] : verdict : menace ou écarté affiché (1 fichier(s) piégé(s) sur la clé)
+OK [reel-rufus-fat32] : durée totale (analyse + écriture) : 1822 s
+OK [reel-rufus-fat32] : 1073 fichiers sains copiés à l'identique (sha256)
+OK [reel-rufus-fat32] : aucun EICAR sur la clé de sortie
+OK [reel-rufus-fat32] : piégé non copié : tools/memtest.efi
+OK [reel-rufus-ntfs] : verdict : menace ou écarté affiché (3 fichier(s) piégé(s) sur la clé)
+OK [reel-rufus-ntfs] : durée totale (analyse + écriture) : 1042 s
+OK [reel-rufus-ntfs] : 3 fichiers sains copiés à l'identique (sha256)
+OK [reel-rufus-ntfs] : aucun EICAR sur la clé de sortie
+OK [reel-rufus-ntfs] : piégé non copié : sources/$OEM$.cmd
+OK [reel-rufus-ntfs] : piégé non copié : sources/disque-refus-attendu.bin
+OK [reel-rufus-ntfs] : piégé non copié : autorun.inf
+OK [ventoy] : clé Ventoy reconnue : « Blanchir en gardant démarrable » proposé
+OK [ventoy] : secteur 0 : code de démarrage = boot.img embarqué
+OK [ventoy] : secteur 0 (octets 400-439) = boot.img embarqué
+OK [ventoy] : secteurs 1-2047 = core.img embarqué
+OK [ventoy] : partition VTOYEFI (type ef) à partir du secteur 29964288
+OK [ventoy] : partition VTOYEFI = ventoy.disk.img embarqué
+OK [ventoy] : secteur 0 d'origine remplacé
+OK [ventoy] : conservé à l'identique : ISO/debian-13.7.0-amd64-netinst.iso
+OK [ventoy] : conservé à l'identique : notes.txt
+OK [ventoy] : non conservé : ISO/outils-piege.iso
+OK [ventoy] : non conservé : ventoy/ventoy.json
+OK [ventoy] : dossier ventoy/ (configuration, greffons) absent
+OK [ventoy] : aucun EICAR sur la clé
+OK [ventoy] : la clé démarre : menu Ventoy affiché (05-demarrage-ventoy.png)
+OK [veille] : écran de veille affiché après 10 min (01-veille.png)
+OK [veille] : réveil au toucher : accueil de nouveau affiché
+OK [clavier] : frappes et combinaisons sans effet : l'écran du PIN est inchangé
+OK [clavier] : aucun chiffre saisi dans le champ PIN
+OK [vide] : clé vide : la borne affiche un résultat sans planter
+OK [vide] : retour à l'accueil
+OK [pleine] : clé pleine analysée (17 fichiers)
+OK [pleine] : retour à l'accueil
+OK [illisible] : clé illisible : message affiché, borne de nouveau utilisable
+OK [retrait] : retrait en cours de lecture : erreur affichée, aucune copie, borne de nouveau utilisable
+OK [verrouillage] : administration verrouillée après 5 échecs
+OK [verrouillage] : même le bon PIN est refusé pendant le verrouillage

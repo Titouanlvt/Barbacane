@@ -1,0 +1,20 @@
+BARBACANE — RAPPORT DE TRANSFERT
+================================
+
+Date            : 18/11/2026 10:26:09
+Clé source      : USB SanDisk 3.2Gen1 (n° de série 03020611111524225725, 0781:5581)
+Identifiant     : 7d7acf0c-b4f9-41f7-8453-583f705728aa
+Antivirus       : ClamAV ClamAV 1.4.3 (base 28187 du Wed Nov 18 07:28:39 2026) + YARA
+
+FICHIERS COPIÉS (3)
+  [OK]     setup.exe  (2.0 Mo)
+  [OK]     sources/boot.wim  (30.0 Mo)
+  [OK]     sources/install.wim  (4.1 Go)
+
+FICHIERS REFUSÉS (2)
+  [REFUSÉ] sources/$OEM$.cmd
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] sources/disque-refus-attendu.bin
+           raison : analyse impossible (fichier trop volumineux pour l'antivirus (2 Go maximum par fichier, hors archives))
+
+Les fichiers refusés ne sont pas copiés. En cas de doute, contactez votre administrateur.

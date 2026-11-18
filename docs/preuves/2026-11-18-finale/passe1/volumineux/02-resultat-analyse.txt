@@ -1,0 +1,44 @@
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+# Clé # Analyse 3 Résultat
+
+tésu tat ce ‘ana yse
+
+27 fichieris) sain(s) à copier - 1 refusé(s)
+
+Ce qui ne passe pas, et pourquoi :
+
+archives/mixte.zip/eicar.con
+
+Arrêter ici LODICT VérS UNE CIS CONNUE Graver un disque
+
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+# Clé » Analyse » ASortie » SéÉcriture : 6 Terminé
+
+Résultat de l'analyse
+
+A 1 menace(s) détectée(s)
+
+27 fichier(s) sain(s) à copier - 1 refusé(s)
+
+1 archive(s) contenant des fichiers refusés : Leurs fichiers sains seront copiés dans un dossier « <archivez.extrait ».
+
+Ce qui ne passe pas, et pourquoi :
+
+G archives/mixte.zip/eicar.cam
+menace détectée par ClamAY : Eicar-Test-Signature
+
+Arrêter ici Copier vers une clé connue Graver un disque Blanchir La clé
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+Clé : Analyse 2 4 Sortie > 5Écriture » 6 Terminé
+
+@) archives/mixte.zip/eicar.com
+menace détectée par ClamAV : Eicar-Test-Signature
+
+Copier vers une clé connue Blanchir La clé
+
+Administration
+

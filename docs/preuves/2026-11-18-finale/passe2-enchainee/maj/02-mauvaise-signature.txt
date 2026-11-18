@@ -1,0 +1,37 @@
+|. BAR BACANE Signatures antivirales : 3 jour(s)
+
+‘ise à our 10rs igne
+
+1 Branchez la clé administrateur contenant Le paquet de mise à jour (.beu et * beu.minisig} sur Le port d'entrée.
+
+?. Lancez la lecture : le paquet est lu par USb5as, 5a signature et 5a version sont vérifiées, puis il est appliqué.
+
+Retour au menu Ciré ét APRLIQUEI
+
+
+Df BARBACANE
+
+Signatures antivirales : 3 jour(s}
+
+Mise à jour hors ligne
+
+1. Branchez la clé administrateur contenant le paquet de mise à jour (*.beu et *.beu.minisig) sur le port d'entrée.
+
+2. Lancez la lecture : le paquet est Lu par usbsas, sa signature et sa version sont vérifiées, puis il est appliqué.
+
+Un paquet non signé, corrompu où plus ancien que la version installée est refusé.
+
+| signature invalide (clé de signature inconnue) |
+
+Retour au menu Lire et appliquer
+
+Barbacane 8.16 — station blanche hors ligne Mode clés enrôlées Administration
+
+1. Branchez la clé administrateur contenant le paquet de mise à jour (*.bcu et “.bcu.minisig) sur le port d'entrée.
+
+2. Lancez la lecture : le paquet est lu par usbsss, s3 signature et sa version sont vérifiées, puis il est appliqué.
+
+Un paquet non signé, corrompu ou plus ancien que la version installée est refusé.
+
+Administration
+

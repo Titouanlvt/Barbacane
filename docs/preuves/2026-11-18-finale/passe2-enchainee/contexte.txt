@@ -1,0 +1,6 @@
+ISO sha256 : 080f6ff69805adea3c90d5ccaa3f86fa3e0d240596acbcb20375d7d98d7214d1
+Commit : 
+VM : 920, 8192 Mo, disque 64 Go, UEFI, sans réseau
+Date : 2026-11-18T14:33:59+01:00
+Clés : installation 0501f66b357c3cb8eaaf6efb1d11265cc6fcdab3ce4e06b163ad06c25b56858f2dd900000000000000000000d8d8d3fcff960b108155810725ae0edb, source 03020611111524225725, sortie 0501f66b357c3cb8eaaf6efb1d11265cc6fcdab3ce4e06b163ad06c25b56858f2dd900000000000000000000d8d8d3fcff960b108155810725ae0edb, autre virtuelle
+Clé « autre » ÉMULÉE (usb-storage QEMU, image /var/lib/vz/barbacane/cle-virtuelle.img) : pas de troisième vraie clé

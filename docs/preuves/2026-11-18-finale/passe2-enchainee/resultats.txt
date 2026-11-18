@@ -1,0 +1,26 @@
+OK [installation] : borne remise à l'état « propre » (installée, PIN, clé enrôlée)
+OK [transfert] : mot de passe d'archive demandé (clavier virtuel)
+OK [transfert] : écran : menaces détectées
+OK [transfert] : clé non enrôlée refusée en sortie
+OK [transfert] : clé non enrôlée intacte (rien n'y a été écrit)
+OK [transfert] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [transfert] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [transfert] : aucun fichier de la sortie ne contient EICAR
+OK [transfert] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [transfert] : archive chiffrée (bon mot de passe) copiée
+OK [transfert] : archive mixte : seul son fichier sain est extrait
+OK [transfert] : noms piégés (traversée, absolu) non écrits
+OK [transfert] : contenu précédent de la destination effacé (témoin absent)
+OK [transfert] : rapport : EICAR détecté et refusé
+OK [maj] : paquet signé valide appliqué (écran : « Paquet de mise à jour version … »)
+OK [maj] : paquet signé par une autre clé refusé
+OK [maj] : version plus ancienne refusée
+OK [export] : export terminé
+OK [export] : journal de la borne exporté
+OK [export] : rapports exportés (4 rapports JSON)
+OK [export] : rapports exportés : détections EICAR présentes
+OK [journal] : grub.cfg : super-utilisateur et mot de passe (édition protégée)
+OK [journal] : grub.cfg : entrée par défaut démarrable sans mot de passe
+OK [journal] : journal : détections EICAR consignées
+OK [journal] : journal : mise à jour 202611151049 appliquée
+OK [journal] : journal : clavier USB vu par hid-dealer

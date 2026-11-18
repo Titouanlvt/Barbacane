@@ -1,0 +1,7 @@
+./barbacane-export-20261118-102502/dpkg-status
+./barbacane-export-20261118-102502/etat.json
+./barbacane-export-20261118-102502/journal.txt
+./barbacane-export-20261118-102502/rapports/20261118-101845-681bd9b5-ee3b-44c3-9ed6-ac0fe8de8499.json
+./barbacane-export-20261118-102502/rapports/20261118-102115-dcdb55c1-d051-4823-8c45-feec078a7f2d.json
+./barbacane-export-20261118-102502/rapports/20261118-102231-dc44836e-8c0e-44f9-a24e-926ccc2b44a6.json
+./barbacane-export-20261118-102502/rapports/20261118-102349-95f27a2c-199f-4e6d-8051-e1e0b18685d8.json

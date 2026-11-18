@@ -1,0 +1,47 @@
+{
+  "id": "dcdb55c1-d051-4823-8c45-feec078a7f2d",
+  "user_id": "Tartempion",
+  "status": "scanned",
+  "error": null,
+  "started": "2026-11-18T10:21:15.051129491+01:00[Europe/Paris]",
+  "finished": "2026-11-18T10:21:15.715858969+01:00[Europe/Paris]",
+  "antivirus": {
+    "ClamAV": {
+      "version": "ClamAV 1.4.3",
+      "database_version": "28187",
+      "database_timestamp": "Wed Nov 18 07:28:39 2026"
+    },
+    "YARA": true
+  },
+  "summary": {
+    "files": 2,
+    "copied": 0,
+    "refused": 2
+  },
+  "files": [
+    {
+      "path": "barbacane-maj-202611151049.bcu",
+      "container": null,
+      "size": 112553571,
+      "sha256": "90120bfe7ec38c8d0f09ab9bac954123721db06925a37c6ef386e21ef541e3bc",
+      "file_type": "paquet de mise à jour",
+      "verdict": "DIRTY",
+      "reason": "paquet de mise à jour : transmis au service d'administration, non copié",
+      "engine": null,
+      "signature": null,
+      "output": null
+    },
+    {
+      "path": "barbacane-maj-202611151049.bcu.minisig",
+      "container": null,
+      "size": 296,
+      "sha256": "2ee72199d6ab0c1c376d46ac06627461fc19d04db726464718eb9142cb3c0412",
+      "file_type": "paquet de mise à jour",
+      "verdict": "DIRTY",
+      "reason": "paquet de mise à jour : transmis au service d'administration, non copié",
+      "engine": null,
+      "signature": null,
+      "output": null
+    }
+  ]
+}

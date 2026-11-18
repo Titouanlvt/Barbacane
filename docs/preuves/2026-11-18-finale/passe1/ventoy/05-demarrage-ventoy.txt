@@ -1,0 +1,8 @@
+1.1.18 BIOS uuuw.ventoy.net L:Language Fi:Help F£:Browuse F3:TreeVieu Fé:Localboot FS:Tools F6:ExMenu
+
+1.1.18 BIOS uuuw.ventoy.net L:Language Fi:Help F£:Browuse F3:TreeVieu Fé:Localboot FS:Tools F6:ExMenu
+
+Von
+
+debian-13.7.0-amdéd-netinst.iso
+

@@ -1,0 +1,94 @@
+BARBACANE — RAPPORT DE TRANSFERT
+================================
+
+Date            : 18/11/2026 10:20:48
+Clé source      : USB SanDisk 3.2Gen1 (n° de série 03020611111524225725, 0781:5581)
+Identifiant     : 662eaf1c-4fb6-4c0d-a15c-968f7e8d4785
+Antivirus       : ClamAV ClamAV 1.4.3 (base 28187 du Wed Nov 18 07:28:39 2026) + YARA
+
+FICHIERS COPIÉS (39)
+  [OK]     Archives/lien-interne.tar  (10.0 Ko)
+  [OK]     Archives/lien-piege.tar  (10.0 Ko)
+  [OK]     Archives/projet-piege.7z.extrait/projet/note.txt  (34 o)
+  [OK]     Archives/projet-piege.7z.extrait/projet/plans/plan-rdc.dwg  (3.0 Mo)
+  [OK]     Archives/projet-piege.rar.extrait/projet/note.txt  (34 o)
+  [OK]     Archives/projet-piege.rar.extrait/projet/plans/plan-rdc.dwg  (3.0 Mo)
+  [OK]     Archives/projet-piege.tar.gz.extrait/11~.extrait/projet/note.txt  (34 o)
+  [OK]     Archives/projet-piege.tar.gz.extrait/11~.extrait/projet/plans/plan-rdc.dwg  (3.0 Mo)
+  [OK]     Archives/projet-piege.zip.extrait/projet/note.txt  (34 o)
+  [OK]     Archives/projet-piege.zip.extrait/projet/plans/plan-rdc.dwg  (3.0 Mo)
+  [OK]     Archives/projet.7z  (3.0 Mo)
+  [OK]     Archives/projet.rar  (3.0 Mo)
+  [OK]     Archives/projet.tar  (3.0 Mo)
+  [OK]     Archives/projet.tar.gz  (3.0 Mo)
+  [OK]     Archives/projet.zip  (3.0 Mo)
+  [OK]     Documents/Chantier 46/rapport-piege.docm.extrait/[Content_Types].xml  (271 o)
+  [OK]     Documents/Chantier 46/rapport-piege.docm.extrait/_rels/.rels  (261 o)
+  [OK]     Documents/Chantier 46/rapport-piege.docm.extrait/word/document.xml  (79 o)
+  [OK]     Documents/Chantier 46/rapport-piege.docm.extrait/word/vbaProject.bin  (57 o)
+  [OK]     Documents/Chantier 46/rapport-piege.docx.extrait/[Content_Types].xml  (297 o)
+  [OK]     Documents/Chantier 46/rapport-piege.docx.extrait/_rels/.rels  (261 o)
+  [OK]     Documents/Chantier 46/rapport-piege.docx.extrait/word/document.xml  (79 o)
+  [OK]     Documents/Chantier 46/rapport-piege.pptx.extrait/[Content_Types].xml  (302 o)
+  [OK]     Documents/Chantier 46/rapport-piege.pptx.extrait/_rels/.rels  (264 o)
+  [OK]     Documents/Chantier 46/rapport-piege.pptx.extrait/ppt/presentation.xml  (79 o)
+  [OK]     Documents/Chantier 46/rapport-piege.xlsx.extrait/[Content_Types].xml  (289 o)
+  [OK]     Documents/Chantier 46/rapport-piege.xlsx.extrait/_rels/.rels  (259 o)
+  [OK]     Documents/Chantier 46/rapport-piege.xlsx.extrait/xl/workbook.xml  (79 o)
+  [OK]     Documents/Chantier 46/rapport.docm  (918 o)
+  [OK]     Documents/Chantier 46/rapport.docx  (755 o)
+  [OK]     Documents/Chantier 46/rapport.pptx  (760 o)
+  [OK]     Documents/Chantier 46/rapport.xlsx  (754 o)
+  [OK]     Documents/devis-0412.pdf  (461 o)
+  [OK]     ISO/debian-13.7.0-amd64-netinst.iso  (756.0 Mo)
+  [OK]     ISO/donnees-piege.iso.extrait/note.txt  (34 o)
+  [OK]     ISO/donnees.iso  (3.4 Mo)
+  [OK]     Images/photo-1.jpg  (4.0 Mo)
+  [OK]     Images/photo-2.jpg  (4.0 Mo)
+  [OK]     Images/photo-3.jpg  (4.0 Mo)
+
+FICHIERS REFUSÉS (10)
+  [REFUSÉ] Archives/projet-piege.7z/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] Archives/projet-piege.rar/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] Archives/projet-piege.tar.gz/11~/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] Archives/projet-piege.zip/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] Documents/Chantier 46/rapport-piege.docm/word/media/image1.bin
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] Documents/Chantier 46/rapport-piege.docx/word/media/image1.bin
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] Documents/Chantier 46/rapport-piege.pptx/word/media/image1.bin
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] Documents/Chantier 46/rapport-piege.xlsx/word/media/image1.bin
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] Documents/facture-piege.pdf
+           raison : menace détectée par ClamAV : Eicar-Signature
+  [REFUSÉ] ISO/donnees-piege.iso/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+
+ARCHIVES NON COPIÉES, REMPLACÉES PAR LEUR CONTENU SAIN (10)
+  [ARCHIVE] Archives/projet-piege.7z  →  Archives/projet-piege.7z.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] Archives/projet-piege.rar  →  Archives/projet-piege.rar.extrait/
+            raison : archive contenant des fichiers refusés (les fichiers sains sont extraits)
+  [ARCHIVE] Archives/projet-piege.tar.gz  →  Archives/projet-piege.tar.gz.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] Archives/projet-piege.tar.gz/11~  →  Archives/projet-piege.tar.gz/11~.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] Archives/projet-piege.zip  →  Archives/projet-piege.zip.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] Documents/Chantier 46/rapport-piege.docm  →  Documents/Chantier 46/rapport-piege.docm.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] Documents/Chantier 46/rapport-piege.docx  →  Documents/Chantier 46/rapport-piege.docx.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] Documents/Chantier 46/rapport-piege.pptx  →  Documents/Chantier 46/rapport-piege.pptx.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] Documents/Chantier 46/rapport-piege.xlsx  →  Documents/Chantier 46/rapport-piege.xlsx.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] ISO/donnees-piege.iso  →  ISO/donnees-piege.iso.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+
+Les fichiers refusés ne sont pas copiés. En cas de doute, contactez votre administrateur.

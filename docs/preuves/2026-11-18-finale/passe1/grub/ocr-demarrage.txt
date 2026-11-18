@@ -1,0 +1,162 @@
+--- /root/BARBACANE/finale-28307c1/grub/01-demarrage-echap-4s.png
+
+
+
+--- /root/BARBACANE/finale-28307c1/grub/02-demarrage-echap-8s.png
+BdsDxe: loading Boot0004 “debian” from HD(1,6PT,7F691C85-9AF 7 -445C-8CCF-ASAFSDECTERZ , 0x000 , 0x1E8000) /XEFT\debian\shinx64 .efi
+BdsDxe: starting BootO004 “debian” from HD (1,6PT,7F091C05-9AF?7-445C-GCCF-ASAFSDECTERZ , 0x600 , 0x1E8000) /XEFI%debian\shinx64 ef i
+
+XPROXMOX
+
+Start boot option
+DEP PP PP PP PP PP PP PP PP EPP PP PP PP PPPPPPPPPPPPPE PPT
+
+BdsDxe: loading Boot0004 “debian” from HD(1,6PT,7F691C85-9AF 7 -445C-8CCF-ASAFSDECTERZ , 0x000 , 0x1E8000) /XEFT\debian\shinx64 .efi
+BdsDxe: starting BootO004 “debian” from HD (1,6PT,7F091C05-9AF?7-445C-GCCF-ASAFSDECTERZ , 0x600 , 0x1E8000) /XEFI%debian\shinx64 ef i
+
+* PRO MO
+
+Start boot option
+DICO LDLC COCCLLL COCCLI CCC LCL LE CCC LL CCI CCC CC CL LCL LL LL CL
+
+Y PRO MO
+
+tart boot optio
+ATARI EE CEEEEEEEREEEnEMEEnE
+
+--- /root/BARBACANE/finale-28307c1/grub/03-demarrage-echap-12s.png
+CE a D D PS D D |
+
+> + à
+mme
+
+> + à
+
+ReRbhhhhhnhhRe
+
+.-2898591 shpchp 0006 :05 :01.
+.-2898791 shpchp 0006 :05 :01.
+.2991121 shpchp 0000 :05:02.
+.2991221 shpchp 0000 :05:02.
+.-2999211 shpchp 0006 :05 :03.
+-2999311 shpchp 0006 :05 :03.
+.3057291 shpchp 0000 :05 :04.
+.3057341 shpchp 0000 :05 :04.
+.3107331 shpchp 0000 :07:1c.
+.3107421 shpchp 0000 :07:1c
+CO EE RE HT I IDDN DS MS RS [* LC" LL" LC" L-deu-sda2: recovering journal
+sdeu-sda2: clean, 243639/3915776 files, 727085/15660032 blocks
+
+CES ES ES ES ES ES SES ESE
+
+: pci hp register failed with error -16
+: Slot initialization failed
+: pci hp register failed with error -16
+: Slot initialization failed
+: pci hp register failed with error -16
+: Slot initialization failed
+: pci hp register failed with error -16
+: Slot initialization failed
+: pci hp register failed with error -16
+: Slot initialization failed
+
+5 cevcrececsce
+
+CE a D D PS D D |
+
+> + à
+mme
+
+> + à
+
+ReRbhhhhhnhhRe
+
+.-2898591 shpchp 0006 :05 :01.
+.-2898791 shpchp 0006 :05 :01.
+.2991121 shpchp 0000 :05:02.
+.2991221 shpchp 0000 :05:02.
+.-2999211 shpchp 0006 :05 :03.
+-2999311 shpchp 0006 :05 :03.
+.3057291 shpchp 0000 :05 :04.
+.3057341 shpchp 0000 :05 :04.
+.3107331 shpchp 0000 :07:1c.
+.3107421 shpchp 0000 :07:1c
+CO EE RE HT I IDDN DS MS RS [* LC" LL" LC" L-deu-sda2: recovering journal
+sdeu-sda2: clean, 243639/3915776 files, 727085/15660032 blocks
+
+CES ES ES ES ES ES SES ESE
+
+: pci hp register failed with error -16
+: Slot initialization failed
+: pci hp register failed with error -16
+: Slot initialization failed
+: pci hp register failed with error -16
+: Slot initialization failed
+: pci hp register failed with error -16
+: Slot initialization failed
+: pci hp register failed with error -16
+: Slot initialization failed
+
+5 cevcrececsce
+
+
+--- /root/BARBACANE/finale-28307c1/grub/04-demarrage-echap-16s.png
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+nsérez à c &ê à ana yser
+
+sur le port d'entrée de la borne.
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+Insérez la clé à analyser
+
+sur le port d'entrée de la borne.
+
+Tous les fichiers seront analysés, y compris le contenu des archives.
+Seuls Les fichiers sains seront copiés.
+
+Barbacane 8.16 — station blanche hors ligne Administration
+
+BARBACANE
+
+--- /root/BARBACANE/finale-28307c1/grub/05-demarrage-echap-20s.png
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+nsérez acé ou e ciscue à ana yser
+
+sur le port d'entrée ou dans Le lecteur de la borne.
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+Insérez la clé ou le disque à analyser
+
+sur Le port d'entrée ou dans le lecteur de la borne.
+
+Tous les fichiers seront analysés, y compris le contenu des archives.
+Seuls Les fichiers sains seront copiés.
+
+Barbacane 8.16 — station blanche hors ligne Administration
+
+BARBACANE
+
+--- /root/BARBACANE/finale-28307c1/grub/06-demarrage-echap-24s.png
+|. BAR BACANE Signatures antivirales : 6 jour(s)
+
+nsérez acé ou e ciscue à ana yser
+
+sur le port d'entrée ou dans Le lecteur de la borne.
+
+td BARBACANE Signatures antivirales : 8 jour(s)
+
+Insérez la clé ou le disque à analyser
+
+sur Le port d'entrée ou dans le lecteur de la borne.
+
+Tous les fichiers seront analysés, y compris le contenu des archives.
+Seuls Les fichiers sains seront copiés.
+
+Barbacane 8.16 — station blanche hors ligne Administration
+
+BARBACANE
+
