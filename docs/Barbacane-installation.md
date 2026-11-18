@@ -294,6 +294,16 @@ borne/update/barbacane-update-prepare --cle ~/cles-barbacane/barbacane-maj.key -
 Copier `barbacane-maj-<version>.bcu` et `.bcu.minisig` à la racine d'une clé USB. Sur la borne :
 Administration → **Mettre à jour** → brancher la clé sur le port ENTRÉE → **Lire et appliquer**.
 
+Quand le paquet contient des paquets Debian (nouvelle version de Barbacane, `--debs` ou
+`--etat-borne`), le rapport se termine par **« Redémarrage nécessaire »** : revenir au menu,
+**Redémarrer**, **Confirmer**. La borne redémarre sur la nouvelle version (vérifié le 18/11/2026,
+`preuves/2026-11-18-maj-paquets/`).
+
+> **Bornes installées avant le 18/11/2026** : leur service d'administration ne sait pas installer
+> de paquets Debian (erreur `Pathname to install is not absolute`, ou borne qui ne redémarre plus).
+> Les mettre à jour en les **réinstallant depuis une ISO récente** ; les mises à jour de signatures
+> et de règles YARA, elles, fonctionnent.
+
 La borne refuse un paquet non signé, signé par une autre clé, corrompu, ou plus ancien que
 la version installée :
 
