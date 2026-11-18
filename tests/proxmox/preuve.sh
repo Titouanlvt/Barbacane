@@ -77,7 +77,22 @@ si() { # si [!] COMMANDE… -- « message OK » « message ÉCHEC »
     if [ $((r ^ inv)) -eq 0 ]; then ok "$1"; else ko "$2"; fi
 }
 test_actif() { [[ " $TESTS " == *" $1 "* ]]; }
-debut() { COURANT=$1; D="$OUT/$1"; mkdir -p "$D"; echo; echo "== $1 : $2"; }
+# PROPRE=1 : instantané « propre » (installée, PIN, clé enrôlée, mémoire comprise) pris après
+# l'enrôlement, puis restauré avant chaque scénario suivant : quelques secondes au lieu d'une
+# réinstallation. REPRISE=propre : repart directement de cet instantané.
+revenir() {
+    local t0=$SECONDS
+    VSLOT=()
+    qm stop "$VMID" >/dev/null 2>&1 || true
+    timeout 5m qm rollback "$VMID" propre >/dev/null || { echo "rollback propre impossible" >&2; return 1; }
+    [ "$(qm status "$VMID" | awk '{print $2}')" = running ] || qm start "$VMID" >/dev/null
+    attendre "à analyser" 300 && echo "   (instantané « propre » restauré en $((SECONDS - t0)) s)"
+}
+debut() {
+    COURANT=$1; D="$OUT/$1"; mkdir -p "$D"; echo; echo "== $1 : $2"
+    case " installation grub pin enrolement " in *" $1 "*) ;; *) [ "${PROPRE_PRET:-0}" = 1 ] && { revenir || ko "instantané « propre » non restauré"; } ;; esac
+    return 0
+}
 capture() { "${B[@]}" capture "$D/$1.png"; }
 lire() { "${B[@]}" lire > "$D/$1.txt"; cat "$D/$1.txt"; }
 attendre() { "${B[@]}" attendre "$@"; }
@@ -284,7 +299,7 @@ if [ -n "${CLONE_DE:-}" ]; then
 fi
 
 # === installation : ISO copiée sur une clé, VM démarrée sur la clé ========================
-if test_actif installation && [ "${REPRISE:-0}" != 1 ] && [ -z "${CLONE_DE:-}" ]; then
+if test_actif installation && [ "${REPRISE:-0}" = 0 ] && [ -z "${CLONE_DE:-}" ]; then
     debut installation "ISO copiée sur la clé $SERIE_INSTALL, VM démarrée dessus"
     if qm status "$VMID" >/dev/null 2>&1; then
         [ "$(qm config "$VMID" | awk '/^name:/ { print $2 }')" = barbacane-borne ] \
@@ -326,6 +341,9 @@ if test_actif installation && [ "${REPRISE:-0}" != 1 ] && [ -z "${CLONE_DE:-}" ]
     attendre "à analyser" 120 "$D/02-premier-ecran.png"
     ok "installation automatique depuis la clé USB, interface affichée (${MEMOIRE} Mo de RAM)"
     qm snapshot "$VMID" installee >/dev/null
+elif [ "${REPRISE:-0}" = propre ]; then
+    COURANT=installation; PROPRE_PRET=1
+    revenir && ok "borne remise à l'état « propre » (installée, PIN, clé enrôlée)" || { ko "instantané « propre » absent"; exit 1; }
 elif [ "${REPRISE:-0}" = 1 ]; then
     COURANT=installation
     qm stop "$VMID" >/dev/null 2>&1 || true; qm rollback "$VMID" installee; qm start "$VMID"
@@ -388,6 +406,10 @@ if test_actif enrolement; then
     si voir "seules ces clés sont acceptées" 30 "$D/03-mode-active.png" -- "mode « clés enrôlées » activé" "mode clés enrôlées non activé"
     capture 04-page-enrolement; lire 04-page-enrolement >/dev/null
     cliquer "Retour au menu"; debrancher usb1; quitter_admin
+fi
+if [ "${PROPRE:-0}" = 1 ] && [ "${REPRISE:-0}" != propre ] && test_actif enrolement; then
+    timeout 10m qm snapshot "$VMID" propre --vmstate 1 >/dev/null && PROPRE_PRET=1 \
+        && echo "   instantané « propre » pris (PIN choisi, clé enrôlée)"
 fi
 
 # === transfert : clé inconnue → clé non enrôlée (refus) puis clé enrôlée ==================
