@@ -126,6 +126,21 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
   ne concerne pas la borne (rien n'y est compilé).
 - Ancien clone `/root/BARBACANE/usbsas` obsolète (choix : captures rapatriées, branche non recréée).
 
+## État au 18/11/2026
+- Tests accélérés : instantané « propre » (installée, PIN, clé enrôlée, avec la mémoire) restauré en
+  5 à 8 s avant chaque scénario (`PROPRE=1`, `REPRISE=propre`, `RETOUR=0` pour enchaîner ;
+  `export`/`journal` ne reviennent jamais à l'instantané). Lanceur : `tests/proxmox/campagne-rapide.sh`.
+- Correctifs sans ISO : borne de développement **950** installée depuis l'ISO de TEST (`~/iso-test`
+  sur bu, `--cle-publique ~/cles-test/test.pub`) ; `tests/proxmox/correctif.sh` (compilation
+  incrémentale, `DEB_REVISION`, ~3 min) puis scénario `correctif` (applique, redémarre, nouvel instantané).
+- Mises à jour avec paquets Debian : apt et dpkg passent par `systemd-run --wait` (sous admind,
+  `ProtectKernelModules` vidait l'initramfs et la borne ne redémarrait plus) ; jamais `--no-download` ;
+  le postinst ne redémarre JAMAIS admind ; redémarrage demandé à l'administrateur.
+- Pièges : `qm set --args` VM allumée reste « en attente » et revient à chaque restauration
+  d'instantané (d'où le `device_del cvusb0dev` dans `revenir`) ; `build-debs.sh` vide son dossier de
+  sortie ; diagnostic d'une VM qui ne démarre plus : disque monté `ro,noload` sur l'hôte ou clone ZFS
+  `readonly=on` de l'instantané (snapshot rpool avant, clone détruit après).
+
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
 2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).
