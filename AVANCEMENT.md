@@ -1,10 +1,19 @@
 # Avancement — 18/11/2026 (mis à jour par Claude, en autonomie)
 
 ## En cours
-- 920 (vraies clés) : `transfert maj export journal` enchaînés sans retour à l'instantané
-  (`logs/campagne-rapide-2.log`) pour corriger les 4 échecs de banc de la campagne rapide.
-- 950 (borne de développement, ISO de TEST) : `lab/boucle-dev.sh` — ISO de test avec le correctif
-  admind, installation, correctif par mise à jour signée, redémarrage, transfert (`logs/boucle-dev.log`).
+- **Campagne finale** (ISO de production d4a3641, sha256 `080f6ff6…14d1`, vraies clés, VM 920) :
+  passe 1 tous les scénarios depuis l'instantané, passe 2 `transfert maj export journal` enchaînés —
+  `lab/campagne-finale-3.sh`, `logs/campagne-finale-3.log`.
+- Branche `fscommon-local` : rust-fscommon recopié dans `noyau/fscommon` + Rust épinglé
+  (`systeme/rust/installer-rust.sh`) ; tests complets sur bu en cours (`logs/vendoring-tests.log`).
+  `.github/workflows/iso.yml` garde `curl | sh` (jeton sans droit workflow).
+- CI d'integration en file d'attente ; fusion dans main dès qu'elle est verte.
+
+## Fait et prouvé le 18/11 (suite)
+- Mise à jour avec paquets Debian, borne redémarrée sur les nouveaux binaires : `docs/preuves/2026-11-18-maj-paquets/`.
+- Export et journal enchaînés, vraies clés (26 OK) : `docs/preuves/2026-11-18-export-journal/`.
+- Bouton désactivé plat et lisible (retour utilisateur) : `docs/preuves/2026-11-18-bouton-desactive/`.
+- Guide et PDF : mises à jour avec paquets (redémarrage, bornes d'avant le 18/11).
 
 ## Trouvé et corrigé le 18/11 (grâce à la boucle rapide sur la 950)
 Aucune mise à jour contenant des paquets Debian n'avait jamais été testée (les paquets « valides »
