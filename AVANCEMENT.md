@@ -1,20 +1,38 @@
-# Avancement — 18/11/2026 (mis à jour par Claude)
+# Avancement — 18/11/2026 (mis à jour par Claude, en autonomie)
 
-## En cours (18/11)
-- 920 (vraies clés) : `tests/proxmox/campagne-rapide.sh` — plus de réinstallation : instantané
-  « propre » (PIN, clé enrôlée, mémoire comprise) restauré avant chaque scénario en **5 s**
-  (`PROPRE=1`, `REPRISE=propre`). Journal `logs/campagne-rapide.log`.
-- Boucle de correctif rapide : borne de développement **950** (ISO signée par la clé de TEST du lab),
-  `tests/proxmox/correctif.sh` (compilation incrémentale sur bu : 189 s ; `DEB_REVISION`) puis
-  scénario `correctif` (mise à jour signée, redémarrage, nouvel instantané « propre »).
-- **Bogue trouvé par cette boucle** : une mise à jour contenant des paquets Debian échoue toujours
-  (`apt-get : E: Internal Error, Pathname to install is not absolute 'usbsas-server_0.3.4-…_amd64.deb'`),
-  cause `--no-download` (reproduit sur bu avec un paquet factice). Corrigé dans admind (test unitaire).
-  Les bornes installées avant ne peuvent pas recevoir ce correctif par mise à jour : ISO de TEST
-  reconstruite une fois pour la 950 (`logs/iso-test-2.log`) ; ISO de production à la fin seulement.
-- bu : 24 Go de RAM, 8 cœurs (compilation à 6 tâches = cœurs − 2).
+## En cours
+- 920 (vraies clés) : `transfert maj export journal` enchaînés sans retour à l'instantané
+  (`logs/campagne-rapide-2.log`) pour corriger les 4 échecs de banc de la campagne rapide.
+- 950 (borne de développement, ISO de TEST) : `lab/boucle-dev.sh` — ISO de test avec le correctif
+  admind, installation, correctif par mise à jour signée, redémarrage, transfert (`logs/boucle-dev.log`).
 
-## Fait et prouvé (vraies clés sauf mention)
+## Trouvé et corrigé le 18/11 (grâce à la boucle rapide sur la 950)
+Aucune mise à jour contenant des paquets Debian n'avait jamais été testée (les paquets « valides »
+des preuves ne contenaient que des signatures ClamAV). Quatre défauts en chaîne :
+1. `apt-get --no-download` + .deb local plus récent → `E: Internal Error, Pathname to install is not
+   absolute` (reproduit sur bu avec un paquet factice) → option retirée.
+2. `build-debs.sh` accumulait les anciennes révisions dans son dossier de sortie (ISO de test avec
+   deux admind) → dossier vidé avant copie ; `DEB_REVISION` pour les correctifs du lab.
+3. `postinst` redémarrait admind, qui exécute apt → `réponse invalide : EOF` → plus de redémarrage d'admind.
+4. apt sous le confinement d'admind (`ProtectKernelModules=yes`) → `update-initramfs` sans
+   `/usr/lib/modules` : initramfs 25 Mo au lieu de 53, 4 modules, ni virtio_scsi ni sd_mod ni ext4
+   → **la borne ne redémarre plus**. Diagnostic : disque de la 950 monté en lecture seule sur l'hôte
+   + clone ZFS lecture seule de l'instantané (détruit ensuite, instantané rpool pris avant).
+   Correction : apt et `dpkg --configure -a` dans une unité à part (`systemd-run --wait`).
+   Choix : garder admind confiné plutôt que retirer ProtectKernelModules (plus sûr).
+
+## Méthode de test accélérée (18/11)
+- Instantané « propre » restauré en 5 à 8 s avant chaque scénario (13 fois) au lieu d'une
+  réinstallation (30 min) : `tests/proxmox/campagne-rapide.sh`, `PROPRE=1`, `REPRISE=propre`, `RETOUR=0`.
+- Correctifs sans ISO : `tests/proxmox/correctif.sh` (compilation incrémentale sur bu, 3 min) +
+  scénario `correctif` (borne de développement signée par la clé de TEST uniquement).
+- bu : 24 Go, 8 cœurs, `CARGO_BUILD_JOBS` = cœurs − 2.
+
+## Fait et prouvé — 18/11
+- Campagne rapide sur vraies clés : 65 OK dont transfert (13), blanchiment (11, sha256 + hexadécimal),
+  Ventoy (14), **écran de veille (première preuve)** — `docs/preuves/2026-11-18-rapide/`.
+
+## Fait et prouvé avant le 18/11 (vraies clés sauf mention)
 - Transfert clé inconnue → clé connue, et blanchiment : `docs/preuves/2026-11-17-finale/` (ISO e888495, 35 OK, 0 échec) ;
   avant : `docs/preuves/transfert/`, `docs/preuves/blanchiment/`.
 - Installation, GRUB, PIN, enrôlement, export, clavier, clé vide/pleine/illisible, retrait, verrouillage, journal, MAJ :
@@ -26,7 +44,6 @@
 - Tests parallèles sur clones : `docs/preuves/parallele-7/`. Image mkosi qui démarre : `docs/preuves/mkosi/`.
 
 ## Fait, pas prouvé
-- Écran de veille (10 min) : étape `veille` écrite, jamais jouée.
 - Analyse parallèle sur 4 fils : aucun gain mesuré (hôte partagé) — `docs/performances.md`.
 - Écart n° 8 borné à 12 h (b9614a5) : testé, pas rejoué sur borne.
 - Cible 4 To : extrapolation, aucun disque > 64 Go.
