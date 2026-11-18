@@ -1664,13 +1664,13 @@ impl App {
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
                 bouton("Éjecter le disque", Msg::Ejecter, style::secondaire),
                 // Charte (Bouton) : « Effacer » = variante Destructive (fond menace, tranche encre).
-                // Désactivé (pas de destination) : même bouton pâli, sans tranche (même encombrement)
+                // Désactivé (pas de destination) : même bouton pâli, relief conservé (tranche trait, comme « Abandonner »)
                 en_relief(
                     go.into(),
                     Some(if self.dst.is_some() {
                         style::c().encre
                     } else {
-                        iced::Color::TRANSPARENT
+                        style::c().trait_
                     })
                 )
             ]
@@ -1733,13 +1733,13 @@ impl App {
             row![
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
                 // Charte (Bouton) : « Effacer » = variante Destructive (fond menace, tranche encre).
-                // Désactivé (pas de destination) : même bouton pâli, sans tranche (même encombrement)
+                // Désactivé (pas de destination) : même bouton pâli, relief conservé (tranche trait, comme « Abandonner »)
                 en_relief(
                     go.into(),
                     Some(if self.dst.is_some() {
                         style::c().encre
                     } else {
-                        iced::Color::TRANSPARENT
+                        style::c().trait_
                     })
                 )
             ]
