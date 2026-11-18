@@ -1,0 +1,39 @@
+BARBACANE — RAPPORT DE TRANSFERT
+================================
+
+Date            : 18/11/2026 09:46:32
+Clé source      : QEMU QEMU USB HARDDRIVE (n° de série BBVIRTSOURCE, 46f4:0001)
+Identifiant     : 3f4f221e-090c-425e-912e-b3c71dd9c997
+Antivirus       : ClamAV ClamAV 1.4.3 (base 28187 du Wed Nov 18 07:28:39 2026) + YARA
+
+FICHIERS COPIÉS (8)
+  [OK]     archives/chiffre-bon.zip  (155 o)
+  [OK]     archives/imbriquee.zip.extrait/inner.zip.extrait/sain.txt  (13 o)
+  [OK]     archives/imbriquee.zip.extrait/sain.txt  (13 o)
+  [OK]     archives/mixte.zip.extrait/sain.txt  (13 o)
+  [OK]     docs/donnees.csv  (106.3 Ko)
+  [OK]     docs/rapport.txt  (56 o)
+  [OK]     docs/sous dossier/note.txt  (18 o)
+  [OK]     photos/image.bin  (293.0 Ko)
+
+FICHIERS REFUSÉS (5)
+  [REFUSÉ] archives/imbriquee.zip/inner.zip/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] archives/mixte.zip/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] archives/noms-pieges.zip
+           raison : extraction impossible (erreur 7-Zip (code Some(2)))
+  [REFUSÉ] docs/eicar.com
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [REFUSÉ] photos/vacances.jpg
+           raison : menace détectée par ClamAV : Eicar-Test-Signature
+
+ARCHIVES NON COPIÉES, REMPLACÉES PAR LEUR CONTENU SAIN (3)
+  [ARCHIVE] archives/imbriquee.zip  →  archives/imbriquee.zip.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] archives/imbriquee.zip/inner.zip  →  archives/imbriquee.zip/inner.zip.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+  [ARCHIVE] archives/mixte.zip  →  archives/mixte.zip.extrait/
+            raison : menace détectée par ClamAV : Eicar-Test-Signature
+
+Les fichiers refusés ne sont pas copiés. En cas de doute, contactez votre administrateur.
