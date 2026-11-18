@@ -1,0 +1,5 @@
+OK [lecteur] : aucun passthrough PCI
+OK [lecteur] : la borne voit le disque du lecteur réel : CD-RW 1 session{s], 2 Mo)
+OK [relecture] : docs/note.txt : disque → clé, sha256 identique à la clé d'origine
+OK [relecture] : docs/table.csv : disque → clé, sha256 identique à la clé d'origine
+OK [relecture] : docs/sous dossier/binaire.bin : disque → clé, sha256 identique à la clé d'origine
