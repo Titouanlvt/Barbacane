@@ -1,12 +1,19 @@
 # Avancement — 18/11/2026 (mis à jour par Claude, en autonomie)
 
 ## En cours
-- **Bouton « Effacer cette clé… » à la charte** (retour utilisateur 18/11 après-midi) : variante
-  Destructive (fond `menace`, tranche `encre`) au lieu de Principale — 9a9f124. Correctif signé TEST
-  en construction (`logs/correctif-bouton.log`), puis capture sur la 950 avant/après.
-- Choix noté : on livre une version qui marche avant toute nouveauté. PR Dependabot #4 (nix 0.32)
-  non fusionnée : `installation-qemu` en échec sur la PR, et la version testée doit rester celle livrée.
-- Choix noté : `.github/workflows/iso.yml` laissé avec `curl | sh` (décision utilisateur 18/11).
+- Rien. **v1.0 livrée** (tag `v1.0` = 5c20866 = `main`, CI verte) ; ISO de production
+  `/nvme/contenu/iso-v1/barbacane.iso` (sha256 `4e2bd821…cbb2`, `.sha256` à côté).
+
+## Ouvert, à la décision de l'utilisateur
+- Écran de confirmation avant l'effacement de la clé de destination (demandé par la charte).
+- PR Dependabot #4 (nix 0.32) : `installation-qemu` en échec sur la PR ; nix 0.31.4 (correctif UB
+  `recvfrom`) serait l'alternative compatible. Non fusionnée (on ne touche pas la version livrée).
+- `.github/workflows/iso.yml` laissé avec `curl | sh` (décision utilisateur 18/11).
+- Signature d'une vraie mise à jour avec la clé de production (phrase de passe de l'utilisateur).
+
+## Fait et prouvé le 18/11 — bouton
+- « Effacer cette clé… » en variante Destructive de la charte, vérifié sur la 950 :
+  `docs/preuves/2026-11-18-bouton-destructif/` (transfert rejoué : 21 OK).
 
 ## Fait et prouvé le 18/11 — campagne finale
 - **121 OK, 0 échec** sur vraies clés, ISO de production d4a3641 (sha256 `080f6ff6…14d1`), VM 920 :

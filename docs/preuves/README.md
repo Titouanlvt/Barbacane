@@ -2,6 +2,13 @@
 
 ## Bilan au 18/11/2026
 
+**Version livrée : v1.0** (tag `v1.0` = 5c20866, `main`). ISO de production
+`/nvme/contenu/iso-v1/barbacane.iso`, sha256
+`4e2bd821466e9ae1c3e3b81f88a86205ce647f332b4436907632ca8cf073cbb2` (clé publique de production
+embarquée). Différence avec l'ISO de la campagne finale (d4a3641) : bouton « Effacer » à la charte
+(affichage seul, [2026-11-18-bouton-destructif/](2026-11-18-bouton-destructif/)), fscommon recopié dans
+le dépôt et Rust épinglé (construction seule) ; CI verte, installation QEMU comprise.
+
 Borne installée depuis l'ISO de **production** construite depuis `integration` (d4a3641, sha256
 `080f6ff69805adea3c90d5ccaa3f86fa3e0d240596acbcb20375d7d98d7214d1`), VM Proxmox 920 sans réseau,
 **vraies clés USB** passées à la VM au niveau USB (SanDisk 16 Go en source, SanDisk Ultra 64 Go
@@ -23,7 +30,7 @@ l'instantané entre scénarios, 26 en passe 2 enchaînée sans retour : transfer
 | Écran de veille (10 min, réveil au toucher) | [2026-11-18-rapide/veille/](2026-11-18-rapide/veille/) |
 | Disques optiques : lecture multisession (EICAR caché trouvé), vrai graveur en scsi-generic, vrai CD-RW → clé (18/11) ; gravure et blanchiment de CD-RW (15/11) | [2026-11-18-optique/](2026-11-18-optique/), [optique/](optique/) |
 | Guide d'installation (PDF) à jour, ISO hors ligne | [../Barbacane-installation.pdf](../Barbacane-installation.pdf), [installation-doc/](installation-doc/) |
-| Bouton désactivé lisible (retour utilisateur du 18/11) | [2026-11-18-bouton-desactive/](2026-11-18-bouton-desactive/) |
+| Bouton « Effacer » à la charte (Destructif, rouge ; pâle avec relief quand indisponible) | [2026-11-18-bouton-destructif/](2026-11-18-bouton-destructif/) |
 
 ### Défauts trouvés et corrigés le 18/11
 Mise à jour avec paquets Debian jamais essayée avant : `--no-download` (erreur apt), postinst qui
@@ -35,8 +42,8 @@ redémarrait plus)**, anciennes révisions embarquées dans l'ISO. Détail :
 ### Ce qui ne marche pas
 - Aucun échec dans la campagne finale (121/121) sur l'ISO de production d4a3641.
 - Charte graphique : « Effacer cette clé et y copier les fichiers » était en variante Principale (noire)
-  au lieu de la variante Destructive (rouge `menace`) ; corrigé après la campagne (9a9f124, affichage seul),
-  non inclus dans l'ISO testée.
+  au lieu de la variante Destructive (rouge `menace`) ; corrigé après la campagne et vérifié sur la 950
+  (inclus dans la v1.0).
 - Écart à la charte non corrigé : l'effacement de la clé de destination n'est pas suivi d'un écran de
   confirmation (la charte le demande) ; changement de parcours laissé à la décision de l'utilisateur.
 
