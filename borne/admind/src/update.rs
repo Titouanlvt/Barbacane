@@ -197,8 +197,21 @@ fn restore_dir(dir: &Path, backup: &Path) -> Result<()> {
 /// Installation hors ligne : uniquement les paquets fournis, aucune source réseau (listes de
 /// sources vidées). Pas de « --no-download » : avec des .deb locaux qui MONTENT de version, apt
 /// échoue alors (« Internal Error, Pathname to install is not absolute », reproduit au lab le 18/11).
+///
+/// apt tourne dans une unité systemd À PART (`systemd-run --wait`), pas sous admind :
+/// - admind est confiné (`ProtectKernelModules=yes` masque /usr/lib/modules) ; un
+///   `update-initramfs` déclenché par un paquet y produisait un initramfs SANS pilotes de disque,
+///   et la borne ne redémarrait plus (lab 18/11) ;
+/// - un script de paquet qui arrête ou redémarre admind ne tue plus apt en pleine installation.
 pub(crate) fn apt_install_argv(debs: &[PathBuf]) -> Vec<String> {
     let mut argv: Vec<String> = [
+        "systemd-run",
+        "--wait",
+        "--pipe",
+        "--collect",
+        "--quiet",
+        "--unit=barbacane-maj-paquets",
+        "--setenv=DEBIAN_FRONTEND=noninteractive",
         "apt-get",
         "install",
         "-y",
@@ -293,7 +306,18 @@ pub fn apply(ctx: &Ctx) -> Result<Outcome> {
         let argv = apt_install_argv(&debs);
         let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
         if let Err(e) = ctx.run(&argv) {
-            let _ = ctx.run(&["dpkg", "--configure", "-a"]);
+            // Même raison que pour apt : hors du confinement d'admind (initramfs).
+            let _ = ctx.run(&[
+                "systemd-run",
+                "--wait",
+                "--pipe",
+                "--collect",
+                "--quiet",
+                "--unit=barbacane-maj-dpkg",
+                "dpkg",
+                "--configure",
+                "-a",
+            ]);
             bail!(
                 "échec de l'installation des paquets Debian ({e:#}). Signatures et règles déjà appliquées ; \
                  version du paquet non enregistrée : réappliquez un paquet corrigé."

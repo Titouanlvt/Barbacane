@@ -525,7 +525,10 @@ fn installation_des_paquets_sans_no_download() {
         "/var/lib/barbacane/admin/maj-x/debs/a_1-2_amd64.deb",
     )];
     let argv = crate::update::apt_install_argv(&debs);
-    assert_eq!(argv[..3], ["apt-get", "install", "-y"]);
+    // apt hors du confinement d'admind (initramfs sans modules sinon)
+    assert_eq!(argv[..3], ["systemd-run", "--wait", "--pipe"]);
+    let apt = argv.iter().position(|a| a == "apt-get").unwrap();
+    assert_eq!(argv[apt..apt + 3], ["apt-get", "install", "-y"]);
     assert!(!argv.iter().any(|a| a == "--no-download"));
     assert!(argv.contains(&"Dir::Etc::SourceList=/dev/null".to_string()));
     assert!(argv.contains(&"Dir::Etc::SourceParts=/dev/null".to_string()));
