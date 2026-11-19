@@ -451,7 +451,9 @@ if test_actif captures; then
         cliquer "Copier vers une clé connue"
         brancher usb2 "$SERIE_AUTRE"; voir "pas enrôlée" 60 && c 07-cle-non-enrolee; debrancher usb2
         brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 60 "$D/08-cle-destination.png"
-        cliquer "Effacer cette clé"; sleep 4; c 09-ecriture
+        # Thème Nuit : texte foncé sur rouge vif, mal lu par l'OCR ; même mise en page qu'en Jour.
+        cliquer "Effacer cette clé" || "${B[@]}" xy 755 638
+        sleep 4; c 09-ecriture
         attendre "Vous pouvez retirer les clés" 3600 "$D/10-termine.png"
         debrancher usb2; debrancher usb1; attendre "à analyser" 120
         # Confirmation du blanchiment (« Annuler » ramène à l'accueil : capture en dernier)
@@ -461,7 +463,8 @@ if test_actif captures; then
             voir "Résultat de l'analyse" 2 && break
         done
         attendre "Résultat de l'analyse" 3600
-        cliquer "Blanchir la clé"; attendre "Maintenir pour effacer" 30 "$D/06-blanchir-confirmation.png"
+        cliquer "Blanchir la clé" || "${B[@]}" xy 1085 680
+        attendre "Maintenir pour effacer" 30 "$D/06-blanchir-confirmation.png"
         cliquer "Annuler"; debrancher usb1; attendre "à analyser" 120
         ouvrir "Administration" "Saisissez le PIN"; c 11-admin-pin
         "${B[@]}" pin "$PIN"; cliquer "Valider"; attendre "Quitter le mode administrateur" 30; c 12-admin-menu
