@@ -6,11 +6,11 @@
 | Lab 1 : NVMe dédié → pool ZFS `essais` | **fait** (`docs/lab/essais.md`, instantané `avant-pool-essais-20261119-1825`) |
 | Lab 2 : passthrough RTX 4000 | **non fait, par règle** : seule carte d'affichage de l'hôte (`docs/lab/gpu-passthrough.md`) |
 | Charte v2 dans `docs/charte/` | **fait par l'utilisateur** (branche `charte-v2`, identique à l'Artifact, vérifié) |
-| 1. Documentation v1 à jour (captures Jour/Nuit, PDF, README) | en cours |
-| 2. Publication v1.0.0 (notes de version, ISO de référence, étiquette) | à faire |
-| 3. Organisation du dépôt (profils ISO, test « hors ligne », serveur/, borne/agent/) | à faire |
-| 4. Préalables suite (politique de certification, AIPD, décisions) | à faire |
-| Adaptation visuelle charte v2 (borne) | à faire |
+| 1. Documentation v1 à jour (captures Jour/Nuit, PDF, README) | Jour, guide, PDF **faits** ; Nuit en cours (`logs/captures-nuit.log`) |
+| 2. Publication v1.0.0 (notes de version, ISO de référence, étiquette) | ISO en construction sur bu depuis un clone propre de a0e5cb0 (`lab/iso-v100.sh`, `logs/iso-v100.log`) ; puis campagne rapide, notes, étiquette |
+| 3. Organisation du dépôt | **fait** (`docs/preuves/2026-11-19-profil-hors-ligne/`) |
+| 4. Préalables suite (DR) | **fait** (`docs/suite/`) |
+| Adaptation visuelle charte v2 (borne) | branche `borne-charte-v2` : jetons, relief, objets 3D faits ; reste creusé, pastilles, herse, vérif. visuelle 950 (`docs/charte/adaptation.md`) |
 | 5–10. Barbacane suite | à faire |
 
 ## Étape 1 — inventaire (19/11)
