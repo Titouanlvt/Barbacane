@@ -194,6 +194,26 @@ site à site. Rôle à définir (consolidation seule recommandée : chaque site 
 de ses bornes). Les choix de l'étape 1 (identifiants uniques de site, PKI hiérarchique)
 doivent le permettre sans refonte.
 
+## 9 bis. Téléchargement de l'ISO des bornes depuis le serveur
+
+L'ISO du serveur **embarque l'ISO de la borne en ligne** de la même version (construite
+dans la même publication). L'interface web (rôle administrateur) propose :
+
+- **ISO générique** : la même pour toutes les bornes, sans secret ; l'enrôlement se fait
+  au premier démarrage avec un jeton (saisi ou sur clé USB). Empreinte sha256 et
+  signature affichées pour vérification.
+- **ISO personnalisée** (option) : générée à la demande avec un jeton d'enrôlement à
+  usage unique, l'adresse, le port et le site déjà inclus ; la borne s'enrôle seule au
+  premier démarrage. Cette ISO contient un secret : durée de validité courte (24 h par
+  défaut), usage unique, téléchargement journalisé, à détruire après usage.
+- Les deux sont produites **sans Internet**, par le serveur lui-même (remaster de l'ISO
+  embarquée, comme `build-iso.sh`).
+- Une mise à jour du serveur (`.bcu` serveur signé) apporte la nouvelle ISO des bornes ;
+  les bornes déjà installées se mettent à jour par les `.bcu` habituels, sans
+  réinstallation.
+- L'ISO hors ligne (v1) peut aussi être proposée au téléchargement, signalée comme
+  « borne sans serveur ».
+
 ## 10. Organisation du dépôt (sans casser la v1)
 
 Un seul dépôt `Titouanlvt/Barbacane`. **La v1 hors ligne reste le produit de référence** :
