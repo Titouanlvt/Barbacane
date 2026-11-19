@@ -9,7 +9,7 @@
 use crate::anim;
 use crate::app::Msg;
 use crate::style::{self, Palette};
-use iced::widget::{Space, column, container, pin, stack, svg};
+use iced::widget::{container, pin, stack, svg};
 use iced::{Color, Element, Length, Point};
 
 fn hx(c: Color) -> String {
@@ -121,15 +121,6 @@ fn scene<'a>(calques: Vec<Pose>, taille: f32) -> Element<'a, Msg> {
 
 const VB: &str = "0 0 150 150";
 
-fn porte_ouverte() -> svg::Handle {
-    calque(
-        VB,
-        "<rect fill=\"{trait}\" x=\"78\" y=\"30\" width=\"54\" height=\"90\" transform=\"translate(4 -4)\"/>\
-         <path fill=\"{encre}\" fill-rule=\"evenodd\" d=\"M78 120V30h54v90ZM92 120V88a13 13 0 0 1 26 0v32Z\"/>\
-         <path fill=\"{haute}\" d=\"M92 120V88a13 13 0 0 1 26 0v32Z\"/>",
-    )
-}
-
 /// Clé USB en relief ; `laiton` : clé de destination (de confiance).
 fn cle(laiton: bool) -> svg::Handle {
     let (corps, embout) = if laiton {
@@ -146,17 +137,6 @@ fn cle(laiton: bool) -> svg::Handle {
              <rect fill=\"{embout}\" x=\"104\" y=\"64\" width=\"22\" height=\"24\"/>\
              <rect fill=\"{{haute}}\" x=\"110\" y=\"70\" width=\"5\" height=\"4\"/><rect fill=\"{{haute}}\" x=\"110\" y=\"78\" width=\"5\" height=\"4\"/>"
         ),
-    )
-}
-
-fn fleche(allumee: bool) -> svg::Handle {
-    calque(
-        VB,
-        if allumee {
-            "<path fill=\"{laiton}\" d=\"M66 64h10v-6l10 10-10 10v-6H66Z\"/>"
-        } else {
-            "<path fill=\"{trait}\" d=\"M66 64h10v-6l10 10-10 10v-6H66Z\"/>"
-        },
     )
 }
 
@@ -290,14 +270,6 @@ fn triangle_alerte() -> svg::Handle {
     )
 }
 
-fn sceau_sain() -> svg::Handle {
-    calque(
-        "86 38 36 36",
-        "<circle fill=\"{sain}\" cx=\"104\" cy=\"56\" r=\"16\"/>\
-         <path d=\"m96 56 6 6 10-11\" fill=\"none\" stroke=\"{sainfond}\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
-    )
-}
-
 fn porte_fermee() -> svg::Handle {
     calque(
         VB,
@@ -325,38 +297,6 @@ fn herse_dans_porte(couleur: &str, dx: f32, dy: f32, ouverture: (f32, f32, f32, 
     let mut p = pose(herse(couleur), 55.0 + dx, 60.0 + dy, 40.0, 72.0);
     p.fenetre = Some((ouverture.0 + dx, ouverture.1, ouverture.2, ouverture.3));
     p
-}
-
-/// Accueil, en attente : la clé fait un aller-retour de 10 px vers la porte (2 s, en boucle),
-/// la flèche laiton s'allume à mi-course.
-pub fn attente<'a>(t: f32, taille: f32) -> Element<'a, Msg> {
-    let phase = (t / 2.0).rem_euclid(1.0);
-    let x = 10.0
-        * anim::ease_bezier(if phase < 0.5 {
-            phase * 2.0
-        } else {
-            2.0 - phase * 2.0
-        });
-    scene(
-        vec![
-            pose(porte_ouverte(), 0.0, 0.0, 150.0, 150.0),
-            pose(cle(false), -30.0 + x, 20.0, 150.0, 150.0),
-            pose(
-                fleche((0.25..0.75).contains(&phase)),
-                0.0,
-                0.0,
-                150.0,
-                150.0,
-            ),
-        ],
-        taille,
-    )
-}
-
-/// Clé détectée : la clé glisse de 60 px vers la porte (600 ms, une fois).
-pub fn cle_detectee<'a>(p: f32, taille: f32) -> Element<'a, Msg> {
-    let x = -60.0 + 60.0 * anim::ease_bezier(p);
-    scene(vec![pose(cle(false), x, 0.0, 150.0, 150.0)], taille)
 }
 
 /// Disque détecté : le tiroir remonte de 40 px avec le disque (600 ms, une fois).
@@ -453,18 +393,6 @@ pub fn effacement<'a>(p: f32, taille: f32) -> Element<'a, Msg> {
     scene(c, taille)
 }
 
-/// Clé de destination : la clé laiton arrive de la droite, le sceau vert confirme (900 ms).
-pub fn destination<'a>(p: f32, taille: f32) -> Element<'a, Msg> {
-    let x = 60.0 * (1.0 - anim::ease_bezier((p / 0.55).min(1.0)));
-    let mut c = vec![pose(cle(true), x - 4.0, 0.0, 150.0, 150.0)];
-    if p > 0.55 {
-        let e = anim::echelle_sceau((p - 0.55) / 0.45);
-        let l = 36.0 * e;
-        c.push(pose(sceau_sain(), 104.0 - l / 2.0, 56.0 - l / 2.0, l, l));
-    }
-    scene(c, taille)
-}
-
 /// Retrait : les deux clés repartent chacune de leur côté, la herse retombe (1,5 s).
 pub fn retrait<'a>(p: f32, taille: f32) -> Element<'a, Msg> {
     let sortie = anim::ease_bezier(((p - 0.2) / 0.35).clamp(0.0, 1.0));
@@ -504,36 +432,6 @@ pub fn illisible<'a>(p: f32, taille: f32) -> Element<'a, Msg> {
     )
 }
 
-/// Démarrage : le logo monte du sol (2,2 s), puis le nom apparaît.
-pub fn demarrage<'a>(p: f32, logo: &'static [u8], taille: f32) -> Element<'a, Msg> {
-    let h = taille * anim::ease_out((p / 0.6).min(1.0));
-    let logo = container(
-        svg(svg::Handle::from_memory(logo))
-            .width(taille)
-            .height(taille),
-    )
-    .width(taille)
-    .height(h)
-    .align_bottom(h)
-    .clip(true);
-    column![
-        Space::new().height(taille - h),
-        logo,
-        if p > 0.7 {
-            Element::from(
-                iced::widget::text("BARBACANE")
-                    .size(taille * 0.16)
-                    .font(style::TITRE_POLICE)
-                    .color(style::c().encre),
-            )
-        } else {
-            Space::new().height(taille * 0.2).into()
-        },
-    ]
-    .align_x(iced::Alignment::Center)
-    .into()
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -541,10 +439,18 @@ mod tests {
         crate::style::set_nuit(false);
         let a = super::cle(false);
         let b = super::cle(false);
-        assert_eq!(a.id(), b.id(), "même calque, même thème : même poignée (cache iced)");
+        assert_eq!(
+            a.id(),
+            b.id(),
+            "même calque, même thème : même poignée (cache iced)"
+        );
         crate::style::set_nuit(true);
         let c = super::cle(false);
-        assert_ne!(a.id(), c.id(), "changement de thème : nouvelle poignée (couleurs différentes)");
+        assert_ne!(
+            a.id(),
+            c.id(),
+            "changement de thème : nouvelle poignée (couleurs différentes)"
+        );
         crate::style::set_nuit(false);
     }
 }

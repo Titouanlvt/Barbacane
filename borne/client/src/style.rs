@@ -99,9 +99,19 @@ pub fn degrade(haut: Color, bas: Color) -> Background {
 /// Bloc (niveau 2) : dégradé, bord de 1 px ; la tranche nette (4 px dessous) et l'ombre diffuse
 /// sont posées derrière par `app::en_relief`. Appui : face assombrie. Désactivé : À PLAT (charte v2 :
 /// ce qui ne s'enfonce pas n'a ni tranche ni ombre), fond clair, texte `encre-douce`, bord `trait`.
-fn relief(haut: Color, bas: Color, fg: Color, bord: Color, status: button::Status) -> button::Style {
+fn relief(
+    haut: Color,
+    bas: Color,
+    fg: Color,
+    bord: Color,
+    status: button::Status,
+) -> button::Style {
     let (fond, texte, bord) = match status {
-        button::Status::Disabled => (Background::Color(c().surface_haute), c().encre_douce, c().trait_),
+        button::Status::Disabled => (
+            Background::Color(c().surface_haute),
+            c().encre_douce,
+            c().trait_,
+        ),
         button::Status::Pressed => (Background::Color(melange(bas, c().encre, 0.9)), fg, bord),
         button::Status::Hovered => (degrade(melange(haut, Color::WHITE, 0.92), bas), fg, bord),
         _ => (degrade(haut, bas), fg, bord),
@@ -109,7 +119,10 @@ fn relief(haut: Color, bas: Color, fg: Color, bord: Color, status: button::Statu
     button::Style {
         background: Some(fond),
         text_color: texte,
-        border: Border::default().rounded(Radius::new(8)).width(1).color(bord),
+        border: Border::default()
+            .rounded(Radius::new(8))
+            .width(1)
+            .color(bord),
         shadow: Shadow::default(),
         snap: true,
     }
@@ -133,7 +146,13 @@ pub fn tranche(s: fn(&Theme, button::Status) -> button::Style) -> Option<Color> 
 
 /// Bouton principal : un seul par écran, en bas à droite (fond `encre` en dégradé).
 pub fn primaire(_: &Theme, s: button::Status) -> button::Style {
-    relief(c().encre_haut, c().encre_bas, c().sur_encre, c().encre_bas, s)
+    relief(
+        c().encre_haut,
+        c().encre_bas,
+        c().sur_encre,
+        c().encre_bas,
+        s,
+    )
 }
 
 /// Annuler, Retour (bloc clair, bord `trait-fort`).
@@ -152,7 +171,13 @@ pub fn danger(_: &Theme, s: button::Status) -> button::Style {
             snap: true,
         };
     }
-    relief(melange(c().menace, Color::WHITE, 0.9), c().menace, c().sur_encre, c().menace_fonce, s)
+    relief(
+        melange(c().menace, Color::WHITE, 0.9),
+        c().menace,
+        c().sur_encre,
+        c().menace_fonce,
+        s,
+    )
 }
 
 pub fn discret(_: &Theme, s: button::Status) -> button::Style {
@@ -226,10 +251,15 @@ pub fn verdict(fond: Color, bord: Color) -> impl Fn(&Theme) -> container::Style 
 /// Teinte foncée d'une couleur d'état (tranche des aplats d'état, charte v2).
 fn fonce(etat: Color) -> Color {
     let p = c();
-    [(p.sain, p.sain_fonce), (p.menace, p.menace_fonce), (p.alerte, p.alerte_fonce), (p.analyse, p.analyse_fonce)]
-        .into_iter()
-        .find(|(e, _)| *e == etat)
-        .map_or(p.trait_fort, |(_, f)| f)
+    [
+        (p.sain, p.sain_fonce),
+        (p.menace, p.menace_fonce),
+        (p.alerte, p.alerte_fonce),
+        (p.analyse, p.analyse_fonce),
+    ]
+    .into_iter()
+    .find(|(e, _)| *e == etat)
+    .map_or(p.trait_fort, |(_, f)| f)
 }
 
 pub fn alerte(t: &Theme) -> container::Style {

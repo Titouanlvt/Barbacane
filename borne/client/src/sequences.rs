@@ -13,6 +13,8 @@ use iced::{Element, Length, Point};
 /// Côté d'une image dans les bandes (sequences.json, `cote`).
 pub const COTE: f32 = 240.0;
 
+// Herse (verdict bloqué), clé blanche (blanchiment) et disque (gravure) : étapes 5–6 de la charte.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Seq {
     EmblemePivot,
@@ -40,6 +42,7 @@ impl Seq {
         }
     }
 
+    #[cfg(test)]
     fn nom(self) -> &'static str {
         match self {
             Seq::EmblemePivot => "embleme-pivot",

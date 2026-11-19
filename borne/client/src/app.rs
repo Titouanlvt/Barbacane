@@ -7,10 +7,10 @@ use crate::admin_ui::{self, AdminMsg, AdminUi};
 use crate::anim;
 use crate::barre;
 use crate::config::Config;
-use crate::sequences;
 use crate::dessin;
 use crate::keyboard::{Input, Key};
 use crate::mesure::{self, Mesure};
+use crate::sequences;
 use crate::style;
 use crate::worker::{self, Cmd, Ev};
 use barbacane_parcours::est_optique;
@@ -1798,7 +1798,6 @@ pub fn centre<'a>(c: Column<'a, Msg>) -> Element<'a, Msg> {
 }
 
 /// Logo en relief (version nuit sur le bandeau encre).
-const LOGO: &[u8] = include_bytes!("../ressources/icones/barbacane-relief.svg");
 const LOGO_NUIT: &[u8] = include_bytes!("../ressources/icones/barbacane-relief-nuit.svg");
 pub const ICONE_SAIN: &[u8] = include_bytes!("../ressources/icones/shield-check.svg");
 pub const ICONE_ALERTE: &[u8] = include_bytes!("../ressources/icones/triangle-alert.svg");
