@@ -193,3 +193,32 @@ Plus tard, un serveur central consolidera plusieurs serveurs de site par le VPN
 site à site. Rôle à définir (consolidation seule recommandée : chaque site reste maître
 de ses bornes). Les choix de l'étape 1 (identifiants uniques de site, PKI hiérarchique)
 doivent le permettre sans refonte.
+
+## 10. Organisation du dépôt (sans casser la v1)
+
+Un seul dépôt `Titouanlvt/Barbacane`. **La v1 hors ligne reste le produit de référence** :
+`git clone` puis `systeme/iso/build-iso.sh` doit continuer à produire exactement la
+même borne hors ligne, sans aucun code réseau.
+
+```
+noyau/            inchangé (lecture USB, issu d'usbsas)
+borne/            inchangé (client, analyzer, admind, parcours, update, optique)
+borne/agent/      NOUVEAU : barbacane-agent (borne en ligne uniquement)
+serveur/          NOUVEAU : passerelle, interface web, identité, PKI, images Docker
+serveur/iso/      NOUVEAU : ISO du serveur
+systeme/iso/      build-iso.sh --profil hors-ligne (défaut, = v1) | en-ligne
+tests/            + tests/suite/ (serveur, agent, bout en bout)
+```
+
+Règles :
+- Le profil **hors-ligne est le défaut** : sans option, `build-iso.sh` produit la v1.
+- Le paquet `barbacane-agent` et toute configuration réseau n'existent **que** dans le
+  profil en-ligne. Un test de CI ouvre l'ISO hors ligne et **échoue** si elle contient
+  l'agent, un paquet réseau ou une règle de pare-feu autorisant une sortie.
+- La CI existante (construction de l'ISO hors ligne + `tests/iso/qemu.sh`) reste
+  obligatoire avant toute fusion dans `main` ; les nouveaux jobs (serveur, ISO en ligne)
+  s'y ajoutent sans la remplacer.
+- La documentation garde un parcours v1 inchangé (`docs/guide-installation-poste.md`) ;
+  la suite a ses propres documents (`docs/suite/`).
+- Versions : v1.x pour la borne hors ligne ; la suite démarre en v2.0 (borne en ligne +
+  serveur). Une étiquette git par version publiée.
