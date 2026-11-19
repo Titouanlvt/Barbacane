@@ -6,8 +6,8 @@
 | Lab 1 : NVMe dédié → pool ZFS `essais` | **fait** (`docs/lab/essais.md`, instantané `avant-pool-essais-20261119-1825`) |
 | Lab 2 : passthrough RTX 4000 | **non fait, par règle** : seule carte d'affichage de l'hôte (`docs/lab/gpu-passthrough.md`) |
 | Charte v2 dans `docs/charte/` | **fait par l'utilisateur** (branche `charte-v2`, identique à l'Artifact, vérifié) |
-| 1. Documentation v1 à jour (captures Jour/Nuit, PDF, README) | Jour, guide, PDF **faits** ; Nuit en cours (`logs/captures-nuit.log`) |
-| 2. Publication v1.0.0 (notes de version, ISO de référence, étiquette) | ISO en construction sur bu depuis un clone propre de 66ca87e (wasmtime 48.0.9) (`lab/iso-v100.sh`, `logs/iso-v100.log`) ; puis campagne rapide, notes, étiquette |
+| 1. Documentation v1 à jour | **fait** (captures Jour/Nuit `docs/captures/v1/`, guide, PDF, README) |
+| 2. Publication v1.0.0 | **fait** : étiquette `v1.0.0` = `main` = 08acd06 ; ISO `/nvme/contenu/iso-v100/` sha256 `5e0c3fba…3fc7` ; `docs/preuves/2026-11-19-v1.0.0/` (39/39) |
 | 3. Organisation du dépôt | **fait** (`docs/preuves/2026-11-19-profil-hors-ligne/`) |
 | 4. Préalables suite (DR) | **fait** (`docs/suite/`) |
 | Adaptation visuelle charte v2 (borne) | branche `borne-charte-v2` : jetons, relief, objets 3D faits ; reste creusé, pastilles, herse, vérif. visuelle 950 (`docs/charte/adaptation.md`) |
