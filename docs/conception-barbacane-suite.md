@@ -52,6 +52,157 @@ Révision du 19/11/2026 : intègre la revue de sécurité et de conformité
    quotas, échappement systématique dans l'interface web.
 8. **Noyau usbsas sans réseau** : l'agent est un composant Barbacane séparé.
 
+## 2 bis. Schémas
+
+### Infrastructure (vue réseau)
+
+```mermaid
+flowchart LR
+  subgraph SITE_A["Site A — sous-réseau des bornes"]
+    B1["Borne en ligne 1<br/>(TPM, aucun port ouvert)"]
+    B2["Borne en ligne 2"]
+  end
+  subgraph SITE_B["Site B — sous-réseau des bornes"]
+    B3["Borne en ligne 3"]
+  end
+  subgraph SALLE["Salle serveur — LAN de gestion sans Internet"]
+    FW["Pare-feu<br/>(sous-réseaux des sites → port aléatoire)"]
+    subgraph SRV["Serveur Barbacane (ISO durcie, disque chiffré, TPM)"]
+      NB["Interface réseau « bornes »"]
+      NA["Interface réseau « administration »"]
+    end
+    NTP["Source d'heure interne<br/>(NTP du LAN ou GNSS)"]
+    LDAP["Annuaire AD/LDAP<br/>(LDAPS, lecture seule)"]
+    SAV["Stockage de sauvegarde<br/>+ export des empreintes d'audit"]
+  end
+  subgraph ADM["Zone d'administration"]
+    PA["Poste d'administration dédié<br/>(2 facteurs : FIDO2 ou carte)"]
+  end
+  subgraph HL["Hors ligne (coffre)"]
+    RAC["Racine PKI"]
+    SIG["Clés de signature<br/>(.bcu bornes, .bcu serveur, plancher)"]
+  end
+  B1 & B2 -->|"mTLS TLS 1.3, sortant"| FW
+  B3 -->|"liaison routée chiffrée entre sites"| FW
+  FW --> NB
+  PA -->|"HTTPS + 2 facteurs"| NA
+  SRV --> NTP
+  SRV --> LDAP
+  SRV --> SAV
+  RAC -. "signe les CA intermédiaires (manuel)" .-> SRV
+  SIG -. ".bcu et plancher signés, déposés via l'interface web" .-> PA
+```
+
+Les flèches pleines sont les seules connexions réseau autorisées ; les pointillés sont
+des transferts manuels (support amovible, cérémonie de clés).
+
+### Logiciel de la borne en ligne
+
+```mermaid
+flowchart TB
+  U(("Utilisateur<br/>écran tactile"))
+  subgraph BORNE["Borne en ligne"]
+    CL["barbacane-client<br/>(interface)"]
+    PAR["parcours<br/>(Analyser → Copier / Graver / Blanchir / Arrêter)"]
+    US["usbsas<br/>(noyau USB, sans réseau, seccomp)"]
+    AN["barbacane-analyzer<br/>(ClamAV + YARA, bac à sable)"]
+    OP["barbacane-optique<br/>(CD/DVD)"]
+    ADM["barbacane-admind<br/>(mises à jour, PIN local, plancher)"]
+    AG["barbacane-agent<br/>(SEUL accès réseau)"]
+    TPM[["TPM 2.0<br/>clé de la borne"]]
+    FILE[("File locale bornée<br/>rapports signés")]
+  end
+  USB[/"Clés USB"/] --> US
+  CD[/"Disques optiques"/] --> OP
+  U --> CL --> PAR
+  PAR --> US & OP
+  US --> AN
+  CL -->|"socket Unix"| AG
+  ADM -->|"socket Unix"| AG
+  AG --> TPM
+  AG --> FILE
+  AG ==>|"mTLS sortant"| SERVEUR(["Serveur Barbacane"])
+```
+
+La décision « sain / bloqué » est prise dans la borne (analyzer) ; l'agent ne fait que
+transporter état, rapports, politique et mises à jour.
+
+### Logiciel du serveur
+
+```mermaid
+flowchart TB
+  subgraph SERVEUR["Serveur Barbacane — conteneurs Podman sans root"]
+    GW["passerelle-bornes (Rust)<br/>mTLS, CRL, quotas, schéma strict"]
+    WEB["interface web (Rust)<br/>rôles, double validation"]
+    ID["identité<br/>comptes, PIN Barbacane (Argon2id), anti force brute"]
+    PKI["PKI : CA « bornes » + CA « serveur »<br/>(clés dans le TPM)"]
+    MAJ["diffusion des .bcu<br/>+ ISO des bornes"]
+    POL["politique à chaud<br/>(bornée par le plancher signé)"]
+    DB[("PostgreSQL")]
+    AUD[("journal d'audit chaîné")]
+    HOR["heure de référence"]
+  end
+  BORNES(["Bornes"]) ==> GW
+  ADMIN(["Poste d'administration"]) ==> WEB
+  GW --> ID & PKI & MAJ & POL & DB & HOR
+  WEB --> ID & PKI & MAJ & POL & DB
+  GW & WEB --> AUD
+  AUD -. "empreintes exportées chaque jour" .-> EXT[("hors du serveur")]
+```
+
+### Séquence : enrôlement d'une borne
+
+```mermaid
+sequenceDiagram
+  actor A as Administrateur
+  participant W as Interface web
+  participant B as Borne (ISO générique)
+  participant G as Passerelle
+  A->>W: Crée un jeton (site, 1 h, usage unique)
+  A->>B: Saisit le jeton au premier démarrage
+  B->>B: Génère sa clé dans le TPM, demande de certificat
+  B->>G: Connexion TLS (CA serveur épinglée dans l'ISO) + jeton + demande
+  G->>W: Demande en attente
+  B-->>A: Affiche l'empreinte de la demande
+  A->>W: Compare l'empreinte et valide
+  W->>G: Certificat de borne signé (90 jours)
+  G->>B: Certificat + plancher signé hors ligne + politique + heure
+  B->>B: Vérifie le plancher, passe en service
+```
+
+### Séquence : utilisation (mode authentification)
+
+```mermaid
+sequenceDiagram
+  actor U as Utilisateur
+  participant B as Borne
+  participant S as Serveur
+  U->>B: Tape son identifiant et son PIN Barbacane
+  B->>S: Vérification (mTLS)
+  S-->>B: Accepté (réponse identique si identifiant inconnu et PIN faux)
+  U->>B: Insère la clé, « Analyser »
+  B->>B: Analyse locale (ClamAV + YARA)
+  B-->>U: Verdict, puis Copier vers / Blanchir / Arrêter ici
+  B->>S: Rapport (sans nom de fichier en clair) + journal
+  S->>S: Enregistre, chaîne l'audit
+```
+
+### Rendu attendu de l'interface web (maquette indicative)
+
+```
+┌─ Barbacane — Supervision ─────────────────────── admin.site-a  ⏻ ┐
+│ Bornes 12 │ En service 11 │ Hors service 1 │ Signatures > 7 j 0  │
+├───────────┬──────────┬────────────┬──────────────┬───────────────┤
+│ Borne     │ Site     │ État       │ Signatures   │ Dernier contact│
+│ B-A-01    │ Site A   │ ● En service│ il y a 2 h  │ il y a 30 s    │
+│ B-A-02    │ Site A   │ ● En service│ il y a 2 h  │ il y a 12 s    │
+│ B-B-01    │ Site B   │ ○ Injoignable│ il y a 1 j │ il y a 9 min   │
+├───────────┴──────────┴────────────┴──────────────┴───────────────┤
+│ [Enrôler une borne] [Déposer une mise à jour] [ISO des bornes]    │
+│ [Utilisateurs] [Clés USB] [Rapports] [Audit] [Politique]          │
+└───────────────────────────────────────────────────────────────────┘
+```
+
 ## 3. Architecture
 
 ```
