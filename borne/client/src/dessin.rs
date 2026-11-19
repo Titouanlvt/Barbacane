@@ -34,10 +34,28 @@ fn calque(viewbox: &str, corps: &str) -> svg::Handle {
         .replace("{menace}", &hx(p.menace))
         .replace("{alerte}", &hx(p.alerte))
         .replace("{alertefond}", &hx(p.alerte_fond));
-    svg::Handle::from_memory(
-        format!("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{viewbox}\">{corps}</svg>")
-            .into_bytes(),
-    )
+    let texte =
+        format!("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{viewbox}\">{corps}</svg>");
+    // Charte v2 (realisation.md, « Cache des calques SVG ») : une poignée neuve à chaque image
+    // obligeait iced à ré-analyser et re-tramer le SVG. On garde une poignée par texte final
+    // (donc par thème) et on la clone : le clone garde l'identifiant, donc le cache d'iced.
+    CALQUES.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.len() > LIMITE_CALQUES {
+            c.clear();
+        }
+        c.entry(texte)
+            .or_insert_with_key(|t| svg::Handle::from_memory(t.clone().into_bytes()))
+            .clone()
+    })
+}
+
+/// Au-delà, le cache est vidé (variantes bornées : ~25 calques × 2 thèmes + 360 angles du disque).
+const LIMITE_CALQUES: usize = 1024;
+
+thread_local! {
+    static CALQUES: std::cell::RefCell<std::collections::HashMap<String, svg::Handle>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
 /// Calque placé dans la scène : position (x, y) et taille (l, h) en unités de scène.
@@ -514,4 +532,19 @@ pub fn demarrage<'a>(p: f32, logo: &'static [u8], taille: f32) -> Element<'a, Ms
     ]
     .align_x(iced::Alignment::Center)
     .into()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn calques_mis_en_cache_par_theme() {
+        crate::style::set_nuit(false);
+        let a = super::cle(false);
+        let b = super::cle(false);
+        assert_eq!(a.id(), b.id(), "même calque, même thème : même poignée (cache iced)");
+        crate::style::set_nuit(true);
+        let c = super::cle(false);
+        assert_ne!(a.id(), c.id(), "changement de thème : nouvelle poignée (couleurs différentes)");
+        crate::style::set_nuit(false);
+    }
 }
