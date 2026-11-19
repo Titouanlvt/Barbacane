@@ -6,19 +6,21 @@
 #
 #   systeme/iso/build-iso.sh [--debs DOSSIER] [--cle-publique maj.pub]
 #                                     [--clamav DOSSIER] [--yara DOSSIER] [--netinst ISO] [--sortie FICHIER.iso]
-#                                     [--verbeux]
+#                                     [--verbeux] [--profil hors-ligne|en-ligne]
 #     --debs          paquets usbsas-server, usbsas-hid, barbacane (défaut : construits par build-debs.sh)
 #     --cle-publique  clé minisign des mises à jour (défaut : systeme/iso/maj.pub s'il existe)
 #     --clamav        base ClamAV initiale (défaut : téléchargée avec freshclam)
 #     --yara          règles YARA initiales
 #     --netinst       ISO netinst Debian 13 amd64 déjà téléchargée (défaut : dernière version, empreinte vérifiée)
 #     --verbeux       affiche tout le détail à l'écran (sinon : dans le journal, à côté de l'ISO)
+#     --profil        hors-ligne (DÉFAUT : la borne v1, aucun code réseau) ou en-ligne (borne de la
+#                     suite, avec barbacane-agent ; docs/conception-barbacane-suite.md §10)
 set -Eeuo pipefail
 # « su » sans « - » garde le PATH de l'utilisateur, sans /usr/sbin : debootstrap, mkfs… y sont.
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ICI="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$ICI/../.." && pwd)"
-DEBS='' CLE_PUB='' CLAMAV='' YARA='' NETINST='' SORTIE="$PWD/barbacane.iso" VERBEUX=0
+DEBS='' CLE_PUB='' CLAMAV='' YARA='' NETINST='' SORTIE="$PWD/barbacane.iso" VERBEUX=0 PROFIL=hors-ligne
 [ -f "$ICI/maj.pub" ] && CLE_PUB="$ICI/maj.pub"
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -29,10 +31,17 @@ while [ $# -gt 0 ]; do
         --netinst) NETINST="$(realpath "$2")"; shift 2 ;;
         --sortie) SORTIE="$(realpath -m "$2")"; shift 2 ;;
         --verbeux) VERBEUX=1; shift ;;
-        -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
+        --profil) PROFIL="$2"; shift 2 ;;
+        -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
         *) echo "option inconnue : $1 (voir --help)" >&2; exit 1 ;;
     esac
 done
+
+case "$PROFIL" in
+    hors-ligne) ;;
+    en-ligne) echo "profil en-ligne : pas encore disponible (barbacane-agent, étape 5 de la suite)" >&2; exit 1 ;;
+    *) echo "profil inconnu : $PROFIL (hors-ligne ou en-ligne)" >&2; exit 1 ;;
+esac
 
 # ------------------------------------------------------------------ affichage et journal
 JOURNAL="${SORTIE%.iso}.log"
