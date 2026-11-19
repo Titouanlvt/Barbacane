@@ -52,8 +52,8 @@ def etapes(cours):
 
 def ecran(corps, sous="", haut=None, bas=None):
     return f"""<!-- @dsCard group="Maquettes · borne" height=780 width=1280 page subtitle="{sous}" -->
-<link rel="stylesheet" href="../demo.css">
-<link rel="stylesheet" href="../sprites.css">
+<link rel="stylesheet" href="../demo.css?v=2">
+<link rel="stylesheet" href="../sprites.css?v=2">
 <div class="cadre-ecran b-ecran">
 {haut if haut is not None else bandeau()}
 {corps}
@@ -164,7 +164,7 @@ def serveur(corps, sous, actif):
              ("file", "Rapports"), ("up", "Mises à jour"), ("shield2", "Politique"), ("list", "Audit")]
     nav = "".join(f'<a href="#"{" aria-current=page" if n == actif else ""}>{ic(k)} {n}</a>' for k, n in liens)
     return f"""<!-- @dsCard group="Maquettes · serveur" height=820 width=1280 page subtitle="{sous}" -->
-<link rel="stylesheet" href="../demo.css">
+<link rel="stylesheet" href="../demo.css?v=2">
 <div class="b-page" style="width:1280px;min-height:800px">
 <div class="b-coque" style="min-height:800px">
   <nav class="b-nav" aria-label="Navigation"><div class="b-nav__marque">{LOGO} Barbacane</div>{nav}

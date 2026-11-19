@@ -9,8 +9,8 @@ import pathlib
 COMP = pathlib.Path(__file__).resolve().parent.parent / "components"
 
 TETE = """<!-- @dsCard group="Animations" height={h} subtitle="{sous}" -->
-<link rel="stylesheet" href="../demo.css">
-<link rel="stylesheet" href="../sprites.css">
+<link rel="stylesheet" href="../demo.css?v=2">
+<link rel="stylesheet" href="../sprites.css?v=2">
 <style>
 .scene {{ --cyc: {cyc}; }}
 .scene .b-sprite {{ position: absolute; }}
@@ -225,7 +225,7 @@ A["AnimAttenteServeur"] = dict(h=600, sous="v2 en ligne : connexion, délai de g
     <div class="cren"><i></i><i></i><i></i></div>
     <div class="grace"><div class="b-barre"><div class="b-barre__rempli" style="--p:84"></div></div></div>
     <div class="msg">Connexion au serveur de gestion…</div>
-    <div class="sous b-mono">Délai de grâce : 4 min 12 s · la session en cours se termine normalement</div>""", story=story([
+    <div class="sous b-mono">Délai de grâce : 4 min 12 s</div>""", story=story([
     ("Boucle 1 200 ms", "Trois créneaux s'allument de bas en haut, un toutes les 400 ms : signal qui cherche le serveur."),
     ("Délai de grâce", "Barre qui se VIDE (5 min par défaut, plancher signé) avec le temps restant écrit."),
     ("Retour du serveur", "Créneaux fixes allumés 300 ms, puis retour à l'accueil (glissement d'écran)."),

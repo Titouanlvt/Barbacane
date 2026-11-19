@@ -1,5 +1,7 @@
 /* Mise en page des APERÇUS de la charte (pas pour la borne ni le serveur). */
-body { margin: 0; background: linear-gradient(180deg, var(--sol-haut), var(--sol-bas)); color: var(--encre); font: 400 15px/22px var(--font-sans); }
+html, body { margin: 0; background: linear-gradient(180deg, var(--sol-haut), var(--sol-bas)) !important; color: var(--encre) !important; font: 400 15px/22px var(--font-sans); }
+/* le cadre du Design System peut imposer son fond : l'aperçu porte aussi le sien */
+.demo { background: linear-gradient(180deg, var(--sol-haut), var(--sol-bas)); color: var(--encre); min-height: 100%; box-sizing: border-box; }
 .demo { display: grid; gap: 16px; padding: 20px; }
 .demo-rang { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; }
 .demo-leg { font-size: 13px; line-height: 18px; color: var(--encre-douce); }
