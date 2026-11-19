@@ -16,7 +16,8 @@ distinct** (ISO borne en ligne + ISO serveur).
 | Livraison du serveur | **ISO dédiée** (Debian durcie, installation automatique hors ligne) qui embarque les images Docker du serveur. |
 | Enrôlement des bornes | **Jeton à usage unique** généré dans l'interface web. |
 | Fonctions | Supervision, mises à jour centralisées, journaux et rapports, configuration et politique, gestion des clés (fabricant + numéro de série), identification des utilisateurs. |
-| Identification | Méthodes au choix de l'administrateur, par site ou par borne : **comptes locaux, PIN personnel, annuaire AD/LDAP**. Badges : emplacement prévu, implémentation reportée (aucun matériel de test). |
+| Utilisateurs | Deux notions distinctes, **mode choisi par l'administrateur** par site ou par borne (§3.3) : **identification** (savoir qui fait quoi, pour la journalisation) et **authentification** (être sûr que c'est bien cet utilisateur). Pour commencer : **badge simple dont le code est lu** (identification). |
+| Port | **Pas 443** : port TCP non standard tiré au hasard à l'installation du serveur (modifiable), pour ne pas être repéré par un scan rapide. |
 | Données envoyées par la borne | Rapports et journaux, **fichiers malveillants et suspects** (quarantaine chiffrée). |
 | Rôles web | Administrateur, administrateur de site, opérateur, auditeur (lecture seule). |
 | Conservation | Journaux et rapports **1 an**, quarantaine **30 jours**, purge automatique. |
@@ -49,7 +50,7 @@ distinct** (ISO borne en ligne + ISO serveur).
 │       enrôlées, mises à jour .bcu                                │                  │
 │     • envoie : état, rapports, journaux, quarantaine chiffrée    │                  │
 │     • serveur injoignable → borne bloquée                        │                  │
-│                                                                  ▼ 443/TCP          │
+│                                                                  ▼ port aléatoire        │
 │  Serveur Barbacane (ISO durcie, Docker embarqué)                                    │
 │   ┌ passerelle-bornes (Rust) : seul point d'entrée des bornes, mTLS, quotas         │
 │   ├ interface web d'administration : sur une INTERFACE RÉSEAU DISTINCTE (poste      │
@@ -69,12 +70,44 @@ distinct** (ISO borne en ligne + ISO serveur).
 - Nouveau service `barbacane-agent` (Rust, utilisateur dédié, durci comme les autres) :
   seul processus autorisé à joindre le réseau, et uniquement le serveur.
 - L'interface ne parle qu'à l'agent local (socket Unix), jamais au réseau.
-- Identification utilisateur à l'écran selon la politique reçue ; la vérification se
-  fait par le serveur (le PIN ou le mot de passe ne sont jamais stockés sur la borne).
+- Identification ou authentification de l'utilisateur à l'écran selon le mode reçu (§3.3) ;
+  la vérification se fait par le serveur (PIN et mot de passe jamais stockés sur la borne).
 - Blocage : sans connexion valide au serveur (délai court, configurable), l'interface
   affiche « Borne hors service : serveur de gestion injoignable » et refuse toute clé.
 
-### 3.2 Serveur
+### 3.2 Port d'écoute
+
+Le serveur n'écoute pas sur 443 : à l'installation, un port TCP est tiré au hasard dans
+une plage haute (par exemple 20000–60000, hors ports connus), affiché à l'administrateur
+et inscrit dans le jeton d'enrôlement des bornes ; il reste modifiable. Un scan rapide
+(les 1 000 ports courants de nmap) ne le voit pas. C'est une mesure de **discrétion**,
+pas de sécurité : un scan complet le trouve. La protection reste le mTLS (une connexion
+sans certificat de borne valide est coupée avant tout échange applicatif) et le pare-feu
+du serveur (seules les adresses des bornes enrôlées sont acceptées).
+
+### 3.3 Utilisateurs : identification et authentification
+
+- **Identification** : savoir *qui* fait quoi, pour la journalisation. L'utilisateur
+  se déclare (code d'un badge lu, ou nom choisi) ; rien ne prouve que c'est lui.
+- **Authentification** : être *sûr* que c'est cet utilisateur, par un élément qu'il est
+  seul à détenir ou connaître.
+
+L'administrateur choisit le mode, par site ou par borne :
+
+| Mode | Ce qui est demandé | Usage |
+|---|---|---|
+| Aucun | rien (comme la v1) | borne en libre service, journal anonyme |
+| Identification | badge simple (code lu) | traçabilité de qui a fait quoi |
+| Authentification | badge simple + PIN personnel, ou compte local, ou annuaire AD/LDAP | preuve de l'identité |
+
+Le badge simple (code lu, type Mifare Classic ou 125 kHz) se copie facilement : seul, il
+ne vaut qu'**identification**. Combiné à un PIN, il vaut authentification. Lecteur : un
+lecteur de badges USB qui se présente comme un clavier envoie le code comme une frappe ;
+la borne bloquant les claviers (usbsas-hid), il faut l'autoriser explicitement par son
+identifiant USB et n'accepter de lui qu'une suite de chiffres de longueur fixe, sur l'écran
+d'identification uniquement. Les cartes à puce avec certificat restent pour plus tard.
+
+### 3.4 Serveur
 
 - ISO Debian durcie, installation automatique comme la borne ; images Docker chargées
   depuis l'ISO (aucun registre externe).
@@ -93,7 +126,7 @@ distinct** (ISO borne en ligne + ISO serveur).
 | Battement | borne → serveur | état, version, âge des signatures, espace disque | mTLS |
 | Politique | borne ← serveur (à l'initiative de la borne) | méthodes d'identification, clés enrôlées, règles | signée par le serveur, versionnée, validée par la borne |
 | Mise à jour | borne ← serveur | `.bcu` + `.minisig` | signature hors ligne vérifiée par la borne |
-| Identification | borne → serveur | identifiant + secret saisi | mTLS ; aucune conservation sur la borne |
+| Identification / authentification | borne → serveur | code du badge, plus PIN ou mot de passe selon le mode | mTLS ; aucune conservation sur la borne |
 | Rapports, journaux | borne → serveur | JSON, journald | mTLS ; file d'attente locale bornée |
 | Quarantaine | borne → serveur | fichiers malveillants ou suspects | chiffrés pour la clé publique de quarantaine du serveur, puis mTLS |
 
@@ -116,6 +149,8 @@ distinct** (ISO borne en ligne + ISO serveur).
 | Serveur compromis qui pousse du code | Aucun code poussé ; `.bcu` signés hors ligne et vérifiés par la borne. |
 | Serveur compromis qui affaiblit la politique | Valeurs minimales codées en dur dans la borne (analyse toujours obligatoire, jamais de désactivation de ClamAV) ; politique signée et journalisée. |
 | Usurpation d'une borne | Certificat client par borne, clé non exportable ; révocation dans l'interface web. |
+| Badge simple copié | Mode « identification » seulement ; l'administrateur impose badge + PIN là où l'identité doit être prouvée. |
+| Faux lecteur de badges (clavier injecté) | Lecteur autorisé par identifiant USB, saisie limitée aux chiffres de longueur fixe et au seul écran d'identification. |
 | Vol du jeton d'enrôlement | Usage unique, durée courte, lié à un site, journalisé. |
 | Attaque réseau sur la borne | Aucun port en écoute ; une seule destination autorisée. |
 | Fausse clé « connue » (VID/PID/SN falsifiés) | Identifiants USB = traçabilité seulement ; analyse toujours obligatoire. |
@@ -129,7 +164,8 @@ distinct** (ISO borne en ligne + ISO serveur).
    mTLS, enrôlement par jeton, battement et supervision dans l'interface web.
 2. **Mises à jour** : dépôt du `.bcu` dans l'interface web, diffusion, suivi par borne.
 3. **Rapports et journaux** : collecte, recherche, export, conservation 1 an.
-4. **Identification** : comptes locaux et PIN, puis AD/LDAP ; choix par site ou par borne.
+4. **Utilisateurs** : badge simple (identification), badge + PIN et comptes locaux
+   (authentification), puis AD/LDAP ; mode choisi par site ou par borne.
 5. **Clés USB** : enrôlement par fabricant + numéro de série, politiques par site.
 6. **Quarantaine** chiffrée, purge 30 jours, option de désactivation.
 7. **Plus tard** : badges, analyse complémentaire en bac à sable, serveur central de
@@ -139,7 +175,7 @@ Chaque étape : conception détaillée, tests automatisés, preuves, CI verte.
 
 ## 8. Questions ouvertes
 
-- Type de badges (reporté faute de matériel) : prévoir une interface d'identification
+- Badges plus sûrs (carte à puce avec certificat, DESFire) : plus tard ; prévoir une interface d'identification
   extensible.
 - Exigences exactes de l'autorité d'homologation (chiffreur, produits qualifiés).
 - Où conserver la racine de la PKI (support hors ligne, coffre) et qui la détient.
