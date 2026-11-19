@@ -427,6 +427,47 @@ if [ "${PROPRE:-0}" = 1 ] && [ "${REPRISE:-0}" != propre ] && test_actif enrolem
 fi
 
 # === transfert : clé inconnue → clé non enrôlée (refus) puis clé enrôlée ==================
+# === captures de la documentation (tests/ui/captures.sh) =================================
+# Parcours complet en Jour puis en Nuit, captures numérotées dans $OUT/captures-<thème>/.
+# N'affirme rien sur le fonctionnement (les autres scénarios le prouvent) : des écrans à jour.
+if test_actif captures; then
+    for theme in ${CAPTURES_THEMES:-jour nuit}; do
+        debut "captures-$theme" "captures de la documentation, thème $theme"
+        c() { capture "$1"; }
+        if [ "$theme" = nuit ]; then
+            admin; cliquer "Affichage"; attendre "Thème" 30; cliquer "Nuit (sombre)"; sleep 2
+            c 15-admin-affichage; cliquer "Retour"; attendre "Quitter le mode administrateur" 30; quitter_admin
+        fi
+        c 01-accueil
+        formater "$SERIE_SOURCE" "" SOURCE; contenu_test; demonter "$D/source.sha256"
+        formater "$SERIE_SORTIE" "" DEST; demonter "$D/destination.sha256"
+        brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 60 "$D/02-cle-detectee.png"
+        cliquer "Analyser"; sleep 3; c 03-analyse-en-cours
+        for i in $(seq 120); do
+            if voir "Archive protégée" 3; then c 04-mot-de-passe; "${B[@]}" texte secret; cliquer "Valider"; break; fi
+            voir "Résultat de l'analyse" 2 && break
+        done
+        attendre "Résultat de l'analyse" 3600 "$D/05-resultat.png"
+        cliquer "Blanchir la clé"; attendre "Maintenir pour effacer" 30 "$D/06-blanchir-confirmation.png"
+        cliquer "Annuler"; attendre "Résultat de l'analyse" 30 || true
+        cliquer "Copier vers une clé connue"
+        brancher usb2 "$SERIE_AUTRE"; voir "pas enrôlée" 60 && c 07-cle-non-enrolee; debrancher usb2
+        brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 60 "$D/08-cle-destination.png"
+        cliquer "Effacer cette clé"; sleep 4; c 09-ecriture
+        attendre "Vous pouvez retirer les clés" 3600 "$D/10-termine.png"
+        debrancher usb2; debrancher usb1; attendre "à analyser" 120
+        ouvrir "Administration" "Saisissez le PIN"; c 11-admin-pin
+        "${B[@]}" pin "$PIN"; cliquer "Valider"; attendre "Quitter le mode administrateur" 30; c 12-admin-menu
+        for p in "État de la borne:13-admin-etat" "Clés de sortie enrôlées:14-admin-enrolement" "Mettre à jour:16-admin-mise-a-jour" \
+                 "Exporter les journaux:17-admin-export" "Limites d'analyse:18-admin-limites" "À propos:19-admin-a-propos"; do
+            cliquer "${p%%:*}"; sleep 3; c "${p##*:}"; cliquer "Retour" || true; voir "Quitter le mode administrateur" 20 || true
+        done
+        [ "$theme" = jour ] && { cliquer "Affichage"; sleep 3; c 15-admin-affichage; cliquer "Retour" || true; }
+        quitter_admin
+        ok "$(ls "$D"/*.png | wc -l) captures ($theme)"
+    done
+fi
+
 if test_actif transfert; then
     debut transfert "clé inconnue $SERIE_SOURCE → clé enrôlée $SERIE_SORTIE"
     formater "$SERIE_SOURCE" "" SOURCE; contenu_test; demonter "$D/source.sha256"
