@@ -12,7 +12,7 @@ Décisions prises par défaut : `decisions.md`.
 | Base légale | Mission d'intérêt public / intérêt légitime de l'organisme à la sécurité de son SI (art. 6.1.e ou 6.1.f RGPD), selon la nature de l'organisme. |
 | Personnes concernées | Agents et prestataires utilisant les bornes ; administrateurs de l'interface web. |
 | Données | Identifiant de l'agent (mode Identification ou Authentification) ; PIN Barbacane **dérivé** (Argon2id, jamais en clair) ; horodatage ; borne et site ; verdict ; nombre, empreintes SHA-256, extensions et tailles des fichiers (**pas les noms**) ; identifiant du support (fabricant, modèle, n° de série). Comptes d'administration et journal d'audit. |
-| Données exclues | Contenu des fichiers ; noms de fichiers ; quarantaine (non implémentée, D2) ; mots de passe d'annuaire (jamais saisis sur une borne). |
+| Données exclues | Noms de fichiers (D2) ; mots de passe d'annuaire (jamais saisis sur une borne). Contenu des fichiers : seulement si la quarantaine est activée (désactivée par défaut, D3) — l'AIPD doit alors être revue (contenu potentiellement personnel et DR). |
 | Destinataires | Administrateurs de site (leur périmètre), auditeurs (lecture seule, identifiants en clair), équipe sécurité lors d'un incident. Aucun transfert hors UE ; aucun sous-traitant (serveur sur site, sans Internet). |
 | Durée de conservation | 1 an pour les rapports et journaux, sauvegardes comprises (purge automatique) ; comptes supprimés 1 mois après le départ de l'agent. |
 | Mode « Aucun » | Aucune donnée personnelle (journal anonyme) : hors champ de l'AIPD. |
@@ -37,7 +37,8 @@ Décisions prises par défaut : `decisions.md`.
 | Détournement de finalité (surveillance des agents) | hiérarchie | importante / limitée | finalité écrite, accès restreint aux auditeurs, consultations journalisées, information des IRP | limitée / négligeable |
 | Fuite des PIN | serveur compromis | importante / limitée | Argon2id, aucun PIN sur la borne, verrouillage après 5 échecs | négligeable / négligeable |
 | Conservation excessive | défaut de purge | limitée / significative | purge automatique testée, y compris sauvegardes | négligeable / limitée |
-| Révélation d'informations sensibles par les noms de fichiers | transmission en clair | importante / significative | noms jamais transmis (D1) | négligeable |
+| Révélation d'informations sensibles par les noms de fichiers | transmission en clair | importante / significative | noms jamais transmis (D2) | négligeable |
+| Exposition de fichiers en quarantaine | serveur, analyste | importante / limitée | quarantaine désactivée par défaut, chiffrée pour une clé hors serveur, activation verrouillée par le dossier d'homologation (D3) | limitée / négligeable |
 
 ## 4. Validation
 

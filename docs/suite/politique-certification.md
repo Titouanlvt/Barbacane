@@ -2,7 +2,8 @@
 
 Document minimal exigé avant l'étape « Socle » (conception §3.5, §8 étape 0). Il fixe ce que la
 PKI émet, avec quoi, pour combien de temps, et comment on révoque. Décisions : `decisions.md`
-(D5, D6, D7).
+(D6 cryptographie, D7 racine, D8 révocation). Mécanismes conformes au RGS et au guide des
+mécanismes cryptographiques de l'ANSSI.
 
 ## 1. Hiérarchie
 
