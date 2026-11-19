@@ -141,6 +141,16 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
   sortie ; diagnostic d'une VM qui ne démarre plus : disque monté `ro,noload` sur l'hôte ou clone ZFS
   `readonly=on` de l'instantané (snapshot rpool avant, clone détruit après).
 
+## État au 19/11/2026
+- **v1.0 livrée** le 18/11 (tag `v1.0` = 5c20866, ISO `/nvme/contenu/iso-v1/`) ; 121/121 sur vraies clés.
+- **Pool ZFS `essais`** (NVMe WDC SN730 série 20041A804255, `docs/lab/essais.md`) : disques des nouvelles
+  VM de test (stockage `essais`), ISO et clés émulées dans `/essais/fichiers` (stockage `essais-fichiers`).
+  Toujours désigner ce disque par `/dev/disk/by-id/…20041A804255`. Rien de gros dans rpool ni /var/lib/vz.
+- **RTX 4000 non passée** aux VM : seule carte d'affichage de l'hôte (`docs/lab/gpu-passthrough.md`).
+- **Charte v2** : branche `charte-v2` publiée par l'utilisateur (`docs/charte/`, identique au Design
+  System). Adaptation VISUELLE seulement : la logique v1 (écrans, boutons, parcours) ne change pas ;
+  écarts dans `docs/charte/adaptation.md`.
+
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
 2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).
