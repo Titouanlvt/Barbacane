@@ -101,6 +101,9 @@ def pretraiter(ppm, png):
     open(variante(png, ".n.pgm"), "wb").write(entete + sans_bordures(n, l * 2, h * 2))
     open(variante(png, ".m.pgm"), "wb").write(entete + bytes(0 if v < 150 else 255 for v in img))  # texte gris
     open(variante(png, ".i.pgm"), "wb").write(entete + bytes(0 if v > 240 else 255 for v in img))
+    # Thème Nuit : texte clair (encre ≈ 232) sur fond sombre, sous le seuil de « .i »
+    j = bytes(0 if v > 200 else 255 for v in img)
+    open(variante(png, ".j.pgm"), "wb").write(entete + sans_bordures(j, l * 2, h * 2))
 
 
 def sans_bordures(img, l, h, long=60, ecart=6):
@@ -136,7 +139,7 @@ def norm(t):
 def mots(png):
     """Mots reconnus (texte, x, y, l, h) en coordonnées écran, sur les deux variantes."""
     r = []
-    for v in (".n.pgm", ".m.pgm", ".i.pgm"):
+    for v in (".n.pgm", ".m.pgm", ".i.pgm", ".j.pgm"):
         tsv = subprocess.run(["tesseract", variante(png, v), "-", "-l", "fra", "--psm", "11", "tsv"],
                              capture_output=True, text=True).stdout
         for ligne in tsv.splitlines()[1:]:
@@ -172,7 +175,7 @@ def trouver(png, texte):
 
 def lire(png):
     return "\n".join(subprocess.run(["tesseract", variante(png, v), "-", "-l", "fra"], capture_output=True,
-                                     text=True).stdout for v in (".n.pgm", ".m.pgm", ".i.pgm"))
+                                     text=True).stdout for v in (".n.pgm", ".m.pgm", ".i.pgm", ".j.pgm"))
 
 
 def clic(vm, x, y, l, h, maintien=0.0):
