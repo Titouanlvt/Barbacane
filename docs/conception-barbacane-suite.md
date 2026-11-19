@@ -16,7 +16,7 @@ distinct** (ISO borne en ligne + ISO serveur).
 | Livraison du serveur | **ISO dédiée** (Debian durcie, installation automatique hors ligne) qui embarque les images Docker du serveur. |
 | Enrôlement des bornes | **Jeton à usage unique** généré dans l'interface web. |
 | Fonctions | Supervision, mises à jour centralisées, journaux et rapports, configuration et politique, gestion des clés (fabricant + numéro de série), identification des utilisateurs. |
-| Utilisateurs | Deux notions distinctes, **mode choisi par l'administrateur** par site ou par borne (§3.3) : **identification** (savoir qui fait quoi, pour la journalisation) et **authentification** (être sûr que c'est bien cet utilisateur). Pour commencer : **badge simple dont le code est lu** (identification). |
+| Utilisateurs | Deux notions distinctes, **mode choisi par l'administrateur** par site ou par borne (§3.3) : **identification** (savoir qui fait quoi, pour la journalisation) et **authentification** (être sûr que c'est bien cet utilisateur). Pour commencer, **sans lecteur** : l'utilisateur **tape son identifiant** sur le clavier de l'écran tactile ; badge plus tard. |
 | Port | **Pas 443** : port TCP non standard tiré au hasard à l'installation du serveur (modifiable), pour ne pas être repéré par un scan rapide. |
 | Données envoyées par la borne | Rapports et journaux, **fichiers malveillants et suspects** (quarantaine chiffrée). |
 | Rôles web | Administrateur, administrateur de site, opérateur, auditeur (lecture seule). |
@@ -97,8 +97,12 @@ L'administrateur choisit le mode, par site ou par borne :
 | Mode | Ce qui est demandé | Usage |
 |---|---|---|
 | Aucun | rien (comme la v1) | borne en libre service, journal anonyme |
-| Identification | badge simple (code lu) | traçabilité de qui a fait quoi |
-| Authentification | badge simple + PIN personnel, ou compte local, ou annuaire AD/LDAP | preuve de l'identité |
+| Identification | identifiant tapé à l'écran (ou, plus tard, badge simple lu) | traçabilité de qui a fait quoi |
+| Authentification | identifiant tapé + PIN personnel ou mot de passe (compte local ou annuaire AD/LDAP) ; plus tard badge + PIN | preuve de l'identité |
+
+Première version : **aucun lecteur**, l'identifiant se tape sur le clavier virtuel de
+l'écran tactile (déjà utilisé pour le PIN et les mots de passe d'archives). Le serveur
+refuse un identifiant inconnu dans les deux modes. Le badge est une option ultérieure.
 
 Le badge simple (code lu, type Mifare Classic ou 125 kHz) se copie facilement : seul, il
 ne vaut qu'**identification**. Combiné à un PIN, il vaut authentification. Lecteur : un
@@ -164,8 +168,9 @@ d'identification uniquement. Les cartes à puce avec certificat restent pour plu
    mTLS, enrôlement par jeton, battement et supervision dans l'interface web.
 2. **Mises à jour** : dépôt du `.bcu` dans l'interface web, diffusion, suivi par borne.
 3. **Rapports et journaux** : collecte, recherche, export, conservation 1 an.
-4. **Utilisateurs** : badge simple (identification), badge + PIN et comptes locaux
-   (authentification), puis AD/LDAP ; mode choisi par site ou par borne.
+4. **Utilisateurs** : identifiant tapé à l'écran (identification), identifiant + PIN ou
+   mot de passe avec comptes locaux (authentification), puis AD/LDAP, puis badges ;
+   mode choisi par site ou par borne.
 5. **Clés USB** : enrôlement par fabricant + numéro de série, politiques par site.
 6. **Quarantaine** chiffrée, purge 30 jours, option de désactivation.
 7. **Plus tard** : badges, analyse complémentaire en bac à sable, serveur central de
