@@ -11,7 +11,7 @@ E=$(mktemp -d /root/BARBACANE/exec-captures-XXXXXX)
 git -C "$REPO" archive HEAD | tar x -C "$E"
 cd "$E"
 timeout 3h env VMID="$VMID" STOCKAGE=nvme DISQUE=32 PROPRE=1 REPRISE=propre \
-    VIRT_DIR=/nvme/virt/$VMID CLE_VIRTUELLE=/nvme/virt/$VMID/autre.img \
+    VIRT_DIR="/nvme/virt/$VMID" CLE_VIRTUELLE="/nvme/virt/$VMID/autre.img" \
     ISO=/nvme/contenu/iso-test/barbacane-TEST-cle-lab.iso \
     SERIE_INSTALL=virt:install SERIE_SOURCE=virt:source SERIE_SORTIE=virt:sortie SERIE_AUTRE=virt:autre \
     CAPTURES_THEMES="${CAPTURES_THEMES:-jour nuit}" TESTS=captures tests/proxmox/preuve.sh "$O"

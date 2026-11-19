@@ -471,7 +471,7 @@ if test_actif captures; then
         done
         [ "$theme" = jour ] && { cliquer "Affichage"; sleep 3; c 15-admin-affichage; cliquer "Retour" || true; }
         quitter_admin
-        ok "$(ls "$D"/*.png | wc -l) captures ($theme)"
+        ok "$(find "$D" -name "*.png" | wc -l) captures ($theme)"
     done
 fi
 
