@@ -185,38 +185,65 @@ pub fn bandeau(_: &Theme) -> container::Style {
     }
 }
 
+/// Dalle (niveau 1, charte v2) : dégradé `dalle-haut` → `dalle-bas`, arête, bord `trait`, ombre courte.
 pub fn carte(_: &Theme) -> container::Style {
     container::Style {
-        background: Some(Background::Color(c().surface_haute)),
+        background: Some(degrade(c().dalle_haut, c().dalle_bas)),
         border: Border::default()
             .rounded(Radius::new(16))
             .width(1)
             .color(c().trait_),
+        shadow: Shadow {
+            color: c().ombre_diffuse,
+            offset: iced::Vector::new(0.0, 2.0),
+            blur_radius: 6.0,
+        },
         text_color: Some(c().encre),
         ..Default::default()
     }
 }
 
-/// Bandeau de verdict : fond et bordure de la couleur d'état.
+/// Panneau de verdict = rempart (niveau 3, charte v2) : `*-fond` éclairci → `*-fond`, bord 2 px de la
+/// couleur d'état, tranche NETTE de 6 px de sa teinte foncée (ombre sans flou, décalée vers le bas).
+/// Un seul niveau 3 par écran.
 pub fn verdict(fond: Color, bord: Color) -> impl Fn(&Theme) -> container::Style {
     move |_| container::Style {
-        background: Some(Background::Color(fond)),
+        background: Some(degrade(melange(fond, Color::WHITE, 0.6), fond)),
         border: Border::default()
             .rounded(Radius::new(16))
             .width(2)
             .color(bord),
+        shadow: Shadow {
+            color: fonce(bord),
+            offset: iced::Vector::new(0.0, 6.0),
+            blur_radius: 0.0,
+        },
         text_color: Some(c().encre),
         ..Default::default()
     }
+}
+
+/// Teinte foncée d'une couleur d'état (tranche des aplats d'état, charte v2).
+fn fonce(etat: Color) -> Color {
+    let p = c();
+    [(p.sain, p.sain_fonce), (p.menace, p.menace_fonce), (p.alerte, p.alerte_fonce), (p.analyse, p.analyse_fonce)]
+        .into_iter()
+        .find(|(e, _)| *e == etat)
+        .map_or(p.trait_fort, |(_, f)| f)
 }
 
 pub fn alerte(t: &Theme) -> container::Style {
     verdict(c().alerte_fond, c().alerte)(t)
 }
 
+/// Sol (niveau 0, charte v2) : dégradé vertical léger `sol-haut` → `sol-bas`.
 pub fn fond(_: &Theme) -> container::Style {
     container::Style {
-        background: Some(Background::Color(c().surface)),
+        background: Some(Background::Gradient(iced::gradient::Gradient::Linear(
+            iced::gradient::Linear::new(iced::Radians(std::f32::consts::PI))
+                .add_stop(0.0, c().sol_haut)
+                .add_stop(1.0, c().sol_bas),
+        ))),
         text_color: Some(c().encre),
         ..Default::default()
     }

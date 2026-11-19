@@ -33,8 +33,11 @@ contraste WCAG AA, thèmes Jour et Nuit, option « Animations réduites ».
 | 1. Jetons | fait | `borne/client/build.rs` génère la palette depuis `docs/charte/jetons.toml` (source unique) |
 | 2. Cache des calques SVG | fait | `dessin::calque` garde une poignée par texte et par thème (test `calques_mis_en_cache_par_theme`) |
 | 3. Relief des boutons (niveau 2) | fait | `style::relief` (dégradé, arête de lumière, bord 1 px), `app::en_relief` (tranche nette 4 px dessous, ombre 0 6 10), tranches par variante |
-| 3. Creusé (champs, piste de barre, clavier), dalle (cartes) | à faire | |
-| 4. Panneaux de verdict (niveau 3), pastilles, octogone | à faire | |
+| 3. Dalle (cartes) | fait | `style::carte` : dégradé `dalle-haut` → `dalle-bas`, bord `trait`, ombre 0 2 6 |
+| 3. Creusé (champs, piste de barre, clavier) | à faire | |
+| 0. Sol (fond d'écran) | fait | `style::fond` : dégradé `sol-haut` → `sol-bas` |
+| 4. Panneaux de verdict (niveau 3) | fait | `style::verdict` : `*-fond` éclairci → `*-fond`, bord 2 px d'état, tranche nette 6 px `*-fonce` (ombre sans flou ; l'ombre diffuse 0 14 24 n'est pas cumulable : une ombre par conteneur dans iced) |
+| 4. Pastilles, octogone | à faire | |
 | 5. Séquences 3D (emblème, clé, bouclier, disque) | à faire | fonctionnalité `image` d'iced, bandes PNG de `docs/charte/3d/` |
 | 6. Blanchiment (lame), gravure (anneau) | à faire | |
 | 7. v2 en ligne | hors v1 | |
