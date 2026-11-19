@@ -1,0 +1,40 @@
+<!-- @dsCard group="Animations" height=600 subtitle="v2 en ligne : connexion, délai de grâce" -->
+<link rel="stylesheet" href="../demo.css">
+<link rel="stylesheet" href="../sprites.css">
+<style>
+.scene { --cyc: 1200ms; }
+.scene .b-sprite { position: absolute; }
+.fixe { animation: none !important; }
+
+.emb { --cote: 180px; left: 50%; margin-left: -90px; top: -18px; }
+.cren { position: absolute; left: 50%; top: 30px; margin-left: 100px; display: grid; gap: 6px; }
+.cren i { display: block; width: 14px; height: 22px; border-radius: 2px; background: var(--surface-creuse); box-shadow: inset 0 1px 2px var(--ombre-interne); animation: allume var(--cyc) steps(1, jump-end) infinite; }
+.cren i:nth-child(2) { animation-delay: 400ms; } .cren i:nth-child(1) { animation-delay: 800ms; }
+@keyframes allume { 0%, 33% { background: var(--analyse); box-shadow: 0 2px 0 var(--analyse-fonce); } 34%, 100% { background: var(--surface-creuse); box-shadow: inset 0 1px 2px var(--ombre-interne); } }
+.grace { position: absolute; left: 50%; top: 178px; margin-left: -170px; width: 340px; }
+.msg { bottom: 26px; font-size: 26px; }
+
+/* version réduite : état final, sans mouvement */
+.anim:has(.reduire:checked) .scene *, .anim:has(.reduire:checked) .scene *::after { animation: none !important; transition: none !important; }
+
+.anim:has(.reduire:checked) .cren i { background: var(--analyse); box-shadow: 0 2px 0 var(--analyse-fonce); }
+
+</style>
+<div class="demo anim">
+  <label class="opt"><input type="checkbox" class="reduire" id="reduire"> Version réduite (option « Animations réduites » : état final, aucun mouvement)</label>
+  <div class="scene" aria-hidden="true">
+    <div class="b-sprite s-embleme-herse emb fixe"></div>
+    <div class="cren"><i></i><i></i><i></i></div>
+    <div class="grace"><div class="b-barre"><div class="b-barre__rempli" style="--p:84"></div></div></div>
+    <div class="msg">Connexion au serveur de gestion…</div>
+    <div class="sous b-mono">Délai de grâce : 4 min 12 s · la session en cours se termine normalement</div>
+  </div>
+  <ol class="story">
+    <li><b>Boucle 1 200 ms</b>Trois créneaux s'allument de bas en haut, un toutes les 400 ms : signal qui cherche le serveur.</li>
+    <li><b>Délai de grâce</b>Barre qui se VIDE (5 min par défaut, plancher signé) avec le temps restant écrit.</li>
+    <li><b>Retour du serveur</b>Créneaux fixes allumés 300 ms, puis retour à l'accueil (glissement d'écran).</li>
+    <li><b>Délai écoulé</b>« Borne hors service : serveur de gestion injoignable » ; herse fermée, fixe, aucune boucle.</li>
+    <li><b>Réduite</b>Créneaux allumés fixes ; le temps restant continue de décompter.</li>
+    <li><b>Logiciel</b>3 rectangles changent de couleur 3 fois par seconde : redessin quasi nul (≈ 14 × 80 px).</li>
+  </ol>
+</div>

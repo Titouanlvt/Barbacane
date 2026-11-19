@@ -1,0 +1,22 @@
+<!-- @dsCard group="Éléments 3D" height=640 subtitle="Séquences pré-calculées, jouées en bandes d'images" -->
+<link rel="stylesheet" href="../demo.css">
+<link rel="stylesheet" href="../sprites.css">
+<style>
+.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.obj { display: grid; justify-items: center; gap: 6px; padding: 12px; text-align: center; }
+.obj .b-sprite { --cote: 180px; }
+.obj b { font: 600 18px/22px var(--font-display); }
+</style>
+<div class="demo">
+  <div class="grille">
+    <div class="obj b-carte"><div class="b-sprite s-embleme-pivot" style="--d:3200ms;--iter:infinite;--dir:alternate"></div><b>Emblème · veille</b><span class="demo-leg">24 images, aller-retour, 15 i/s</span></div>
+    <div class="obj b-carte"><div class="b-sprite s-embleme-construction" style="--d:2200ms;--iter:infinite"></div><b>Emblème · démarrage</b><span class="demo-leg">32 images, 2,2 s, une fois</span></div>
+    <div class="obj b-carte"><div class="b-sprite s-embleme-herse" style="--d:1600ms;--iter:infinite;--dir:alternate"></div><b>Emblème · herse</b><span class="demo-leg">16 images, 540 ms, courbe lourde</span></div>
+    <div class="obj b-carte"><div class="b-sprite s-cle" style="--d:1200ms;--iter:infinite;--dir:alternate"></div><b>Clé à analyser</b><span class="demo-leg">16 images, 600 ms</span></div>
+    <div class="obj b-carte"><div class="b-sprite s-cle-destination" style="--d:1200ms;--iter:infinite;--dir:alternate"></div><b>Clé de destination</b><span class="demo-leg">16 images, laiton = confiance</span></div>
+    <div class="obj b-carte"><div class="b-sprite s-bouclier" style="--d:1000ms;--iter:infinite;--dir:alternate"></div><b>Bouclier</b><span class="demo-leg">14 images, 420 ms</span></div>
+    <div class="obj b-carte"><div class="b-sprite s-disque" style="--d:600ms;--iter:infinite"></div><b>Disque optique</b><span class="demo-leg">18 images = ½ tour, boucle 0,6 s</span></div>
+    <div class="obj b-carte"><div class="b-sprite s-cle-blanche b-sprite--fin"></div><b>Clé blanchie</b><span class="demo-leg">1 image, révélée par une fenêtre</span></div>
+  </div>
+  <p class="demo-leg">Images de 240 px, palette de 160 couleurs : 330 Kio pour les deux thèmes. Générées par docs/charte/outils/sequences3d.py depuis tokens.json.</p>
+</div>

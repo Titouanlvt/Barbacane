@@ -1,20 +1,8 @@
-<!-- @dsCard group="États" height=380 -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@700&display=swap">
-<style>
-body{margin:0;background:var(--surface);font-family:"Atkinson Hyperlegible","DejaVu Sans",sans-serif;color:var(--encre)}
-.col{display:grid;gap:var(--pas-2);padding:var(--pas-3)}
-.v{display:flex;align-items:center;gap:var(--pas-3);padding:var(--pas-2) var(--pas-3);border-radius:var(--rayon-l);border:2px solid}
-.v svg{flex:none;width:44px;height:44px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.t{font:700 34px/38px "Barlow Condensed","Arial Narrow",sans-serif}
-.d{font-size:18px;line-height:26px;color:var(--encre)}
-.ok{background:var(--sain-fond);color:var(--sain);border-color:var(--sain)}
-.wa{background:var(--alerte-fond);color:var(--alerte);border-color:var(--alerte)}
-.ko{background:var(--menace-fond);color:var(--menace);border-color:var(--menace)}
-.an{background:var(--analyse-fond);color:var(--analyse);border-color:var(--analyse)}
-</style>
-<div class="col">
-<div class="v an"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg><div><div class="t">Analyse en cours</div><div class="d">412 fichiers sur 1 038 · ClamAV et YARA</div></div></div>
-<div class="v ok"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><div><div class="t">Clé saine</div><div class="d">1 038 fichiers copiés vers la clé de destination</div></div></div>
-<div class="v wa"><svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg><div><div class="t">3 fichiers écartés</div><div class="d">Archives chiffrées, impossibles à analyser</div></div></div>
-<div class="v ko"><svg viewBox="0 0 24 24"><path d="M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z"/><path d="m15 9-6 6M9 9l6 6"/></svg><div><div class="t">2 fichiers malveillants retirés</div><div class="d">Les autres fichiers ont été copiés</div></div></div>
+<!-- @dsCard group="États" height=520 subtitle="Niveau 3 : couleur, forme, mot" -->
+<link rel="stylesheet" href="../demo.css">
+<div class="demo b-ecran" style="background:none;gap:28px">
+  <div class="b-verdict b-verdict--sain"><span class="b-pastille"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><div><p class="b-verdict__titre">Clé saine</p><p class="b-verdict__texte">1 038 fichiers peuvent être copiés.</p></div></div>
+  <div class="b-verdict b-verdict--bloque"><span class="b-pastille"><svg viewBox="0 0 24 24"><path d="m15 9-6 6"/><path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z"/><path d="m9 9 6 6"/></svg></span><div><p class="b-verdict__titre">2 fichiers bloqués</p><p class="b-verdict__texte">Menace détectée. Les 1 036 autres fichiers peuvent être copiés.</p></div></div>
+  <div class="b-verdict b-verdict--alerte"><span class="b-pastille"><svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><div><p class="b-verdict__titre">3 fichiers écartés</p><p class="b-verdict__texte">Archives chiffrées : impossibles à analyser.</p></div></div>
+  <ul class="b-liste"><li><div><div class="b-liste__nom">Factures/relance_mars.docm</div><div class="b-liste__detail">ClamAV : Win.Trojan.Agent-1043</div></div><span class="b-etat b-etat--bloque">Bloqué</span></li><li><div><div class="b-liste__nom">Archives/compta-2025.zip</div><div class="b-liste__detail">Archive chiffrée · 12,4 Mo</div></div><span class="b-etat b-etat--alerte">Écarté</span></li></ul>
 </div>

@@ -1,0 +1,40 @@
+<!-- @dsCard group="Animations" height=620 subtitle="Le bouclier se tourne vers vous, deux ondes, le panneau se pose" -->
+<link rel="stylesheet" href="../demo.css">
+<link rel="stylesheet" href="../sprites.css">
+<style>
+.scene { --cyc: 3600ms; }
+.scene .b-sprite { position: absolute; }
+.fixe { animation: none !important; }
+
+.bouclier { --cote: 200px; left: 50%; margin-left: -100px; top: 6px; animation: bq-images var(--cyc) steps(14, jump-none) infinite, bq-echelle var(--cyc) linear infinite; transform-origin: 50% 55%; }
+@keyframes bq-images { 0% { background-position: 0 0; } 11.7%, 100% { background-position: calc(var(--cote) * (1 - var(--n))) 0; } }
+@keyframes bq-echelle { 0% { transform: scale(.6); } 8% { transform: scale(.95); } 13% { transform: scale(1.08); } 20%, 100% { transform: scale(1); } }
+.onde { position: absolute; left: 50%; top: 110px; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%; border: 6px solid var(--sain); animation: onde var(--cyc) var(--courbe-sortie) infinite; }
+.onde.b { animation-delay: 280ms; }
+@keyframes onde { 0%, 11% { transform: scale(.7); border-color: transparent; } 12% { transform: scale(.7); border-color: var(--sain); } 26% { border-color: var(--sain-fond); } 34%, 100% { transform: scale(1.7); border-color: transparent; } }
+.panneau { position: absolute; left: 70px; right: 70px; bottom: 16px; padding: 12px 20px; animation: pose var(--cyc) var(--courbe-arrivee) infinite; }
+.panneau .b-verdict__titre { font-size: 30px; line-height: 34px; }
+@keyframes pose { 0%, 16.7% { transform: translateY(24px); visibility: hidden; } 16.8% { visibility: visible; } 25%, 100% { transform: none; visibility: visible; } }
+
+/* version réduite : état final, sans mouvement */
+.anim:has(.reduire:checked) .scene *, .anim:has(.reduire:checked) .scene *::after { animation: none !important; transition: none !important; }
+.anim:has(.reduire:checked) .bouclier { background-position: calc(var(--cote) * (1 - var(--n))) 0 !important; }
+.anim:has(.reduire:checked) .onde { display: none; }
+
+</style>
+<div class="demo anim">
+  <label class="opt"><input type="checkbox" class="reduire" id="reduire"> Version réduite (option « Animations réduites » : état final, aucun mouvement)</label>
+  <div class="scene" aria-hidden="true">
+    <div class="onde"></div><div class="onde b"></div>
+    <div class="b-sprite s-bouclier bouclier"></div>
+    <div class="panneau b-verdict b-verdict--sain"><div><p class="b-verdict__titre">Clé saine</p><p class="b-verdict__texte">1 038 fichiers peuvent être copiés.</p></div></div>
+  </div>
+  <ol class="story">
+    <li><b>0 – 420 ms</b>Le bouclier pivote de la tranche vers la face (bande <code>bouclier</code>, 14 images) et grandit de 60 % à 108 % puis 100 % : <code>anim::echelle_bouclier</code>.</li>
+    <li><b>430 – 1 220 ms</b>Deux ondes pleines s'élargissent derrière lui (×0,7 → ×1,7), décalées de 280 ms, et s'éteignent par paliers de couleur.</li>
+    <li><b>600 – 900 ms</b>Le panneau « Clé saine » monte de 24 px et se pose (niveau 3).</li>
+    <li><b>Ensuite</b>Tout est fixe. Le bouton « Choisir la clé de sortie » est actif dès 600 ms.</li>
+    <li><b>Réduite</b>Bouclier de face et panneau affichés d'emblée, sans onde.</li>
+    <li><b>Logiciel</b>Ondes = anneaux SVG de 3 tailles pré-tramées, couleur changée par palier (pas de transparence). ≈ 360 × 300 px par trame pendant 1,2 s.</li>
+  </ol>
+</div>

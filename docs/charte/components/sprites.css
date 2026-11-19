@@ -1,0 +1,17 @@
+/* Séquences 3D pour les APERÇUS (chemins relatifs à ce fichier). Généré depuis 3d/sequences.json. */
+.s-embleme-pivot { --n: 24; --k: 24; background-image: url(../3d/embleme-pivot-jour.png); }
+[data-theme="nuit"] .s-embleme-pivot { background-image: url(../3d/embleme-pivot-nuit.png); }
+.s-embleme-herse { --n: 16; --k: 16; background-image: url(../3d/embleme-herse-jour.png); }
+[data-theme="nuit"] .s-embleme-herse { background-image: url(../3d/embleme-herse-nuit.png); }
+.s-embleme-construction { --n: 32; --k: 32; background-image: url(../3d/embleme-construction-jour.png); }
+[data-theme="nuit"] .s-embleme-construction { background-image: url(../3d/embleme-construction-nuit.png); }
+.s-cle { --n: 16; --k: 16; background-image: url(../3d/cle-jour.png); }
+[data-theme="nuit"] .s-cle { background-image: url(../3d/cle-nuit.png); }
+.s-cle-destination { --n: 16; --k: 16; background-image: url(../3d/cle-destination-jour.png); }
+[data-theme="nuit"] .s-cle-destination { background-image: url(../3d/cle-destination-nuit.png); }
+.s-cle-blanche { --n: 1; --k: 1; background-image: url(../3d/cle-blanche-jour.png); }
+[data-theme="nuit"] .s-cle-blanche { background-image: url(../3d/cle-blanche-nuit.png); }
+.s-bouclier { --n: 14; --k: 14; background-image: url(../3d/bouclier-jour.png); }
+[data-theme="nuit"] .s-bouclier { background-image: url(../3d/bouclier-nuit.png); }
+.s-disque { --n: 18; --k: 18; background-image: url(../3d/disque-jour.png); }
+[data-theme="nuit"] .s-disque { background-image: url(../3d/disque-nuit.png); }

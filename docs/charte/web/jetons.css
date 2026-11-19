@@ -1,0 +1,185 @@
+/* GÉNÉRÉ par docs/charte/outils/jetons.py depuis tokens.json : ne pas modifier à la main.
+   Interface web du serveur : charger ce fichier puis ../components/bundle.css.
+   Polices servies par le serveur lui-même (aucune ressource externe). */
+@font-face { font-family: "Barlow Condensed"; src: url("../fonts/BarlowCondensed-SemiBold.ttf") format("truetype"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Barlow Condensed"; src: url("../fonts/BarlowCondensed-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../fonts/AtkinsonHyperlegible-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../fonts/AtkinsonHyperlegible-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("../fonts/JetBrainsMono.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+
+:root, [data-theme="jour"] {
+  color-scheme: light;
+  --sol-haut: #f3f0ea;
+  --surface: #eeebe4;
+  --sol-bas: #e6e2d9;
+  --surface-creuse: #e3dfd5;
+  --surface-haute: #f8f6f2;
+  --dalle-haut: #fcfbf8;
+  --dalle-bas: #f3f0ea;
+  --bloc-haut: #fdfcfa;
+  --bloc-bas: #ebe7df;
+  --trait: #cfc9bd;
+  --trait-fort: #7d7566;
+  --lumiere: #ffffffd9;
+  --ombre-contact: #2a221647;
+  --ombre-diffuse: #2a221624;
+  --ombre-interne: #2a22162e;
+  --voile: #1c1f2299;
+  --encre: #1c1f22;
+  --encre-haut: #33383d;
+  --encre-bas: #16191c;
+  --encre-douce: #53585c;
+  --sur-encre: #f8f6f2;
+  --bandeau: #1c1f22;
+  --sur-bandeau: #f8f6f2;
+  --laiton: #8a6420;
+  --laiton-clair: #d6ad5a;
+  --laiton-fonce: #5c4113;
+  --laiton-pale: #e9dcc0;
+  --sain: #1e6b45;
+  --sain-fonce: #124a2e;
+  --sain-fond: #ddefe3;
+  --alerte: #8f5300;
+  --alerte-fonce: #5f3700;
+  --alerte-fond: #f7e6c8;
+  --menace: #a8231b;
+  --menace-fonce: #6e130d;
+  --menace-fond: #f6d9d5;
+  --analyse: #285a86;
+  --analyse-fonce: #173a5a;
+  --analyse-fond: #dce7f2;
+  --hors-service: #5b5f66;
+  --relief-creuse: inset 0 2px 3px rgba(42,34,22,.18), inset 0 -1px 0 rgba(255,255,255,.7);
+  --relief-dalle: inset 0 1px 0 rgba(255,255,255,.85), 0 1px 0 rgba(42,34,22,.12), 0 2px 6px rgba(42,34,22,.10);
+  --relief-bloc: inset 0 1px 0 rgba(255,255,255,.85), 0 4px 0 #7d7566, 0 6px 10px rgba(42,34,22,.20);
+  --relief-appuye: inset 0 2px 3px rgba(42,34,22,.25), 0 1px 0 #7d7566;
+  --relief-rempart: inset 0 1px 0 rgba(255,255,255,.85), 0 6px 0 #7d7566, 0 14px 24px rgba(42,34,22,.24);
+}
+[data-theme="nuit"] {
+  color-scheme: dark;
+  --sol-haut: #1a1e22;
+  --surface: #15181b;
+  --sol-bas: #111316;
+  --surface-creuse: #0d0f11;
+  --surface-haute: #1f2327;
+  --dalle-haut: #262b30;
+  --dalle-bas: #1d2125;
+  --bloc-haut: #30363c;
+  --bloc-bas: #252a2f;
+  --trait: #343a40;
+  --trait-fort: #6b737b;
+  --lumiere: #ffffff1f;
+  --ombre-contact: #000000b3;
+  --ombre-diffuse: #00000080;
+  --ombre-interne: #000000a6;
+  --voile: #000000b3;
+  --encre: #ece8e0;
+  --encre-haut: #f6f3ec;
+  --encre-bas: #d9d4c8;
+  --encre-douce: #a9aba7;
+  --sur-encre: #15181b;
+  --bandeau: #0b0d0f;
+  --sur-bandeau: #ece8e0;
+  --laiton: #d4a64a;
+  --laiton-clair: #f2d08a;
+  --laiton-fonce: #8f6a22;
+  --laiton-pale: #3a3020;
+  --sain: #5cc48f;
+  --sain-fonce: #2f8a5c;
+  --sain-fond: #15301f;
+  --alerte: #f0a93c;
+  --alerte-fonce: #a86f14;
+  --alerte-fond: #372812;
+  --menace: #ff7b6e;
+  --menace-fonce: #b8453a;
+  --menace-fond: #3d1a17;
+  --analyse: #7fb2e0;
+  --analyse-fonce: #3f78ab;
+  --analyse-fond: #172838;
+  --hors-service: #9aa0a8;
+  --relief-creuse: inset 0 2px 4px rgba(0,0,0,.65), inset 0 -1px 0 rgba(255,255,255,.06);
+  --relief-dalle: inset 0 1px 0 rgba(255,255,255,.12), 0 1px 0 rgba(0,0,0,.7), 0 2px 6px rgba(0,0,0,.5);
+  --relief-bloc: inset 0 1px 0 rgba(255,255,255,.12), 0 4px 0 #0d0f11, 0 6px 10px rgba(0,0,0,.6);
+  --relief-appuye: inset 0 2px 4px rgba(0,0,0,.6), 0 1px 0 #0d0f11;
+  --relief-rempart: inset 0 1px 0 rgba(255,255,255,.12), 0 6px 0 #0d0f11, 0 14px 24px rgba(0,0,0,.7);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="jour"]) {
+    color-scheme: dark;
+    --sol-haut: #1a1e22;
+    --surface: #15181b;
+    --sol-bas: #111316;
+    --surface-creuse: #0d0f11;
+    --surface-haute: #1f2327;
+    --dalle-haut: #262b30;
+    --dalle-bas: #1d2125;
+    --bloc-haut: #30363c;
+    --bloc-bas: #252a2f;
+    --trait: #343a40;
+    --trait-fort: #6b737b;
+    --lumiere: #ffffff1f;
+    --ombre-contact: #000000b3;
+    --ombre-diffuse: #00000080;
+    --ombre-interne: #000000a6;
+    --voile: #000000b3;
+    --encre: #ece8e0;
+    --encre-haut: #f6f3ec;
+    --encre-bas: #d9d4c8;
+    --encre-douce: #a9aba7;
+    --sur-encre: #15181b;
+    --bandeau: #0b0d0f;
+    --sur-bandeau: #ece8e0;
+    --laiton: #d4a64a;
+    --laiton-clair: #f2d08a;
+    --laiton-fonce: #8f6a22;
+    --laiton-pale: #3a3020;
+    --sain: #5cc48f;
+    --sain-fonce: #2f8a5c;
+    --sain-fond: #15301f;
+    --alerte: #f0a93c;
+    --alerte-fonce: #a86f14;
+    --alerte-fond: #372812;
+    --menace: #ff7b6e;
+    --menace-fonce: #b8453a;
+    --menace-fond: #3d1a17;
+    --analyse: #7fb2e0;
+    --analyse-fonce: #3f78ab;
+    --analyse-fond: #172838;
+    --hors-service: #9aa0a8;
+    --relief-creuse: inset 0 2px 4px rgba(0,0,0,.65), inset 0 -1px 0 rgba(255,255,255,.06);
+    --relief-dalle: inset 0 1px 0 rgba(255,255,255,.12), 0 1px 0 rgba(0,0,0,.7), 0 2px 6px rgba(0,0,0,.5);
+    --relief-bloc: inset 0 1px 0 rgba(255,255,255,.12), 0 4px 0 #0d0f11, 0 6px 10px rgba(0,0,0,.6);
+    --relief-appuye: inset 0 2px 4px rgba(0,0,0,.6), 0 1px 0 #0d0f11;
+    --relief-rempart: inset 0 1px 0 rgba(255,255,255,.12), 0 6px 0 #0d0f11, 0 14px 24px rgba(0,0,0,.7);
+  }
+}
+:root {
+  --pas-0: 4px;
+  --pas-1: 8px;
+  --pas-2: 16px;
+  --pas-3: 24px;
+  --pas-4: 40px;
+  --pas-5: 64px;
+  --cible-min: 48px;
+  --cible: 64px;
+  --touche: 56px;
+  --rayon-s: 4px;
+  --rayon-m: 8px;
+  --rayon-l: 16px;
+  --rayon-xl: 24px;
+  --duree-appui: 80ms;
+  --duree-courte: 150ms;
+  --duree-ecran: 300ms;
+  --duree-objet: 600ms;
+  --duree-scene: 900ms;
+  --duree-boucle: 1600ms;
+  --duree-demarrage: 2200ms;
+  --courbe-arrivee: cubic-bezier(.5,0,.3,1);
+  --courbe-sortie: cubic-bezier(.4,0,1,1);
+  --courbe-lourde: cubic-bezier(.7,0,.2,1);
+  --courbe-ressort: cubic-bezier(.3,1.45,.5,1);
+  --courbe-lineaire: linear;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-sans: "Atkinson Hyperlegible", "DejaVu Sans", sans-serif;
+  --font-mono: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+}

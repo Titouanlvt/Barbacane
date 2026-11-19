@@ -1,0 +1,35 @@
+<!-- @dsCard group="Animations" height=620 subtitle="La herse tombe, la porte tremble, le panneau descend" -->
+<link rel="stylesheet" href="../demo.css">
+<link rel="stylesheet" href="../sprites.css">
+<style>
+.scene { --cyc: 3600ms; }
+.scene .b-sprite { position: absolute; }
+.fixe { animation: none !important; }
+
+.emb { --cote: 220px; left: 50%; margin-left: -110px; top: -6px; animation: herse var(--cyc) steps(16, jump-none) infinite, secousse var(--cyc) linear infinite; }
+@keyframes herse { 0% { background-position: 0 0; } 15%, 100% { background-position: calc(var(--cote) * (1 - var(--n))) 0; } }
+@keyframes secousse { 0%, 15% { transform: none; } 17% { transform: translateX(-4px); } 19% { transform: translateX(3.2px); } 21% { transform: translateX(-2.2px); } 23% { transform: translateX(1.2px); } 25% { transform: translateX(-.5px); } 27%, 100% { transform: none; } }
+.panneau { position: absolute; left: 70px; right: 70px; bottom: 16px; padding: 12px 20px; animation: tombe var(--cyc) var(--courbe-arrivee) infinite; }
+.panneau .b-verdict__titre { font-size: 30px; line-height: 34px; }
+.panneau .b-pastille { width: 56px; height: 56px; }
+@keyframes tombe { 0%, 16.6% { transform: translateY(-24px); visibility: hidden; } 16.7% { visibility: visible; } 25%, 100% { transform: none; visibility: visible; } }
+
+/* version réduite : état final, sans mouvement */
+.anim:has(.reduire:checked) .scene *, .anim:has(.reduire:checked) .scene *::after { animation: none !important; transition: none !important; }
+.anim:has(.reduire:checked) .emb { background-position: calc(var(--cote) * (1 - var(--n))) 0 !important; }
+</style>
+<div class="demo anim">
+  <label class="opt"><input type="checkbox" class="reduire" id="reduire"> Version réduite (option « Animations réduites » : état final, aucun mouvement)</label>
+  <div class="scene" aria-hidden="true">
+    <div class="b-sprite s-embleme-herse emb"></div>
+    <div class="panneau b-verdict b-verdict--bloque"><span class="b-pastille"><svg viewBox="0 0 24 24"><path d="m15 9-6 6"/><path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z"/><path d="m9 9 6 6"/></svg></span><div><p class="b-verdict__titre">2 fichiers bloqués</p><p class="b-verdict__texte">Menace détectée. Ils ne seront pas copiés.</p></div></div>
+  </div>
+  <ol class="story">
+    <li><b>0 – 540 ms</b>La herse tombe (bande <code>embleme-herse</code>, 16 images, courbe lourde) : <code>anim::herse</code>.</li>
+    <li><b>540 – 970 ms</b>L'emblème seul tremble : ±4 px amorti, 3 allers-retours. L'écran ne bouge pas.</li>
+    <li><b>600 – 900 ms</b>Le panneau « N fichiers bloqués » descend de 24 px (octogone, rouge, mot).</li>
+    <li><b>Ensuite</b>Herse fermée, fixe. Pas de clignotement ni de son : le verdict est un fait, pas une alarme.</li>
+    <li><b>Réduite</b>Herse fermée et panneau affichés d'emblée.</li>
+    <li><b>Logiciel</b>1 image + 1 translation ; ≈ 220 × 220 px par trame pendant 1 s, puis rien.</li>
+  </ol>
+</div>

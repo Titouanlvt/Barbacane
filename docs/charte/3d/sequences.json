@@ -1,0 +1,77 @@
+{
+ "cote": 240,
+ "sequences": {
+  "embleme-pivot": {
+   "images": 24,
+   "ips": 15,
+   "note": "Veille : l'emblème pivote de -22° à +22° puis revient (lecture aller-retour).",
+   "poids": {
+    "jour": 49450,
+    "nuit": 57186
+   }
+  },
+  "embleme-herse": {
+   "images": 16,
+   "ips": 30,
+   "note": "Verdict bloqué : la herse tombe (courbe lourde).",
+   "poids": {
+    "jour": 11139,
+    "nuit": 11624
+   }
+  },
+  "embleme-construction": {
+   "images": 32,
+   "ips": 15,
+   "note": "Démarrage : les tours puis la courtine montent du sol, la herse se lève.",
+   "poids": {
+    "jour": 23887,
+    "nuit": 27646
+   }
+  },
+  "cle": {
+   "images": 16,
+   "ips": 30,
+   "note": "Insertion : la clé à analyser pivote de 62° vers la porte.",
+   "poids": {
+    "jour": 19362,
+    "nuit": 21984
+   }
+  },
+  "cle-destination": {
+   "images": 16,
+   "ips": 30,
+   "note": "Clé de destination (laiton) : pivote de -62° à 0°.",
+   "poids": {
+    "jour": 19496,
+    "nuit": 20101
+   }
+  },
+  "cle-blanche": {
+   "images": 1,
+   "ips": 1,
+   "note": "Blanchiment : la clé une fois blanchie (une seule image), révélée par une fenêtre qui descend.",
+   "poids": {
+    "jour": 1530,
+    "nuit": 1411
+   }
+  },
+  "bouclier": {
+   "images": 14,
+   "ips": 30,
+   "note": "Verdict sain : le bouclier pivote de la tranche vers la face.",
+   "poids": {
+    "jour": 22588,
+    "nuit": 23097
+   }
+  },
+  "disque": {
+   "images": 18,
+   "ips": 30,
+   "note": "Disque : 18 images = un demi-tour (reflets symétriques). Boucle 0,6 s.",
+   "poids": {
+    "jour": 13215,
+    "nuit": 12693
+   }
+  }
+ }
+}

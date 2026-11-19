@@ -1,0 +1,149 @@
+# GÉNÉRÉ par docs/charte/outils/jetons.py depuis tokens.json : ne pas modifier à la main.
+# Charte Barbacane v2.
+
+[couleur.jour]
+sol_haut = "#f3f0ea"
+surface = "#eeebe4"
+sol_bas = "#e6e2d9"
+surface_creuse = "#e3dfd5"
+surface_haute = "#f8f6f2"
+dalle_haut = "#fcfbf8"
+dalle_bas = "#f3f0ea"
+bloc_haut = "#fdfcfa"
+bloc_bas = "#ebe7df"
+trait = "#cfc9bd"
+trait_fort = "#7d7566"
+lumiere = "#ffffffd9"
+ombre_contact = "#2a221647"
+ombre_diffuse = "#2a221624"
+ombre_interne = "#2a22162e"
+voile = "#1c1f2299"
+encre = "#1c1f22"
+encre_haut = "#33383d"
+encre_bas = "#16191c"
+encre_douce = "#53585c"
+sur_encre = "#f8f6f2"
+bandeau = "#1c1f22"
+sur_bandeau = "#f8f6f2"
+laiton = "#8a6420"
+laiton_clair = "#d6ad5a"
+laiton_fonce = "#5c4113"
+laiton_pale = "#e9dcc0"
+sain = "#1e6b45"
+sain_fonce = "#124a2e"
+sain_fond = "#ddefe3"
+alerte = "#8f5300"
+alerte_fonce = "#5f3700"
+alerte_fond = "#f7e6c8"
+menace = "#a8231b"
+menace_fonce = "#6e130d"
+menace_fond = "#f6d9d5"
+analyse = "#285a86"
+analyse_fonce = "#173a5a"
+analyse_fond = "#dce7f2"
+hors_service = "#5b5f66"
+
+[couleur.nuit]
+sol_haut = "#1a1e22"
+surface = "#15181b"
+sol_bas = "#111316"
+surface_creuse = "#0d0f11"
+surface_haute = "#1f2327"
+dalle_haut = "#262b30"
+dalle_bas = "#1d2125"
+bloc_haut = "#30363c"
+bloc_bas = "#252a2f"
+trait = "#343a40"
+trait_fort = "#6b737b"
+lumiere = "#ffffff1f"
+ombre_contact = "#000000b3"
+ombre_diffuse = "#00000080"
+ombre_interne = "#000000a6"
+voile = "#000000b3"
+encre = "#ece8e0"
+encre_haut = "#f6f3ec"
+encre_bas = "#d9d4c8"
+encre_douce = "#a9aba7"
+sur_encre = "#15181b"
+bandeau = "#0b0d0f"
+sur_bandeau = "#ece8e0"
+laiton = "#d4a64a"
+laiton_clair = "#f2d08a"
+laiton_fonce = "#8f6a22"
+laiton_pale = "#3a3020"
+sain = "#5cc48f"
+sain_fonce = "#2f8a5c"
+sain_fond = "#15301f"
+alerte = "#f0a93c"
+alerte_fonce = "#a86f14"
+alerte_fond = "#372812"
+menace = "#ff7b6e"
+menace_fonce = "#b8453a"
+menace_fond = "#3d1a17"
+analyse = "#7fb2e0"
+analyse_fonce = "#3f78ab"
+analyse_fond = "#172838"
+hors_service = "#9aa0a8"
+
+[espace]
+pas_0 = 4
+pas_1 = 8
+pas_2 = 16
+pas_3 = 24
+pas_4 = 40
+pas_5 = 64
+cible_min = 48
+cible = 64
+touche = 56
+
+[rayon]
+rayon_s = 4
+rayon_m = 8
+rayon_l = 16
+rayon_xl = 24
+
+[duree]
+duree_appui = 80
+duree_courte = 150
+duree_ecran = 300
+duree_objet = 600
+duree_scene = 900
+duree_boucle = 1600
+duree_demarrage = 2200
+
+[courbe]
+courbe_arrivee = "cubic-bezier(.5,0,.3,1)"
+courbe_sortie = "cubic-bezier(.4,0,1,1)"
+courbe_lourde = "cubic-bezier(.7,0,.2,1)"
+courbe_ressort = "cubic-bezier(.3,1.45,.5,1)"
+courbe_lineaire = "linear"
+
+[relief.jour]
+relief_creuse = "inset 0 2px 3px rgba(42,34,22,.18), inset 0 -1px 0 rgba(255,255,255,.7)"
+relief_dalle = "inset 0 1px 0 rgba(255,255,255,.85), 0 1px 0 rgba(42,34,22,.12), 0 2px 6px rgba(42,34,22,.10)"
+relief_bloc = "inset 0 1px 0 rgba(255,255,255,.85), 0 4px 0 #7d7566, 0 6px 10px rgba(42,34,22,.20)"
+relief_appuye = "inset 0 2px 3px rgba(42,34,22,.25), 0 1px 0 #7d7566"
+relief_rempart = "inset 0 1px 0 rgba(255,255,255,.85), 0 6px 0 #7d7566, 0 14px 24px rgba(42,34,22,.24)"
+
+[relief.nuit]
+relief_creuse = "inset 0 2px 4px rgba(0,0,0,.65), inset 0 -1px 0 rgba(255,255,255,.06)"
+relief_dalle = "inset 0 1px 0 rgba(255,255,255,.12), 0 1px 0 rgba(0,0,0,.7), 0 2px 6px rgba(0,0,0,.5)"
+relief_bloc = "inset 0 1px 0 rgba(255,255,255,.12), 0 4px 0 #0d0f11, 0 6px 10px rgba(0,0,0,.6)"
+relief_appuye = "inset 0 2px 4px rgba(0,0,0,.6), 0 1px 0 #0d0f11"
+relief_rempart = "inset 0 1px 0 rgba(255,255,255,.12), 0 6px 0 #0d0f11, 0 14px 24px rgba(0,0,0,.7)"
+
+[texte]
+affiche = { famille = "display", taille = 64, interligne = 64, graisse = 700 }
+titre_ecran = { famille = "display", taille = 48, interligne = 52, graisse = 600 }
+verdict = { famille = "display", taille = 40, interligne = 44, graisse = 700 }
+consigne = { famille = "sans", taille = 30, interligne = 38, graisse = 400 }
+corps = { famille = "sans", taille = 22, interligne = 30, graisse = 400 }
+bouton = { famille = "sans", taille = 22, interligne = 26, graisse = 700 }
+legende = { famille = "sans", taille = 18, interligne = 24, graisse = 400 }
+fichier = { famille = "mono", taille = 18, interligne = 24, graisse = 400 }
+web_mono = { famille = "mono", taille = 13, interligne = 18, graisse = 400 }
+web_chiffre = { famille = "display", taille = 40, interligne = 44, graisse = 700 }
+web_titre = { famille = "display", taille = 28, interligne = 34, graisse = 600 }
+web_section = { famille = "display", taille = 20, interligne = 26, graisse = 600 }
+web_corps = { famille = "sans", taille = 15, interligne = 22, graisse = 400 }
+web_tableau = { famille = "sans", taille = 14, interligne = 20, graisse = 400 }

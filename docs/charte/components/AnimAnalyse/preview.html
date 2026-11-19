@@ -1,0 +1,43 @@
+<!-- @dsCard group="Animations" height=600 subtitle="Faisceau, parallaxe des fichiers, barre vivante" -->
+<link rel="stylesheet" href="../demo.css">
+<link rel="stylesheet" href="../sprites.css">
+<style>
+.scene { --cyc: 1600ms; }
+.scene .b-sprite { position: absolute; }
+.fixe { animation: none !important; }
+
+.pile { position: absolute; left: 50%; top: 26px; width: 300px; height: 190px; margin-left: -150px; border-radius: 12px; overflow: hidden; }
+.lignes { position: absolute; inset: 0 0 -190px 0; padding: 14px 18px; display: grid; gap: 12px; align-content: start; animation: defile 6s linear infinite; }
+.lignes i { display: block; height: 10px; border-radius: 5px; background: var(--trait); }
+.lignes i:nth-child(3n) { width: 70%; } .lignes i:nth-child(3n+1) { width: 88%; } .lignes i:nth-child(3n+2) { width: 54%; }
+@keyframes defile { to { transform: translateY(-190px); } }
+.faisceau { position: absolute; left: -8px; right: -8px; top: 0; height: 6px; border-radius: 3px; background: linear-gradient(180deg, color-mix(in srgb, var(--analyse) 60%, #fff), var(--analyse)); box-shadow: 0 0 0 3px var(--analyse-fond); animation: balaie var(--cyc) var(--courbe-arrivee) infinite alternate; }
+@keyframes balaie { to { transform: translateY(184px); } }
+.cle { --cote: 120px; left: 34px; top: 70px; }
+.barre { position: absolute; left: 60px; right: 60px; bottom: 54px; }
+.msg { bottom: 4px; font-size: 26px; }
+
+/* version réduite : état final, sans mouvement */
+.anim:has(.reduire:checked) .scene *, .anim:has(.reduire:checked) .scene *::after { animation: none !important; transition: none !important; }
+
+.anim:has(.reduire:checked) .faisceau { display: none; }
+.anim:has(.reduire:checked) .cle { background-position: calc(var(--cote) * (1 - var(--n))) 0; }
+
+</style>
+<div class="demo anim">
+  <label class="opt"><input type="checkbox" class="reduire" id="reduire"> Version réduite (option « Animations réduites » : état final, aucun mouvement)</label>
+  <div class="scene" aria-hidden="true">
+    <div class="b-sprite s-cle cle fixe" style="background-position: calc(120px * -15) 0"></div>
+    <div class="pile b-dalle"><div class="lignes"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="faisceau"></div></div>
+    <div class="barre"><div class="b-barre"><div class="b-barre__rempli" style="--p:38"></div></div></div>
+    <div class="msg">Analyse en cours · 412 / 1 038</div>
+  </div>
+  <ol class="story">
+    <li><b>Boucle 1 600 ms</b>Le faisceau descend puis remonte sur la pile (courbe d'arrivée, aller-retour) : <code>anim::balayage</code>.</li>
+    <li><b>Boucle 6 s</b>Plan arrière : les lignes de fichiers défilent lentement vers le haut (parallaxe, 32 px/s).</li>
+    <li><b>Boucle 900 ms</b>Barre : rayures qui défilent, tête laiton qui pulse (1 200 ms).</li>
+    <li><b>Chaque fichier</b>Le compteur et le nom du fichier changent (texte, pas d'animation).</li>
+    <li><b>Réduite</b>Pas de faisceau ni de défilement ; la barre et le compteur avancent.</li>
+    <li><b>Logiciel</b>3 couches : lignes (translation), faisceau (rectangle), barre. ≈ 300 × 190 + 900 × 24 px par trame.</li>
+  </ol>
+</div>

@@ -1,52 +1,26 @@
-<!-- @dsCard group="Actions" height=420 -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
-<style>
-body{margin:0;background:var(--surface);color:var(--encre);font-family:"Atkinson Hyperlegible","DejaVu Sans",sans-serif}
-.w{display:grid;gap:var(--pas-3);padding:var(--pas-3)}
-.row{display:flex;gap:var(--pas-3);align-items:center;flex-wrap:wrap}
-.cap{font-size:14px;line-height:20px;color:var(--encre-douce);margin-bottom:var(--pas-1)}
-/* relief : la tranche (box-shadow dur, sans flou) disparaît quand on appuie */
-.btn{--tranche:var(--trait);position:relative;min-height:var(--cible-min);padding:0 var(--pas-4);border-radius:var(--rayon-m);font:700 24px/28px "Atkinson Hyperlegible",sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:var(--pas-2);box-shadow:6px 6px 0 var(--tranche);transition:transform 120ms cubic-bezier(.5,0,.3,1),box-shadow 120ms cubic-bezier(.5,0,.3,1),background-color 150ms;overflow:hidden}
-.btn:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--tranche)}
-.btn:active,.btn.appui{transform:translate(6px,6px);box-shadow:0 0 0 var(--tranche);transition-duration:60ms}
-.btn:focus-visible{outline:4px solid var(--laiton);outline-offset:6px}
-.prim{background:var(--encre);color:var(--sur-encre);border:2px solid var(--encre);--tranche:var(--laiton)}
-.sec{background:var(--surface-haute);color:var(--encre);border:2px solid var(--encre)}
-.dang{background:var(--menace);color:var(--sur-encre);border:2px solid var(--menace);--tranche:var(--encre)}
-.btn[disabled]{background:var(--surface);color:var(--encre-douce);border-color:var(--trait);box-shadow:none;transform:none;cursor:not-allowed}
-/* chargement : trois créneaux qui montent tour à tour */
-.cren{display:inline-flex;gap:4px;align-items:flex-end;height:20px}
-.cren i{width:6px;height:10px;background:currentColor;animation:cren 900ms ease-in-out infinite}
-.cren i:nth-child(2){animation-delay:150ms}.cren i:nth-child(3){animation-delay:300ms}
-@keyframes cren{0%,100%{height:8px}40%{height:20px}}
-/* maintenir pour confirmer : remplissage pendant 2 s */
-.tenir::after{content:"";position:absolute;inset:0;background:var(--encre);opacity:.35;transform-origin:0 50%;transform:scaleX(0)}
-.tenir:active::after,.tenir.demo::after{transform:scaleX(1);transition:transform 2s linear}
-.tenir.demo::after{animation:tenir 3s linear infinite}
-@keyframes tenir{0%{transform:scaleX(0)}66%,100%{transform:scaleX(1)}}
-.tenir span{position:relative;z-index:1}
-/* validé : la coche se trace */
-.ok{background:var(--sain);color:var(--sur-encre);border:2px solid var(--sain);--tranche:var(--encre)}
-.ok path{stroke-dasharray:24;stroke-dashoffset:24;animation:trace 2s ease-out infinite}
-@keyframes trace{0%,10%{stroke-dashoffset:24}35%,100%{stroke-dashoffset:0}}
-@media (prefers-reduced-motion:reduce){.btn{transition:none}.cren i,.tenir.demo::after,.ok path{animation:none}.ok path{stroke-dashoffset:0}}
-</style>
-<div class="w">
-<div><div class="cap">Au repos · survol (soulève) · appui (s'enfonce) · focus clavier</div>
-<div class="row">
-<button class="btn prim" id="b1">Copier vers la clé de destination</button>
-<button class="btn sec" id="b2">Annuler</button>
-<button class="btn prim appui" id="b3">Appuyé</button>
-<button class="btn sec" id="b4" style="outline:4px solid var(--laiton);outline-offset:6px">Focus</button>
-</div></div>
-<div><div class="cap">En cours · désactivé · action terminée</div>
-<div class="row">
-<button class="btn prim" id="b5" aria-busy="true"><span class="cren"><i></i><i></i><i></i></span>Préparation…</button>
-<button class="btn prim" id="b6" disabled>Copier vers la clé de destination</button>
-<button class="btn ok" id="b7"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>Copie terminée</button>
-</div></div>
-<div><div class="cap">Destructif : maintenir 2 s pour confirmer</div>
-<div class="row">
-<button class="btn dang tenir demo" id="b8"><span>Maintenir pour effacer</span></button>
-</div></div>
+<!-- @dsCard group="Actions" height=380 subtitle="Normal, appuyé, désactivé, danger, en cours" -->
+<link rel="stylesheet" href="../demo.css">
+<div class="demo">
+ <div class="b-ecran" style="background:none;display:grid;gap:16px">
+  <p class="demo-titre">Borne : 64 px de haut, tranche de 4 px</p>
+  <div class="demo-rang">
+    <button class="b-btn b-btn--principal">Analyser</button>
+    <button class="b-btn">Annuler</button>
+    <button class="b-btn b-btn--danger">Blanchir la clé</button>
+    <button class="b-btn b-btn--principal est-appuye">Appuyé</button>
+    <button class="b-btn b-btn--principal" disabled>Désactivé</button>
+    <button class="b-btn b-btn--principal" aria-busy="true">Préparation…</button>
+  </div>
+ </div>
+ <div class="b-page" style="background:none;display:grid;gap:16px">
+  <p class="demo-titre">Serveur web : 40 px, tranche de 3 px</p>
+  <div class="demo-rang">
+    <button class="b-btn b-btn--principal">Enrôler une borne</button>
+    <button class="b-btn">Exporter</button>
+    <button class="b-btn b-btn--danger">Révoquer</button>
+    <button class="b-btn" disabled>Désactivé</button>
+    <button class="b-btn b-btn--discret">Annuler</button>
+  </div>
+ </div>
+  <p class="demo-leg">Touchez un bouton : il s'enfonce de 3 px en 80 ms et sa tranche passe de 4 à 1 px.</p>
 </div>

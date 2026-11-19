@@ -1,0 +1,44 @@
+<!-- @dsCard group="Animations" height=600 subtitle="Le disque tourne, le laser avance, l'anneau gravé grandit" -->
+<link rel="stylesheet" href="../demo.css">
+<link rel="stylesheet" href="../sprites.css">
+<style>
+.scene { --cyc: 6000ms; }
+.scene .b-sprite { position: absolute; }
+.fixe { animation: none !important; }
+
+@property --r { syntax: "<percentage>"; inherits: false; initial-value: 36%; }
+.disque { --cote: 240px; left: 50%; margin-left: -120px; top: -20px; --d: 600ms; --iter: infinite; }
+.grave { position: absolute; left: 50%; top: 50px; width: 202px; height: 93px; margin-left: -101px; border-radius: 50%; background: radial-gradient(closest-side, transparent 36%, color-mix(in srgb, var(--analyse-fonce) 55%, transparent) 36%, color-mix(in srgb, var(--analyse-fonce) 55%, transparent) var(--r), transparent var(--r)); animation: grave var(--cyc) linear infinite; }
+@keyframes grave { from { --r: 37%; } to { --r: 97%; } }
+.laser { position: absolute; top: 88px; left: 50%; width: 12px; height: 34px; margin-left: 30px; border-radius: 3px; background: linear-gradient(180deg, var(--encre-haut), var(--encre-bas)); box-shadow: 0 3px 0 var(--laiton-fonce); animation: laser var(--cyc) linear infinite; }
+.laser::after { content: ""; position: absolute; left: 4px; top: -8px; width: 4px; height: 8px; background: var(--analyse); }
+@keyframes laser { from { transform: translateX(6px); } to { transform: translateX(62px); } }
+.barre { position: absolute; left: 60px; right: 60px; bottom: 54px; }
+.msg { bottom: 4px; font-size: 24px; }
+
+/* version réduite : état final, sans mouvement */
+.anim:has(.reduire:checked) .scene *, .anim:has(.reduire:checked) .scene *::after { animation: none !important; transition: none !important; }
+
+.anim:has(.reduire:checked) .disque { background-position: 0 0; }
+.anim:has(.reduire:checked) .grave { --r: 70%; }
+.anim:has(.reduire:checked) .laser { transform: translateX(40px); }
+
+</style>
+<div class="demo anim">
+  <label class="opt"><input type="checkbox" class="reduire" id="reduire"> Version réduite (option « Animations réduites » : état final, aucun mouvement)</label>
+  <div class="scene" aria-hidden="true">
+    <div class="b-sprite s-disque disque"></div>
+    <div class="grave"></div>
+    <div class="laser"></div>
+    <div class="barre"><div class="b-barre"><div class="b-barre__rempli" style="--p:55"></div></div></div>
+    <div class="msg">Gravure en cours · 352 Mo / 640 Mo</div>
+  </div>
+  <ol class="story">
+    <li><b>Boucle 600 ms</b>Le disque tourne : bande <code>disque</code>, 18 images = un demi-tour (les reflets sont symétriques).</li>
+    <li><b>Avancement réel</b>L'anneau gravé (plus sombre) s'élargit du centre vers le bord, et la tête laser le suit, à la vitesse de la gravure.</li>
+    <li><b>Barre</b>Mo gravés / total, vitesse, temps restant.</li>
+    <li><b>Fin</b>Le disque s'arrête sur l'image 0, anneau plein ; « Gravure terminée. Le tiroir va s'ouvrir. »</li>
+    <li><b>Réduite</b>Disque immobile ; l'anneau et la tête suivent la progression sans tourner.</li>
+    <li><b>Logiciel</b>1 image + 1 anneau (2 ellipses pleines) + 1 rectangle ; ≈ 240 × 160 px par trame.</li>
+  </ol>
+</div>

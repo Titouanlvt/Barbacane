@@ -1,14 +1,16 @@
 # Verdict
 
-Bandeau d'état en haut de l'écran d'analyse et de résultat : icône 44 px, titre en Barlow Condensed 700, détail en Atkinson 18 px.
+Panneau de niveau 3 (rempart) : fond `*-fond` éclairé en haut, bord 2 px et tranche 6 px dans la couleur d'état, pastille en relief avec l'icône. C'est le seul élément de l'écran à ce niveau.
 
-Quatre états, chacun avec sa couleur, son fond et une icône de forme différente :
+| Verdict | Couleur | Forme de la pastille | Mot |
+| --- | --- | --- | --- |
+| Sain | `sain` | cercle, bouclier coché | « Clé saine » |
+| Bloqué | `menace` | octogone, croix | « N fichiers bloqués » |
+| Écarté | `alerte` | cercle, triangle | « N fichiers écartés » |
+| En cours | `analyse` | cercle, anneau ouvert | « Analyse en cours » |
 
-| État | Jetons | Icône |
-| --- | --- | --- |
-| En cours | `analyse` / `analyse-fond` | cercle ouvert (tourne) |
-| Sain | `sain` / `sain-fond` | bouclier coché |
-| Écarté | `alerte` / `alerte-fond` | triangle |
-| Menace | `menace` / `menace-fond` | octogone barré |
+Trois signaux redondants (couleur, forme, mot) : le verdict se comprend en daltonisme, en noir et blanc et de loin. Le titre donne un nombre et un fait ; le texte dit ce qui arrive aux fichiers.
 
-Le titre donne un nombre et un fait. Le détail dit ce qui a été fait des fichiers. Un seul bandeau à la fois : s'il y a menace et fichiers écartés, la menace l'emporte et les écartés apparaissent dans la liste.
+Sous le panneau, la liste (niveau −1) montre d'abord les fichiers bloqués, puis les écartés, avec la raison en mono. Les fichiers sains ne sont listés que sur demande.
+
+Animation d'arrivée : voir AnimSain et AnimBloque.

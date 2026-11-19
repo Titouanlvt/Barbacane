@@ -1,0 +1,41 @@
+<!-- @dsCard group="Animations" height=600 subtitle="Une lame de laiton descend et révèle la clé blanchie" -->
+<link rel="stylesheet" href="../demo.css">
+<link rel="stylesheet" href="../sprites.css">
+<style>
+.scene { --cyc: 3000ms; }
+.scene .b-sprite { position: absolute; }
+.fixe { animation: none !important; }
+
+.cle, .blanche { --cote: 220px; left: 50%; margin-left: -110px; top: 0; }
+.blanche { animation: revele var(--cyc) steps(6, jump-end) infinite; }
+@keyframes revele { from { clip-path: inset(0 0 calc(100% - 66px) 0); } to { clip-path: inset(0 0 calc(100% - 156px) 0); } }
+.lame { position: absolute; left: 50%; margin-left: -90px; width: 180px; top: 63px; height: 6px; border-radius: 3px; background: linear-gradient(180deg, var(--laiton-clair), var(--laiton)); box-shadow: 0 2px 0 var(--laiton-fonce); animation: lame var(--cyc) steps(6, jump-end) infinite; }
+@keyframes lame { from { transform: translateY(0); } to { transform: translateY(90px); } }
+.barre { position: absolute; left: 60px; right: 60px; bottom: 54px; }
+.msg { bottom: 4px; font-size: 24px; }
+
+/* version réduite : état final, sans mouvement */
+.anim:has(.reduire:checked) .scene *, .anim:has(.reduire:checked) .scene *::after { animation: none !important; transition: none !important; }
+
+.anim:has(.reduire:checked) .lame { display: none; }
+.anim:has(.reduire:checked) .blanche { clip-path: inset(0 0 calc(100% - 120px) 0); }
+
+</style>
+<div class="demo anim">
+  <label class="opt"><input type="checkbox" class="reduire" id="reduire"> Version réduite (option « Animations réduites » : état final, aucun mouvement)</label>
+  <div class="scene" aria-hidden="true">
+    <div class="b-sprite s-cle cle fixe" style="background-position: calc(220px * -15) 0"></div>
+    <div class="b-sprite s-cle-blanche blanche"></div>
+    <div class="lame"></div>
+    <div class="barre"><div class="b-barre"><div class="b-barre__rempli" style="--p:60"></div></div></div>
+    <div class="msg">Blanchiment en cours. Ne retirez pas la clé.</div>
+  </div>
+  <ol class="story">
+    <li><b>Par palier</b>La lame laiton descend par 6 paliers (un par sixième du travail réel, pas du temps) sur la clé.</li>
+    <li><b>Derrière la lame</b>La clé blanchie (bande <code>cle-blanche</code>) apparaît à travers une fenêtre qui grandit : ce qui est effacé change de matière.</li>
+    <li><b>Barre</b>Progression réelle (octets écrits), vitesse et temps restant : <code>mesure.rs</code>.</li>
+    <li><b>Fin</b>La lame disparaît, la clé est blanche, « Blanchiment terminé » ; puis réécriture des fichiers sains (AnimAnalyse).</li>
+    <li><b>Réduite</b>Pas de lame : la fenêtre suit la progression sans paliers animés.</li>
+    <li><b>Logiciel</b>2 images fixes + 1 fenêtre de découpage (déjà dans dessin.rs) + 1 rectangle. Redessin seulement au changement de palier.</li>
+  </ol>
+</div>

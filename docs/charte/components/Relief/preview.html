@@ -1,0 +1,22 @@
+<!-- @dsCard group="Fondations" height=330 subtitle="Cinq niveaux, une seule lumière" -->
+<link rel="stylesheet" href="../demo.css">
+<style>
+.niv { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; align-items: end; }
+.niv > div { display: grid; gap: 10px; justify-items: center; text-align: center; }
+.ech { width: 100%; height: 110px; border-radius: 12px; display: grid; place-items: center; font: 700 26px/1 var(--font-display); }
+.ech.b-bloc, .ech.b-rempart { border-radius: 12px; }
+.ech.sol { border: 1px dashed var(--trait-fort); }
+.n { font: 600 18px/1 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
+.lumiere { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--encre-douce); }
+.lumiere svg { width: 40px; height: 24px; }
+</style>
+<div class="demo">
+  <div class="lumiere"><svg viewBox="0 0 40 24"><circle cx="8" cy="8" r="5" fill="var(--laiton)"/><path d="M14 11 34 21" stroke="var(--laiton)" stroke-width="2" stroke-dasharray="3 3"/></svg>Lumière unique : en haut, un peu à gauche. Les ombres tombent vers le bas, la tranche se voit en dessous.</div>
+  <div class="niv">
+    <div><div class="ech b-creuse">−1</div><span class="n">Creusé</span><span class="demo-leg">Champ, piste de barre, liste</span></div>
+    <div><div class="ech sol b-sol">0</div><span class="n">Sol</span><span class="demo-leg">Fond d'écran, dégradé vertical</span></div>
+    <div><div class="ech b-dalle">1</div><span class="n">Dalle</span><span class="demo-leg">Carte, panneau, ligne</span></div>
+    <div><div class="ech b-bloc">2</div><span class="n">Bloc</span><span class="demo-leg">Bouton, touche, carte de choix</span></div>
+    <div><div class="ech b-rempart">3</div><span class="n">Rempart</span><span class="demo-leg">Verdict, confirmation, emblème</span></div>
+  </div>
+</div>
