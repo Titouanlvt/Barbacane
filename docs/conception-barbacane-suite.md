@@ -22,6 +22,9 @@ distinct** (ISO borne en ligne + ISO serveur).
 | Rôles web | Administrateur, administrateur de site, opérateur, auditeur (lecture seule). |
 | Conservation | Journaux et rapports **1 an**, quarantaine **30 jours**, purge automatique. |
 | Cadre | Recommandations **ANSSI** / homologation, **Diffusion Restreinte** (IGI 1300), **RGPD**. |
+| ISO des bornes | Téléchargées depuis l'interface web du serveur : **générique** (sans secret), **personnalisée** (jeton d'enrôlement inclus, usage unique, 24 h) et **hors ligne v1**. Le serveur génère les jetons d'enrôlement mais ne détient **jamais** la clé de signature des mises à jour. |
+| Interface web | Techno au choix de l'implémentation, justifiée dans la conception détaillée ; préférence : pages générées par le serveur Rust, très peu de JavaScript (surface d'attaque minimale). |
+| Première étape | **Socle** (§7, étape 1). Implémentation non lancée : conception en cours. |
 | Mises à jour | L'administrateur dépose le `.bcu` signé dans l'interface web ; le serveur le diffuse. |
 | Analyse | **ClamAV et YARA restent sur la borne** : toute la décision (sain / bloqué) est prise localement, comme en v1. Le serveur ne fait que gérer, superviser et stocker. |
 
