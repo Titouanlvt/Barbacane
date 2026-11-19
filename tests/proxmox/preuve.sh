@@ -467,7 +467,7 @@ if test_actif captures; then
         attendre "Maintenir pour effacer" 30 "$D/06-blanchir-confirmation.png"
         cliquer "Annuler"; debrancher usb1; attendre "à analyser" 120
         ouvrir "Administration" "Saisissez le PIN"; c 11-admin-pin
-        "${B[@]}" pin "$PIN"; cliquer "Valider"; attendre "Quitter le mode administrateur" 30; c 12-admin-menu
+        "${B[@]}" pin "$PIN"; cliquer "Valider" || "${B[@]}" xy 730 638; attendre "Quitter le mode administrateur" 30; c 12-admin-menu
         for p in "État de la borne:13-admin-etat" "Clés de sortie enrôlées:14-admin-enrolement" "Mettre à jour:16-admin-mise-a-jour" \
                  "Exporter les journaux:17-admin-export" "Limites d'analyse:18-admin-limites" "À propos:19-admin-a-propos"; do
             cliquer "${p%%:*}"; sleep 3; c "${p##*:}"; cliquer "Retour" || true; voir "Quitter le mode administrateur" 20 || true
