@@ -1,6 +1,29 @@
-# Avancement — 18/11/2026 (mis à jour par Claude, en autonomie)
+# Avancement — mission « Barbacane suite » (depuis le 19/11/2026, Claude en autonomie)
 
-## En cours
+## Plan et état
+| Étape | État |
+|---|---|
+| Lab 1 : NVMe dédié → pool ZFS `essais` | **fait** (`docs/lab/essais.md`, instantané `avant-pool-essais-20261119-1825`) |
+| Lab 2 : passthrough RTX 4000 | **non fait, par règle** : seule carte d'affichage de l'hôte (`docs/lab/gpu-passthrough.md`) |
+| Charte v2 dans `docs/charte/` | **fait par l'utilisateur** (branche `charte-v2`, identique à l'Artifact, vérifié) |
+| 1. Documentation v1 à jour (captures Jour/Nuit, PDF, README) | en cours |
+| 2. Publication v1.0.0 (notes de version, ISO de référence, étiquette) | à faire |
+| 3. Organisation du dépôt (profils ISO, test « hors ligne », serveur/, borne/agent/) | à faire |
+| 4. Préalables suite (politique de certification, AIPD, décisions) | à faire |
+| Adaptation visuelle charte v2 (borne) | à faire |
+| 5–10. Barbacane suite | à faire |
+
+## Décisions (19/11)
+- RTX 4000 : pas de passthrough (seule carte VGA, `boot_vga=1`) → rendus 3D en CPU, mesure wgpu non faite.
+- Charte : la branche `charte-v2` de l'utilisateur prime sur ma copie depuis l'Artifact (contenu identique,
+  plus complète : outils, maquettes). Ma copie n'est pas poussée.
+
+## Bloquants
+- (aucun)
+
+## Historique — v1 (18/11)
+
+### En cours le 18/11
 - Rien. **v1.0 livrée** (tag `v1.0` = 5c20866 = `main`, CI verte) ; ISO de production
   `/nvme/contenu/iso-v1/barbacane.iso` (sha256 `4e2bd821…cbb2`, `.sha256` à côté).
 
