@@ -448,14 +448,21 @@ if test_actif captures; then
             voir "Résultat de l'analyse" 2 && break
         done
         attendre "Résultat de l'analyse" 3600 "$D/05-resultat.png"
-        cliquer "Blanchir la clé"; attendre "Maintenir pour effacer" 30 "$D/06-blanchir-confirmation.png"
-        cliquer "Annuler"; attendre "Résultat de l'analyse" 30 || true
         cliquer "Copier vers une clé connue"
         brancher usb2 "$SERIE_AUTRE"; voir "pas enrôlée" 60 && c 07-cle-non-enrolee; debrancher usb2
         brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 60 "$D/08-cle-destination.png"
         cliquer "Effacer cette clé"; sleep 4; c 09-ecriture
         attendre "Vous pouvez retirer les clés" 3600 "$D/10-termine.png"
         debrancher usb2; debrancher usb1; attendre "à analyser" 120
+        # Confirmation du blanchiment (« Annuler » ramène à l'accueil : capture en dernier)
+        brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 60; cliquer "Analyser"
+        for i in $(seq 120); do
+            if voir "Archive protégée" 3; then "${B[@]}" texte secret; cliquer "Valider"; break; fi
+            voir "Résultat de l'analyse" 2 && break
+        done
+        attendre "Résultat de l'analyse" 3600
+        cliquer "Blanchir la clé"; attendre "Maintenir pour effacer" 30 "$D/06-blanchir-confirmation.png"
+        cliquer "Annuler"; debrancher usb1; attendre "à analyser" 120
         ouvrir "Administration" "Saisissez le PIN"; c 11-admin-pin
         "${B[@]}" pin "$PIN"; cliquer "Valider"; attendre "Quitter le mode administrateur" 30; c 12-admin-menu
         for p in "État de la borne:13-admin-etat" "Clés de sortie enrôlées:14-admin-enrolement" "Mettre à jour:16-admin-mise-a-jour" \
