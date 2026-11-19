@@ -237,9 +237,12 @@ fichier. La borne ne la recopie donc **jamais**.
 
 ![Clé Ventoy blanchie : elle démarre](preuves/2026-11-18-finale/passe1/ventoy/05-demarrage-ventoy.png)
 
-- **Clé Rufus ou Etcher** : la borne l'indique par un avertissement. Le blanchiment la rend non
-  démarrable ; recréez-la ensuite depuis une image officielle, ou copiez l'image (ISO) saine sur
-  une clé Ventoy.
+- **Clé Rufus ou Etcher** : un avertissement s'affiche. **Blanchir en gardant démarrable** relit
+  l'image de la clé ; si c'est une image officielle de la **liste blanche** (déclarée par
+  l'administrateur, mise à jour signée), la clé est effacée puis l'image réécrite à l'identique et la
+  clé reste démarrable (preuve : `docs/preuves/etcher/`) ; sinon, rien n'est modifié. **Blanchir la
+  clé** la rend non démarrable : recréez-la depuis une image officielle, ou copiez l'image (ISO)
+  saine sur une clé Ventoy.
 
 ## Disques optiques (CD, DVD, BD)
 
@@ -247,7 +250,7 @@ Le lecteur optique de la borne est une source et une destination comme les ports
 
 - **Disque à analyser** : insérer le disque. L'écran « Disque détecté » propose **Analyser**, ou
   **Ignorer ce disque** (pour utiliser une clé à la place) ; après l'analyse : **Copier vers une
-  clé connue**, **Graver sur un disque** ou **Blanchir le disque** (réinscriptible seulement).
+  clé connue**, **Graver un disque** ou **Blanchir le disque** (réinscriptible seulement).
   **Toutes les sessions** du disque sont lues : un fichier caché dans une ancienne session
   est analysé comme les autres. Les CD audio et les disques illisibles sont refusés.
 
@@ -255,7 +258,7 @@ Le lecteur optique de la borne est une source et une destination comme les ports
 
 ![Gravure en cours (effacement complet, puis gravure vérifiée)](preuves/optique/gravure/04-gravure-en-cours.png)
 
-- **Graver sur un disque** (depuis une clé ou un disque) : utiliser un disque
+- **Graver un disque** (depuis une clé ou un disque) : utiliser un disque
   **réinscriptible** (CD-RW, DVD-RW, DVD+RW, BD-RE). Son contenu est d'abord **entièrement
   effacé**, puis les fichiers sains sont gravés à la vitesse la plus basse que le disque accepte,
   puis **relus et comparés** (empreinte SHA-256 de chaque fichier). Un CD-R, DVD-R ou BD-R est
