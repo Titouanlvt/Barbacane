@@ -1311,7 +1311,7 @@ impl App {
                 .on_release(Msg::Maintien(false))
                 .on_exit(Msg::Maintien(false))
                 .into(),
-            Some(pal.encre),
+            Some(pal.menace_fonce),
         )
     }
 
@@ -1664,13 +1664,13 @@ impl App {
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
                 bouton("Éjecter le disque", Msg::Ejecter, style::secondaire),
                 // Charte (Bouton) : « Effacer » = variante Destructive (fond menace, tranche encre).
-                // Désactivé (pas de destination) : même bouton pâli, relief conservé (tranche trait, comme « Abandonner »)
+                // Charte v2 : désactivé (pas de destination) = à plat, même encombrement (tranche transparente)
                 en_relief(
                     go.into(),
                     Some(if self.dst.is_some() {
-                        style::c().encre
+                        style::c().menace_fonce
                     } else {
-                        style::c().trait_
+                        iced::Color::TRANSPARENT
                     })
                 )
             ]
@@ -1733,13 +1733,13 @@ impl App {
             row![
                 bouton("Abandonner", Msg::Terminer, style::secondaire),
                 // Charte (Bouton) : « Effacer » = variante Destructive (fond menace, tranche encre).
-                // Désactivé (pas de destination) : même bouton pâli, relief conservé (tranche trait, comme « Abandonner »)
+                // Charte v2 : désactivé (pas de destination) = à plat, même encombrement (tranche transparente)
                 en_relief(
                     go.into(),
                     Some(if self.dst.is_some() {
-                        style::c().encre
+                        style::c().menace_fonce
                     } else {
-                        style::c().trait_
+                        iced::Color::TRANSPARENT
                     })
                 )
             ]
@@ -1862,11 +1862,23 @@ pub fn bouton<'a>(
 }
 
 /// Relief de la charte : tranche pleine décalée de 6 px vers le bas à droite, posée derrière.
+/// Relief de la charte v2 (niveau 2, « bloc ») : tranche NETTE de 4 px sous le bloc (la lumière vient
+/// d'en haut à gauche, l'épaisseur se voit dessous), posée derrière, avec l'ombre diffuse
+/// 0 6 px 10 px. Une tranche transparente garde l'encombrement d'un bouton désactivé (à plat).
 pub fn en_relief<'a>(b: Element<'a, Msg>, tranche: Option<iced::Color>) -> Element<'a, Msg> {
+    const EPAISSEUR: f32 = 4.0;
     let Some(t) = tranche else { return b };
+    let ombre = if t.a > 0.0 {
+        iced::Shadow {
+            color: style::c().ombre_diffuse,
+            offset: iced::Vector::new(0.0, 6.0),
+            blur_radius: 10.0,
+        }
+    } else {
+        iced::Shadow::default()
+    };
     let base = container(b).padding(iced::Padding {
-        right: 6.0,
-        bottom: 6.0,
+        bottom: EPAISSEUR,
         ..iced::Padding::ZERO
     });
     let dessous = container(
@@ -1874,13 +1886,13 @@ pub fn en_relief<'a>(b: Element<'a, Msg>, tranche: Option<iced::Color>) -> Eleme
             container::Style {
                 background: Some(iced::Background::Color(t)),
                 border: iced::Border::default().rounded(8),
+                shadow: ombre,
                 ..Default::default()
             }
         }),
     )
     .padding(iced::Padding {
-        left: 6.0,
-        top: 6.0,
+        top: EPAISSEUR,
         ..iced::Padding::ZERO
     })
     .width(Length::Fill)
@@ -1909,7 +1921,7 @@ fn grand_choix<'a>(t: &str, d: &str, m: Msg) -> Element<'a, Msg> {
     .style(style::primaire)
     .on_press(m);
     // La carte remplit sa part de largeur : le relief l'accompagne.
-    container(en_relief(b.into(), Some(style::c().laiton)))
+    container(en_relief(b.into(), style::tranche(style::primaire)))
         .width(Length::FillPortion(1))
         .into()
 }

@@ -78,79 +78,73 @@ pub const TEXTE_TAILLE: f32 = 22.0;
 pub const PETIT: f32 = 18.0;
 
 fn base(bg: Color, fg: Color, status: button::Status) -> button::Style {
-    relief(bg, fg, None, status)
+    let mut st = relief(bg, bg, fg, Color::TRANSPARENT, status);
+    st.border = Border::default().rounded(Radius::new(8));
+    st
 }
 
-/// Bouton (charte, composant Bouton) : aplat, la tranche du relief est posée derrière par
-/// `app::bouton` (rectangle plein décalé, comme le logo). L'appui assombrit le bouton.
-fn relief(bg: Color, fg: Color, _tranche: Option<Color>, status: button::Status) -> button::Style {
-    let (fond, texte) = match status {
-        // Désactivé : bouton PLAT et clair, bordure grise, texte gris foncé lisible (convention
-        // « indisponible »). Ni encre transparente (tranche laiton visible : paraissait actif), ni
-        // aplat beige (18/11 : terne, texte peu lisible).
-        button::Status::Disabled => (c().surface_haute, c().encre_douce),
-        button::Status::Pressed => (Color { a: 0.82, ..bg }, fg),
-        _ => (bg, fg),
-    };
-    // Désactivé (ex. « Effacer cette clé… » avant le branchement) : bordure grise pour que le
-    // bouton reste visible sur la page.
-    let border = if matches!(status, button::Status::Disabled) {
-        Border::default()
-            .rounded(Radius::new(8))
-            .width(2)
-            .color(c().trait_)
-    } else {
-        Border::default().rounded(Radius::new(8))
+/// Dégradé vertical du relief (charte v2, relief.md) : `haut` → `bas`, avec l'arête de lumière de
+/// la face supérieure dans le premier arrêt (une seule lumière, en haut à gauche).
+pub fn degrade(haut: Color, bas: Color) -> Background {
+    use iced::gradient::{Gradient, Linear};
+    let arete = melange_alpha(c().lumiere, haut);
+    Background::Gradient(Gradient::Linear(
+        Linear::new(iced::Radians(std::f32::consts::PI))
+            .add_stop(0.0, arete)
+            .add_stop(0.03, haut)
+            .add_stop(1.0, bas),
+    ))
+}
+
+/// Bloc (niveau 2) : dégradé, bord de 1 px ; la tranche nette (4 px dessous) et l'ombre diffuse
+/// sont posées derrière par `app::en_relief`. Appui : face assombrie. Désactivé : À PLAT (charte v2 :
+/// ce qui ne s'enfonce pas n'a ni tranche ni ombre), fond clair, texte `encre-douce`, bord `trait`.
+fn relief(haut: Color, bas: Color, fg: Color, bord: Color, status: button::Status) -> button::Style {
+    let (fond, texte, bord) = match status {
+        button::Status::Disabled => (Background::Color(c().surface_haute), c().encre_douce, c().trait_),
+        button::Status::Pressed => (Background::Color(melange(bas, c().encre, 0.9)), fg, bord),
+        button::Status::Hovered => (degrade(melange(haut, Color::WHITE, 0.92), bas), fg, bord),
+        _ => (degrade(haut, bas), fg, bord),
     };
     button::Style {
-        background: Some(Background::Color(fond)),
+        background: Some(fond),
         text_color: texte,
-        border,
+        border: Border::default().rounded(Radius::new(8)).width(1).color(bord),
         shadow: Shadow::default(),
         snap: true,
     }
 }
 
-/// Couleur de la tranche du relief selon la variante (principal : laiton, secondaire : trait,
-/// destructif : encre) ; `None` : bouton plat.
+/// Couleur de la tranche du relief selon la variante (charte v2, « Variantes de tranche ») :
+/// principal `laiton-fonce`, secondaire `trait-fort`, destructif `menace-fonce` ; `None` : plat.
 pub fn tranche(s: fn(&Theme, button::Status) -> button::Style) -> Option<Color> {
     use std::ptr::fn_addr_eq;
     type F = fn(&Theme, button::Status) -> button::Style;
     if fn_addr_eq(s, primaire as F) {
-        Some(c().laiton)
+        Some(c().laiton_fonce)
     } else if fn_addr_eq(s, secondaire as F) {
-        Some(c().trait_)
+        Some(c().trait_fort)
     } else if fn_addr_eq(s, danger as F) {
-        Some(c().encre)
+        Some(c().menace_fonce)
     } else {
         None
     }
 }
 
-/// Bouton principal : un seul par écran, en bas à droite.
+/// Bouton principal : un seul par écran, en bas à droite (fond `encre` en dégradé).
 pub fn primaire(_: &Theme, s: button::Status) -> button::Style {
-    relief(c().encre, c().sur_encre, Some(c().laiton), s)
+    relief(c().encre_haut, c().encre_bas, c().sur_encre, c().encre_bas, s)
 }
 
-/// Annuler, Retour.
+/// Annuler, Retour (bloc clair, bord `trait-fort`).
 pub fn secondaire(_: &Theme, s: button::Status) -> button::Style {
-    let mut st = relief(c().surface_haute, c().encre, Some(c().trait_), s);
-    st.border = Border::default().rounded(Radius::new(8)).width(2).color(
-        if matches!(s, button::Status::Disabled) {
-            c().trait_
-        } else {
-            c().encre
-        },
-    );
-    st
+    relief(c().bloc_haut, c().bloc_bas, c().encre, c().trait_fort, s)
 }
 
-/// Effacement : toujours suivi d'une confirmation.
+/// Effacement : toujours suivi d'une confirmation (fond `menace`). Désactivé : rouge pâle à plat.
 pub fn danger(_: &Theme, s: button::Status) -> button::Style {
     if matches!(s, button::Status::Disabled) {
-        // Indisponible (pas encore de destination) : même bouton rouge, pâli ; le relief (tranche) reste posé par app.rs
         return button::Style {
-            // Opaque (mélange menace/surface) : une transparence laissait voir la tranche à travers
             background: Some(Background::Color(melange(c().menace, c().surface, 0.4))),
             text_color: c().sur_encre,
             border: Border::default().rounded(Radius::new(8)),
@@ -158,7 +152,7 @@ pub fn danger(_: &Theme, s: button::Status) -> button::Style {
             snap: true,
         };
     }
-    relief(c().menace, c().sur_encre, Some(c().encre), s)
+    relief(melange(c().menace, Color::WHITE, 0.9), c().menace, c().sur_encre, c().menace_fonce, s)
 }
 
 pub fn discret(_: &Theme, s: button::Status) -> button::Style {
@@ -229,11 +223,17 @@ pub fn fond(_: &Theme) -> container::Style {
 }
 
 /// Mélange opaque de deux couleurs : `part` de `a`, le reste de `b`.
-fn melange(a: Color, b: Color, part: f32) -> Color {
+pub fn melange(a: Color, b: Color, part: f32) -> Color {
     Color {
         r: a.r * part + b.r * (1.0 - part),
         g: a.g * part + b.g * (1.0 - part),
         b: a.b * part + b.b * (1.0 - part),
         a: 1.0,
     }
+}
+
+/// Couleur translucide `a` posée sur `fond` opaque, calculée une fois (tiny-skia mélange plus vite
+/// une couleur opaque ; charte v2, relief.md).
+pub fn melange_alpha(a: Color, fond: Color) -> Color {
+    melange(Color { a: 1.0, ..a }, fond, a.a)
 }
