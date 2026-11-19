@@ -20,7 +20,7 @@ pub enum Page {
     Enrolement,
     Limites,
     NouveauPin,
-    /// Thème Pierre / Nuit, animations réduites
+    /// Thème Jour / Nuit (valeur enregistrée « pierre » / « nuit »), animations réduites
     Affichage,
     /// Crédits : projets sur lesquels repose Barbacane
     APropos,
@@ -454,11 +454,11 @@ pub fn view(app: &App) -> Element<'_, Msg> {
                 carte(column![
                     texte("Thème"),
                     row![
-                        choix("Pierre (clair)", !nuit, AdminMsg::Affichage("pierre", reduites)),
+                        choix("Jour (clair)", !nuit, AdminMsg::Affichage("pierre", reduites)),
                         choix("Nuit (sombre)", nuit, AdminMsg::Affichage("nuit", reduites)),
                     ]
                     .spacing(20),
-                    petit("Pierre : bureau éclairé (par défaut). Nuit : salle peu éclairée."),
+                    petit("Jour : bureau éclairé (par défaut). Nuit : salle peu éclairée."),
                     Space::new().height(10),
                     texte("Animations"),
                     row![

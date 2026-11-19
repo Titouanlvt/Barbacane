@@ -1,4 +1,4 @@
-//! Charte graphique Barbacane, thèmes « Pierre » et « Nuit » (docs/charte/tokens.json).
+//! Charte graphique Barbacane v2, thèmes « Jour » et « Nuit » (docs/charte/jetons.toml, via build.rs).
 //!
 //! Lisible à un mètre, souris en main : contrastes ≥ 4,5:1, grandes cibles.
 //! Le laiton est la couleur d'identité (logo, focus) ; les couleurs d'état
@@ -8,77 +8,12 @@ use iced::widget::{button, container};
 use iced::{Background, Border, Color, Font, Shadow, Theme, border::Radius, font};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-const fn hex(c: u32) -> Color {
-    Color::from_rgb8((c >> 16) as u8, (c >> 8) as u8, c as u8)
+const fn hexa(c: u32, a: u8) -> Color {
+    Color::from_rgba8((c >> 16) as u8, (c >> 8) as u8, c as u8, a as f32 / 255.0)
 }
 
-/// Jetons de couleur de la charte, pour un thème.
-#[derive(Debug, Clone, Copy)]
-pub struct Palette {
-    pub surface: Color,
-    pub surface_haute: Color,
-    pub trait_: Color,
-    pub encre: Color,
-    pub encre_douce: Color,
-    pub sur_encre: Color,
-    pub laiton: Color,
-    pub laiton_pale: Color,
-    pub sain: Color,
-    pub sain_fond: Color,
-    pub alerte: Color,
-    pub alerte_fond: Color,
-    pub menace: Color,
-    pub menace_fond: Color,
-    pub analyse: Color,
-    pub analyse_fond: Color,
-    /// Bandeau supérieur (encre en Pierre, granite surélevé en Nuit)
-    pub bandeau: Color,
-    pub sur_bandeau: Color,
-}
-
-/// Thème « Pierre » (clair, par défaut).
-pub const PIERRE: Palette = Palette {
-    surface: hex(0xEEEBE4),
-    surface_haute: hex(0xF8F6F2),
-    trait_: hex(0xCFC9BD),
-    encre: hex(0x1C1F22),
-    encre_douce: hex(0x565B5F),
-    sur_encre: hex(0xF8F6F2),
-    laiton: hex(0x8A6420),
-    laiton_pale: hex(0xE9DCC0),
-    sain: hex(0x1E6B45),
-    sain_fond: hex(0xDDEFE3),
-    alerte: hex(0x8F5300),
-    alerte_fond: hex(0xF7E6C8),
-    menace: hex(0xA8231B),
-    menace_fond: hex(0xF6D9D5),
-    analyse: hex(0x285A86),
-    analyse_fond: hex(0xDCE7F2),
-    bandeau: hex(0x1C1F22),
-    sur_bandeau: hex(0xF8F6F2),
-};
-
-/// Thème « Nuit » (sombre, salles peu éclairées) : mêmes rôles, contrastes ≥ 4,5:1.
-pub const NUIT: Palette = Palette {
-    surface: hex(0x15181B),
-    surface_haute: hex(0x1F2327),
-    trait_: hex(0x343A40),
-    encre: hex(0xECE8E0),
-    encre_douce: hex(0xA9ABA7),
-    sur_encre: hex(0x15181B),
-    laiton: hex(0xD4A64A),
-    laiton_pale: hex(0x3A3020),
-    sain: hex(0x5CC48F),
-    sain_fond: hex(0x15301F),
-    alerte: hex(0xF0A93C),
-    alerte_fond: hex(0x372812),
-    menace: hex(0xFF7B6E),
-    menace_fond: hex(0x3D1A17),
-    analyse: hex(0x7FB2E0),
-    analyse_fond: hex(0x172838),
-    bandeau: hex(0x0E1012),
-    sur_bandeau: hex(0xECE8E0),
-};
+// Palette, JOUR et NUIT : générés par build.rs depuis docs/charte/jetons.toml (charte v2).
+include!(concat!(env!("OUT_DIR"), "/jetons.rs"));
 
 static THEME_NUIT: AtomicBool = AtomicBool::new(false);
 static ANIMATIONS_REDUITES: AtomicBool = AtomicBool::new(false);
@@ -88,7 +23,7 @@ pub fn c() -> &'static Palette {
     if THEME_NUIT.load(Ordering::Relaxed) {
         &NUIT
     } else {
-        &PIERRE
+        &JOUR
     }
 }
 
@@ -113,7 +48,7 @@ pub fn animations_reduites() -> bool {
 pub fn theme_iced() -> Theme {
     let p = c();
     Theme::custom(
-        if est_nuit() { "Nuit" } else { "Pierre" }.to_string(),
+        if est_nuit() { "Nuit" } else { "Jour" }.to_string(),
         iced::theme::Palette {
             background: p.surface,
             text: p.encre,
