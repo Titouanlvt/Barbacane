@@ -3,219 +3,297 @@
 Statut : **conception, aucun code**. Document de départ pour l'implémentation.
 Barbacane v1 (borne hors ligne) reste inchangé : la « suite » est un **produit
 distinct** (ISO borne en ligne + ISO serveur).
+Révision du 19/11/2026 : intègre la revue de sécurité et de conformité
+(`docs/suite/revue-conception-2026-11-19.md`).
 
 ## 1. Décisions prises
 
 | Sujet | Décision |
 |---|---|
-| Échelle | 10 à 100 bornes. **Un serveur unique** pour commencer ; serveur central de consolidation multi-sites prévu plus tard (§9). |
-| Réseau | LAN de gestion **sans Internet**. Sites reliés par VPN site à site + VXLAN (même réseau de niveau 2). |
-| Sens des connexions | **La borne appelle le serveur** ; la borne n'écoute aucun port. TLS avec authentification mutuelle (mTLS). |
-| Serveur injoignable | La **borne en ligne se bloque** (message à l'écran). Les bornes v1 hors ligne ne sont pas concernées. |
+| Échelle | 10 à 100 bornes. **Un serveur unique** pour commencer ; serveur central de consolidation prévu plus tard (§11). |
+| Réseau | LAN de gestion **sans Internet**. Liaison entre sites **routée (niveau 3)**, un sous-réseau par site, chiffrée (§5) ; pas de VXLAN de niveau 2 étendu entre sites. |
+| Sens des connexions | **La borne appelle le serveur** ; la borne n'écoute aucun port. **TLS 1.3 uniquement**, authentification mutuelle (mTLS). |
+| Serveur injoignable | La borne en ligne **se bloque** après un court délai de grâce (§3.1). Les bornes v1 ne sont pas concernées. |
 | Passage v1 → en ligne | **Réinstallation obligatoire** : la v1 ne contient aucun code réseau. |
-| Livraison du serveur | **ISO dédiée** (Debian durcie, installation automatique hors ligne) qui embarque les images Docker du serveur. |
-| Enrôlement des bornes | **Jeton à usage unique** généré dans l'interface web. |
-| Fonctions | Supervision, mises à jour centralisées, journaux et rapports, configuration et politique, gestion des clés (fabricant + numéro de série), identification des utilisateurs. |
-| Utilisateurs | Deux notions distinctes, **mode choisi par l'administrateur** par site ou par borne (§3.3) : **identification** (savoir qui fait quoi, pour la journalisation) et **authentification** (être sûr que c'est bien cet utilisateur). Pour commencer, **sans lecteur** : l'utilisateur **tape son identifiant** sur le clavier de l'écran tactile ; badge plus tard. |
-| Port | **Pas 443** : port TCP non standard tiré au hasard à l'installation du serveur (modifiable), pour ne pas être repéré par un scan rapide. |
-| Données envoyées par la borne | Rapports et journaux, **fichiers malveillants et suspects** (quarantaine chiffrée). |
+| Livraison du serveur | **ISO dédiée** (Debian durcie, installation automatique hors ligne) embarquant les images de conteneurs, exécutées par **Podman sans root** (§3.4). |
+| Enrôlement des bornes | Jeton à usage unique **et validation par un administrateur** (§3.5). |
+| Analyse | **ClamAV et YARA restent sur la borne** : la décision (sain / bloqué) est prise localement, comme en v1. Le serveur gère, supervise et stocke. |
+| Utilisateurs | Mode choisi par l'administrateur par site ou par borne : **Aucun**, **Identification**, **Authentification** (§3.3). Identifiant tapé à l'écran ; **PIN propre à Barbacane** ; aucun mot de passe d'annuaire saisi sur la borne. |
+| Port | Port TCP non standard **tiré au hasard** à l'installation (choix de l'utilisateur ; réserve d'homologation, §3.2). |
+| Données envoyées par la borne | État, rapports et journaux. **Quarantaine des fichiers malveillants désactivée par défaut** (§3.6). |
 | Rôles web | Administrateur, administrateur de site, opérateur, auditeur (lecture seule). |
-| Conservation | Journaux et rapports **1 an**, quarantaine **30 jours**, purge automatique. |
-| Cadre | Recommandations **ANSSI** / homologation, **Diffusion Restreinte** (IGI 1300), **RGPD**. |
-| ISO des bornes | Téléchargées depuis l'interface web du serveur : **générique** (sans secret), **personnalisée** (jeton d'enrôlement inclus, usage unique, 24 h) et **hors ligne v1**. Le serveur génère les jetons d'enrôlement mais ne détient **jamais** la clé de signature des mises à jour. |
-| Interface web | Techno au choix de l'implémentation, justifiée dans la conception détaillée ; préférence : pages générées par le serveur Rust, très peu de JavaScript (surface d'attaque minimale). |
-| Première étape | **Socle** (§7, étape 1). Implémentation non lancée : conception en cours. |
-| Mises à jour | L'administrateur dépose le `.bcu` signé dans l'interface web ; le serveur le diffuse. |
-| Analyse | **ClamAV et YARA restent sur la borne** : toute la décision (sain / bloqué) est prise localement, comme en v1. Le serveur ne fait que gérer, superviser et stocker. |
+| Conservation | Journaux et rapports **1 an**, quarantaine **30 jours** (si activée), purge automatique, sauvegardes comprises (§3.8). |
+| Cadre | **ANSSI** / homologation, **Diffusion Restreinte** (IGI 1300), **RGPD** (§5). |
+| ISO des bornes | Téléchargées depuis l'interface web : **générique** (sans secret), **personnalisée** (jeton inclus, encadrée §9) et **hors ligne v1**. |
+| Mises à jour | L'administrateur dépose le `.bcu` signé dans l'interface web ; le serveur le diffuse ; la borne revérifie. |
+| Interface web | Techno au choix de l'implémentation ; préférence : pages générées par le serveur Rust, très peu de JavaScript. |
+| Première étape | **Socle** (§8, étape 1), précédé de la validation du périmètre par l'autorité d'homologation (AH). |
 
 ## 2. Principes de sécurité
 
 1. **Un serveur compromis ne compromet pas les bornes.**
-   - Le serveur ne détient jamais la clé de signature des mises à jour (elle reste hors ligne).
-   - Chaque borne **revérifie elle-même** la signature et l'anti-retour arrière d'un `.bcu`, comme en v1.
-   - Le serveur ne peut pas exécuter de commande sur une borne : il **publie** une politique, la borne la **récupère**, la vérifie (schéma, bornes de valeurs) et l'applique.
-2. **Surface minimale de la borne** : aucun port en écoute, une seule connexion sortante vers une adresse et un port fixés (pare-feu nftables : tout le reste refusé).
-3. **Identité forte de chaque borne** : certificat client propre à la borne, clé privée générée sur la borne et non exportable (TPM 2.0 si présent, sinon fichier protégé).
-4. **Les identifiants USB ne prouvent rien** : fabricant (VID/PID) et numéro de série se falsifient. Ils servent à la gestion et à la traçabilité ; la décision de confiance reste l'analyse du contenu. Une clé « connue » au sens du serveur reste soumise à l'analyse.
-5. **Pas de contenu sensible en clair** : fichiers en quarantaine chiffrés de bout en bout, de la borne au stockage du serveur.
-6. **Traçabilité** : journal d'audit du serveur inaltérable (entrées chaînées par empreinte et signées), y compris pour les actions des administrateurs.
-7. **Cœur usbsas inchangé** : l'agent réseau est un composant Barbacane séparé ; usbsas reste sans réseau.
+   - Le serveur ne détient **jamais** les clés de signature hors ligne (mises à jour,
+     politique de base) ; chaque borne les revérifie, avec anti-retour.
+   - Le serveur ne peut pas exécuter de commande sur une borne : il publie, la borne
+     récupère, vérifie et applique dans les limites d'un **plancher signé hors ligne** (§3.7).
+   - Aucun secret d'utilisateur d'annuaire ne transite par une borne.
+2. **Surface minimale de la borne** : aucun port en écoute, une seule connexion sortante
+   (adresse et port du serveur), tout le reste refusé (nftables).
+3. **Identité forte de chaque borne** : clé privée générée et scellée dans le **TPM 2.0
+   (exigé)** ; disque chiffré et scellé au TPM avec démarrage sécurisé. Une borne sans TPM
+   n'est pas éligible au mode en ligne.
+4. **Les identifiants USB ne prouvent rien** (VID/PID/numéro de série falsifiables) :
+   gestion et traçabilité seulement ; l'analyse reste toujours obligatoire.
+5. **Pas de donnée sensible sur le serveur par défaut** : pas de quarantaine, noms de
+   fichiers non transmis en clair dans les rapports (empreinte ou nom tronqué, §3.6).
+6. **Traçabilité vérifiable hors du serveur** : journal d'audit chaîné, dont les
+   empreintes sont exportées régulièrement hors du serveur (§3.9).
+7. **Tout contenu venant d'une borne est hostile** pour le serveur : schéma strict,
+   quotas, échappement systématique dans l'interface web.
+8. **Noyau usbsas sans réseau** : l'agent est un composant Barbacane séparé.
 
 ## 3. Architecture
 
 ```
-┌─────────── LAN de gestion (sans Internet), sites reliés par VPN + VXLAN ───────────┐
-│                                                                                     │
-│  Borne Barbacane en ligne (ISO distincte de la v1)                                  │
-│   usbsas + analyseur + interface (comme v1)                                         │
-│   barbacane-agent  ── connexion sortante unique, TLS 1.3, mTLS ──┐                  │
-│     • récupère : politique, méthodes d'identification, clés      │                  │
-│       enrôlées, mises à jour .bcu                                │                  │
-│     • envoie : état, rapports, journaux, quarantaine chiffrée    │                  │
-│     • serveur injoignable → borne bloquée                        │                  │
-│                                                                  ▼ port aléatoire        │
-│  Serveur Barbacane (ISO durcie, Docker embarqué)                                    │
-│   ┌ passerelle-bornes (Rust) : seul point d'entrée des bornes, mTLS, quotas         │
-│   ├ interface web d'administration : sur une INTERFACE RÉSEAU DISTINCTE (poste      │
-│   │   d'administration), TLS, authentification forte, rôles                        │
-│   ├ identité : comptes locaux, PIN, connecteur AD/LDAP (lecture seule)              │
-│   ├ PKI interne : autorité intermédiaire en ligne ; racine HORS LIGNE               │
-│   ├ diffusion des mises à jour : réception du .bcu, vérification, distribution      │
-│   ├ base PostgreSQL : bornes, sites, utilisateurs, clés, politiques, rapports       │
-│   ├ quarantaine chiffrée + purge à 30 jours                                         │
-│   └ journal d'audit chaîné et signé                                                 │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+┌──────── LAN de gestion (sans Internet), un sous-réseau routé par site ────────┐
+│                                                                                │
+│  Borne Barbacane en ligne (ISO distincte de la v1, TPM 2.0 exigé)              │
+│   usbsas + analyseur + interface (comme v1)                                    │
+│   barbacane-agent ── sortant unique, TLS 1.3, mTLS (clé dans le TPM) ──┐       │
+│     • récupère : politique (dans le plancher signé), clés enrôlées,    │       │
+│       mises à jour .bcu, heure de référence                            │       │
+│     • envoie : état, rapports, journaux (quarantaine : option)         │       │
+│                                                                        ▼       │
+│  Serveur Barbacane (ISO durcie, conteneurs Podman sans root)  port aléatoire   │
+│   ┌ passerelle-bornes (Rust) : seul point d'entrée, mTLS, CRL, quotas          │
+│   ├ interface web : INTERFACE RÉSEAU DISTINCTE, poste d'administration dédié, │
+│   │   authentification à deux facteurs, rôles, double validation (§3.10)      │
+│   ├ identité : comptes et PIN Barbacane ; annuaire en LDAPS pour les           │
+│   │   identifiants uniquement                                                 │
+│   ├ PKI : racine HORS LIGNE ; CA « bornes » et CA « serveur » séparées        │
+│   ├ diffusion des mises à jour, ISO des bornes                                 │
+│   ├ base PostgreSQL ; journal d'audit chaîné                                   │
+│   └ heure de référence (source interne, §3.11)                                 │
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.1 Borne en ligne
 
-- Même base que la v1 (usbsas, analyseur, interface, mises à jour signées).
-- Nouveau service `barbacane-agent` (Rust, utilisateur dédié, durci comme les autres) :
-  seul processus autorisé à joindre le réseau, et uniquement le serveur.
-- L'interface ne parle qu'à l'agent local (socket Unix), jamais au réseau.
-- Identification ou authentification de l'utilisateur à l'écran selon le mode reçu (§3.3) ;
-  la vérification se fait par le serveur (PIN et mot de passe jamais stockés sur la borne).
-- Blocage : sans connexion valide au serveur (délai court, configurable), l'interface
-  affiche « Borne hors service : serveur de gestion injoignable » et refuse toute clé.
+- Même base que la v1. Nouveau service `barbacane-agent` (Rust, utilisateur dédié,
+  durci) : seul processus autorisé sur le réseau, vers le seul serveur.
+- L'interface ne parle qu'à l'agent local (socket Unix).
+- **Blocage** : si le serveur est injoignable, la borne finit la session en cours puis se
+  bloque après un délai de grâce court (5 minutes par défaut, réglable dans le plancher
+  signé, jamais au-delà de 24 h). Pendant ce délai : dernière politique valide, rapports
+  mis en file locale, signés par la borne. **File pleine → blocage**, jamais de perte.
+  Message : « Borne hors service : serveur de gestion injoignable ».
+- Certificat de borne : durée **90 jours**, renouvelé automatiquement par l'agent à
+  mi-vie ; alerte à l'administrateur 30 jours avant toute expiration.
 
 ### 3.2 Port d'écoute
 
-Le serveur n'écoute pas sur 443 : à l'installation, un port TCP est tiré au hasard dans
-une plage haute (par exemple 20000–60000, hors ports connus), affiché à l'administrateur
-et inscrit dans le jeton d'enrôlement des bornes ; il reste modifiable. Un scan rapide
-(les 1 000 ports courants de nmap) ne le voit pas. C'est une mesure de **discrétion**,
-pas de sécurité : un scan complet le trouve. La protection reste le mTLS (une connexion
-sans certificat de borne valide est coupée avant tout échange applicatif) et le pare-feu
-du serveur (seules les adresses des bornes enrôlées sont acceptées).
+Port TCP tiré au hasard à l'installation (plage 20000–60000, hors ports connus),
+modifiable, inscrit dans le jeton d'enrôlement. Mesure de **discrétion** seulement (un scan
+complet le trouve). Réserve : un port fixe documenté facilite le filtrage et
+l'homologation ; **à faire valider par l'AH**. La protection reste le mTLS, la CRL et le
+pare-feu (§3.5).
 
 ### 3.3 Utilisateurs : identification et authentification
 
-- **Identification** : savoir *qui* fait quoi, pour la journalisation. L'utilisateur
-  se déclare (code d'un badge lu, ou nom choisi) ; rien ne prouve que c'est lui.
-- **Authentification** : être *sûr* que c'est cet utilisateur, par un élément qu'il est
-  seul à détenir ou connaître.
-
-L'administrateur choisit le mode, par site ou par borne :
+- **Identification** : savoir *qui* fait quoi (journalisation). Rien ne prouve que c'est lui.
+- **Authentification** : être *sûr* que c'est lui.
 
 | Mode | Ce qui est demandé | Usage |
 |---|---|---|
-| Aucun | rien (comme la v1) | borne en libre service, journal anonyme |
-| Identification | identifiant tapé à l'écran (ou, plus tard, badge simple lu) | traçabilité de qui a fait quoi |
-| Authentification | identifiant tapé + PIN personnel ou mot de passe (compte local ou annuaire AD/LDAP) ; plus tard badge + PIN | preuve de l'identité |
+| Aucun | rien (comme la v1) | libre service, journal anonyme ; **interdit si la quarantaine est activée** |
+| Identification | identifiant tapé à l'écran (badge plus tard) | traçabilité |
+| Authentification | identifiant tapé + **PIN Barbacane** (6 chiffres minimum) | preuve de l'identité |
 
-Première version : **aucun lecteur**, l'identifiant se tape sur le clavier virtuel de
-l'écran tactile (déjà utilisé pour le PIN et les mots de passe d'archives). Le serveur
-refuse un identifiant inconnu dans les deux modes. Le badge est une option ultérieure.
-
-Le badge simple (code lu, type Mifare Classic ou 125 kHz) se copie facilement : seul, il
-ne vaut qu'**identification**. Combiné à un PIN, il vaut authentification. Lecteur : un
-lecteur de badges USB qui se présente comme un clavier envoie le code comme une frappe ;
-la borne bloquant les claviers (usbsas-hid), il faut l'autoriser explicitement par son
-identifiant USB et n'accepter de lui qu'une suite de chiffres de longueur fixe, sur l'écran
-d'identification uniquement. Les cartes à puce avec certificat restent pour plus tard.
+- Identifiant tapé sur le clavier virtuel de l'écran tactile ; aucun lecteur en v2.0.
+- **Aucun mot de passe d'annuaire n'est saisi sur une borne.** L'annuaire AD/LDAP sert
+  seulement à fournir la liste des identifiants (LDAPS avec vérification de la CA,
+  compte de service en lecture seule, droits minimaux).
+- PIN stocké sur le serveur sous forme dérivée (Argon2id), jamais sur la borne.
+- **Anti force brute** : verrouillage par identifiant **et** par borne après 5 échecs,
+  délai croissant, alerte à l'administrateur.
+- **Pas d'énumération** : en mode authentification, la réponse est identique que
+  l'identifiant existe ou non. En mode identification, un identifiant inconnu est refusé.
+- Badges (plus tard) : préférer un lecteur **CCID/PC-SC** à un lecteur émulant un clavier
+  (contournable par un faux clavier USB). Un badge simple seul ne vaut qu'identification.
 
 ### 3.4 Serveur
 
-- ISO Debian durcie, installation automatique comme la borne ; images Docker chargées
-  depuis l'ISO (aucun registre externe).
-- Deux interfaces réseau : **bornes** (passerelle uniquement) et **administration**
-  (interface web uniquement), séparées par le pare-feu.
-- Conteneurs non privilégiés, systèmes de fichiers en lecture seule, secrets hors des
-  images, journaux vers le journal d'audit.
-- L'analyse reste sur la borne. Éventuelle analyse complémentaire des fichiers suspects (bac à sable, autres moteurs) :
-  **phase ultérieure**, dans une VM séparée et non un simple conteneur.
+- ISO Debian durcie (guide ANSSI GNU/Linux), installation automatique hors ligne, **disque
+  chiffré** (clé scellée au TPM du serveur).
+- Conteneurs exécutés par **Podman sans root** (pas de démon root), images chargées depuis
+  l'ISO, systèmes de fichiers en lecture seule.
+- Deux interfaces réseau : **bornes** (passerelle) et **administration** (interface web),
+  séparées par le pare-feu.
+- **Secrets du serveur** (clé de la CA intermédiaire, clé de signature de l'audit, compte
+  de service LDAP, base de données) : dans le TPM ou dans des fichiers chiffrés déverrouillés
+  au démarrage par le TPM ; un compte système par service ; rotation documentée.
+
+### 3.5 PKI et enrôlement
+
+- **Racine hors ligne** (support chiffré au coffre, détenteurs nommés), deux CA
+  intermédiaires : « bornes » (certificats clients) et « serveur » (certificat TLS).
+  Clés intermédiaires dans le TPM ou un HSM si disponible.
+- **Politique de certification** minimale écrite avant l'étape 1 : profils, algorithmes
+  (ECDSA P-256 ou P-384), durées, révocation.
+- **Révocation** : CRL locale vérifiée par la passerelle à chaque connexion (pas d'OCSP,
+  rien n'est joignable hors du LAN).
+- **L'ISO de la borne embarque l'empreinte de la CA serveur** : la borne authentifie le
+  serveur dès le premier contact (aucune confiance aveugle au premier usage).
+- **Enrôlement** : jeton à usage unique, lié à un site, valable **1 h** ; la borne envoie sa
+  demande de certificat (clé générée dans le TPM) ; la demande reste **en attente** jusqu'à
+  ce qu'un administrateur compare l'empreinte affichée sur la borne à celle de l'interface
+  web et l'accepte.
+- Pare-feu du serveur : accepte le port des bornes depuis les **sous-réseaux des sites**
+  déclarés (l'enrôlement vient d'une adresse pas encore connue).
+
+### 3.6 Données envoyées et quarantaine
+
+- Par défaut : état, rapports, journaux. **Les noms de fichiers ne sont pas transmis en
+  clair** (empreinte sha256, extension et taille seulement ; nom complet consultable sur
+  la borne). Identifiant d'utilisateur pseudonymisé dans les rapports consultés hors du
+  rôle auditeur.
+- **Quarantaine désactivée par défaut.** Si l'AH l'autorise (variante homologuée DR) :
+  - fichiers chiffrés sur la borne pour une **clé de quarantaine dont la clé privée n'est
+    PAS sur le serveur** (carte à puce d'un rôle « analyste ») ;
+  - déchiffrement uniquement dans une VM d'analyse isolée, jamais sur le poste
+    d'administration ni sur le serveur ; jamais de décompression ni d'aperçu côté serveur ;
+  - restitution neutralisée (archive protégée, nom modifié), téléchargements journalisés,
+    double validation (§3.10) ;
+  - purge à 30 jours, sauvegardes comprises.
+
+### 3.7 Politique et plancher signé hors ligne
+
+- **Plancher signé hors ligne** (même clé ou clé dédiée de la chaîne `.bcu`, avec
+  anti-retour) : liste des CA de confiance, sites, paramètres non négociables (analyse
+  toujours active, modes utilisateur autorisés, délai de grâce maximal, quarantaine
+  autorisée ou non).
+- **Politique à chaud** (signée par le serveur) : uniquement des paramètres listés, chacun
+  borné par le plancher. Version monotone par borne (anti-rejeu). Toute baisse de niveau
+  exige la double validation (§3.10) et est journalisée.
+
+### 3.8 Sauvegarde et reprise
+
+- Sauvegarde chiffrée quotidienne (base, configuration, CA intermédiaires, empreintes
+  d'audit), copie hors du serveur ; purges appliquées aussi aux sauvegardes (rotation
+  courte).
+- **Restauration testée en CI** ; procédure de reprise écrite (objectif : bornes à nouveau
+  en service en moins de 4 h).
+
+### 3.9 Journal d'audit
+
+- Entrées chaînées par empreinte et signées par le serveur ; horodatées à la réception.
+- **Empreintes de la chaîne exportées chaque jour hors du serveur** (support non
+  réinscriptible ou serveur de journaux distinct) : une réécriture par un administrateur
+  système devient détectable.
+- Séparation des rôles : l'administrateur système (accès root, console) n'est pas
+  administrateur applicatif ; ses accès sont journalisés à part.
+
+### 3.10 Administration
+
+- Poste d'administration **dédié**, conforme aux recommandations ANSSI d'administration
+  sécurisée ; interface web joignable seulement depuis l'interface d'administration.
+- Authentification à deux facteurs hors ligne (clé FIDO2 ou carte à puce).
+- **Double validation** (deux personnes) : révocation massive, baisse de politique,
+  activation ou export de quarantaine.
+
+### 3.11 Heure
+
+- Le serveur est la référence : source interne (NTP du LAN, ou récepteur GNSS/radio).
+- Les bornes ne prennent l'heure **que** par le canal mTLS authentifié ; écart supérieur à
+  5 minutes → resynchronisation, sinon blocage.
+- Rapports et journaux horodatés par la borne **et** à la réception par le serveur.
 
 ## 4. Flux
 
 | Flux | Sens | Contenu | Protection |
 |---|---|---|---|
-| Enrôlement | borne → serveur | jeton à usage unique + demande de certificat (CSR) | jeton limité dans le temps, lié à un site ; CSR signé par l'autorité intermédiaire |
-| Battement | borne → serveur | état, version, âge des signatures, espace disque | mTLS |
-| Politique | borne ← serveur (à l'initiative de la borne) | méthodes d'identification, clés enrôlées, règles | signée par le serveur, versionnée, validée par la borne |
+| Enrôlement | borne → serveur | jeton + demande de certificat | jeton 1 h, usage unique ; validation par un administrateur ; CA serveur épinglée |
+| Battement | borne → serveur | état, version, âge des signatures, espace disque, écart d'horloge | mTLS |
+| Plancher | borne ← serveur | plancher signé hors ligne | signature hors ligne + anti-retour, vérifiés par la borne |
+| Politique | borne ← serveur | paramètres listés | bornée par le plancher, version monotone |
 | Mise à jour | borne ← serveur | `.bcu` + `.minisig` | signature hors ligne vérifiée par la borne |
-| Identification / authentification | borne → serveur | code du badge, plus PIN ou mot de passe selon le mode | mTLS ; aucune conservation sur la borne |
-| Rapports, journaux | borne → serveur | JSON, journald | mTLS ; file d'attente locale bornée |
-| Quarantaine | borne → serveur | fichiers malveillants ou suspects | chiffrés pour la clé publique de quarantaine du serveur, puis mTLS |
+| Utilisateur | borne → serveur | identifiant, PIN Barbacane selon le mode | mTLS ; anti force brute ; aucune conservation sur la borne |
+| Rapports, journaux | borne → serveur | JSON (schéma strict), journald | mTLS ; quotas ; noms de fichiers non transmis en clair |
+| Quarantaine (option) | borne → serveur | fichiers malveillants | chiffrés pour une clé privée hors du serveur |
 
 ## 5. Conformité
 
-- **ANSSI** : TLS 1.3 (ou 1.2 avec suites recommandées), PKI conforme au RGS, journalisation
-  selon les recommandations ANSSI, durcissement Debian (guide de configuration GNU/Linux).
-- **Diffusion Restreinte** : la quarantaine peut contenir des données DR. Le serveur
-  traite donc des données DR et doit être **homologué à ce niveau** ; la liaison entre
-  sites peut exiger un **chiffreur agréé** (à valider avec l'autorité d'homologation,
-  le VPN site à site seul peut ne pas suffire). Prévoir une option « quarantaine
-  désactivée » pour les sites qui ne peuvent pas l'accepter.
-- **RGPD** : registre de traitement, durées de conservation (1 an / 30 jours) appliquées
-  par purge automatique, accès aux données selon les rôles, information des utilisateurs.
+- **ANSSI** : TLS 1.3 seul (suites et courbes fixées), PKI avec politique de certification,
+  journalisation et administration sécurisée selon les guides ANSSI, durcissement Debian.
+- **Diffusion Restreinte** : par défaut, **aucune donnée DR sur le serveur** (pas de
+  quarantaine, pas de noms de fichiers). La variante avec quarantaine fait du serveur un
+  SI DR : **homologation DR propre**, produits agréés DR (chiffreur IP entre sites),
+  postes d'administration homologués, pas d'interconnexion avec un SI de niveau inférieur.
+  **Périmètre à valider avec l'AH avant l'étape 1.**
+- **Liaison entre sites** : routée et chiffrée par un produit adapté au niveau visé
+  (agréé DR si la variante DR est retenue) ; le VPN seul ne suffit pas forcément (AH).
+- **RGPD** : registre de traitement ; **analyse d'impact (AIPD)** (journalisation
+  nominative du personnel) ; information des agents et consultation des instances
+  représentatives ; durée d'un an justifiée par la traçabilité des incidents ;
+  pseudonymisation ; droits d'accès des personnes ; purges appliquées aux sauvegardes.
 
 ## 6. Analyse des risques (principales menaces)
 
 | Menace | Mesure |
 |---|---|
-| Serveur compromis qui pousse du code | Aucun code poussé ; `.bcu` signés hors ligne et vérifiés par la borne. |
-| Serveur compromis qui affaiblit la politique | Valeurs minimales codées en dur dans la borne (analyse toujours obligatoire, jamais de désactivation de ClamAV) ; politique signée et journalisée. |
-| Usurpation d'une borne | Certificat client par borne, clé non exportable ; révocation dans l'interface web. |
-| Badge simple copié | Mode « identification » seulement ; l'administrateur impose badge + PIN là où l'identité doit être prouvée. |
-| Faux lecteur de badges (clavier injecté) | Lecteur autorisé par identifiant USB, saisie limitée aux chiffres de longueur fixe et au seul écran d'identification. |
-| Vol du jeton d'enrôlement | Usage unique, durée courte, lié à un site, journalisé. |
-| Attaque réseau sur la borne | Aucun port en écoute ; une seule destination autorisée. |
-| Fausse clé « connue » (VID/PID/SN falsifiés) | Identifiants USB = traçabilité seulement ; analyse toujours obligatoire. |
-| Fuite de la quarantaine | Chiffrement de bout en bout, accès réservé, purge à 30 jours. |
-| Panne du serveur | Bornes bloquées par conception : procédure de reprise documentée, sauvegarde et restauration testées ; redondance prévue plus tard. |
-| Administrateur malveillant | Rôles séparés, journal d'audit inaltérable consultable par l'auditeur. |
+| Serveur compromis qui pousse du code | Aucun code poussé ; `.bcu` signés hors ligne, vérifiés par la borne. |
+| Serveur compromis qui affaiblit la politique | Plancher signé hors ligne ; politique à chaud bornée, version monotone, double validation, audit. |
+| Serveur compromis qui récolte des secrets | Aucun mot de passe d'annuaire saisi sur les bornes ; PIN dérivés (Argon2id) ; quarantaine désactivée ou clé privée hors serveur. |
+| Borne compromise ou clonée | Clé dans le TPM, disque scellé ; certificat 90 jours ; révocation (CRL) ; quotas, schéma strict, échappement côté serveur. |
+| Faux rapports, injection dans l'interface web | Schéma strict, quotas par borne, échappement systématique. |
+| Force brute des PIN | Verrouillage par identifiant et par borne, délai croissant, alerte. |
+| Énumération des identifiants | Réponse identique en mode authentification. |
+| Vol du jeton ou de l'ISO personnalisée | Jeton 1 h, usage unique ; validation de l'enrôlement par un administrateur. |
+| Usurpation du serveur au premier contact | Empreinte de la CA serveur dans l'ISO. |
+| Faux clavier / faux lecteur de badges | Pas de lecteur en v2.0 ; plus tard, lecteur CCID plutôt qu'émulation clavier. |
+| Fausse clé « connue » (VID/PID/SN) | Traçabilité seulement ; analyse toujours obligatoire. |
+| Fuite de données DR | Pas de DR sur le serveur par défaut ; variante DR homologuée à part. |
+| Panne serveur, coupure réseau, certificat expiré | Délai de grâce borné ; renouvellement automatique et alertes ; sauvegarde et reprise testées. |
+| Horloge faussée | Heure du serveur par le canal authentifié ; blocage si l'écart persiste. |
+| Administrateur malveillant | Rôles séparés, double validation, audit exporté hors du serveur. |
 
-## 7. Découpage en étapes
+## 7. Questions ouvertes
 
-1. **Socle** : ISO serveur (Debian durcie + Docker embarqué), PKI interne, passerelle
-   mTLS, enrôlement par jeton, battement et supervision dans l'interface web.
-2. **Mises à jour** : dépôt du `.bcu` dans l'interface web, diffusion, suivi par borne.
-3. **Rapports et journaux** : collecte, recherche, export, conservation 1 an.
-4. **Utilisateurs** : identifiant tapé à l'écran (identification), identifiant + PIN ou
-   mot de passe avec comptes locaux (authentification), puis AD/LDAP, puis badges ;
-   mode choisi par site ou par borne.
+- Périmètre DR, port aléatoire, liaison entre sites : **décision de l'AH**.
+- Qui détient la racine de la PKI et la clé de quarantaine (si activée).
+- Source d'heure du site (NTP interne existant ou récepteur dédié).
+
+## 8. Découpage en étapes
+
+0. **Préalable** : validation du périmètre par l'AH ; politique de certification ; AIPD.
+1. **Socle** : ISO serveur (Debian durcie, Podman sans root, disque chiffré), PKI (racine
+   hors ligne, deux CA), passerelle mTLS avec CRL, enrôlement validé, heure, battement et
+   supervision, sauvegarde/restauration testée.
+2. **Mises à jour** : dépôt du `.bcu`, diffusion, suivi ; plancher signé hors ligne.
+3. **Rapports et journaux** : schéma strict, quotas, conservation, audit exporté.
+4. **Utilisateurs** : modes Aucun / Identification / Authentification (PIN Barbacane),
+   anti force brute, liste d'identifiants depuis l'annuaire (LDAPS).
 5. **Clés USB** : enrôlement par fabricant + numéro de série, politiques par site.
-6. **Quarantaine** chiffrée, purge 30 jours, option de désactivation.
-7. **Plus tard** : badges, analyse complémentaire en bac à sable, serveur central de
-   consolidation multi-sites, redondance.
+6. **Quarantaine** (option, variante homologuée) : clé privée hors serveur, VM d'analyse.
+7. **Plus tard** : badges (CCID), analyse complémentaire, serveur central, redondance.
 
 Chaque étape : conception détaillée, tests automatisés, preuves, CI verte.
 
-## 8. Questions ouvertes
+## 9. Téléchargement de l'ISO des bornes depuis le serveur
 
-- Badges plus sûrs (carte à puce avec certificat, DESFire) : plus tard ; prévoir une interface d'identification
-  extensible.
-- Exigences exactes de l'autorité d'homologation (chiffreur, produits qualifiés).
-- Où conserver la racine de la PKI (support hors ligne, coffre) et qui la détient.
-- Durée de blocage acceptable : délai de grâce de quelques minutes après une coupure
-  réseau courte, ou blocage immédiat ?
+L'ISO du serveur **embarque l'ISO de la borne en ligne** de la même version. L'interface
+web (rôle administrateur) propose :
 
-## 9. Évolution prévue : serveur central
-
-Plus tard, un serveur central consolidera plusieurs serveurs de site par le VPN
-site à site. Rôle à définir (consolidation seule recommandée : chaque site reste maître
-de ses bornes). Les choix de l'étape 1 (identifiants uniques de site, PKI hiérarchique)
-doivent le permettre sans refonte.
-
-## 9 bis. Téléchargement de l'ISO des bornes depuis le serveur
-
-L'ISO du serveur **embarque l'ISO de la borne en ligne** de la même version (construite
-dans la même publication). L'interface web (rôle administrateur) propose :
-
-- **ISO générique** : la même pour toutes les bornes, sans secret ; l'enrôlement se fait
-  au premier démarrage avec un jeton (saisi ou sur clé USB). Empreinte sha256 et
-  signature affichées pour vérification.
-- **ISO personnalisée** (option) : générée à la demande avec un jeton d'enrôlement à
-  usage unique, l'adresse, le port et le site déjà inclus ; la borne s'enrôle seule au
-  premier démarrage. Cette ISO contient un secret : durée de validité courte (24 h par
-  défaut), usage unique, téléchargement journalisé, à détruire après usage.
-- Les deux sont produites **sans Internet**, par le serveur lui-même (remaster de l'ISO
-  embarquée, comme `build-iso.sh`).
-- Une mise à jour du serveur (`.bcu` serveur signé) apporte la nouvelle ISO des bornes ;
-  les bornes déjà installées se mettent à jour par les `.bcu` habituels, sans
-  réinstallation.
-- L'ISO hors ligne (v1) peut aussi être proposée au téléchargement, signalée comme
-  « borne sans serveur ».
+- **ISO générique** : sans secret, avec l'empreinte de la CA serveur ; enrôlement au premier
+  démarrage par jeton. Son empreinte se vérifie **hors bande** (note de version imprimée),
+  pas seulement sur la page du serveur.
+- **ISO personnalisée** : jeton (1 h, usage unique), adresse, port et site inclus.
+  L'enrôlement reste soumis à la validation par un administrateur ; téléchargement
+  journalisé ; à préparer au moment de l'installation et à détruire après usage.
+- **ISO hors ligne v1**, signalée « borne sans serveur ».
+- Produites **sans Internet** par le serveur (remaster de l'ISO embarquée).
+- Mises à jour du serveur : `.bcu` serveur signé par une **clé distincte** de celle des
+  bornes (étiquette d'usage, anti-retour) ; il apporte la nouvelle ISO des bornes.
 
 ## 10. Organisation du dépôt (sans casser la v1)
 
@@ -227,7 +305,7 @@ même borne hors ligne, sans aucun code réseau.
 noyau/            inchangé (lecture USB, issu d'usbsas)
 borne/            inchangé (client, analyzer, admind, parcours, update, optique)
 borne/agent/      NOUVEAU : barbacane-agent (borne en ligne uniquement)
-serveur/          NOUVEAU : passerelle, interface web, identité, PKI, images Docker
+serveur/          NOUVEAU : passerelle, interface web, identité, PKI, conteneurs
 serveur/iso/      NOUVEAU : ISO du serveur
 systeme/iso/      build-iso.sh --profil hors-ligne (défaut, = v1) | en-ligne
 tests/            + tests/suite/ (serveur, agent, bout en bout)
@@ -235,13 +313,17 @@ tests/            + tests/suite/ (serveur, agent, bout en bout)
 
 Règles :
 - Le profil **hors-ligne est le défaut** : sans option, `build-iso.sh` produit la v1.
-- Le paquet `barbacane-agent` et toute configuration réseau n'existent **que** dans le
-  profil en-ligne. Un test de CI ouvre l'ISO hors ligne et **échoue** si elle contient
-  l'agent, un paquet réseau ou une règle de pare-feu autorisant une sortie.
-- La CI existante (construction de l'ISO hors ligne + `tests/iso/qemu.sh`) reste
-  obligatoire avant toute fusion dans `main` ; les nouveaux jobs (serveur, ISO en ligne)
-  s'y ajoutent sans la remplacer.
-- La documentation garde un parcours v1 inchangé (`docs/guide-installation-poste.md`) ;
-  la suite a ses propres documents (`docs/suite/`).
-- Versions : v1.x pour la borne hors ligne ; la suite démarre en v2.0 (borne en ligne +
-  serveur). Une étiquette git par version publiée.
+- `barbacane-agent` et toute configuration réseau n'existent **que** dans le profil
+  en-ligne. Un test de CI ouvre l'ISO hors ligne et **échoue** si elle contient l'agent, un
+  paquet réseau ou une règle de pare-feu autorisant une sortie.
+- La CI existante (ISO hors ligne + `tests/iso/qemu.sh`) reste obligatoire avant toute
+  fusion dans `main` ; les nouveaux jobs s'y ajoutent.
+- Documentation v1 inchangée ; la suite a ses documents dans `docs/suite/`.
+- Versions : v1.x hors ligne ; la suite démarre en v2.0. Une étiquette git par version.
+
+## 11. Évolution prévue : serveur central
+
+Plus tard, un serveur central consolidera plusieurs serveurs de site (consolidation seule
+recommandée : chaque site reste maître de ses bornes). Les choix de l'étape 1
+(identifiants uniques de site, PKI hiérarchique, audit exportable) doivent le permettre
+sans refonte.
