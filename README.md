@@ -24,8 +24,8 @@
 > La borne Barbacane est l'endroit où un support inconnu s'arrête avant d'atteindre votre réseau.
 
 <p align="center">
-  <img src="docs/preuves/transfert/02-resultat-analyse.png" width="49%" alt="Résultat de l'analyse : menaces détectées et fichiers refusés">
-  <img src="docs/preuves/optique/lecteur/01-disque-detecte.png" width="49%" alt="Disque optique détecté : copier, graver ou blanchir">
+  <img src="docs/captures/v1/jour/05-resultat.png" width="49%" alt="Résultat de l'analyse : menaces détectées et fichiers refusés">
+  <img src="docs/preuves/2026-11-18-optique/lecteur/01-disque-detecte.png" width="49%" alt="Disque optique détecté : copier, graver ou blanchir">
 </p>
 
 ## Ce que fait la borne

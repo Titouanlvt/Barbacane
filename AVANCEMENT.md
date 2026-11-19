@@ -13,6 +13,17 @@
 | Adaptation visuelle charte v2 (borne) | à faire |
 | 5–10. Barbacane suite | à faire |
 
+## Étape 1 — inventaire (19/11)
+| Élément | Problème | Traitement |
+|---|---|---|
+| `docs/captures/01..10` (12/11) | écrans d'avant la refonte (choix Copier/Blanchir, anciennes couleurs) | remplacés par `docs/captures/v1/{jour,nuit}/` (`tests/ui/captures.sh`, borne 950, 1280×800) |
+| `docs/Barbacane-installation.md` (19 images) | captures des 14–16/11 (`preuves/transfert`, `pin`, `enrolement`…) | pointent vers `captures/v1/jour/` ou les preuves du 18/11 (ISO v1.0) |
+| — gravure en cours | seule capture du 15/11 (tiroir à refermer à la main) | conservée, signalée |
+| `README.md` | capture du résultat d'avant v1.0 | `captures/v1/jour/05-resultat.png` |
+| `docs/exploitation.md` | `captures/01-choix.png` (écran supprimé : parcours unique) | `captures/v1/jour/02-cle-detectee.png` |
+| `docs/administration.md` | thème « Pierre » | à renommer « Jour » avec l'adaptation de la charte (libellé encore « Pierre » dans la v1.0) |
+| Résolution | consigne 1280×768 ; la VM de test affiche 1280×800 | captures en 1280×800 (même mise en page, 32 px de plus en bas) |
+
 ## Décisions (19/11)
 - RTX 4000 : pas de passthrough (seule carte VGA, `boot_vga=1`) → rendus 3D en CPU, mesure wgpu non faite.
 - Charte : la branche `charte-v2` de l'utilisateur prime sur ma copie depuis l'Artifact (contenu identique,

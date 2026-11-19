@@ -115,12 +115,12 @@ Sous Windows : Rufus en mode **« image DD »**.
 2. L'installation démarre seule au bout de 10 secondes. **Ne rien toucher.**
    Le plus grand disque interne est effacé (jamais un disque USB).
 
-![Installation automatique (aucune question)](preuves/installation/01-installateur.png)
+![Installation automatique (aucune question)](preuves/2026-11-18-finale/passe1/installation/01-installateur.png)
 
 3. Le poste redémarre tout seul (≈ 15 minutes). **Retirer la clé d'installation.**
 4. L'écran d'accueil de Barbacane apparaît.
 
-![Écran d'accueil](preuves/installation/02-premier-ecran.png)
+![Écran d'accueil](captures/v1/jour/01-accueil.png)
 
 5. Appliquer les réglages BIOS « après l'installation » (§1).
 
@@ -132,11 +132,11 @@ Sous Windows : Rufus en mode **« image DD »**.
 2. L'écran indique « Premier démarrage : choisissez le PIN administrateur ». Saisir au moins
    6 chiffres sur le pavé, puis **Valider**.
 
-![Choix du premier PIN](preuves/pin/01-premier-pin.png)
+![Choix du premier PIN](preuves/2026-11-18-finale/passe1/pin/01-premier-pin.png)
 
 3. Le menu d'administration s'ouvre. **Quitter le mode administrateur** pour revenir à l'accueil.
 
-![Menu d'administration](preuves/pin/02-menu-admin.png)
+![Menu d'administration](captures/v1/jour/12-admin-menu.png)
 
 Sécurités du PIN :
 
@@ -145,7 +145,7 @@ Sécurités du PIN :
   refusé pendant ce délai ;
 - la session administrateur se ferme seule après 15 minutes d'inactivité.
 
-![Mauvais PIN](preuves/pin/03-mauvais-pin.png)
+![Mauvais PIN](preuves/2026-11-18-finale/passe1/pin/03-mauvais-pin.png)
 
 **PIN oublié** : il n'existe volontairement aucune porte dérobée (root verrouillé, aucun pilote
 clavier, menu de démarrage protégé par un mot de passe que personne ne connaît). Il faut
@@ -164,14 +164,14 @@ fichiers. C'est une mesure d'organisation, pas un contrôle d'accès : un numér
 2. Brancher la clé : elle apparaît sous « Enrôler : … ». Cliquer dessus.
 3. Cliquer **Activer** pour n'accepter que les clés de la liste.
 
-![Clé enrôlée, mode activé](preuves/enrolement/03-mode-active.png)
+![Clé enrôlée, mode activé](captures/v1/jour/14-admin-enrolement.png)
 
 ## Retirer une clé, perte d'une clé enrôlée
 
 Sur le même écran, **Retirer** supprime une clé de la liste. Une clé enrôlée perdue doit être
 retirée tout de suite. Toute clé non enrôlée est refusée en sortie avec un message :
 
-![Clé non enrôlée refusée](preuves/transfert/03-cle-non-enrolee-refusee.png)
+![Clé non enrôlée refusée](captures/v1/jour/07-cle-non-enrolee.png)
 
 # 6. Utilisation
 
@@ -183,7 +183,7 @@ de **graver**, de **blanchir** le support analysé ou d'**arrêter ici**.
 
 1. Brancher la clé à analyser sur le port **ENTRÉE**, cliquer **Analyser**.
 
-![Clé détectée](preuves/transfert/01-cle-detectee.png)
+![Clé détectée](captures/v1/jour/02-cle-detectee.png)
 
 2. Si une archive est protégée par un mot de passe, la borne le demande. Saisir le mot de passe
    au clavier virtuel, ou **Ignorer cette archive**.
@@ -191,12 +191,12 @@ de **graver**, de **blanchir** le support analysé ou d'**arrêter ici**.
    **Arrêter ici**, **Copier vers une clé connue**, **Graver un disque** (si la borne a un
    graveur) et **Blanchir la clé**.
 
-![Résultat de l'analyse](preuves/transfert/02-resultat-analyse.png)
+![Résultat de l'analyse](captures/v1/jour/05-resultat.png)
 
 4. **Copier vers une clé connue** : brancher la clé de destination sur le port **SORTIE**, puis **Effacer cette
    clé et y copier les fichiers**. Le contenu précédent de cette clé est effacé.
 
-![Fin de la copie](preuves/transfert/05-termine.png)
+![Fin de la copie](captures/v1/jour/10-termine.png)
 
 Sur la clé de destination, on trouve :
 
@@ -219,9 +219,9 @@ Pendant l'effacement, l'écran affiche la quantité traitée, la vitesse de la c
 et un chronomètre ; la barre reste animée même si un gros fichier la bloque. Une clé lente prend
 du temps : ne la retirez pas.
 
-![Confirmation du blanchiment](preuves/blanchiment/03-confirmation.png)
+![Confirmation du blanchiment](captures/v1/jour/06-blanchir-confirmation.png)
 
-![Effacement en cours](preuves/blanchiment/04-effacement-en-cours.png)
+![Effacement en cours](preuves/2026-11-18-finale/passe1/blanchiment/04-effacement-en-cours.png)
 
 ## Clés démarrables (Ventoy, Rufus, Etcher)
 
@@ -233,9 +233,9 @@ fichier. La borne ne la recopie donc **jamais**.
   construction de l'ISO), puis recopie seulement les images saines. Le dossier `ventoy/`
   (configuration, greffons) n'est pas recopié. La clé démarre ensuite comme avant.
 
-![Clé Ventoy : choix « Blanchir en gardant démarrable »](preuves/ventoy/02-resultat-analyse.png)
+![Clé Ventoy : choix « Blanchir en gardant démarrable »](preuves/2026-11-18-finale/passe1/ventoy/02-resultat-analyse.png)
 
-![Clé Ventoy blanchie : elle démarre](preuves/ventoy/05-demarrage-ventoy.png)
+![Clé Ventoy blanchie : elle démarre](preuves/2026-11-18-finale/passe1/ventoy/05-demarrage-ventoy.png)
 
 - **Clé Rufus ou Etcher** : la borne l'indique par un avertissement. Le blanchiment la rend non
   démarrable ; recréez-la ensuite depuis une image officielle, ou copiez l'image (ISO) saine sur
@@ -251,7 +251,7 @@ Le lecteur optique de la borne est une source et une destination comme les ports
   **Toutes les sessions** du disque sont lues : un fichier caché dans une ancienne session
   est analysé comme les autres. Les CD audio et les disques illisibles sont refusés.
 
-![Disque réinscriptible détecté : copier, graver ou blanchir](preuves/optique/lecteur/01-disque-detecte.png)
+![Disque réinscriptible détecté : copier, graver ou blanchir](preuves/2026-11-18-optique/lecteur/01-disque-detecte.png)
 
 ![Gravure en cours (effacement complet, puis gravure vérifiée)](preuves/optique/gravure/04-gravure-en-cours.png)
 
@@ -307,9 +307,9 @@ Quand le paquet contient des paquets Debian (nouvelle version de Barbacane, `--d
 La borne refuse un paquet non signé, signé par une autre clé, corrompu, ou plus ancien que
 la version installée :
 
-![Paquet signé par une autre clé : refusé](preuves/maj/02-mauvaise-signature.png)
+![Paquet signé par une autre clé : refusé](preuves/2026-11-18-finale/passe1/maj/02-mauvaise-signature.png)
 
-![Version plus ancienne : refusée](preuves/maj/03-version-ancienne.png)
+![Version plus ancienne : refusée](preuves/2026-11-18-finale/passe1/maj/03-version-ancienne.png)
 
 ### Images officielles (ISO Windows, Debian…)
 
@@ -345,7 +345,7 @@ Administration → **Exporter les journaux** → brancher une clé sur le port S
 effacée) → **Exporter**. La clé reçoit les journaux de la borne, les rapports et l'état des
 paquets (`dpkg-status`), utile pour préparer une mise à jour Debian.
 
-![Export terminé](preuves/export/01-export-termine.png)
+![Export terminé](preuves/2026-11-18-finale/passe2-enchainee/export/01-export-termine.png)
 
 # 8. Dépannage
 
