@@ -6,6 +6,8 @@ set -euo pipefail
 ISO="$(realpath "$1")"
 W="$(realpath -m "$2")"
 mkdir -p "$W"
+# Garde-fou du profil hors ligne (D12) : aucun agent, aucun paquet réseau, sortie bloquée.
+"$(dirname "$0")/hors-ligne.sh" "$ISO"
 OVMF=/usr/share/ovmf/OVMF.fd
 qemu-img create -q -f qcow2 "$W/disque.qcow2" 16G
 commun=(-enable-kvm -cpu host -m 4096 -smp 2 -bios "$OVMF" -vga std -display none
@@ -86,6 +88,13 @@ echo "-- erreurs"; tail -n 40 "$W/erreurs.log"
 echo "-- droits"; ls -ld "$W/racine" "$W/racine/var/lib/barbacane" "$W/racine/var/lib/barbacane/yara"
 echo "-- base ClamAV"; ls -l "$W/racine/var/lib/clamav/"
 ko=0
+# Paquets réseau réellement installés sur la borne (même liste que tests/iso/hors-ligne.sh).
+installes=$(awk '/^Package: /{p=$2} /^Status: install ok installed/{print p}' "$W/racine/var/lib/dpkg/status")
+for p in barbacane-agent openssh-server openssh-client dropbear network-manager connman wpasupplicant iwd \
+         avahi-daemon samba nfs-common rpcbind chrony ntpsec ntp openntpd cups-daemon wireguard-tools openvpn strongswan podman; do
+    if grep -qx "$p" <<<"$installes"; then echo "ÉCHEC : paquet réseau installé sur la borne : $p" >&2; ko=1; fi
+done
+[ "$ko" = 0 ] && echo "OK : aucun paquet réseau installé ($(wc -l <<<"$installes") paquets)"
 for u in barbacane-analyzer barbacane-admind barbacane-kiosk usbsas-server clamav-daemon; do
     # Seulement avant l'extinction de la VM (les erreurs d'arrêt ne comptent pas)
     avant=$(awk '/Stopping / { exit } { print }' "$W/services.log")
