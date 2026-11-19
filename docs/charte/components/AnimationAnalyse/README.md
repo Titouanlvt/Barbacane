@@ -1,5 +1,7 @@
 # AnimationAnalyse
 
+> **v1, implémentée** dans `borne/client/src/anim.rs` et `dessin.rs` (formes SVG plates). La v2 garde ses courbes et ses durées ; voir les composants Anim* et `animations.md`.
+
 Animations des quatre moments de l'analyse, toutes tirées du château : la clé avance vers la porte, un faisceau balaie les fichiers, le bouclier apparaît si tout est sain, la herse tombe sur une menace.
 
 | Moment | Animation | Durée | Courbe |

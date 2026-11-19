@@ -1,0 +1,16 @@
+<!-- @dsCard group="Maquettes · borne" height=780 width=1280 page subtitle="v2 en ligne : serveur injoignable après le délai de grâce" -->
+<link rel="stylesheet" href="../demo.css?v=2">
+<link rel="stylesheet" href="../sprites.css?v=2">
+<div class="cadre-ecran b-ecran">
+<header class="b-bandeau"><svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M6 58V12h4v4h4v-4h4v4h4v42ZM12.5 26v10h3V26ZM42 58V16h4v-4h4v4h4v-4h4v46ZM48.5 26v10h3V26ZM22 58V24h20v34ZM27 58V43a5 5 0 0 1 10 0v15Z"/><rect x="27" y="46" width="10" height="2" fill="var(--laiton-clair)"/><rect x="27" y="51" width="10" height="2" fill="var(--laiton-clair)"/></svg><span class="b-bandeau__nom">Barbacane</span><span class="b-bandeau__plus"><span class="b-mono" style="opacity:.8">B-A-01 · Site A</span></span></header>
+
+<main style="flex:1;display:grid;place-items:center;align-content:center;gap:12px;text-align:center;padding:0 120px">
+  <div class="b-sprite s-embleme-herse b-sprite--fin" style="--cote:260px"></div>
+  <div class="b-verdict" style="--c:var(--hors-service);--f:var(--surface-haute);--fonce:var(--trait-fort);text-align:left;padding:18px 26px">
+    <span class="b-pastille" style="--c:var(--hors-service);--fonce:var(--trait-fort)"><svg viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg></span>
+    <div><p class="b-verdict__titre" style="color:var(--encre)">Borne hors service</p><p class="b-verdict__texte">Le serveur de gestion est injoignable depuis 5 min. Aucune clé ne peut être analysée.</p></div>
+  </div>
+  <p style="margin:6px 0 0;font-size:20px;color:var(--encre-douce)">Prévenez l'administrateur. La borne reprendra seule dès le retour du serveur.</p>
+</main>
+<footer style="display:flex;justify-content:space-between;align-items:center;padding:0 24px;height:44px;font-size:15px;color:var(--encre-douce)"><span>Barbacane 2.0 · station blanche</span><span style="display:flex;gap:24px;align-items:center"><span class="b-etat b-etat--hors">Serveur injoignable · dernier contact 10:42</span><button class="b-btn b-btn--discret" style="min-height:44px;font-size:15px;padding:0 8px">Administration</button></span></footer>
+</div>

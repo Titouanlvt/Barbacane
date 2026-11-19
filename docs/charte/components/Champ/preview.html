@@ -1,0 +1,15 @@
+<!-- @dsCard group="Saisie" height=330 subtitle="Niveau -1 : on écrit dans ce qui est creusé" -->
+<link rel="stylesheet" href="../demo.css?v=2">
+<div class="demo" style="grid-template-columns:1fr 1fr;align-items:start">
+  <div class="b-ecran" style="background:none;display:grid;gap:16px">
+    <p class="demo-titre">Borne</p>
+    <div class="b-champ"><label for="id1">Identifiant</label><input id="id1" class="b-saisie" value="t.lelievre"></div>
+    <div class="b-champ b-champ--erreur"><label for="pin1">Code PIN</label><input id="pin1" class="b-saisie" type="password" value="1234"><span class="b-aide">Code incorrect. Il vous reste 2 essais.</span></div>
+  </div>
+  <form class="b-page b-formulaire" style="background:none" onsubmit="return false">
+    <p class="demo-titre">Serveur web</p>
+    <div class="b-champ"><label for="n1">Nom de la borne</label><input id="n1" class="b-saisie" value="B-A-03"><span class="b-aide">Lettres, chiffres et tirets. Visible dans les rapports.</span></div>
+    <div class="b-champ"><label for="s1">Site</label><select id="s1" class="b-saisie"><option>Site A — Rennes</option><option>Site B — Brest</option></select></div>
+    <label class="b-case"><input type="checkbox" id="c1" checked> Exiger l'authentification</label>
+  </form>
+</div>

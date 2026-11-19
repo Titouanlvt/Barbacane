@@ -1,53 +1,11 @@
-<!-- @dsCard group="États" height=470 -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono&display=swap">
-<style>
-body{margin:0;background:var(--surface);color:var(--encre);font-family:"Atkinson Hyperlegible","DejaVu Sans",sans-serif}
-.w{display:grid;gap:var(--pas-4);padding:var(--pas-3)}
-.h{display:flex;justify-content:space-between;align-items:baseline;gap:var(--pas-2);margin-bottom:var(--pas-1)}
-.lab{font-size:22px;line-height:28px;font-weight:700}
-.pct{font:400 22px/28px "JetBrains Mono",monospace;font-variant-numeric:tabular-nums}
-.sub{display:flex;justify-content:space-between;gap:var(--pas-2);margin-top:var(--pas-1);font:400 15px/20px "JetBrains Mono",monospace;color:var(--encre-douce)}
-.sub span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.track{position:relative;height:24px;border-radius:var(--rayon-m);background:var(--analyse-fond);overflow:hidden;border:1px solid var(--trait)}
-/* rayures qui défilent : la borne vit même si la valeur ne bouge pas */
-.fill{position:absolute;inset:0 auto 0 0;border-radius:var(--rayon-m);overflow:hidden;background:var(--analyse)}
-.fill::before{content:"";position:absolute;inset:0 -48px 0 0;background:repeating-linear-gradient(-45deg,transparent 0 12px,var(--analyse-fond) 12px 24px);opacity:.35;animation:raie .9s linear infinite}
-@keyframes raie{to{transform:translateX(-33.94px)}}
-/* bord avant en laiton : pulse doucement */
-.tete{position:absolute;top:0;bottom:0;width:6px;margin-left:-6px;background:var(--laiton);animation:pulse 1.2s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-/* indéterminée : un bloc laiton fait des allers-retours */
-.navette{position:absolute;top:0;bottom:0;width:30%;border-radius:var(--rayon-m);background:var(--analyse);animation:nav 1.6s cubic-bezier(.5,0,.5,1) infinite alternate}
-@keyframes nav{from{left:0}to{left:70%}}
-.note{display:flex;gap:var(--pas-1);align-items:center;margin-top:var(--pas-2);padding:var(--pas-1) var(--pas-2);border-radius:var(--rayon-s);background:var(--laiton-pale);font-size:16px;line-height:22px}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--laiton);flex:none;animation:pulse 1.2s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.fill::before,.tete,.navette,.dot{animation:none}.navette{left:35%}}
-</style>
-<div class="w">
-
-<div>
-<div class="h"><span class="lab">Analyse en cours</span><span class="pct">38 %</span></div>
-<div class="track"><div class="fill" style="width:38%"></div><div class="tete" style="left:38%"></div></div>
-<div class="sub"><span id="f1">Photos/chantier-04.jpg</span><span>412 / 1 038 · <b id="t1">2 min 14 s</b></span></div>
+<!-- @dsCard group="États" height=300 subtitle="Elle bouge toujours, même bloquée sur un gros fichier" -->
+<link rel="stylesheet" href="../demo.css?v=2">
+<div class="demo b-ecran">
+  <div><div class="demo-rang" style="justify-content:space-between"><b>Analyse en cours</b><span class="b-mono">38 %</span></div>
+    <div class="b-barre" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100"><div class="b-barre__rempli" style="--p:38"></div></div>
+    <div class="b-barre-legende"><span>Photos/chantier-04.jpg</span><span>412 / 1 038 · 2 min 14 s</span></div></div>
+  <div><div class="demo-rang" style="justify-content:space-between"><b>Lecture de la clé</b><span class="b-mono">…</span></div>
+    <div class="b-barre b-barre--navette" role="progressbar" aria-label="Lecture de la clé"><div class="b-barre__rempli"></div></div>
+    <div class="b-barre-legende"><span>Inventaire des fichiers</span><span>0 min 18 s</span></div></div>
+  <div class="b-avis"><span>Ce fichier est volumineux (4,2 Go). L'analyse continue, la borne n'est pas bloquée.</span></div>
 </div>
-
-<div>
-<div class="h"><span class="lab">Analyse en cours</span><span class="pct">71 %</span></div>
-<div class="track"><div class="fill" style="width:71%"></div><div class="tete" style="left:71%"></div></div>
-<div class="sub"><span>Archives/sauvegarde-2025.zip</span><span>738 / 1 038 · <b id="t2">6 min 02 s</b></span></div>
-<div class="note"><span class="dot"></span>Ce fichier est volumineux (4,2 Go). L'analyse continue, la borne n'est pas bloquée.</div>
-</div>
-
-<div>
-<div class="h"><span class="lab">Lecture de la clé</span><span class="pct">…</span></div>
-<div class="track"><div class="navette"></div></div>
-<div class="sub"><span>Inventaire des fichiers</span><span id="t3">0 min 18 s</span></div>
-</div>
-
-</div>
-<script>
-(function(){var s=[134,362,18],ids=["t1","t2","t3"],files=["Photos/chantier-04.jpg","Photos/chantier-05.jpg","Docs/devis-0412.pdf","Docs/plan-rdc.dwg","Photos/chantier-06.jpg"],k=0;
-function fmt(x){var m=Math.floor(x/60),r=x%60;return m+" min "+(r<10?"0":"")+r+" s"}
-setInterval(function(){for(var i=0;i<3;i++){s[i]++;var e=document.getElementById(ids[i]);if(e)e.textContent=fmt(s[i])}
-k=(k+1)%files.length;var f=document.getElementById("f1");if(f)f.textContent=files[k]},1000)})();
-</script>

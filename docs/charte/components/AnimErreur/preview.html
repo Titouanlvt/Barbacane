@@ -1,0 +1,35 @@
+<!-- @dsCard group="Animations" height=580 subtitle="La clé tremble, un triangle explique" -->
+<link rel="stylesheet" href="../demo.css?v=2">
+<link rel="stylesheet" href="../sprites.css?v=2">
+<style>
+.scene { --cyc: 3000ms; }
+.scene .b-sprite { position: absolute; }
+.fixe { animation: none !important; }
+
+.cle { --cote: 200px; left: 50%; margin-left: -130px; top: 20px; animation: secoue var(--cyc) linear infinite; }
+@keyframes secoue { 0%, 8% { transform: none; } 10% { transform: translateX(-6px); } 12% { transform: translateX(6px); } 14% { transform: translateX(-5px); } 16% { transform: translateX(5px); } 18% { transform: translateX(-3px); } 20% { transform: translateX(2px); } 22%, 100% { transform: none; } }
+.tri { position: absolute; left: 50%; top: 40px; margin-left: 50px; --c: var(--alerte); --fonce: var(--alerte-fonce); animation: sceau var(--cyc) var(--courbe-ressort) infinite; }
+@keyframes sceau { 0%, 20% { transform: scale(0); } 30%, 100% { transform: scale(1); } }
+.msg { bottom: 34px; font-size: 28px; }
+
+/* version réduite : état final, sans mouvement */
+.anim:has(.reduire:checked) .scene *, .anim:has(.reduire:checked) .scene *::after { animation: none !important; transition: none !important; }
+
+</style>
+<div class="demo anim">
+  <label class="opt"><input type="checkbox" class="reduire" id="reduire"> Version réduite (option « Animations réduites » : état final, aucun mouvement)</label>
+  <div class="scene" aria-hidden="true">
+    <div class="b-sprite s-cle cle fixe" style="background-position: calc(200px * -15) 0"></div>
+    <span class="b-pastille tri"><svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+    <div class="msg">Cette clé n'est pas lisible.</div>
+    <div class="sous">Retirez-la et essayez une autre clé.</div>
+  </div>
+  <ol class="story">
+    <li><b>300 – 660 ms</b>La clé tremble 3 fois (±6 px amorti) : « non » de la tête, pas une alarme.</li>
+    <li><b>600 – 900 ms</b>Le triangle d'alerte apparaît (0 → 115 % → 100 %) : <code>anim::echelle_sceau</code>.</li>
+    <li><b>Texte</b>Ce qui s'est passé, puis quoi faire. Jamais de code d'erreur seul (il va dans le journal).</li>
+    <li><b>Couleur</b>Alerte (orange), pas menace : une clé illisible n'est pas une menace.</li>
+    <li><b>Réduite</b>Clé immobile, triangle affiché.</li>
+    <li><b>Logiciel</b>1 image + translation, 1 pastille mise à l'échelle ; 600 ms en tout.</li>
+  </ol>
+</div>

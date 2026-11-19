@@ -1,0 +1,41 @@
+<!-- @dsCard group="Animations" height=600 subtitle="La clé pivote, glisse et s'enfonce dans la porte" -->
+<link rel="stylesheet" href="../demo.css?v=2">
+<link rel="stylesheet" href="../sprites.css?v=2">
+<style>
+.scene { --cyc: 3200ms; }
+.scene .b-sprite { position: absolute; }
+.fixe { animation: none !important; }
+
+.cle { --cote: 170px; left: 150px; top: 40px; animation: cle-va var(--cyc) var(--courbe-arrivee) infinite, cle-tourne var(--cyc) steps(16, jump-none) infinite; }
+@keyframes cle-va { 0% { transform: translateX(-330px); } 18.75% { transform: translateX(0); } 23.4% { transform: translateX(16px); } 100% { transform: translateX(16px); } }
+@keyframes cle-tourne { 0% { background-position: 0 0; } 18.75%, 100% { background-position: calc(var(--cote) * (1 - var(--n))) 0; } }
+.porte { --cote: 210px; left: 300px; top: 4px; }
+.voyant { position: absolute; left: 389px; top: 200px; width: 30px; height: 8px; border-radius: 4px; background: var(--trait-fort); animation: voyant var(--cyc) steps(1, jump-end) infinite; }
+@keyframes voyant { 0%, 23.4% { background: var(--trait-fort); box-shadow: none; } 23.5%, 100% { background: var(--laiton-clair); box-shadow: 0 0 0 3px var(--laiton-pale); } }
+.msg { animation: arrive var(--cyc) var(--courbe-arrivee) infinite; }
+@keyframes arrive { 0%, 23.4% { transform: translateX(24px); color: transparent; } 32.8%, 100% { transform: none; color: var(--encre); } }
+
+/* version réduite : état final, sans mouvement */
+.anim:has(.reduire:checked) .scene *, .anim:has(.reduire:checked) .scene *::after { animation: none !important; transition: none !important; }
+.anim:has(.reduire:checked) .cle { background-position: calc(var(--cote) * (1 - var(--n))) 0 !important; }
+.anim:has(.reduire:checked) .cle { transform: translateX(16px); }
+.anim:has(.reduire:checked) .voyant { background: var(--laiton-clair); box-shadow: 0 0 0 3px var(--laiton-pale); }
+
+</style>
+<div class="demo anim">
+  <label class="opt"><input type="checkbox" class="reduire" id="reduire"> Version réduite (option « Animations réduites » : état final, aucun mouvement)</label>
+  <div class="scene" aria-hidden="true">
+    <div class="b-sprite s-embleme-herse porte fixe"></div>
+    <div class="b-sprite s-cle cle"></div>
+    <div class="voyant"></div>
+    <div class="msg">Clé détectée</div>
+  </div>
+  <ol class="story">
+    <li><b>0 – 600 ms</b>La clé arrive de la gauche (courbe d'arrivée) et pivote de 62° vers la porte : bande <code>cle</code>, 16 images.</li>
+    <li><b>600 – 750 ms</b>Elle s'enfonce de 16 px : elle est « entrée ».</li>
+    <li><b>750 ms</b>Le voyant de la porte passe au laiton : la borne a reconnu la clé.</li>
+    <li><b>750 – 1 050 ms</b>« Clé détectée » arrive de 24 px à droite.</li>
+    <li><b>Réduite</b>Clé en place, voyant allumé, texte affiché. Rien ne bouge.</li>
+    <li><b>Logiciel</b>1 image de la bande + 1 translation par trame ; zone redessinée ≈ 520 × 200 px.</li>
+  </ol>
+</div>

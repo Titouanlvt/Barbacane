@@ -1,0 +1,20 @@
+<!-- @dsCard group="Serveur web" height=420 subtitle="Supervision : le résumé avant le détail" -->
+<link rel="stylesheet" href="../demo.css?v=2">
+<div class="demo b-page">
+  <div class="b-tuiles">
+    <div class="b-tuile"><div class="b-tuile__chiffre">12</div><div class="b-tuile__nom">Bornes enrôlées</div></div>
+    <div class="b-tuile" style="--c:var(--sain)"><div class="b-tuile__chiffre">10</div><div class="b-tuile__nom"><span class="b-etat b-etat--sain">En service</span></div></div>
+    <div class="b-tuile" style="--c:var(--hors-service)"><div class="b-tuile__chiffre">1</div><div class="b-tuile__nom"><span class="b-etat b-etat--hors">Injoignable</span></div></div>
+    <div class="b-tuile" style="--c:var(--menace)"><div class="b-tuile__chiffre">3</div><div class="b-tuile__nom"><span class="b-etat b-etat--bloque">Menaces (24 h)</span></div></div>
+    <div class="b-tuile" style="--c:var(--alerte)"><div class="b-tuile__chiffre">1</div><div class="b-tuile__nom"><span class="b-etat b-etat--alerte">Signatures &gt; 7 j</span></div></div>
+  </div>
+  <div class="b-carte"><h2 class="b-carte__titre">Analyses par jour (7 j)</h2>
+    <svg viewBox="0 0 560 120" style="width:100%;height:120px" role="img" aria-label="Analyses par jour, de 96 à 171">
+      <g fill="var(--trait)"><rect x="0" y="119" width="560" height="1"/></g>
+      <g fill="var(--analyse)"><rect x="10" y="50" width="56" height="70" rx="3"/><rect x="90" y="38" width="56" height="82" rx="3"/><rect x="170" y="44" width="56" height="76" rx="3"/><rect x="250" y="20" width="56" height="100" rx="3"/><rect x="330" y="30" width="56" height="90" rx="3"/><rect x="410" y="64" width="56" height="56" rx="3"/></g>
+      <rect x="490" y="8" width="56" height="112" rx="3" fill="var(--laiton)"/>
+      <g fill="var(--menace)"><rect x="250" y="20" width="56" height="4" rx="2"/><rect x="490" y="8" width="56" height="4" rx="2"/></g>
+    </svg>
+    <div class="demo-rang demo-leg"><span>Barres : analyses (bleu), aujourd'hui (laiton)</span><span>Liseré rouge : jour avec menace</span></div>
+  </div>
+</div>

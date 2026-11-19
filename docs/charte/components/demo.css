@@ -1,0 +1,17 @@
+/* Mise en page des APERÇUS de la charte (pas pour la borne ni le serveur). */
+html, body { margin: 0; background: linear-gradient(180deg, var(--sol-haut), var(--sol-bas)) !important; color: var(--encre) !important; font: 400 15px/22px var(--font-sans); }
+/* le cadre du Design System peut imposer son fond : l'aperçu porte aussi le sien */
+.demo { background: linear-gradient(180deg, var(--sol-haut), var(--sol-bas)); color: var(--encre); min-height: 100%; box-sizing: border-box; }
+.demo { display: grid; gap: 16px; padding: 20px; }
+.demo-rang { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; }
+.demo-leg { font-size: 13px; line-height: 18px; color: var(--encre-douce); }
+.demo-titre { margin: 0; font: 600 18px/22px var(--font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--encre-douce); }
+.scene { position: relative; height: 300px; border-radius: 16px; overflow: hidden; background: linear-gradient(180deg, var(--sol-haut), var(--sol-bas)); border: 1px solid var(--trait); box-shadow: inset 0 2px 6px var(--ombre-interne); }
+.scene .msg { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; font: 600 32px/36px var(--font-display); }
+.scene .sous { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 15px; color: var(--encre-douce); }
+.story { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.story li { padding: 8px 10px; border-radius: 8px; background: var(--surface-creuse); font-size: 13px; line-height: 18px; box-shadow: inset 0 1px 2px var(--ombre-interne); }
+.story b { display: block; font: 400 12px/16px var(--font-mono); color: var(--laiton); }
+.opt { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; min-height: 40px; cursor: pointer; }
+.opt input { width: 20px; height: 20px; accent-color: var(--laiton); }
+.cadre-ecran { width: 1280px; height: 768px; position: relative; overflow: hidden; display: flex; flex-direction: column; }

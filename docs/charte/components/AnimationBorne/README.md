@@ -1,5 +1,7 @@
 # AnimationBorne
 
+> **v1, implémentée** dans `borne/client/src/anim.rs` et `dessin.rs` (formes SVG plates). La v2 garde ses courbes et ses durées ; voir les composants Anim* et `animations.md`.
+
 Animations de la vie de la borne en dehors de l'analyse : démarrage, attente, clé de destination, copie, effacement, retrait, mise à jour hors ligne et support illisible. Elles complètent AnimationAnalyse et suivent le même dessin en relief.
 
 | Moment | Ce qui bouge | Durée | Jeu |

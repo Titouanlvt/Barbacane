@@ -1,0 +1,12 @@
+<!-- @dsCard group="Serveur web" height=470 subtitle="Enrôler une borne" -->
+<link rel="stylesheet" href="../demo.css?v=2">
+<div class="demo b-page">
+  <form class="b-carte b-formulaire" onsubmit="return false">
+    <h2 class="b-carte__titre">Enrôler une borne</h2>
+    <div class="b-champ"><label for="f-nom">Nom de la borne</label><input id="f-nom" class="b-saisie" value="B-A-03"><span class="b-aide">Visible dans les rapports et le journal d'audit.</span></div>
+    <div class="b-champ"><label for="f-site">Site</label><select id="f-site" class="b-saisie"><option>Site A — Rennes</option></select></div>
+    <div class="b-champ b-champ--erreur"><label for="f-jeton">Durée de validité du jeton</label><input id="f-jeton" class="b-saisie" value="72 h"><span class="b-aide">24 h au plus : le jeton est un secret à usage unique.</span></div>
+    <div class="b-avis b-avis--alerte"><span>L'enrôlement devra être validé par un second administrateur.</span></div>
+    <div class="b-formulaire__actions"><button class="b-btn b-btn--discret" type="button">Annuler</button><button class="b-btn b-btn--principal">Créer le jeton</button></div>
+  </form>
+</div>

@@ -1,0 +1,317 @@
+/* Barbacane — charte v2 : relief et composants.
+   À charger APRÈS les jetons (web/jetons.css, ou tokens.css du Design System).
+   CSS d'abord : aucun composant n'a besoin de JavaScript pour s'afficher ni pour réagir
+   (survol, appui, focus, désactivé, chargement). Préfixe « b- » pour cohabiter avec
+   d'autres feuilles. Lumière unique : en haut, un peu à gauche. */
+
+/* ------------------------------------------------------------ base */
+.b-page, .b-ecran {
+  font-family: var(--font-sans);
+  color: var(--encre);
+  background: linear-gradient(180deg, var(--sol-haut), var(--sol-bas));
+  -webkit-font-smoothing: antialiased;
+}
+.b-ecran { font-size: 22px; line-height: 30px; }
+.b-page { font-size: 15px; line-height: 22px; }
+.b-mono { font-family: var(--font-mono); }
+.b-douce { color: var(--encre-douce); }
+:where(.b-page, .b-ecran) :focus-visible { outline: 3px solid var(--laiton); outline-offset: 3px; }
+
+/* ------------------------------------------------------------ niveaux de relief
+   -1 Creusé · 0 Sol · 1 Dalle · 2 Bloc · 3 Rempart (voir relief.md). */
+.b-creuse {
+  background: var(--surface-creuse);
+  border: 1px solid var(--trait-fort);
+  box-shadow: inset 0 2px 3px var(--ombre-interne), inset 0 -1px 0 var(--lumiere);
+}
+.b-sol { background: linear-gradient(180deg, var(--sol-haut), var(--sol-bas)); }
+.b-dalle {
+  background: linear-gradient(180deg, var(--dalle-haut), var(--dalle-bas));
+  border: 1px solid var(--trait);
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 1px 0 var(--ombre-contact), 0 2px 6px var(--ombre-diffuse);
+}
+.b-bloc {
+  --tranche: var(--trait-fort);
+  background: linear-gradient(180deg, var(--bloc-haut), var(--bloc-bas));
+  border: 1px solid var(--trait-fort);
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 4px 0 var(--tranche), 0 6px 10px var(--ombre-diffuse);
+}
+.b-rempart {
+  --tranche: var(--trait-fort);
+  background: linear-gradient(180deg, var(--dalle-haut), var(--dalle-bas));
+  border: 1px solid var(--trait);
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 6px 0 var(--tranche), 0 14px 24px var(--ombre-diffuse);
+}
+
+/* ------------------------------------------------------------ bandeau */
+.b-bandeau {
+  display: flex; align-items: center; gap: var(--pas-2);
+  min-height: 56px; padding: 0 var(--pas-3);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bandeau) 88%, #fff), var(--bandeau));
+  color: var(--sur-bandeau);
+  box-shadow: inset 0 -1px 0 var(--laiton), 0 2px 6px var(--ombre-diffuse);
+}
+.b-bandeau__nom { font: 600 26px/1 var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+.b-bandeau__plus { margin-left: auto; display: flex; gap: var(--pas-2); align-items: center; font-size: 15px; }
+
+/* ------------------------------------------------------------ boutons (niveau 2) */
+.b-btn {
+  --tranche: var(--trait-fort);
+  --haut: var(--bloc-haut); --bas: var(--bloc-bas); --texte: var(--encre); --bord: var(--trait-fort);
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: var(--pas-1);
+  min-height: 40px; padding: 0 var(--pas-3);
+  border: 1px solid var(--bord); border-radius: var(--rayon-m);
+  background: linear-gradient(180deg, var(--haut), var(--bas));
+  color: var(--texte);
+  font: 700 15px/20px var(--font-sans);
+  text-decoration: none; cursor: pointer; user-select: none;
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 3px 0 var(--tranche), 0 5px 8px var(--ombre-diffuse);
+  transform: translateY(0);
+  transition: transform var(--duree-courte) var(--courbe-arrivee), box-shadow var(--duree-courte) var(--courbe-arrivee), filter var(--duree-courte);
+}
+.b-ecran .b-btn, .b-btn--borne {
+  min-height: var(--cible); padding: 0 var(--pas-4); font-size: 22px; line-height: 26px;
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 4px 0 var(--tranche), 0 6px 10px var(--ombre-diffuse);
+}
+.b-btn:hover { filter: brightness(1.04); }
+.b-btn:active, .b-btn.est-appuye {
+  transform: translateY(3px);
+  box-shadow: inset 0 2px 3px var(--ombre-interne), 0 1px 0 var(--tranche);
+  transition-duration: var(--duree-appui);
+}
+.b-btn--principal { --haut: var(--encre-haut); --bas: var(--encre-bas); --texte: var(--sur-encre); --bord: var(--encre-bas); --tranche: var(--laiton-fonce); }
+.b-btn--danger { --haut: color-mix(in srgb, var(--menace) 88%, #fff); --bas: var(--menace); --texte: var(--sur-encre); --bord: var(--menace-fonce); --tranche: var(--menace-fonce); }
+.b-btn.b-btn--discret, .b-ecran .b-btn.b-btn--discret { --haut: transparent; --bas: transparent; --bord: transparent; --texte: var(--encre-douce); box-shadow: none; text-decoration: underline; text-underline-offset: 4px; }
+.b-btn.b-btn--discret:active { box-shadow: none; transform: none; }
+.b-btn:disabled, .b-btn[aria-disabled="true"], .b-ecran .b-btn:disabled {
+  --haut: var(--surface-haute); --bas: var(--surface-haute); --texte: var(--encre-douce); --bord: var(--trait);
+  box-shadow: none; transform: none; filter: none; cursor: not-allowed;
+}
+.b-btn[aria-busy="true"] { cursor: progress; }
+.b-btn[aria-busy="true"]::before {
+  content: ""; width: 18px; height: 18px; flex: none;
+  background:
+    linear-gradient(currentColor 0 0) 0 100% / 4px 60% no-repeat,
+    linear-gradient(currentColor 0 0) 7px 100% / 4px 60% no-repeat,
+    linear-gradient(currentColor 0 0) 14px 100% / 4px 60% no-repeat;
+  animation: b-creneaux 900ms var(--courbe-arrivee) infinite;
+}
+@keyframes b-creneaux {
+  0%   { background-size: 4px 100%, 4px 50%, 4px 50%; }
+  33%  { background-size: 4px 50%, 4px 100%, 4px 50%; }
+  66%  { background-size: 4px 50%, 4px 50%, 4px 100%; }
+  100% { background-size: 4px 100%, 4px 50%, 4px 50%; }
+}
+
+/* ------------------------------------------------------------ cartes */
+.b-carte {
+  background: linear-gradient(180deg, var(--dalle-haut), var(--dalle-bas));
+  border: 1px solid var(--trait); border-radius: var(--rayon-l);
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 1px 0 var(--ombre-contact), 0 2px 6px var(--ombre-diffuse);
+  padding: var(--pas-3);
+}
+.b-carte__titre { margin: 0 0 var(--pas-1); font: 600 20px/26px var(--font-display); }
+/* carte de choix : un grand bouton (niveau 2) avec titre et explication */
+.b-choix {
+  --tranche: var(--trait-fort);
+  display: grid; gap: var(--pas-1); align-content: start; text-align: left;
+  min-height: 160px; padding: var(--pas-3);
+  border: 1px solid var(--trait-fort); border-radius: var(--rayon-l);
+  background: linear-gradient(180deg, var(--bloc-haut), var(--bloc-bas));
+  color: var(--encre); font: inherit; cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 5px 0 var(--tranche), 0 8px 14px var(--ombre-diffuse);
+  transition: transform var(--duree-courte) var(--courbe-arrivee), box-shadow var(--duree-courte) var(--courbe-arrivee);
+}
+.b-choix:active, .b-choix.est-appuye { transform: translateY(4px); box-shadow: inset 0 2px 4px var(--ombre-interne), 0 1px 0 var(--tranche); transition-duration: var(--duree-appui); }
+.b-choix__titre { display: flex; align-items: center; gap: var(--pas-2); font: 700 26px/30px var(--font-display); }
+.b-choix__texte { font-size: 18px; line-height: 24px; color: var(--encre-douce); }
+.b-choix--danger { --tranche: var(--menace-fonce); border-color: var(--menace); }
+.b-choix--danger .b-choix__titre { color: var(--menace); }
+
+/* ------------------------------------------------------------ champs (niveau -1) */
+.b-champ { display: grid; gap: 6px; }
+.b-champ > label { font-weight: 700; }
+.b-saisie {
+  min-height: 40px; padding: 0 12px; width: 100%; box-sizing: border-box;
+  font: inherit; color: var(--encre);
+  background: var(--surface-creuse); border: 1px solid var(--trait-fort); border-radius: var(--rayon-m);
+  box-shadow: inset 0 2px 3px var(--ombre-interne), inset 0 -1px 0 var(--lumiere);
+}
+.b-ecran .b-saisie { min-height: var(--cible); font-size: 26px; letter-spacing: .08em; }
+.b-saisie:focus { outline: 3px solid var(--laiton); outline-offset: 2px; }
+select.b-saisie { appearance: none; padding-right: 36px; background-image: linear-gradient(45deg, transparent 50%, var(--encre) 50%), linear-gradient(-45deg, transparent 50%, var(--encre) 50%); background-position: right 18px top 50%, right 12px top 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+.b-aide { font-size: .87em; color: var(--encre-douce); }
+.b-champ--erreur .b-saisie { border-color: var(--menace); border-width: 2px; }
+.b-champ--erreur .b-aide { color: var(--menace); }
+.b-champ--erreur .b-aide::before { content: "✕ "; font-weight: 700; }
+.b-case { display: inline-flex; align-items: center; gap: var(--pas-1); min-height: 40px; cursor: pointer; }
+.b-case input { width: 22px; height: 22px; accent-color: var(--laiton); }
+
+/* ------------------------------------------------------------ bandeau d'étapes */
+.b-etapes { list-style: none; display: flex; gap: var(--pas-1); margin: 0; padding: 0; counter-reset: etape; }
+.b-etapes li {
+  counter-increment: etape;
+  flex: 1; display: flex; align-items: center; gap: var(--pas-1);
+  min-height: 48px; padding: 0 var(--pas-2);
+  border-radius: var(--rayon-m); font-size: 18px; line-height: 22px; color: var(--encre-douce);
+  background: var(--surface-creuse); box-shadow: inset 0 1px 2px var(--ombre-interne);
+}
+.b-etapes li::before {
+  content: counter(etape); display: inline-grid; place-items: center; flex: none;
+  width: 30px; height: 30px; border-radius: 50%; font-weight: 700; font-size: 16px;
+  border: 2px solid currentColor;
+}
+.b-etapes li.fait { color: var(--encre); background: transparent; box-shadow: none; }
+.b-etapes li.fait::before { content: "✓"; background: var(--encre); color: var(--sur-encre); border-color: var(--encre); }
+.b-etapes li.cours {
+  color: var(--encre); font-weight: 700;
+  background: linear-gradient(180deg, var(--laiton-pale), color-mix(in srgb, var(--laiton-pale) 80%, var(--laiton)));
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 3px 0 var(--laiton), 0 4px 8px var(--ombre-diffuse);
+}
+.b-etapes li.cours::before { background: var(--laiton); color: var(--sur-encre); border-color: var(--laiton); }
+
+/* ------------------------------------------------------------ barre de progression */
+.b-barre {
+  position: relative; height: 24px; overflow: hidden;
+  background: var(--surface-creuse); border: 1px solid var(--trait-fort); border-radius: var(--rayon-m);
+  box-shadow: inset 0 2px 3px var(--ombre-interne);
+}
+.b-barre__rempli {
+  position: absolute; inset: 0 auto 0 0; width: calc(var(--p, 0) * 1%);
+  border-radius: var(--rayon-m) 0 0 var(--rayon-m);
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 12px, color-mix(in srgb, var(--analyse-fonce) 55%, transparent) 12px 24px),
+    linear-gradient(180deg, color-mix(in srgb, var(--analyse) 80%, #fff), var(--analyse) 55%, var(--analyse-fonce));
+  background-size: 33.94px 100%, 100% 100%;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent);
+  animation: b-rayures 900ms linear infinite;
+}
+.b-barre__rempli::after { /* tête laiton qui pulse */
+  content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+  background: linear-gradient(180deg, var(--laiton-clair), var(--laiton));
+  animation: b-pulse 1200ms ease-in-out infinite;
+}
+.b-barre--navette .b-barre__rempli { width: 30%; border-radius: var(--rayon-m); animation: b-rayures 900ms linear infinite, b-navette 1600ms var(--courbe-arrivee) infinite alternate; }
+.b-barre--navette .b-barre__rempli::after { display: none; }
+.b-barre-legende { display: flex; justify-content: space-between; gap: var(--pas-2); margin-top: 6px; font: 400 15px/20px var(--font-mono); color: var(--encre-douce); font-variant-numeric: tabular-nums; }
+@keyframes b-rayures { to { background-position: 33.94px 0, 0 0; } }
+@keyframes b-pulse { 50% { background: var(--laiton-pale); } }
+@keyframes b-navette { from { left: 0; } to { left: 70%; } }
+
+/* ------------------------------------------------------------ clavier virtuel */
+.b-clavier {
+  display: grid; gap: var(--pas-1); justify-content: center; padding: var(--pas-2);
+  border-radius: var(--rayon-l);
+  background: var(--surface-creuse); box-shadow: inset 0 2px 4px var(--ombre-interne);
+}
+.b-clavier__rang { display: flex; gap: var(--pas-1); justify-content: center; }
+.b-touche {
+  --tranche: var(--trait-fort);
+  width: var(--touche); height: var(--touche); flex: none;
+  display: inline-grid; place-items: center;
+  border: 1px solid var(--trait-fort); border-radius: var(--rayon-s);
+  background: linear-gradient(180deg, var(--bloc-haut), var(--bloc-bas));
+  color: var(--encre); font: 700 24px/1 var(--font-sans); cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 3px 0 var(--tranche), 0 4px 6px var(--ombre-diffuse);
+  transition: transform var(--duree-appui) var(--courbe-arrivee), box-shadow var(--duree-appui) var(--courbe-arrivee);
+}
+.b-touche:active, .b-touche.est-appuye { transform: translateY(2px); background: var(--laiton-pale); box-shadow: inset 0 2px 3px var(--ombre-interne), 0 1px 0 var(--tranche); }
+.b-touche--large { width: calc(var(--touche) * 2 + var(--pas-1)); font-size: 18px; }
+.b-touche--action { --tranche: var(--laiton-fonce); background: linear-gradient(180deg, var(--encre-haut), var(--encre-bas)); color: var(--sur-encre); border-color: var(--encre-bas); }
+
+/* ------------------------------------------------------------ états et verdicts */
+.b-etat { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--c, var(--encre)); }
+.b-etat::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: inset 0 -1px 0 rgba(0,0,0,.25); }
+.b-etat--sain { --c: var(--sain); }
+.b-etat--bloque { --c: var(--menace); }
+.b-etat--bloque::before { border-radius: 2px; transform: rotate(45deg); }
+.b-etat--alerte { --c: var(--alerte); }
+.b-etat--alerte::before { border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.b-etat--cours { --c: var(--analyse); }
+.b-etat--hors { --c: var(--hors-service); }
+.b-etat--hors::before { background: transparent; border: 2px solid var(--c); width: 8px; height: 8px; box-shadow: none; }
+
+.b-verdict {
+  --c: var(--analyse); --f: var(--analyse-fond); --fonce: var(--analyse-fonce);
+  display: flex; align-items: center; gap: var(--pas-3);
+  padding: var(--pas-3); border-radius: var(--rayon-l);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--f) 70%, var(--dalle-haut)), var(--f));
+  border: 2px solid var(--c); color: var(--encre);
+  box-shadow: inset 0 1px 0 var(--lumiere), 0 6px 0 var(--fonce), 0 14px 24px var(--ombre-diffuse);
+}
+.b-verdict--sain { --c: var(--sain); --f: var(--sain-fond); --fonce: var(--sain-fonce); }
+.b-verdict--bloque { --c: var(--menace); --f: var(--menace-fond); --fonce: var(--menace-fonce); }
+.b-verdict--alerte { --c: var(--alerte); --f: var(--alerte-fond); --fonce: var(--alerte-fonce); }
+.b-verdict__titre { margin: 0; color: var(--c); font: 700 40px/44px var(--font-display); }
+.b-verdict__texte { margin: 4px 0 0; font-size: 20px; line-height: 28px; }
+.b-pastille {
+  flex: none; width: 72px; height: 72px; display: grid; place-items: center; border-radius: 50%;
+  color: var(--sur-encre);
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 55%, var(--fonce));
+  box-shadow: 0 3px 0 var(--fonce), 0 6px 10px var(--ombre-diffuse), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.b-pastille svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.b-verdict--bloque .b-pastille { border-radius: 14px; clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+
+/* listes de fichiers */
+.b-liste { list-style: none; margin: 0; padding: 0; border-radius: var(--rayon-l); overflow: hidden; background: var(--surface-creuse); border: 1px solid var(--trait-fort); box-shadow: inset 0 2px 3px var(--ombre-interne); }
+.b-liste li { display: grid; grid-template-columns: 1fr auto; gap: var(--pas-2); align-items: center; padding: 12px var(--pas-3); border-top: 1px solid var(--trait); }
+.b-liste li:first-child { border-top: 0; }
+.b-liste__nom { font: 400 18px/24px var(--font-mono); overflow-wrap: anywhere; }
+.b-liste__detail { font: 400 15px/20px var(--font-mono); color: var(--encre-douce); }
+
+/* ------------------------------------------------------------ interface web du serveur */
+.b-coque { display: grid; grid-template-columns: 232px 1fr; min-height: 100%; }
+.b-nav { background: var(--bandeau); color: var(--sur-bandeau); padding: var(--pas-2) 0; display: grid; align-content: start; gap: 2px; box-shadow: inset -1px 0 0 var(--laiton); }
+.b-nav__marque { display: flex; align-items: center; gap: var(--pas-1); padding: var(--pas-1) var(--pas-3) var(--pas-3); font: 600 22px/1 var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+.b-nav a { display: flex; align-items: center; gap: var(--pas-1); min-height: 40px; padding: 0 var(--pas-3); color: inherit; text-decoration: none; opacity: .82; border-left: 3px solid transparent; }
+.b-nav a:hover { opacity: 1; background: rgba(255,255,255,.06); }
+.b-nav a[aria-current="page"] { opacity: 1; border-left-color: var(--laiton); background: rgba(255,255,255,.09); font-weight: 700; }
+.b-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.b-contenu { padding: var(--pas-3) var(--pas-4); display: grid; gap: var(--pas-3); align-content: start; }
+.b-entete { display: flex; align-items: end; justify-content: space-between; gap: var(--pas-2); flex-wrap: wrap; }
+.b-entete h1 { margin: 0; font: 600 28px/34px var(--font-display); }
+.b-tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--pas-2); }
+.b-tuile { background: linear-gradient(180deg, var(--dalle-haut), var(--dalle-bas)); border: 1px solid var(--trait); border-radius: var(--rayon-l); box-shadow: inset 0 1px 0 var(--lumiere), 0 1px 0 var(--ombre-contact), 0 2px 6px var(--ombre-diffuse); padding: var(--pas-2) var(--pas-3); border-top: 4px solid var(--c, var(--trait-fort)); }
+.b-tuile__chiffre { font: 700 40px/44px var(--font-display); font-variant-numeric: tabular-nums; color: var(--c, var(--encre)); }
+.b-tuile__nom { color: var(--encre-douce); }
+.b-tableau-cadre { overflow-x: auto; border-radius: var(--rayon-l); border: 1px solid var(--trait); background: linear-gradient(180deg, var(--dalle-haut), var(--dalle-bas)); box-shadow: inset 0 1px 0 var(--lumiere), 0 2px 6px var(--ombre-diffuse); }
+.b-tableau { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums; }
+.b-tableau th { text-align: left; font-weight: 700; color: var(--encre-douce); padding: 10px 14px; background: var(--surface-creuse); border-bottom: 1px solid var(--trait-fort); white-space: nowrap; }
+.b-tableau td { padding: 10px 14px; border-top: 1px solid var(--trait); }
+.b-tableau tbody tr:hover { background: color-mix(in srgb, var(--laiton-pale) 45%, transparent); }
+.b-tableau tbody tr[aria-selected="true"] { background: var(--laiton-pale); box-shadow: inset 3px 0 0 var(--laiton); }
+.b-tableau .num { text-align: right; }
+.b-formulaire { display: grid; gap: var(--pas-2); max-width: 560px; }
+.b-formulaire__actions { display: flex; gap: var(--pas-2); justify-content: flex-end; padding-top: var(--pas-1); }
+.b-fil { display: flex; gap: var(--pas-1); font-size: 14px; color: var(--encre-douce); }
+.b-avis { display: flex; gap: var(--pas-2); align-items: start; padding: 12px var(--pas-2); border-radius: var(--rayon-m); background: var(--f, var(--analyse-fond)); border-left: 4px solid var(--c, var(--analyse)); }
+.b-avis--alerte { --c: var(--alerte); --f: var(--alerte-fond); }
+.b-avis--bloque { --c: var(--menace); --f: var(--menace-fond); }
+
+/* ------------------------------------------------------------ séquences 3D (bandes PNG)
+   <div class="b-sprite" style="background-image:url(/charte/3d/cle-jour.png); --n:16; --k:16; --d:600ms"></div>
+   --n : nombre d'images, --k : n aussi (steps() exige un entier écrit, pas un calcul). L'image est donnée par la
+   page (chemin propre au site) et changée par thème : [data-theme="nuit"] → *-nuit.png. */
+.b-sprite {
+  --cote: 240px; --n: 1; --k: 1; --d: 600ms; --iter: 1;
+  width: var(--cote); height: var(--cote); flex: none;
+  background-position: 0 0; background-size: calc(var(--cote) * var(--n)) 100%; background-repeat: no-repeat;
+  animation: b-bande var(--d) steps(var(--k, 1), jump-none) var(--iter) both var(--dir, normal);
+}
+.b-sprite--fin { animation: none; background-position: calc(var(--cote) * (1 - var(--n))) 0; }
+@keyframes b-bande { from { background-position: 0 0; } to { background-position: calc(var(--cote) * (1 - var(--n))) 0; } }
+
+/* ------------------------------------------------------------ animations réduites
+   Préférence système OU option de la borne (classe posée sur la racine). Chaque animation
+   affiche directement son état final ; les compteurs de temps continuent. */
+@media (prefers-reduced-motion: reduce) {
+  .b-btn, .b-choix, .b-touche { transition: none; }
+  .b-barre__rempli, .b-barre__rempli::after, .b-btn[aria-busy="true"]::before { animation: none; }
+  .b-barre--navette .b-barre__rempli { left: 35%; }
+  .b-sprite { animation: none; background-position: calc(var(--cote) * (1 - var(--n))) 0; }
+}
+.animations-reduites .b-btn, .animations-reduites .b-choix, .animations-reduites .b-touche { transition: none; }
+.animations-reduites .b-barre__rempli, .animations-reduites .b-barre__rempli::after, .animations-reduites .b-btn[aria-busy="true"]::before { animation: none; }
+.animations-reduites .b-barre--navette .b-barre__rempli { left: 35%; }
+.animations-reduites .b-sprite { animation: none; background-position: calc(var(--cote) * (1 - var(--n))) 0; }
