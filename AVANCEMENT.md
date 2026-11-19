@@ -25,6 +25,7 @@
 | Résolution | consigne 1280×768 ; la VM de test affiche 1280×800 | captures en 1280×800 (même mise en page, 32 px de plus en bas) |
 
 ## Décisions (19/11)
+- Stockages : l'utilisateur autorise tous les stockages Proxmox (19/11, dont `nvme`). ISO v1.0.0 : `/nvme/contenu/iso-v100/` (sha256 `5e0c3fba…3fc7`).
 - RTX 4000 : pas de passthrough (seule carte VGA, `boot_vga=1`) → rendus 3D en CPU, mesure wgpu non faite.
 - Charte : la branche `charte-v2` de l'utilisateur prime sur ma copie depuis l'Artifact (contenu identique,
   plus complète : outils, maquettes). Ma copie n'est pas poussée.
