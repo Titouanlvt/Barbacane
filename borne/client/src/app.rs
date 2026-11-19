@@ -7,6 +7,7 @@ use crate::admin_ui::{self, AdminMsg, AdminUi};
 use crate::anim;
 use crate::barre;
 use crate::config::Config;
+use crate::sequences;
 use crate::dessin;
 use crate::keyboard::{Input, Key};
 use crate::mesure::{self, Mesure};
@@ -756,8 +757,12 @@ impl App {
             Screen::Connexion => {
                 // Charte : le logo se construit, puis « Préparation de la borne… » tant que les
                 // services ne répondent pas ; au-delà de 2 min, le service en cause est nommé.
-                let logo = if style::est_nuit() { LOGO_NUIT } else { LOGO };
-                let mut c = column![dessin::demarrage(self.avancement(2200), logo, 170.0)];
+                // Charte v2 : l'emblème 3D se construit (séquence embleme-construction, 2,2 s).
+                let mut c = column![sequences::vue(
+                    sequences::Seq::EmblemeConstruction,
+                    sequences::Seq::EmblemeConstruction.image_avancement(self.avancement(2200)),
+                    sequences::COTE,
+                )];
                 if self.depuis.elapsed().as_secs() < 120 {
                     c = c.push(texte("Préparation de la borne…"));
                 } else {
@@ -779,7 +784,15 @@ impl App {
                 if self.retour_fin && self.depuis.elapsed().as_millis() < 1500 {
                     dessin::retrait(self.avancement(1500), 170.0)
                 } else {
-                    dessin::attente(self.depuis.elapsed().as_secs_f32(), 170.0)
+                    // Charte v2 : l'emblème 3D pivote en aller-retour (15 i/s) puis s'arrête de face
+                    // après 2 min sans activité (économie de processeur).
+                    let t = self.depuis.elapsed().as_secs_f32();
+                    let i = if style::animations_reduites() || t >= VEILLE_EMBLEME {
+                        EMBLEME_DE_FACE
+                    } else {
+                        sequences::Seq::EmblemePivot.image_boucle(t, true)
+                    };
+                    sequences::vue(sequences::Seq::EmblemePivot, i, sequences::COTE)
                 },
                 // Charte : « clé à analyser » / « disque à analyser » ; les deux si un lecteur existe
                 titre(if self.optique.is_some() {
@@ -861,7 +874,11 @@ impl App {
                 )
             }
             Screen::Fin(n) => centre(column![
-                dessin::sain(self.avancement(500), 130.0),
+                sequences::vue(
+                    sequences::Seq::Bouclier,
+                    sequences::Seq::Bouclier.image_avancement(self.avancement(420)),
+                    sequences::COTE / 2.0,
+                ),
                 titre("Terminé"),
                 texte(&format!(
                     "{n} fichier(s) sain(s) écrit(s), avec le rapport (rapport-barbacane-…txt / .html)."
@@ -1060,7 +1077,11 @@ impl App {
             if disque {
                 dessin::disque_detecte(self.avancement(600), 96.0)
             } else {
-                dessin::cle_detectee(self.avancement(600), 96.0)
+                sequences::vue(
+                    sequences::Seq::Cle,
+                    sequences::Seq::Cle.image_avancement(self.avancement(600)),
+                    sequences::COTE / 2.0,
+                )
             },
             titre(if disque {
                 "Disque détecté"
@@ -1259,7 +1280,7 @@ impl App {
         let anime = ms < 300
             || en_cours
             || match self.screen {
-                Screen::Accueil => true,
+                Screen::Accueil => ms < (VEILLE_EMBLEME * 1000.0) as u128,
                 Screen::Choix => ms < 600,
                 Screen::Resume => ms < 700,
                 Screen::Fin(_) => ms < 500,
@@ -1685,7 +1706,11 @@ impl App {
         }
         // Charte : la clé de confiance (laiton) arrive de la droite, le sceau vert la confirme.
         let scene = if self.dst.is_some() {
-            dessin::destination(self.avancement(900), 110.0)
+            sequences::vue(
+                sequences::Seq::CleDestination,
+                sequences::Seq::CleDestination.image_avancement(self.avancement(600)),
+                sequences::COTE / 2.0,
+            )
         } else {
             Space::new().height(0).into()
         };
@@ -1925,6 +1950,11 @@ fn grand_choix<'a>(t: &str, d: &str, m: Msg) -> Element<'a, Msg> {
         .width(Length::FillPortion(1))
         .into()
 }
+
+/// Après ce délai sur l'accueil (s), l'emblème cesse de pivoter (charte v2, animations.md).
+const VEILLE_EMBLEME: f32 = 120.0;
+/// Image de face de la séquence embleme-pivot (lacet 0°, milieu de −22° → +22°).
+const EMBLEME_DE_FACE: u32 = 12;
 
 /// Délai sans activité avant l'écran de veille.
 const VEILLE: std::time::Duration = std::time::Duration::from_secs(600);

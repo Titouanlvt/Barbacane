@@ -11,6 +11,7 @@ mod dessin;
 mod keyboard;
 mod mesure;
 mod optique;
+mod sequences;
 mod style;
 mod worker;
 
