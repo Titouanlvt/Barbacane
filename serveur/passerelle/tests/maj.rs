@@ -76,6 +76,7 @@ fn banc() -> Banc {
         cle_ca_bornes: pki.join("ca-bornes/cle.pem"),
         crl_bornes: pki.join("ca-bornes/crl.pem"),
         registre: dossier.path().join("etat"),
+        dossier_homologation: dossier.path().join("dossier-homologation.md"),
     };
     let p = Passerelle::nouvelle(config.clone()).unwrap();
     let p2 = p.clone();
@@ -532,4 +533,46 @@ fn anomalies_de_battement_auditees_au_changement() {
     let motif =
         format!("\"battement_anormal\":{{\"borne\":\"{uuid}\",\"anomalie\":\"horloge_derivee\"");
     assert_eq!(audit.matches(&motif).count(), 1, "{audit}");
+}
+
+/// Quarantaine (étape 11) : désactivée par défaut, le dépôt d'une borne authentifiée est refusé
+/// AVANT la lecture du corps et audité ; accepté seulement une fois le verrou d'homologation levé
+/// (fichier de TEST) et l'activation validée par deux administrateurs.
+#[test]
+fn quarantaine_refusee_par_la_passerelle_si_desactivee() {
+    use barbacane_passerelle::quarantaine::{Quarantaine, Validation};
+    let b = banc();
+    let (uuid, cle) = enroler(&b);
+    let contenu = b"fichier bloque de TEST";
+    let corps = serde_json::json!({
+        "version": VERSION,
+        "sha256": sha256_hex(contenu),
+        "taille": contenu.len(),
+        "contenu_b64": data_encoding::BASE64.encode(contenu),
+    })
+    .to_string();
+    let chemin = barbacane_protocole::quarantaine::route::DEPOT;
+    let r = post(&b, b.service, Some(&cle), chemin, &corps).unwrap();
+    assert_eq!(r.0, 403);
+    assert_eq!(code(&r), CodeErreur::QuarantaineDesactivee);
+    let journal = String::from_utf8(b.admin.stockage.journal_audit().lire().unwrap()).unwrap();
+    assert!(
+        journal.contains(&format!("\"reception-refusee\",\"element\":\"{uuid}\"")),
+        "{journal}"
+    );
+    // Verrou levé (fichier de TEST) + double validation : dépôt accepté.
+    std::fs::write(
+        &b.config.dossier_homologation,
+        "mesures_dr_serveur: en place\n",
+    )
+    .unwrap();
+    let q = Quarantaine::ouvrir(&b.admin.stockage, &b.config.dossier_homologation).unwrap();
+    let d = q.demander_activation("web:alice", maintenant()).unwrap();
+    assert!(matches!(
+        q.valider(&d, "web:carole", maintenant()).unwrap(),
+        Validation::Activee
+    ));
+    let r = post(&b, b.service, Some(&cle), chemin, &corps).unwrap();
+    assert_eq!(r.0, 200, "{}", String::from_utf8_lossy(&r.1));
+    assert_eq!(q.elements(maintenant()).unwrap()[0].borne, uuid);
 }

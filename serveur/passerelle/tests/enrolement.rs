@@ -67,6 +67,7 @@ fn banc() -> Banc {
         cle_ca_bornes: pki.join("ca-bornes/cle.pem"),
         crl_bornes: pki.join("ca-bornes/crl.pem"),
         registre: dossier.path().join("etat"),
+        dossier_homologation: dossier.path().join("dossier-homologation.md"),
     };
     let p = Passerelle::nouvelle(config.clone()).unwrap();
     let p2 = p.clone();

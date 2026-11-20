@@ -14,6 +14,7 @@ pub mod admin;
 pub mod ca;
 pub mod maj;
 pub mod outils;
+pub mod quarantaine;
 pub mod registre;
 pub mod utilisateurs;
 
@@ -28,6 +29,9 @@ use anyhow::{Context, Result, bail};
 use barbacane_audit::{Anomalie, Evenement};
 use barbacane_protocole::maj::{
     AccuseBattementMaj, AccuseRapportMaj, DemandeTelechargement, RapportMaj, route as route_maj,
+};
+use barbacane_protocole::quarantaine::{
+    AccuseQuarantaine, DepotQuarantaine, route as route_quarantaine,
 };
 use barbacane_protocole::utilisateurs::{
     DemandeChangementPin, DemandePolitique, DemandeVerification, route as route_utilisateurs,
@@ -126,6 +130,9 @@ pub struct Config {
     pub crl_bornes: PathBuf,
     /// Dossier d'état du registre des bornes.
     pub registre: PathBuf,
+    /// Copie installée du dossier d'homologation (verrou de la quarantaine, facultatif :
+    /// `quarantaine::DOSSIER_HOMOLOGATION_DEFAUT`).
+    pub dossier_homologation: PathBuf,
 }
 
 impl Config {
@@ -140,6 +147,7 @@ impl Config {
         let (mut port, mut port_enrolement) = (None, None);
         let (mut chaine, mut cle, mut ca, mut cle_ca, mut crl, mut registre) =
             (None, None, None, None, None, None);
+        let mut homologation = None;
         for (n, ligne) in texte.lines().enumerate() {
             let ligne = ligne.trim();
             if ligne.is_empty() || ligne.starts_with('#') {
@@ -163,6 +171,7 @@ impl Config {
                 "cle_ca_bornes" => cle_ca.replace(PathBuf::from(v)).is_some(),
                 "crl_bornes" => crl.replace(PathBuf::from(v)).is_some(),
                 "registre" => registre.replace(PathBuf::from(v)).is_some(),
+                "dossier_homologation" => homologation.replace(PathBuf::from(v)).is_some(),
                 autre => bail!("ligne {} : clé inconnue « {autre} »", n + 1),
             };
             if deja {
@@ -184,6 +193,8 @@ impl Config {
             cle_ca_bornes: cle_ca.context("cle_ca_bornes absente")?,
             crl_bornes: crl.context("crl_bornes absente")?,
             registre: registre.context("registre absent")?,
+            dossier_homologation: homologation
+                .unwrap_or_else(|| PathBuf::from(quarantaine::DOSSIER_HOMOLOGATION_DEFAUT)),
         })
     }
 
@@ -489,6 +500,11 @@ const ROUTES_SERVICE: &[(&str, &str, usize)] = &[
         route_utilisateurs::PIN,
         DemandeChangementPin::TAILLE_MAX,
     ),
+    (
+        "POST",
+        route_quarantaine::DEPOT,
+        DepotQuarantaine::TAILLE_MAX,
+    ),
 ];
 
 // ───────────────────────────── Passerelle ─────────────────────────────────────────────────────
@@ -543,6 +559,11 @@ impl Passerelle {
     /// Utilisateurs, sites et clés USB (dossier `utilisateurs/` du registre).
     pub fn utilisateurs(&self) -> Result<utilisateurs::Utilisateurs> {
         utilisateurs::Utilisateurs::ouvrir(&self.stockage)
+    }
+
+    /// Quarantaine (dossier `quarantaine/` du registre ; désactivée par défaut).
+    pub fn quarantaine(&self) -> Result<quarantaine::Quarantaine> {
+        quarantaine::Quarantaine::ouvrir(&self.stockage, &self.config.dossier_homologation)
     }
 
     /// Dépôt des mises à jour (dossier `maj/` du registre).
@@ -780,6 +801,20 @@ impl Passerelle {
                 self.authentifier(id, t)?;
                 json(200, &self.utilisateurs()?.changer_pin(id, &d, ACTEUR, t)?)
             }
+            route_quarantaine::DEPOT => {
+                let d: DepotQuarantaine = decoder(&r.corps).map_err(Refus)?;
+                self.authentifier(id, t)?;
+                let e = self.quarantaine()?.recevoir(&id.uuid, &d, ACTEUR, t)?;
+                json(
+                    200,
+                    &AccuseQuarantaine {
+                        version: VERSION,
+                        element: e.id,
+                        expire_le: e.expire_le,
+                        heure_serveur: t,
+                    },
+                )
+            }
             route::RENOUVELLEMENT => {
                 let d: DemandeRenouvellement = decoder(&r.corps).map_err(Refus)?;
                 let pem = self.stockage.transaction(|reg| {
@@ -847,7 +882,24 @@ fn traiter(flux: TcpStream, p: &Passerelle, enrolement: bool) -> Result<String> 
     } else {
         ROUTES_SERVICE
     };
-    let (statut, corps, resume) = match lire_requete(&mut tls, |m, c| routes(table, m, c)) {
+    // Quarantaine désactivée : refus AVANT la lecture du corps (aucun contenu reçu).
+    let taille = |m: &str, c: &str| {
+        let t = routes(table, m, c)?;
+        if !enrolement
+            && c == route_quarantaine::DEPOT
+            && !p.quarantaine().is_ok_and(|q| q.active())
+        {
+            return Err(CodeErreur::QuarantaineDesactivee);
+        }
+        Ok(t)
+    };
+    let (statut, corps, resume) = match lire_requete(&mut tls, taille) {
+        Err(CodeErreur::QuarantaineDesactivee) => {
+            let borne = id.as_ref().map(|i| i.uuid.as_str()).unwrap_or("-");
+            p.quarantaine()?.refuser_reception(ACTEUR, borne)?;
+            let (s, c) = erreur(CodeErreur::QuarantaineDesactivee);
+            (s, c, "quarantaine désactivée : dépôt refusé".into())
+        }
         Err(code) => {
             let (s, c) = erreur(code);
             (s, c, format!("requête refusée : {code}"))

@@ -37,6 +37,7 @@ pub enum Rubrique {
     ClesUsb,
     Audit,
     IsoBornes,
+    Quarantaine,
 }
 
 const SYMBOLE: &str = "<svg viewBox=\"0 0 64 64\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M6 58V12h4v4h4v-4h4v4h4v42ZM12.5 26v10h3V26ZM42 58V16h4v-4h4v4h4v-4h4v46ZM48.5 26v10h3V26ZM22 58V24h20v34ZM27 58V43a5 5 0 0 1 10 0v15Z\"/><rect class=\"b-herse\" x=\"27\" y=\"46\" width=\"10\" height=\"2\"/><rect class=\"b-herse\" x=\"27\" y=\"51\" width=\"10\" height=\"2\"/></svg>";
@@ -89,6 +90,12 @@ const NAV: &[(Rubrique, &str, &str, &str)] = &[
         "/iso-bornes",
         "ISO des bornes",
         "<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/>",
+    ),
+    (
+        Rubrique::Quarantaine,
+        "/quarantaine",
+        "Quarantaine",
+        "<rect width=\"16\" height=\"11\" x=\"4\" y=\"10\" rx=\"2\"/><path d=\"M8 10V7a4 4 0 0 1 8 0v3\"/>",
     ),
 ];
 
@@ -785,6 +792,7 @@ fn libelle_evenement(cle: &str) -> &'static str {
         "cle_usb_retiree" => "Clé USB retirée",
         "politique_servie" => "Politique servie",
         "administration" => "Administration",
+        "quarantaine" => "Quarantaine",
         "point_de_controle" => "Point de contrôle signé",
         _ => "Autre",
     }

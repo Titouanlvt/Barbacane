@@ -17,6 +17,9 @@ use serde::{Deserialize, Serialize};
 
 /// Mises à jour centralisées (ajout compatible, protocole §9).
 pub mod maj;
+/// Quarantaine des fichiers bloqués (ajout compatible, désactivée par défaut,
+/// `docs/suite/quarantaine.md`).
+pub mod quarantaine;
 /// Utilisateurs et clés USB (ajout compatible, `docs/suite/serveur-utilisateurs.md`).
 pub mod utilisateurs;
 
@@ -87,6 +90,8 @@ pub enum CodeErreur {
     Surcharge,
     /// Erreur du serveur (détail seulement dans son journal).
     Interne,
+    /// Quarantaine non activée sur ce serveur (défaut) : rien n'est reçu ni conservé.
+    QuarantaineDesactivee,
 }
 
 impl CodeErreur {
@@ -95,7 +100,9 @@ impl CodeErreur {
             CodeErreur::RequeteInvalide
             | CodeErreur::VersionNonGeree
             | CodeErreur::DemandeInvalide => 400,
-            CodeErreur::JetonInvalide | CodeErreur::BorneRefusee => 403,
+            CodeErreur::JetonInvalide
+            | CodeErreur::BorneRefusee
+            | CodeErreur::QuarantaineDesactivee => 403,
             CodeErreur::DemandeInconnue | CodeErreur::Introuvable => 404,
             CodeErreur::MethodeRefusee => 405,
             CodeErreur::HorlogeDerivee | CodeErreur::RenouvellementPremature => 409,
