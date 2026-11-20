@@ -107,3 +107,21 @@ suivi par borne.
 
 Aucune crate nouvelle dans `Cargo.lock` : `ring` (SHA-384, ECDSA P-384), `minisign-verify` (déjà
 utilisé par `borne/admind`), `serde`, `serde_json`, `hex`, `data-encoding`, `anyhow`.
+
+## 5. Preuves
+
+Tests (`cargo test -p barbacane-audit -p barbacane-passerelle`) :
+`serveur/audit/tests/chaine.rs` (8, tableau du §1) et `serveur/passerelle/tests/maj.rs` :
+
+| Test | Prouve |
+|---|---|
+| `bcu_non_signe_mal_signe_ou_sous_le_plancher_refuse` | refus sans clé des bornes, sans plancher, plancher d'une autre clé, `.bcu` non signé, signé par une autre clé, altéré après signature, sous le plancher, version déjà déposée ou plus ancienne, plancher en recul ; rien de refusé n'est conservé ; chaque motif audité |
+| `bcu_valide_propose_au_battement_telecharge_en_mtls_et_suivi` | proposition au battement (version, sha256, taille, signature) ; `/battement` inchangé ; téléchargement refusé sur l'écoute d'enrôlement, sans certificat, pour une borne non proposée ou une autre version, après révocation ; octets identiques ; états `proposee` → `telechargee` → `appliquee` / `echec` ; rapport unique ; journal intègre et complet, une seule proposition auditée par borne et version |
+| `anomalies_de_battement_auditees_au_changement` | trois battements en dérive → une seule entrée `battement_anormal` |
+
+Lab (VM bu, 20/11/2026, clé de **TEST** `~/cles-test/test.pub`, paquets de test de
+`tests/maj/maj.sh`) : plancher 202611170000 signé avec `~/cles-test/test.key` et installé ;
+`mauvaise-signature/…1500.bcu` → « signature invalide pour la clé des bornes » (code 1) ;
+`ancienne/…-1.bcu` → « version sous le plancher signé » (code 1) ; `paquet/…1453.bcu` accepté
+(352 octets, sha256 `3ee0fcec…9dea`) puis diffusé ; scellement, export et `verifier` → code 0 ;
+une version modifiée dans le journal → « ligne 6 : chaînage rompu », code 2.
