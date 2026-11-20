@@ -23,13 +23,14 @@ if [ -d $X/pki-test ]; then
     cp $X/pki-test/* /target/etc/barbacane-serveur/pki-test/
 fi
 # Phrase de passe temporaire du disque : transmise à configurer-serveur.sh par un fichier
-# en mémoire (tmpfs de l'installateur), jamais écrite sur le disque installé.
-mkdir -p /target/run/barbacane
-mount -t tmpfs -o size=1m,mode=700 tmpfs /target/run/barbacane
-sed -n 's/^d-i partman-crypto\/passphrase password //p' $X/preseed.cfg > /target/run/barbacane/phrase
+# en mémoire (tmpfs monté dans la cible hors de /run, que in-target remonte), jamais écrit sur disque.
+mkdir -p /target/mnt/barbacane-temp
+mount -t tmpfs -o size=1m,mode=700 tmpfs /target/mnt/barbacane-temp
+sed -n 's/^d-i partman-crypto\/passphrase password //p' $X/preseed.cfg > /target/mnt/barbacane-temp/phrase
 cp $X/configurer-serveur.sh /target/tmp/configurer-serveur.sh
 journal "fin d'installation : configuration (TPM, pare-feu, services)"
 in-target bash /tmp/configurer-serveur.sh
-umount /target/run/barbacane
+umount /target/mnt/barbacane-temp
+rmdir /target/mnt/barbacane-temp
 rm -f /target/tmp/configurer-serveur.sh
 journal "fin d'installation : terminée"

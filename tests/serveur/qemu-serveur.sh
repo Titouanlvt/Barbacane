@@ -100,7 +100,9 @@ echo "installation : $(( ($(date +%s) - debut) / 60 )) min"
 if lisible "$W/installation.log" | grep -q 'barbacane-serveur : fin d.installation : terminée'; then
     ok "installation terminée (fin-installation-serveur.sh jusqu'au bout)"
 else
-    echec "fin d'installation du serveur non terminée"; lisible "$W/installation.log" | grep 'barbacane-serveur' | tail -n 20
+    echo "ÉCHEC : fin d'installation du serveur non terminée :" >&2
+    lisible "$W/installation.log" | grep -v '1\*installer' | grep -A25 'barbacane-serveur' | tail -n 40
+    exit 1
 fi
 
 # ------------------------------------------------------------------ 2. démarrage avec le TPM
@@ -120,8 +122,10 @@ lisible "$W/demarrage.log" | sed -n '/=== BARBACANE-ETAT DEBUT/,/=== BARBACANE-E
 if [ "$lu" = 1 ]; then
     ok "démarré sans phrase de passe (TPM) : état du serveur lu sur la console"
 else
-    echec "état du serveur jamais affiché (déverrouillage TPM ou démarrage en échec)"
-    lisible "$W/demarrage.log" | grep -v '^\s*$' | tail -n 40
+    echo "ÉCHEC : état du serveur jamais affiché (déverrouillage TPM ou démarrage en échec) :" >&2
+    lisible "$W/demarrage.log" | grep -v '^\s*$' | tail -n 60
+    kill $PID 2>/dev/null || true; wait $PID 2>/dev/null || true
+    exit 1
 fi
 section() { awk -v s="--- $1" '$0 == s { p = 1; next } /^--- / { p = 0 } /^=== / { p = 0 } p' "$W/etat.txt"; }
 

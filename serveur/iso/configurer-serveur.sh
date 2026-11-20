@@ -3,6 +3,8 @@
 # fin-installation-serveur.sh. Conception et justification de chaque mesure :
 # docs/suite/serveur-iso.md. Idempotent autant que possible ; toute erreur arrête l'installation.
 set -Eeuo pipefail
+# Tout le détail sur la console de l'installateur (diagnostic) et dans un journal du système installé.
+exec > >(tee -a /var/log/barbacane-serveur-installation.log > /dev/console) 2>&1
 trap 'echo "ÉCHEC de configurer-serveur.sh, ligne $LINENO : $BASH_COMMAND" >&2' ERR
 # Garde-fou : jamais sur un hôte Proxmox VE (docs/incident-proxmox.md).
 if [ -e /etc/pve ]; then
@@ -15,7 +17,7 @@ C=/etc/barbacane-serveur
 : "${IF_BORNES:?}" "${IP_BORNES:?}" "${IF_ADMIN:?}" "${IP_ADMIN:?}" "${PORT_ADMIN:?}" "${VERSION:?}" "${COMPTE_ADMIN:?}"
 SVC=barbacane-svc
 DONNEES=/var/lib/barbacane-serveur
-etape() { echo "barbacane-serveur : $*"; echo "barbacane-serveur : $*" > /dev/console 2>/dev/null || true; }
+etape() { echo "barbacane-serveur : $*"; }
 
 echo "$VERSION" > "$C/version"
 
@@ -35,7 +37,7 @@ src=$(awk '!/^#/ && NF >= 2 { print $2; exit }' /etc/crypttab)
 if [ -z "$nom" ] || [ -z "$src" ]; then echo "ÉCHEC : /etc/crypttab vide (disque non chiffré ?)" >&2; exit 1; fi
 case "$src" in UUID=*) dev="/dev/disk/by-uuid/${src#UUID=}" ;; *) dev="$src" ;; esac
 cryptsetup isLuks --type luks2 "$dev" || { echo "ÉCHEC : $dev n'est pas un volume LUKS2" >&2; exit 1; }
-PASSWORD=$(cat /run/barbacane/phrase)
+PASSWORD=$(cat /mnt/barbacane-temp/phrase)
 export PASSWORD
 mkdir -p /run/cryptsetup
 # Clé de secours (si le TPM ou la carte mère est remplacé) : sur le disque chiffré seulement,
