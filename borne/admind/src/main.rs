@@ -6,6 +6,7 @@
 //!
 //! `barbacane-admind --set-pin` lit un PIN sur l'entrée standard (installation).
 
+mod serveur;
 mod update;
 
 use anyhow::{Context, Result, anyhow, bail};
@@ -37,6 +38,11 @@ pub struct Config {
     pub update_pubkey: PathBuf,
     /// Tests : n'exécute aucune commande système (systemctl, apt-get, reboot…)
     pub dry_run: bool,
+    /// Borne en ligne seulement : configuration de l'agent. Absente (borne hors ligne) → aucune
+    /// fonction « serveur » (état et opérations identiques à la v1).
+    pub agent_config: PathBuf,
+    /// Compte de l'agent (propriétaire du jeton déposé).
+    pub agent_compte: String,
 }
 
 impl Default for Config {
@@ -55,6 +61,8 @@ impl Default for Config {
             listes_dir: "/var/lib/barbacane/listes".into(),
             update_pubkey: "/etc/barbacane/maj.pub".into(),
             dry_run: false,
+            agent_config: "/etc/barbacane/agent.toml".into(),
+            agent_compte: "barbacane-agent".into(),
         }
     }
 }
@@ -314,7 +322,7 @@ impl Ctx {
             self.run(&["dpkg-query", "-W", "-f=${Version}", "usbsas-server"])
                 .unwrap_or_else(|_| "?".into())
         };
-        json!({
+        let mut v = json!({
             "enrolled_mode": en.mode,
             "enrolled": en.keys,
             "signatures_age_days": self.signatures_age_days(),
@@ -327,7 +335,14 @@ impl Ctx {
             "limits": self.limits(),
             "pin_set": self.path("pin").exists(),
             "preferences": self.read_json::<Preferences>("preferences.json"),
-        })
+        });
+        // Borne en ligne seulement : sans configuration d'agent, l'état est celui de la v1.
+        match serveur::Liaison::ouvrir(self) {
+            Ok(Some(l)) => v["serveur"] = l.etat(),
+            Ok(None) => (),
+            Err(e) => v["serveur"] = json!({"erreur": format!("{e:#}")}),
+        }
+        v
     }
 
     fn set_limits(&self, l: &Value) -> Result<()> {
@@ -531,6 +546,17 @@ impl Ctx {
             "apply_update" => {
                 let o = update::apply(self)?;
                 log::info!("mise à jour version {} appliquée", o.version);
+                return Ok(json!({"report": o.report, "reboot": o.reboot, "version": o.version}));
+            }
+            // Borne en ligne seulement (refusées sans configuration d'agent).
+            "serveur_jeton" => {
+                let l = serveur::Liaison::exiger(self)?;
+                l.deposer_jeton(self, req["jeton"].as_str().unwrap_or_default())?;
+                "Jeton enregistré : la demande d'enrôlement va être envoyée au serveur.".into()
+            }
+            "serveur_appliquer_maj" => {
+                let l = serveur::Liaison::exiger(self)?;
+                let o = l.appliquer_maj(self)?;
                 return Ok(json!({"report": o.report, "reboot": o.reboot, "version": o.version}));
             }
             "reboot" => {

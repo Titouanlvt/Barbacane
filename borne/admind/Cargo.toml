@@ -7,6 +7,9 @@ license.workspace = true
 [dependencies]
 anyhow = "1.0.104"
 argon2 = { version = "0.6.0", features = ["getrandom"] }
+# Borne en ligne : format du jeton d'enrôlement et messages des mises à jour relayées (même
+# crate que l'agent et la passerelle ; aucune dépendance nouvelle dans Cargo.lock).
+barbacane-protocole = { path = "../../serveur/protocole" }
 env_logger = "0.11.11"
 getrandom = "0.4.3"
 hex = "0.4.3"
