@@ -1,0 +1,45 @@
+== PKI de TEST et ports
+== 1. jeton (barbacane-registre) → demande déposée
+Jeton d'enrôlement (usage unique, valable jusqu'à 2026-11-20 11:37:30 UTC) :
+54542-E5GCUDDGMWTVLEC52BLJ3MWPKQ
+empreinte affichée par la borne : 655b2dac69853934b2980b43964f4cf28c2403994e7bd3a1df2ed1cf26ad9d4c
+600 /travail/e2e-agent/agent/cle-attente.pem
+== 2. validation par l'administrateur → battement dans la supervision
+demande  cff2d9745a1bccf5d14cc2ceba8d7351
+  site       site-1
+  déposée    2026-11-20 10:37:34 UTC
+  logiciel   0.1.0
+  empreinte  655b 2dac 6985 3934 b298 0b43 964f 4cf2 8c24 0399 4e7b d3a1 df2e d1cf 26ad 9d4c
+Comparer l'empreinte à celle affichée par la borne AVANT de valider.
+Demande validée : borne 25736794-4ad5-4c50-8a21-612b4203f78b (certificat de 90 jours émis).
+Heure du serveur : 2026-11-20 10:37:39 UTC
+25736794-4ad5-4c50-8a21-612b4203f78b  borne-e2e    site-1   active    version=0.1.0 état=EnService vue=2026-11-20 10:37:38 UTC écart=0s expire=2027-02-18 10:37:38 UTC
+== 3. serveur arrêté → mode dégradé → reprise
+{
+  "mode": "degradee",
+  "empreinte": null,
+  "derniere_liaison": 1795171058,
+  "ecart_horloge_s": 0,
+  "horloge_derivee": false,
+  "certificat_expire_le": 1802947058,
+  "rapports_en_attente": 0,
+  "file_pleine": false,
+  "message": "mode dégradé (la borne fonctionne hors ligne) : serveur injoignable : 127.0.0.1:30923 : Connection refused (os error 111)"
+}
+== 4. révocation → mode refusée, agent vivant
+Borne révoquée ; CRL republiée (refus à la prochaine connexion).
+{
+  "mode": "refusee",
+  "empreinte": null,
+  "derniere_liaison": 1795171120,
+  "ecart_horloge_s": 0,
+  "horloge_derivee": false,
+  "certificat_expire_le": 1802947058,
+  "rapports_en_attente": 0,
+  "file_pleine": false,
+  "message": "borne refusée par le serveur (received fatal alert: CertificateRevoked) : nouvel enrôlement nécessaire"
+}
+Heure du serveur : 2026-11-20 10:39:45 UTC
+25736794-4ad5-4c50-8a21-612b4203f78b  borne-e2e    site-1   révoquée  version=0.1.0 état=EnService vue=2026-11-20 10:38:40 UTC écart=0s expire=2027-02-18 10:37:38 UTC
+OK : enrôlement validé, battement supervisé, mode dégradé puis reprise, révocation → refusée (dossier : /travail/e2e-agent)
+CODE 0
