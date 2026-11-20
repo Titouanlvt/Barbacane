@@ -1,0 +1,15 @@
+# barbacane-agent (borne EN LIGNE seulement) : écrit par build-iso.sh --profil en-ligne dans
+# /etc/barbacane/agent.toml. Clé inconnue = refus de démarrer.
+adresse = "10.0.2.2"                       # IPv4 du serveur : seule destination autorisée
+nom_serveur = "passerelle.barbacane.invalid" # nom du certificat du serveur
+port_enrolement = 43118                    # écoute d'enrôlement (inscrit dans les jetons, D4)
+port_service = 43117                       # écoute mTLS
+ca_serveur = "/etc/barbacane/agent/ca-serveur.pem"
+# SHA-256 du DER de la CA serveur (openssl x509 -in ca.pem -outform DER | sha256sum)
+empreinte_ca_serveur = "0000000000000000000000000000000000000000000000000000000000000000"
+# Valeurs par défaut :
+# etat = "/var/lib/barbacane-agent"
+# execution = "/run/barbacane-agent"
+# periode_retrait_s = 30
+# reessai_max_s = 300
+# file_max = 1000
