@@ -21,3 +21,10 @@ peut **ni homologuer ni fournir de produit agréé** : ce qui l'exige est listé
 | D12 | 19/11/2026 | Profils de l'ISO borne | `build-iso.sh` sans option = **hors-ligne**, identique à la v1 ; l'agent n'existe que dans `--profil en-ligne` ; `tests/iso/hors-ligne.sh` refuse toute trace réseau. | La v1 reste le produit de référence (conception §10). | Une seule ISO avec l'agent désactivé (code réseau présent sur une borne hors ligne). |
 | D13 | 19/11/2026 | Mode utilisateur par défaut | **Aucun** (comme la v1) ; Identification ou Authentification choisies par site. Aucun est **interdit si la quarantaine est activée**. | Comportement d'une borne neuve inchangé ; traçabilité nominative seulement où elle est justifiée (AIPD). | Authentification obligatoire partout (surcoût, données personnelles inutiles). |
 | D14 | 19/11/2026 | GPU du lab | Pas de passthrough de la RTX 4000 (seule carte d'affichage de l'hôte) ; rendus 3D en CPU. | Règle de l'exception accordée (`docs/lab/gpu-passthrough.md`). | Passthrough malgré tout (hôte sans console locale). |
+
+**Écart à D4 (20/11/2026, `serveur-iso-bornes.md`), à faire valider par l'utilisateur et l'AH** : quand
+le serveur embarque les ISO des bornes, l'ISO générique en ligne porte déjà l'adresse et les ports de
+la passerelle (pare-feu et `agent.toml` de la borne). Le port est donc **tiré une fois, à la
+construction** (`build-iso-serveur.sh --port N`, valeur aléatoire choisie par le constructeur), et
+non à l'installation. Discrétion conservée (port non standard, propre au site) ; sécurité inchangée
+(mTLS + CRL + pare-feu).

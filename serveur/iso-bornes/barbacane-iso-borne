@@ -1,0 +1,65 @@
+#!/bin/bash
+# ISO des bornes produites par le serveur, SANS Internet (docs/suite/serveur-iso-bornes.md).
+# Remaster de l'ISO de borne en ligne embarquée : seul un fichier de paramètres est ajouté
+# (/barbacane/en-ligne/parametres.conf) ; aucun paquet n'est reconstruit, rien n'est téléchargé.
+#
+#   barbacane-iso-borne personnaliser ISO_SOURCE ISO_SORTIE SITE   (jeton PORT-SECRET sur l'entrée standard)
+#   barbacane-iso-borne parametres ISO                             (affiche adresse et port de l'ISO)
+#
+# Le jeton est créé par le registre existant (1 h, usage unique : barbacane-registre … jeton SITE
+# ou la page web « ISO des bornes ») ; il est lu sur l'entrée standard (jamais en argument : visible
+# dans /proc). Contrôles : ISO source de profil en ligne SANS paramètres, port du jeton = port
+# d'enrôlement de l'ISO, site de forme site-<n>. Sortie 0600, créée sans écraser.
+set -Eeuo pipefail
+umask 077
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+PARAM=/barbacane/en-ligne/parametres.conf
+usage() { sed -n '5,6p' "$0" | sed 's/^# *//' >&2; exit 2; }
+refus() { echo "REFUS : $*" >&2; exit 1; }
+
+lire_agent() { # ISO DOSSIER → agent.toml extrait
+    xorriso -osirrox on -indev "$1" -extract /barbacane/en-ligne/agent.toml "$2/agent.toml" >/dev/null 2>&1 \
+        || refus "$1 : pas une ISO de borne EN LIGNE (agent.toml absent)"
+}
+valeur() { sed -n "s/^$1 = \"\{0,1\}\([^\"]*\)\"\{0,1\}\$/\1/p" "$2" | head -1; }
+
+[ $# -ge 1 ] || usage
+case "$1" in
+    parametres)
+        [ $# -eq 2 ] || usage
+        W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
+        lire_agent "$2" "$W"
+        echo "adresse=$(valeur adresse "$W/agent.toml") port_enrolement=$(valeur port_enrolement "$W/agent.toml")"
+        ;;
+    personnaliser)
+        [ $# -eq 4 ] || usage
+        SRC=$2 DST=$3 SITE=$4
+        [ -f "$SRC" ] || refus "ISO source absente : $SRC"
+        [ ! -e "$DST" ] || refus "$DST existe déjà (jamais écrasé)"
+        [[ "$SITE" =~ ^site-[0-9]{1,6}$ ]] || refus "site invalide (site-<n>)"
+        IFS= read -r -t 5 JETON || refus "jeton absent de l'entrée standard"
+        JETON=$(printf '%s' "$JETON" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
+        [[ "$JETON" =~ ^([1-9][0-9]{0,4})-([A-Z2-7]{26})$ ]] || refus "jeton mal formé (PORT-SECRET)"
+        PORT_JETON=${BASH_REMATCH[1]}
+        W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
+        lire_agent "$SRC" "$W"
+        if xorriso -indev "$SRC" -find /barbacane/en-ligne -name parametres.conf 2>/dev/null | grep -q parametres; then
+            refus "ISO source déjà personnalisée : seule l'ISO générique embarquée est admise"
+        fi
+        ADRESSE=$(valeur adresse "$W/agent.toml") PE=$(valeur port_enrolement "$W/agent.toml")
+        [[ "$ADRESSE" =~ ^[0-9.]{7,15}$ ]] || refus "adresse du serveur illisible dans l'ISO"
+        [ "$PORT_JETON" = "$PE" ] || refus "jeton du port $PORT_JETON, ISO configurée pour le port $PE"
+        printf '# ISO personnalisée : SECRET (jeton 1 h, usage unique). À détruire après installation.\njeton = %s\nadresse = %s\nport_enrolement = %s\nsite = %s\n' \
+            "$JETON" "$ADRESSE" "$PE" "$SITE" > "$W/parametres.conf"
+        unset JETON
+        # Même volume, mêmes fichiers, mêmes images de démarrage : seul le fichier est ajouté.
+        xorriso -report_about SORRY -indev "$SRC" -outdev "$W/sortie.iso" \
+            -map "$W/parametres.conf" "$PARAM" -boot_image any replay >"$W/xorriso.log" 2>&1 \
+            || { tail -5 "$W/xorriso.log" >&2; refus "xorriso"; }
+        shred -u "$W/parametres.conf"
+        mv -n "$W/sortie.iso" "$DST"
+        [ -f "$DST" ] && [ ! -e "$W/sortie.iso" ] || refus "$DST apparu pendant la production"
+        echo "ISO personnalisée : $DST site=$SITE adresse=$ADRESSE port=$PE sha256=$(sha256sum "$DST" | cut -d' ' -f1)"
+        ;;
+    *) usage ;;
+esac

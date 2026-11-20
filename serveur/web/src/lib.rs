@@ -14,6 +14,7 @@ pub mod annuaire;
 pub mod comptes;
 pub mod html;
 pub mod http;
+pub mod iso_bornes;
 pub mod multipart;
 pub mod pages;
 pub mod pages_utilisateurs;
@@ -84,6 +85,10 @@ pub struct Config {
     pub cle_audit_publique: PathBuf,
     /// Configuration de l'annuaire LDAPS (facultative, `annuaire::ConfigAnnuaire`).
     pub annuaire: Option<PathBuf>,
+    /// ISO des bornes embarquées (facultatif ; `iso_bornes::DOSSIER_DEFAUT`).
+    pub iso_bornes: PathBuf,
+    /// Outil de remaster (facultatif ; `iso_bornes::OUTIL_DEFAUT`).
+    pub outil_iso_borne: PathBuf,
 }
 
 impl Config {
@@ -106,6 +111,8 @@ impl Config {
             "passerelle",
             "cle_audit_publique",
             "annuaire",
+            "iso_bornes",
+            "outil_iso_borne",
         ];
         for (n, ligne) in texte.lines().enumerate() {
             let ligne = ligne.trim();
@@ -140,6 +147,16 @@ impl Config {
             passerelle: chemin("passerelle")?,
             cle_audit_publique: chemin("cle_audit_publique")?,
             annuaire: v.get("annuaire").map(PathBuf::from),
+            iso_bornes: PathBuf::from(
+                v.get("iso_bornes")
+                    .copied()
+                    .unwrap_or(iso_bornes::DOSSIER_DEFAUT),
+            ),
+            outil_iso_borne: PathBuf::from(
+                v.get("outil_iso_borne")
+                    .copied()
+                    .unwrap_or(iso_bornes::OUTIL_DEFAUT),
+            ),
         })
     }
 
@@ -205,7 +222,7 @@ pub fn config_tls(config: &Config) -> Result<Arc<ServerConfig>> {
 }
 
 /// Flux TCP à échéance totale.
-struct Flux {
+pub(crate) struct Flux {
     flux: TcpStream,
     fin: Instant,
 }
@@ -586,6 +603,7 @@ impl Web {
                 let base = Utilisateurs::ouvrir(&admin.stockage)?.lire()?;
                 page(200, pages_utilisateurs::cles_usb(&ctx, &base, None))
             }
+            iso_bornes::ROUTE => self.page_iso(u, t, None)?,
             "/audit" => {
                 admin.stockage.auditer(
                     &u.acteur(),
@@ -1011,6 +1029,7 @@ impl Web {
                     ),
                 )
             }
+            iso_bornes::ROUTE_PREPARER => self.preparer_iso(f, u, t)?,
             "/maj/diffuser" => {
                 let message = match champ("version").parse::<u64>() {
                     Ok(n) => match admin.maj_diffuser(n) {
@@ -1134,6 +1153,19 @@ fn traiter(flux: TcpStream, web: &Web) -> Result<String> {
     let empreinte = empreinte_certificat(der);
     let reponse = match lire_entete(&mut tls) {
         Err(Refus(s)) => refus(s, "Requête invalide."),
+        Ok(r) if r.methode == "POST" && r.chemin == iso_bornes::ROUTE_TELECHARGER => {
+            // Téléchargement d'une ISO : envoyée en flux (jamais en mémoire), durée allongée.
+            match web.telecharger_iso(&r, &mut tls, &empreinte) {
+                Ok(None) => {
+                    tls.conn.send_close_notify();
+                    tls.flush()?;
+                    fermer(&tls.sock.flux);
+                    return Ok(format!("certificat {}… → 200 (ISO)", &empreinte[..16]));
+                }
+                Ok(Some(rep)) => rep,
+                Err(e) => refus(500, &format!("{e:#}")),
+            }
+        }
         Ok(r) => {
             if r.methode == "POST" && ROUTES_DEPOT.contains(&r.chemin.as_str()) {
                 tls.sock.fin += Duration::from_secs(r.longueur / DEBIT_MIN_DEPOT);

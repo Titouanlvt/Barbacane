@@ -26,3 +26,5 @@ apparmor
 sudo
 # Sauvegarde chiffrée (CMS AES-256-GCM, signature ECDSA) vers support amovible
 openssl
+# Remaster des ISO de bornes, sans réseau (serveur/iso-bornes, serveur-iso-bornes.md)
+xorriso
