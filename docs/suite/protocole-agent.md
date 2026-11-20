@@ -286,3 +286,39 @@ sans réponse HTTP.
 - Plancher signé hors ligne et politique à chaud dans la réponse de retrait (conception §3.7) ;
   rapports et journaux (version 2 du protocole ou routes nouvelles).
 - Journal d'audit chaîné ; PostgreSQL ; republication quotidienne automatique de la CRL.
+
+## 9. Ajout : mises à jour centralisées (20/11/2026, version 1 inchangée)
+
+Ajout **compatible** : routes et messages nouveaux (`serveur/protocole/src/maj.rs`), aucun
+message existant modifié ; un agent qui n'utilise que `/battement` n'est pas concerné. Conception :
+`serveur-maj-audit.md` §2. Les trois routes ne sont servies que par l'écoute **mTLS** (sur
+l'écoute d'enrôlement : `404 introuvable`) et passent le même contrôle applicatif que le
+battement (borne connue, active, certificat courant).
+
+| Route | Corps (≤ 1 Kio) | Réponse |
+|---|---|---|
+| `POST /maj/battement` | `Battement` (§4.1), mêmes contrôles et mêmes erreurs | `200 AccuseBattementMaj` |
+| `POST /maj/telechargement` | `{"version":1,"version_maj":N}` | `200 application/octet-stream`, `Content-Length` = `taille` ; sinon erreur JSON |
+| `POST /maj/rapport` | `{"version":1,"version_maj":N,"resultat":"appliquee"\|"echec"}` | `200 {"version":1,"heure_serveur":…}` |
+
+`AccuseBattementMaj` (≤ 4 Kio) = champs de `AccuseBattement` + `mise_a_jour` **facultatif** (absent
+s'il n'y a rien à proposer) :
+
+| Champ | Contrainte |
+|---|---|
+| `version_maj` | entier (version du manifeste, `AAAAMMJJHHMM`) |
+| `sha256` | 64 hexadécimaux minuscules, du `.bcu` |
+| `taille` | 1 à 4 Gio |
+| `signature_minisign` | contenu du `.bcu.minisig` : ASCII imprimable, ≤ 1 Kio, 4 lignes, commentaire de confiance exactement `barbacane-maj version <version_maj>` |
+
+Règles :
+
+- Proposé tant que la borne n'a pas rapporté `appliquee` ou `echec` pour cette version.
+  Téléchargement refusé (`404 introuvable`) pour une version non proposée à cette borne.
+- La borne ne fait **aucune confiance** au serveur pour le contenu : elle vérifie la taille, le
+  sha256, puis la signature minisign avec SA clé (`/etc/barbacane/maj.pub`) et l'anti-retour du
+  manifeste, exactement comme pour un paquet lu sur clé USB.
+- Au plus 8 téléchargements simultanés (`503 surcharge`) ; durée totale de la connexion 20 s
+  + 1 s par 512 Kio.
+- Un rapport ne vaut qu'une fois par version proposée (`404 introuvable` ensuite).
+- Aucun nouveau code d'erreur (la liste du §5 est inchangée).

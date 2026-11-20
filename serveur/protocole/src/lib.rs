@@ -15,6 +15,9 @@
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+/// Mises à jour centralisées (ajout compatible, protocole §9).
+pub mod maj;
+
 /// Version du protocole portée par chaque message.
 pub const VERSION: u16 = 1;
 
