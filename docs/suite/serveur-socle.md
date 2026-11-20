@@ -12,7 +12,7 @@ fail-closed). Profils : `politique-certification.md`.
 | `serveur/passerelle` (`barbacane-passerelle`) | Serveur HTTPS : TLS 1.3 seul (`TLS_AES_256_GCM_SHA384`, `TLS_AES_128_GCM_SHA256` ; `secp384r1`, `secp256r1`), certificat client **obligatoire** (`WebPkiClientVerifier`, seule ancre : la CA bornes), CRL relue à chaque connexion, route `GET /sante` → `{"etat":"ok","borne":"<CN>"}`. `#![forbid(unsafe_code)]`. | FAIT |
 | Protocole v1 (`serveur/protocole`, `docs/suite/protocole-agent.md`) | Messages partagés passerelle/agent : schéma strict, version, tailles bornées. Deux écoutes : enrôlement (sans certificat client) et service (mTLS). | FAIT |
 | Registre et administration (`barbacane-registre`) | Jetons 1 h à usage unique (hachés), demandes en attente, validation par comparaison d'empreinte, certificat 90 jours signé par la CA bornes, révocation + CRL republiée, renouvellement à mi-vie, battement, heure (écart > 300 s refusé), supervision et alertes. Fichier JSON verrouillé (pas de SQLite : protocole §6). | FAIT |
-| Tests `serveur/passerelle/tests/enrolement.rs` | 12 preuves : protocole §7. | FAIT |
+| Tests `serveur/passerelle/tests/enrolement.rs` | 13 preuves : protocole §7. | FAIT |
 | Tests `serveur/passerelle/tests/mtls.rs` | Génèrent la PKI par le script, prouvent : borne valide acceptée et identifiée ; sans certificat, révoquée, CRL expirée, TLS 1.2 → refus. | FAIT |
 
 Toutes les CA signent en ECDSA-SHA384 (clé P-384 du signataire) ; les clés feuilles sont P-256.
@@ -42,7 +42,7 @@ démarre pas.
 | Révocation masquée (CRL non republiée, rejouée) | refus si `nextUpdate` dépassé (contrôle explicite + `enforce_revocation_expiration`) | `crl_expiree_refus_fail_closed` |
 | Rétrogradation de protocole | TLS 1.3 seul, suites et groupes restreints | `tls12_refuse` |
 | Certificat émis par la CA serveur présenté comme borne | seule ancre = CA bornes, EKU `clientAuth` exigé | par construction |
-| Épuisement | 256 connexions simultanées, délai 10 s, requête ≤ 8 Kio | non testé |
+| Épuisement, client lent | 256 connexions (service) et 8 (enrôlement), durée totale 20 s / 10 s par connexion, tailles bornées | `client_lent_coupe_sans_bloquer_les_bornes` (contre-essai sans échéance : client coupé à 61 s, test en échec) |
 | Confusion test / production | mention TEST dans les noms ; sortie hors dépôt | revue |
 
 ## 4. Dépendances (aucune nouvelle crate dans `Cargo.lock`)

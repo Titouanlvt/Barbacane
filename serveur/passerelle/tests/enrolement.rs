@@ -8,12 +8,15 @@ use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use barbacane_passerelle::admin::Admin;
 use barbacane_passerelle::outils::maintenant;
 use barbacane_passerelle::registre::{Alerte, Motif};
-use barbacane_passerelle::{Config, Passerelle, fournisseur, servir, servir_enrolement};
+use barbacane_passerelle::{
+    CONNEXIONS_ENROLEMENT_MAX, Config, DELAI_TOTAL_ENROLEMENT, Passerelle, fournisseur, servir,
+    servir_enrolement,
+};
 use barbacane_protocole::{
     AccuseBattement, AccuseDemande, Battement, CodeErreur, Decision, EtatBorne, EtatDemande, Jeton,
     ReponseCertificat, ReponseErreur, Sante, VERSION, decoder, route,
@@ -745,4 +748,102 @@ fn renouvellement_a_mi_vie() {
     // …puis il est révoqué (CRL, motif « superseded ») et refusé.
     assert!(battre(&b, &ancienne, maintenant()).is_err());
     assert_eq!(battre(&b, &nouvelle, maintenant()).unwrap().0, 200);
+}
+
+/// Client lent : envoie un octet par seconde ; renvoie le temps écoulé (depuis la connexion)
+/// jusqu'à ce que le serveur coupe. `tls` : poignée de main faite, lenteur sur la requête ;
+/// sinon lenteur pendant la poignée de main elle-même.
+fn client_lent(banc: &Banc, adresse: SocketAddr, tls: bool) -> std::thread::JoinHandle<Duration> {
+    let ca_serveur = CertificateDer::from_pem_file(banc.pki.join("ca-serveur/cert.pem")).unwrap();
+    std::thread::spawn(move || {
+        let debut = Instant::now();
+        let mut flux = TcpStream::connect(adresse).unwrap();
+        let mut conn = None;
+        if tls {
+            let mut ancres = RootCertStore::empty();
+            ancres.add(ca_serveur).unwrap();
+            let config = ClientConfig::builder_with_provider(Arc::new(fournisseur()))
+                .with_protocol_versions(&[&rustls::version::TLS13])
+                .unwrap()
+                .with_root_certificates(ancres)
+                .with_no_client_auth();
+            let mut c =
+                ClientConnection::new(Arc::new(config), ServerName::try_from(NOM_SERVEUR).unwrap())
+                    .unwrap();
+            while c.is_handshaking() {
+                c.complete_io(&mut flux).unwrap();
+            }
+            conn = Some(c);
+        } else {
+            // En-tête d'enregistrement TLS « handshake » annonçant 512 octets jamais complétés.
+            flux.write_all(&[0x16, 0x03, 0x01, 0x02, 0x00]).unwrap();
+        }
+        let mut lecteur = flux.try_clone().unwrap();
+        lecteur
+            .set_read_timeout(Some(Duration::from_secs(60)))
+            .unwrap();
+        std::thread::spawn(move || {
+            let requete = b"POST /enrolement/demande HTTP/1.1\r\nContent-Length: 100\r\n";
+            for i in 0..60 {
+                let ok = match conn.as_mut() {
+                    // Écriture manuelle (jamais de lecture) : un octet de requête par seconde.
+                    Some(c) => {
+                        c.writer()
+                            .write_all(&requete[i % requete.len()..][..1])
+                            .is_ok()
+                            && c.write_tls(&mut flux).is_ok()
+                    }
+                    None => flux.write_all(&[0]).is_ok(),
+                };
+                if !ok {
+                    break;
+                }
+                std::thread::sleep(Duration::from_secs(1));
+            }
+        });
+        let mut poubelle = [0u8; 4096];
+        while let Ok(n) = lecteur.read(&mut poubelle) {
+            if n == 0 {
+                break;
+            }
+        }
+        debut.elapsed()
+    })
+}
+
+#[test]
+fn client_lent_coupe_sans_bloquer_les_bornes() {
+    let b = banc();
+    let (_, cle) = enroler(&b);
+    let debut = Instant::now();
+    // Toutes les places de l'écoute d'enrôlement prises par des clients lents (un pendant la
+    // requête, les autres pendant la poignée de main).
+    let mut lents = vec![client_lent(&b, b.enrolement, true)];
+    for _ in 1..CONNEXIONS_ENROLEMENT_MAX {
+        lents.push(client_lent(&b, b.enrolement, false));
+    }
+    // Pendant ce temps, une borne légitime est servie sur l'écoute de service.
+    std::thread::sleep(Duration::from_secs(2));
+    assert_eq!(battre(&b, &cle, maintenant()).unwrap().0, 200);
+    assert!(
+        debut.elapsed() < DELAI_TOTAL_ENROLEMENT,
+        "clients lents déjà coupés : test non probant"
+    );
+    // Chaque client lent est coupé avant le délai total + 3 s de marge.
+    for l in lents {
+        let duree = l.join().unwrap();
+        eprintln!("client lent coupé après {duree:?}");
+        assert!(
+            duree >= DELAI_TOTAL_ENROLEMENT - Duration::from_secs(1),
+            "coupé trop tôt : {duree:?}"
+        );
+        assert!(
+            duree <= DELAI_TOTAL_ENROLEMENT + Duration::from_secs(3),
+            "coupé trop tard : {duree:?}"
+        );
+    }
+    // Les places sont libérées : l'enrôlement fonctionne de nouveau.
+    std::thread::sleep(Duration::from_millis(200));
+    let (_, csr) = nouvelle_cle(&PKCS_ECDSA_P256_SHA256);
+    assert!(deposer(&b, &jeton(&b).secret, &csr).is_ok());
 }
