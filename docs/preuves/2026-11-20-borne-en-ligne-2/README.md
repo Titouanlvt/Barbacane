@@ -39,6 +39,7 @@ par git) → ISO sans clé, signalée par la comparaison ; reconstruite avec la 
 `-p barbacane-admind` (dont `hors_ligne_aucune_fonction_serveur`,
 `jeton_valide_strictement_et_depose`, `maj_du_serveur_verifiee_par_la_borne`),
 `-p barbacane-client` (dont `hors_ligne_sans_page_serveur`) : OK ; clippy `-D warnings` OK.
+CI locale (`lab/ci-locale-bu.sh borne-en-ligne-2`, état 5098fbd) : audit, fmt, cargo, shellcheck OK, `FIN 0`.
 
 ## Non fait à ce jalon
 
