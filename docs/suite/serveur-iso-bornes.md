@@ -22,7 +22,7 @@ déjà personnalisée. Elles sont embarquées (`/barbacane/iso-bornes/`, `SHA256
 par `fin-installation-serveur.sh`, puis copiées en lecture seule dans
 `/var/lib/barbacane-serveur/iso-bornes/`. Conséquence assumée : l'adresse et les ports de la
 passerelle sont figés dans l'ISO générique, donc le serveur doit être construit avec `--port`
-fixe (D4 : port tiré au moment de la construction et non de l'installation).
+fixe : port tiré à la construction et non à l'installation (écart à D4 consigné dans `decisions.md`).
 
 ## 2. Remaster sans Internet (`serveur/iso-bornes/barbacane-iso-borne`)
 
@@ -58,6 +58,6 @@ ou à l'expiration du jeton (1 h) ; chaque préparation et chaque téléchargeme
 | Outil de remaster + `tests/iso-bornes/remaster.sh` (seule différence = `parametres.conf`, refus) | FAIT (bu, ISO synthétique) |
 | Lecture du jeton de l'ISO à l'installation (`fin-en-ligne.sh`) | FAIT (shellcheck) ; installation QEMU : PRÉVU |
 | ISO serveur : embarquement + empreintes + outil + xorriso | FAIT (refus prouvés sur bu) ; construction complète : PRÉVU |
-| Remaster sur la vraie ISO en ligne (1,1 Go) | BLOQUÉ : disque de bu plein (730 Mo libres) |
+| Remaster sur la vraie ISO en ligne (1,1 Go) | FAIT (bu : 1296 fichiers identiques, seule différence `parametres.conf`, volume conservé, 5 refus) |
 | Page web, test « auditeur interdit », « téléchargement unique » | PRÉVU (cargo impossible : disque de bu plein) |
 | QEMU : borne installée depuis l'ISO personnalisée, demande déposée sans saisie | PRÉVU |

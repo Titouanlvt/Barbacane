@@ -85,6 +85,7 @@ if [ -n "$ISO_EL$ISO_HL" ]; then
     command -v xorriso >/dev/null || refus "xorriso requis pour contrôler les ISO des bornes (apt install xorriso)"
     [ -f "$ISO_EL" ] && [ -f "$ISO_HL" ] || refus "--iso-borne-en-ligne et --iso-borne-hors-ligne : les deux ISO"
     [ -f "$SHA_BORNES" ] || refus "--sha256-bornes FICHIER exigé avec les ISO des bornes"
+    [ -n "$PORT" ] || refus "--port N exigé avec les ISO des bornes (port figé dans l'ISO générique ; écart à D4, decisions.md)"
     for i in "$ISO_EL" "$ISO_HL"; do
         e=$(sha256sum "$i" | cut -d' ' -f1)
         grep -Eq "^${e}[[:space:]]+\\*?(.*/)?$(basename "$i")\$" "$SHA_BORNES" || refus "$i : empreinte $e absente de $SHA_BORNES"
