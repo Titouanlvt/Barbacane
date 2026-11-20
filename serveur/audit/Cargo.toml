@@ -1,0 +1,18 @@
+[package]
+name = "barbacane-audit"
+description = "Journal d'audit chaîné du serveur Barbacane (suite) : SHA-384, points de contrôle signés ECDSA P-384, ajout seul, vérification et export"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# Toutes déjà présentes dans Cargo.lock (utilisées par la passerelle) : aucune crate nouvelle.
+anyhow = "1.0.104"
+data-encoding = "2.11.1"
+hex = "0.4.3"
+ring = "0.17.14"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+
+[dev-dependencies]
+tempfile = "3.27.0"
