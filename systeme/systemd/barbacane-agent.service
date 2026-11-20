@@ -1,0 +1,61 @@
+[Unit]
+Description=Barbacane : agent de la borne en ligne (seul accès réseau, vers le seul serveur)
+Documentation=file:///usr/share/doc/barbacane-agent/
+# Sans configuration (posée par l'ISO en ligne), rien ne démarre.
+ConditionPathExists=/etc/barbacane/agent.toml
+After=network-online.target nftables.service
+Wants=network-online.target
+Requires=nftables.service
+
+[Service]
+ExecStart=/usr/bin/barbacane-agent /etc/barbacane/agent.toml
+User=barbacane-agent
+Group=barbacane-agent
+UMask=0077
+StateDirectory=barbacane-agent
+StateDirectoryMode=0700
+# etat.json (aucun secret) lisible par l'interface et l'administration locale
+RuntimeDirectory=barbacane-agent
+RuntimeDirectoryMode=0755
+# Réseau : IPv4 vers la SEULE adresse du serveur. IPAddressAllow est posé à l'installation par
+# l'ISO en ligne (barbacane-agent.service.d/serveur.conf) ; sans lui, tout est refusé.
+IPAddressDeny=any
+RestrictAddressFamilies=AF_INET AF_UNIX
+# Aucune capacité, aucun changement de privilège
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=yes
+SecureBits=noroot-locked
+RestrictSUIDSGID=yes
+# Système de fichiers : tout en lecture seule sauf le dossier d'état et d'exécution
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+KeyringMode=private
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @mount @obsolete @debug @cpu-emulation @raw-io @reboot @swap @module @clock
+SystemCallErrorNumber=EPERM
+MemoryMax=128M
+TasksMax=16
+LimitNOFILE=64
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

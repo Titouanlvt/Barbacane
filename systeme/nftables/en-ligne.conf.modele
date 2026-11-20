@@ -1,0 +1,26 @@
+#!/usr/sbin/nft -f
+# Barbacane : borne EN LIGNE (profil en-ligne seulement ; la borne hors ligne garde
+# nftables.conf). Rien n'est accepté en entrée sauf les réponses du serveur à une connexion
+# ouverte par la borne ; en sortie, SEUL le compte barbacane-agent peut joindre le serveur, et
+# seulement sur ses deux ports (enrôlement, service). IPv6 entièrement bloqué.
+# Modèle : @SERVEUR@, @PORT_ENROLEMENT@, @PORT_SERVICE@ remplacés par build-iso.sh ; les lignes
+# « #DHCP# » ne sont gardées (décommentées) qu'avec --reseau dhcp.
+flush ruleset
+
+table inet barbacane {
+    chain input {
+        type filter hook input priority 0; policy drop;
+        iif "lo" accept
+        ip saddr @SERVEUR@ tcp sport { @PORT_ENROLEMENT@, @PORT_SERVICE@ } ct state established accept
+#DHCP#        udp sport 67 udp dport 68 ct state established accept
+    }
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+    }
+    chain output {
+        type filter hook output priority 0; policy drop;
+        oif "lo" accept
+        ip daddr @SERVEUR@ tcp dport { @PORT_ENROLEMENT@, @PORT_SERVICE@ } meta skuid "barbacane-agent" ct state { new, established } accept
+#DHCP#        udp sport 68 udp dport 67 meta skuid "systemd-network" accept
+    }
+}
