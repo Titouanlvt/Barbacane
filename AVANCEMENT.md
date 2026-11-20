@@ -21,7 +21,7 @@
 | Serveur : interface web d'administration (charte v2 simple, sans JS) | `serveur-web` | **fusionné** cfcf867 (CI locale verte ; mTLS admin + Argon2id, CSRF, CSP, 26 tests). Captures Jour/Nuit des 8 pages : `docs/preuves/serveur-web/captures/` ; défaut : colonne Actions du tableau Supervision coupée à 1280 px. PRÉVU : CA administrateurs dans racine-test.sh, double validation, TPM, service systemd | — |
 | Borne 950 remise en v1 | — | **fait** : code v1, transfert OK | — |
 | Borne en ligne 2 : page Serveur (charte v1), mises à jour depuis le serveur | `borne-en-ligne-2` | **fusionné** (CI locale verte ; 950 sans agent : 43 OK, parcours v1 inchangé). PRÉVU : rapports de passage, QEMU en ligne rejoué | — |
-| Serveur : utilisateurs et clés USB | `serveur-utilisateurs` / `wt-serveur-utilisateurs` | sous-agent en cours | — |
+| Serveur : utilisateurs et clés USB | `serveur-utilisateurs` / `wt-serveur-utilisateurs` | fusionné (55933b2, CI locale FIN 0) ; reste borne : écrans identifiant/PIN, politique USB ; LDAPS prouvé sur faux annuaire seulement, AD sans TLS 1.3 refusé | décision TLS 1.2 annuaire |
 | Serveur : ISO des bornes depuis le serveur (§9) | `serveur-iso-bornes` / `wt-serveur-iso-bornes` | sous-agent en cours | — |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
