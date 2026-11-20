@@ -111,7 +111,12 @@ sed -e "s|@IF_BORNES@|$IF_BORNES|g" -e "s|@IF_ADMIN@|$IF_ADMIN|g" -e "s|@IP_BORN
     -e "s|@PORT@|$PORT|g" -e "s|@PORT_ADMIN@|$PORT_ADMIN|g" -e "s|@SORTIE_HEURE@|$sortie_heure|" \
     /usr/share/barbacane-serveur/nftables.conf.modele > /etc/nftables.conf
 chmod 600 /etc/nftables.conf
-nft -c -f /etc/nftables.conf
+# Contrôle de syntaxe : impossible dans l'installateur si nf_tables n'y est pas chargé (Netlink) ;
+# toute autre erreur arrête l'installation. Le banc QEMU vérifie les règles réellement chargées.
+if ! sortie=$(nft -c -f /etc/nftables.conf 2>&1); then
+    grep -q 'Netlink' <<<"$sortie" || { echo "$sortie" >&2; exit 1; }
+    echo "nftables : contrôle reporté au démarrage (nf_tables absent de l'installateur)"
+fi
 systemctl enable nftables.service
 
 # ------------------------------------------------------------------ 3. heure de référence (§3.11)
