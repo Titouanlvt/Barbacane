@@ -24,6 +24,10 @@ pub enum Page {
     Affichage,
     /// Crédits : projets sur lesquels repose Barbacane
     APropos,
+    /// Borne en ligne seulement : liaison avec le serveur de gestion
+    Serveur,
+    /// Borne en ligne seulement : saisie du jeton d'enrôlement
+    Jeton,
     Confirmer(&'static str),
 }
 
@@ -47,6 +51,12 @@ pub enum AdminMsg {
     Executer(&'static str),
     /// Thème (« pierre » ou « nuit ») et animations réduites
     Affichage(&'static str, bool),
+    /// Borne en ligne : jeton saisi, à déposer par admind
+    EnregistrerJeton,
+    /// Borne en ligne : vérifier et appliquer la mise à jour reçue du serveur
+    AppliquerMajServeur,
+    /// Relire l'état (page Serveur)
+    Actualiser,
 }
 
 pub struct AdminUi {
@@ -102,7 +112,14 @@ pub fn update(app: &mut App, m: AdminMsg) -> Task<Msg> {
         }
         AdminMsg::Aller(p) => {
             a.message = None;
-            a.input = Input::digits(12);
+            a.input = if p == Page::Jeton {
+                Input {
+                    visible: true,
+                    ..Input::text(40)
+                }
+            } else {
+                Input::digits(12)
+            };
             a.first_pin = None;
             if p == Page::Limites {
                 a.limits = app
@@ -182,6 +199,10 @@ pub fn update(app: &mut App, m: AdminMsg) -> Task<Msg> {
                     if tag == "set_pin" {
                         app.admin.page = Page::Menu;
                     }
+                    if tag == "serveur_jeton" {
+                        app.admin.input = Input::digits(12);
+                        app.admin.page = Page::Serveur;
+                    }
                     return app.refresh_etat();
                 }
                 ("login", Err(e)) => a.message = Some((false, e)),
@@ -260,6 +281,20 @@ pub fn update(app: &mut App, m: AdminMsg) -> Task<Msg> {
             }
         }
         AdminMsg::Executer(op) => return a.call(op, json!({"op": op})),
+        AdminMsg::EnregistrerJeton => {
+            let j = a.input.value.to_string();
+            a.message = None;
+            return a.call("serveur_jeton", json!({"op": "serveur_jeton", "jeton": j}));
+        }
+        AdminMsg::AppliquerMajServeur => {
+            a.message = Some((
+                true,
+                "Vérification et application de la mise à jour…".into(),
+            ));
+            // Même réponse que la mise à jour par clé : même affichage du compte rendu.
+            return a.call("apply_update", json!({"op": "serveur_appliquer_maj"}));
+        }
+        AdminMsg::Actualiser => return app.refresh_etat(),
     }
     Task::none()
 }
@@ -341,7 +376,11 @@ pub fn view(app: &App) -> Element<'_, Msg> {
         .into(),
         Page::Menu => column![
             titre("Administration"),
-            row![menu_btn("État de la borne", Page::Etat), menu_btn("Mettre à jour", Page::MiseAJour), menu_btn("Exporter les journaux", Page::Export)].spacing(20),
+            {
+                let r = row![menu_btn("État de la borne", Page::Etat), menu_btn("Mettre à jour", Page::MiseAJour), menu_btn("Exporter les journaux", Page::Export)].spacing(20);
+                // Borne en ligne seulement (absent en profil hors ligne : menu v1 inchangé).
+                if profil_en_ligne(&etat) { r.push(menu_btn("Serveur", Page::Serveur)) } else { r }
+            },
             row![menu_btn("Clés de sortie enrôlées", Page::Enrolement), menu_btn("Limites d'analyse", Page::Limites), menu_btn("Changer le PIN", Page::NouveauPin)].spacing(20),
             row![
                 menu_btn("Affichage", Page::Affichage),
@@ -519,7 +558,7 @@ pub fn view(app: &App) -> Element<'_, Msg> {
                     .spacing(24),
                     petit("Marques et logos appartenant à leurs détenteurs. Barbacane n'est ni affilié ni approuvé par eux."),
                 ]),
-                petit(&format!("Barbacane {} — station blanche hors ligne", env!("CARGO_PKG_VERSION"))),
+                petit(&format!("Barbacane {} — {}", env!("CARGO_PKG_VERSION"), crate::app::mention_station(&etat))),
                 retour,
             ]
             .spacing(20)
@@ -567,6 +606,22 @@ pub fn view(app: &App) -> Element<'_, Msg> {
         .spacing(12) // tient en 1280×768
         .align_x(Alignment::Center)
         .into(),
+        Page::Serveur => view_serveur(&etat, msg, retour, a.busy),
+        Page::Jeton => column![
+            titre("Jeton d'enrôlement"),
+            texte("Saisissez le jeton remis par l'administrateur du serveur (forme 43118-ABCD…)."),
+            container(text(a.input.value.to_uppercase()).size(26).font(style::MONO)).padding(8).width(Length::Fixed(720.0)).style(style::carte),
+            a.input.view(|k| am(AdminMsg::Key(k))),
+            msg,
+            row![
+                bouton("Annuler", am(AdminMsg::Aller(Page::Serveur)), style::secondaire),
+                bouton_busy("Valider", am(AdminMsg::EnregistrerJeton), a.busy),
+            ]
+            .spacing(30),
+        ]
+        .spacing(12) // tient en 1280×768
+        .align_x(Alignment::Center)
+        .into(),
         Page::Confirmer(op) => column![
             titre(if *op == "reboot" { "Redémarrer la borne ?" } else { "Éteindre la borne ?" }),
             msg,
@@ -603,5 +658,186 @@ fn espace_travail(v: &serde_json::Value) -> String {
             barbacane_parcours::go(libre / barbacane_parcours::FACTEUR_ESPACE)
         ),
         _ => "non monté".into(),
+    }
+}
+
+/// Profil en ligne : admind ne publie le bloc `serveur` que si l'agent est configuré.
+pub fn profil_en_ligne(etat: &Value) -> bool {
+    etat["serveur"].is_object()
+}
+
+/// « il y a 42 s », « il y a 5 min »… (heure de la borne).
+fn il_y_a(t: Option<u64>) -> String {
+    let Some(t) = t else {
+        return "jamais".into();
+    };
+    let maintenant = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let d = maintenant.saturating_sub(t);
+    match d {
+        0..60 => format!("il y a {d} s"),
+        60..3600 => format!("il y a {} min", d / 60),
+        3600..86400 => format!("il y a {} h", d / 3600),
+        _ => format!("il y a {} jour(s)", d / 86400),
+    }
+}
+
+/// Empreinte en groupes de 4, sur deux lignes (à faire retaper côté serveur).
+fn empreinte_groupee(e: &str) -> String {
+    let groupes: Vec<String> = e
+        .as_bytes()
+        .chunks(4)
+        .map(|c| String::from_utf8_lossy(c).into_owned())
+        .collect();
+    groupes
+        .chunks(8)
+        .map(|l| l.join(" "))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn mode_lisible(mode: Option<&str>) -> &'static str {
+    match mode {
+        Some("non_enrolee") => "Non enrôlée : saisissez un jeton d'enrôlement",
+        Some("attente_validation") => "En attente de validation par l'administrateur du serveur",
+        Some("connectee") => "Enrôlée, liaison établie",
+        Some("degradee") => "Mode dégradé : serveur injoignable (la borne fonctionne hors ligne)",
+        Some("refusee") => "Refusée par le serveur : nouvel enrôlement nécessaire",
+        _ => "Agent arrêté (aucun état publié)",
+    }
+}
+
+fn view_serveur<'a>(
+    etat: &Value,
+    msg: Element<'a, Msg>,
+    retour: Element<'a, Msg>,
+    busy: bool,
+) -> Element<'a, Msg> {
+    let s = &etat["serveur"];
+    let ag = &s["agent"];
+    let line = |k: &str, v: String| {
+        row![
+            text(format!("{k} :"))
+                .size(style::TEXTE_TAILLE)
+                .width(Length::Fixed(380.0)),
+            texte(&v)
+        ]
+    };
+    let mut c = Column::new().spacing(6);
+    c = c.push(line(
+        "Serveur",
+        s["adresse"].as_str().unwrap_or("?").to_string(),
+    ));
+    c = c.push(line("État", mode_lisible(ag["mode"].as_str()).into()));
+    if let Some(e) = ag["empreinte"].as_str() {
+        c = c.push(texte(
+            "Empreinte de la demande, à faire retaper par l'administrateur du serveur :",
+        ));
+        c = c.push(text(empreinte_groupee(e)).size(22).font(style::MONO));
+    }
+    c = c.push(line(
+        "Dernière synchronisation",
+        il_y_a(ag["derniere_liaison"].as_u64()),
+    ));
+    c = c.push(line(
+        "Écart d'horloge",
+        match ag["ecart_horloge_s"].as_i64() {
+            Some(e) if ag["horloge_derivee"] == true => {
+                format!("{e:+} s (horloge décalée : signalé au serveur)")
+            }
+            Some(e) => format!("{e:+} s"),
+            None => "inconnu".into(),
+        },
+    ));
+    c = c.push(line(
+        "Rapports en attente d'envoi",
+        ag["rapports_en_attente"].as_u64().unwrap_or(0).to_string(),
+    ));
+    if let Some(m) = ag["message"].as_str().or(s["erreur"].as_str()) {
+        c = c.push(petit(m));
+    }
+    let maj = &ag["mise_a_jour"];
+    let mut actions = row![retour].spacing(30);
+    if maj["prete"] == true {
+        c = c.push(Space::new().height(8));
+        c = c.push(texte(&format!(
+            "Mise à jour {} reçue du serveur ({}).",
+            maj["version_maj"].as_u64().unwrap_or(0),
+            barbacane_parcours::go(maj["taille"].as_u64().unwrap_or(0))
+        )));
+        c = c.push(petit("Sa signature et sa version sont vérifiées par la borne avant l'application, comme pour une clé administrateur."));
+        actions = actions.push(bouton_busy(
+            "Vérifier et appliquer",
+            am(AdminMsg::AppliquerMajServeur),
+            busy,
+        ));
+    } else if maj["rapport_en_attente"] == true {
+        c = c.push(petit(&format!(
+            "Résultat de la mise à jour {} en attente de transmission au serveur.",
+            maj["version_maj"].as_u64().unwrap_or(0)
+        )));
+    }
+    actions = actions
+        .push(bouton(
+            "Actualiser",
+            am(AdminMsg::Actualiser),
+            style::secondaire,
+        ))
+        .push(bouton(
+            "Saisir un jeton",
+            am(AdminMsg::Aller(Page::Jeton)),
+            style::secondaire,
+        ));
+    column![titre("Serveur de gestion"), carte(c), msg, actions]
+        .spacing(20)
+        .align_x(Alignment::Center)
+        .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hors_ligne_sans_page_serveur() {
+        // État d'admind v1 (aucun bloc « serveur ») : profil hors ligne.
+        assert!(!profil_en_ligne(&json!({"pin_set": true, "reports": 3})));
+        assert!(profil_en_ligne(&json!({"serveur": {"agent": null}})));
+        use crate::app::mention_station;
+        assert_eq!(
+            mention_station(&json!({"pin_set": true})),
+            "station blanche hors ligne"
+        );
+        assert_eq!(mention_station(&Value::Null), "station blanche hors ligne");
+        assert_eq!(
+            mention_station(&json!({"serveur": {"agent": null}})),
+            "station blanche hors ligne",
+            "agent arrêté"
+        );
+        assert_eq!(
+            mention_station(&json!({"serveur": {"agent": {"mode": "connectee"}}})),
+            "station blanche en ligne"
+        );
+    }
+
+    #[test]
+    fn empreinte_sur_deux_lignes() {
+        let e = "0123456789abcdef".repeat(4);
+        let g = empreinte_groupee(&e);
+        assert_eq!(g.lines().count(), 2);
+        assert_eq!(g.replace([' ', '\n'], ""), e);
+        assert!(g.starts_with("0123 4567 89ab cdef"));
+    }
+
+    #[test]
+    fn durees() {
+        assert_eq!(il_y_a(None), "jamais");
+        let t = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        assert_eq!(il_y_a(Some(t - 300)), "il y a 5 min");
     }
 }

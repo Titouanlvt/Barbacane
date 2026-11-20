@@ -1017,8 +1017,9 @@ impl App {
         }
         let mut r = row![
             petit(&format!(
-                "Barbacane {} — station blanche hors ligne",
-                env!("CARGO_PKG_VERSION")
+                "Barbacane {} — {}",
+                env!("CARGO_PKG_VERSION"),
+                mention_station(self.etat.as_ref().unwrap_or(&serde_json::Value::Null))
             )),
             Space::new().width(Length::Fill),
         ]
@@ -1794,6 +1795,16 @@ pub fn icone_etat<'a>(svg: &'static [u8], taille: f32, c: iced::Color) -> Elemen
         .height(taille)
         .style(move |_, _| iced::widget::svg::Style { color: Some(c) })
         .into()
+}
+
+/// Pied de page : « station blanche hors ligne » (v1), sauf sur une borne en ligne dont
+/// l'agent est actif (il publie son état).
+pub fn mention_station(etat: &serde_json::Value) -> &'static str {
+    if etat["serveur"]["agent"].is_object() {
+        "station blanche en ligne"
+    } else {
+        "station blanche hors ligne"
+    }
 }
 
 pub fn titre<'a>(t: &str) -> Element<'a, Msg> {
