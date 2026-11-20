@@ -110,7 +110,19 @@ formulaire, avis, états, boutons) **sans** transition ni animation ; thème Jou
 `prefers-color-scheme` ; polices de `docs/charte/fonts` (OFL). Pas d'attribut `style` (interdit
 par la CSP) : les couleurs d'état passent par des classes.
 
-Captures : §9.
+### Captures (Jour et Nuit)
+
+`tests/web/captures.sh [SORTIE]` (VM de dev, jamais l'hôte) : l'exemple
+`cargo run -p barbacane-web --example captures -- DOSSIER` rend **avec le vrai code de rendu** les
+8 pages (connexion, tableau de bord, enrôlement avec jeton affiché, examen d'une demande avec
+erreur d'empreinte, révocation, mises à jour, journal, vérification) avec des données d'exemple,
+en `data-theme="jour"` et `"nuit"`, puis un Chromium sans tête les photographie en 1280 px de large
+(`file://`, aucun réseau). Sortie par défaut : `docs/preuves/serveur-web/captures/`.
+
+État au 20/11/2026 : les pages HTML sont produites sur bu (16 fichiers, aucun `<script>`), mais
+**aucun navigateur sans tête n'est installé sur bu** ; `chromium-headless-shell` (Debian 13)
+occupe environ 230 Mo + `chromium-common` : jugé trop lourd pour l'installer sans accord. Pour
+produire les captures : `apt install chromium-headless-shell` sur bu, puis `tests/web/captures.sh`.
 
 ## 8. État
 
@@ -122,6 +134,8 @@ Captures : §9.
 | Clé de l'interface et de la CA administrateurs dans le TPM, service systemd durci, pare-feu de l'interface d'administration | PRÉVU (ISO serveur) |
 | Double validation (§3.10), utilisateurs et PIN (étape 4), clés USB, rapports, politique | PRÉVU |
 | Comparaison aux exports d'empreintes d'audit depuis la page | PRÉVU (`barbacane-audit verifier` en ligne de commande) |
+| Captures PNG Jour/Nuit | PRÉVU : script prêt (`tests/web/captures.sh`), navigateur absent de bu |
+| Journal d'audit très long : la page et la vérification lisent tout le fichier | PRÉVU (lecture de la fin seulement pour la consultation) |
 
 ## 9. Dépendances
 
@@ -131,3 +145,24 @@ par `borne/admind`), `httparse` (analyse des en-têtes HTTP, déjà tirée par `
 déjà utilisée par `borne/admind`). Les autres viennent de la passerelle (`rustls`, `ring`,
 `x509-parser`, `serde_json`, `hex`, `anyhow`). Pas de cadriciel web ni de moteur de gabarits :
 un fil par connexion suffit à quelques administrateurs et limite la surface.
+
+## 10. Preuves
+
+`cargo test -p barbacane-web` (openssl, minisign, zstd et python3 requis, comme les tests de la
+passerelle) : 16 tests unitaires (échappement, encodage d'URL, analyse HTTP et refus, multipart en
+flux octet par octet, comptes et Argon2id, verrouillage croissant, sessions : inactivité, durée
+maximale, liaison au certificat, une session par compte) et 10 tests d'intégration
+(`serveur/web/tests/web.rs`) sur une vraie écoute TLS :
+
+| Test | Prouve |
+|---|---|
+| `sans_certificat_refus_tls` | sans certificat client, même la feuille de style est refusée à la poignée de main ; un certificat de **borne** n'ouvre pas l'interface |
+| `certificat_revoque_refus_tls` | certificat d'administrateur présent dans la CRL → refus TLS |
+| `certificat_sans_mot_de_passe_pas_de_session` | certificat seul, cookie inventé, mauvais mot de passe, compte inconnu, certificat sans compte, mot de passe d'un autre compte : aucune session, message unique ; cookie volé inutilisable avec un autre certificat ; 5 échecs → bon mot de passe refusé ; tout audité |
+| `auditeur_ne_peut_pas_poster` | l'auditeur lit toutes les pages, aucun formulaire d'action ; tout POST d'action → 403, aucun jeton créé ; déconnexion permise |
+| `post_sans_jeton_csrf_refuse` | POST sans jeton, avec un faux jeton, ou `Sec-Fetch-Site: cross-site` → 403 ; connexion sans jeton de pré-session refusée |
+| `nom_de_borne_malveillant_echappe` | `<script>` dans le nom et `"><img onerror>` dans le site : échappés sur le tableau de bord et la page de révocation |
+| `entetes_de_securite_presents` | CSP exacte, `X-Frame-Options`, `nosniff`, `no-referrer`, COOP, HSTS, `no-store` (pages) ; cookie `__Host-`, `Secure`, `HttpOnly`, `SameSite=Strict` ; aucun `<script>` ni attribut `style` |
+| `requete_trop_grosse_refusee` | en-têtes de 10 Kio → 431 ; formulaire de 20 Kio → 413 ; `Transfer-Encoding` → 400 |
+| `validation_d_enrolement_de_bout_en_bout` | jeton créé par la page, demande déposée sur la VRAIE écoute d'enrôlement de la passerelle, empreinte absente de la page d'examen, empreinte fausse → refus et demande toujours en attente, empreinte retapée (majuscules, groupes) → certificat émis (SAN `urn:barbacane:borne:site-1:<uuid>`) retiré par la borne ; révocation exigeant le nom ; journal intègre avec jeton, validation, révocation, consultations attribués à `web:alice` ; vérification de la chaîne depuis la page |
+| `depot_bcu_par_la_page` | plancher et `.bcu` des VRAIS scripts de préparation : faux jeton → 403, paquet avant plancher → refusé et audité (`plancher_absent`), paquet altéré → `signature_invalide`, paquet valide accepté puis diffusé ; aucun fichier temporaire restant |

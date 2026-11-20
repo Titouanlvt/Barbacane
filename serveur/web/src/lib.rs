@@ -243,7 +243,8 @@ fn feuille_de_style() -> &'static str {
     })
 }
 
-fn statique(chemin: &str) -> Option<Reponse> {
+/// Ressource statique embarquée (feuille de style, polices, symbole).
+pub fn statique(chemin: &str) -> Option<Reponse> {
     let (type_contenu, corps): (&'static str, &'static [u8]) = match chemin {
         "/statique/barbacane.css" => ("text/css; charset=utf-8", feuille_de_style().as_bytes()),
         "/statique/symbole.svg" => (
