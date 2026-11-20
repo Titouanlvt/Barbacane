@@ -23,6 +23,7 @@
 | Borne en ligne 2 : page Serveur (charte v1), mises à jour depuis le serveur | `borne-en-ligne-2` | **fusionné** (CI locale verte ; 950 sans agent : 43 OK, parcours v1 inchangé). PRÉVU : rapports de passage, QEMU en ligne rejoué | — |
 | Serveur : utilisateurs et clés USB | `serveur-utilisateurs` / `wt-serveur-utilisateurs` | fusionné (55933b2, CI locale FIN 0) ; reste borne : écrans identifiant/PIN, politique USB ; LDAPS prouvé sur faux annuaire seulement, AD sans TLS 1.3 refusé | décision TLS 1.2 annuaire |
 | Serveur : ISO des bornes depuis le serveur (§9) | `serveur-iso-bornes` / `wt-serveur-iso-bornes` | fusionné (CI locale FIN 0 sur la fusion) ; remaster prouvé sur la vraie ISO, QEMU : enrôlement sans saisie, battement, jeton effacé | validation de l’écart à D4 (port fixé à la construction) |
+| Rapports de passage (§10, D2) | `rapports-passage` / `wt-rapports-passage` | FAIT : route mTLS `/rapport/passage`, stockage + audit `rapport_passage`, page web Passages, admind → file de l'agent → envoi/rejeu ; tests unitaires et mTLS ; CI locale à voir dans `logs/ci-locale-rapports-passage.log` | revue ; PRÉVU : PostgreSQL, échec d'analyse, signature borne, QEMU |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
 ## Plan et état

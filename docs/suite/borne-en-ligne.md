@@ -98,9 +98,16 @@ Charte v1, mêmes widgets. **Profil hors ligne : strictement inchangée** — sa
 
 Aucun à ce jour.
 
+## Rapports de passage (20/11/2026, `protocole-agent.md` §10)
+
+Après chaque analyse, admind dépose pour l'agent un rapport minimal (tailles, SHA-256, verdicts,
+identifiant de support ; **aucun nom de fichier**), l'agent l'envoie sur `/rapport/passage` et
+ne le retire qu'après `200`. File pleine (`file_max`) → la borne refuse toute nouvelle analyse
+(« Borne hors service », écran d'erreur existant de la charte v1). Rien de tout cela sans
+`/etc/barbacane/agent.toml`.
+
 ## Reste à faire
 
 - Clé de la borne dans le **TPM** (D9) : trait `Coffre` prêt, implémentation fichier au lab.
-- Rapports minimaux de passage vers le serveur (PRÉVU, voir `protocole-agent.md` §10).
 - Réglage de l'horloge sur l'heure du serveur par un service privilégié ; blocage après le délai
   de grâce (conception §3.1) ; politique, rapports, journaux, mises à jour (protocole v2).
