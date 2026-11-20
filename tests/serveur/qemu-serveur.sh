@@ -10,7 +10,7 @@
 #   tests/serveur/qemu-serveur.sh ISO DOSSIER [PKI]
 #     ISO    construite pour ce banc :
 #            serveur/iso/build-iso-serveur.sh --ip-bornes 10.0.2.15/24 --ip-admin 10.0.3.15/24 \
-#              --pki-test PKI --hache-admin FICHIER
+#              --pki-test PKI --hache-admin FICHIER --console-serie
 #     PKI    dossier de serveur/pki/racine-test.sh (certificat de borne pour l'essai mTLS) ; sans lui,
 #            la passerelle doit être « en attente de PKI » (condition non remplie, pas d'échec).
 # Prérequis (root) : qemu-system-x86, ovmf, qemu-utils, swtpm, cryptsetup, socat, openssl, xorriso, KVM.
@@ -33,8 +33,7 @@ lisible() { sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' "$1" | tr -d '\r'; }
 # ------------------------------------------------------------------ 0. ISO (sans l'installer)
 echo "== contrôle de l'ISO"
 xorriso -osirrox on -indev "$ISO" -extract /barbacane/preseed.cfg "$W/preseed.cfg" \
-    -extract /barbacane/serveur.conf "$W/serveur.conf" -extract /install.amd/vmlinuz "$W/vmlinuz" \
-    -extract /install.amd/initrd.gz "$W/initrd.gz" -extract /boot/grub/grub.cfg "$W/grub.cfg" >/dev/null 2>&1
+    -extract /barbacane/serveur.conf "$W/serveur.conf" -extract /boot/grub/grub.cfg "$W/grub.cfg" >/dev/null 2>&1
 xorriso -osirrox on -indev "$ISO" -extract /barbacane/fichiers.tar "$W/fichiers.tar" >/dev/null 2>&1
 tar -xf "$W/fichiers.tar" -C "$W" ./usr/share/barbacane-serveur/paquets-interdits
 INTERDITS="$W/usr/share/barbacane-serveur/paquets-interdits"
@@ -72,16 +71,14 @@ commun=(-enable-kvm -cpu host -m 4096 -smp 2 -bios "$OVMF" -vga std -display non
 
 # ------------------------------------------------------------------ 1. installation
 echo "== installation (sans intervention, TPM logiciel swtpm)"
-params=$(awk '$1 == "linux" { $1 = ""; $2 = ""; print; exit }' "$W/grub.cfg")
-params=${params/locale=fr_FR.UTF-8/locale=en_US.UTF-8}
-# Console série pour l'installateur ET (paramètres après « --- », recopiés par l'installateur) pour
-# le système installé : l'état du serveur y est lu.
-params=${params/---/console=ttyS0,115200 --- console=tty0 console=ttyS0,115200}
+# Démarrage par le micrologiciel sur l'ISO (shim et GRUB de l'ISO), comme sur un vrai serveur : le
+# PCR 7 mesuré pendant l'installation (scellement) est alors celui des démarrages suivants (le shim
+# y mesure SbatLevel ; un démarrage direct du noyau par QEMU le contourne et le TPM refuserait ensuite).
+grep -q 'console=ttyS0' "$W/grub.cfg" || { echo "ISO construite sans --console-serie : banc impossible" >&2; exit 2; }
 tpm
 debut=$(date +%s)
 timeout 40m qemu-system-x86_64 "${commun[@]}" "${AVEC_TPM[@]}" -no-reboot -serial "file:$W/installation.log" \
-    -kernel "$W/vmlinuz" -initrd "$W/initrd.gz" -append "$params" \
-    -drive "if=none,id=cle,format=raw,readonly=on,file=$ISO" -device "usb-storage,drive=cle" \
+    -drive "if=none,id=cle,format=raw,readonly=on,file=$ISO" -device "usb-storage,drive=cle,bootindex=2" \
     -monitor "unix:$W/mon-install.sock,server,nowait" &
 PID=$!
 # Toute boîte « [!!] » (erreur ou question critique) bloque l'installation sans réponse : arrêt immédiat.

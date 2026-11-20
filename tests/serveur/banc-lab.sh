@@ -14,7 +14,7 @@ if [ "$etape" != qemu ]; then
   [ -f $L/hache ] || head -c 12 /dev/urandom | base64 | openssl passwd -6 -stdin > $L/hache
   P=(); [ -d $L/debs ] && P=(--paquets $L/debs)
   timeout 60m bash serveur/iso/build-iso-serveur.sh --ip-bornes 10.0.2.15/24 --ip-admin 10.0.3.15/24 \
-     --pki-test $L/pki --hache-admin $L/hache --netinst /travail/serveur-cache/debian-13.7.0-amd64-netinst.iso \
+     --pki-test $L/pki --hache-admin $L/hache --console-serie --netinst /travail/serveur-cache/debian-13.7.0-amd64-netinst.iso \
      "${P[@]}" --sortie $L/serveur-test.iso || { echo "CONSTRUCTION ECHEC"; tail -40 $L/serveur-test.log; exit 1; }
   if [ ! -d $L/debs ]; then mkdir -p $L/debs; xorriso -osirrox on -indev $L/serveur-test.iso -extract /barbacane/debs $L/debs >/dev/null 2>&1; chmod -R u+w $L/debs; fi
   echo "CONSTRUCTION OK"

@@ -22,6 +22,8 @@
 #     --paquets DOSSIER    paquets .deb déjà résolus (défaut : résolus dans un Debian 13 minimal)
 #     --netinst ISO        ISO netinst Debian 13 amd64 (défaut : téléchargée, empreinte vérifiée)
 #     --sortie FICHIER     ISO produite (défaut : ./barbacane-serveur.iso)
+#     --console-serie      BANC DE TEST : installateur et système installé aussi sur la console série
+#                          (ttyS0, installateur en anglais : seules les langues ASCII y sont proposées)
 #     --verbeux            détail à l'écran (sinon dans le journal, à côté de l'ISO)
 set -Eeuo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
@@ -29,7 +31,7 @@ ICI="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$ICI/../.." && pwd)"
 IF_BORNES=enp0s8 IP_BORNES=10.20.0.1/24 IF_ADMIN=enp0s9 IP_ADMIN=10.99.0.1/24 PORT_ADMIN=443 PORT=''
 SOURCE_HEURE='' COMPTE_ADMIN=barbadmin HACHE_ADMIN_F='' PKI_TEST='' PASSERELLE='' PAQUETS='' NETINST=''
-SORTIE="$PWD/barbacane-serveur.iso" VERBEUX=0
+SORTIE="$PWD/barbacane-serveur.iso" VERBEUX=0 CONSOLE_SERIE=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --if-bornes) IF_BORNES="$2"; shift 2 ;;
@@ -47,7 +49,8 @@ while [ $# -gt 0 ]; do
         --netinst) NETINST="$(realpath "$2")"; shift 2 ;;
         --sortie) SORTIE="$(realpath -m "$2")"; shift 2 ;;
         --verbeux) VERBEUX=1; shift ;;
-        -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
+        --console-serie) CONSOLE_SERIE=1; shift ;;
+        -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
         *) echo "option inconnue : $1 (voir --help)" >&2; exit 1 ;;
     esac
 done
@@ -239,6 +242,8 @@ cp "$REPO/systeme/iso/choisir-disque.sh" "$ICI/fin-installation-serveur.sh" "$IC
 # ------------------------------------------------------------------ 6. assemblage
 etape "Assemblage de l'ISO"
 PARAMS="auto=true priority=critical preseed/file=/cdrom/barbacane/preseed.cfg locale=fr_FR.UTF-8 keymap=fr --- quiet"
+# Les paramètres après « --- » sont recopiés dans le GRUB du système installé.
+[ "$CONSOLE_SERIE" = 0 ] || PARAMS="auto=true priority=critical preseed/file=/cdrom/barbacane/preseed.cfg locale=en_US.UTF-8 keymap=fr console=ttyS0,115200 --- console=tty0 console=ttyS0,115200 quiet"
 cat > "$T/grub.cfg" <<CFG
 set timeout=10
 set default=0
