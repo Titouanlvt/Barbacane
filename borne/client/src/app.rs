@@ -1567,6 +1567,7 @@ impl App {
         .padding([16, 28])
         .width(Length::Fixed(900.0))
         .style(style::verdict(fond, c));
+        let verdict = en_relief_ep(verdict.into(), Some(style::fonce(c)), 6.0, 16.0);
         let mut c = column![titre("Résultat de l'analyse"), verdict]
             .spacing(16)
             .align_x(Alignment::Center);
@@ -1890,7 +1891,17 @@ pub fn bouton<'a>(
 /// d'en haut à gauche, l'épaisseur se voit dessous), posée derrière, avec l'ombre diffuse
 /// 0 6 px 10 px. Une tranche transparente garde l'encombrement d'un bouton désactivé (à plat).
 pub fn en_relief<'a>(b: Element<'a, Msg>, tranche: Option<iced::Color>) -> Element<'a, Msg> {
-    const EPAISSEUR: f32 = 4.0;
+    en_relief_ep(b, tranche, 4.0, 8.0)
+}
+
+/// Tranche nette de `epaisseur` px sous `b` (calque dessous, pas une ombre : tiny-skia dessine
+/// une ombre sans flou PAR-DESSUS le fond dégradé du conteneur).
+pub fn en_relief_ep<'a>(
+    b: Element<'a, Msg>,
+    tranche: Option<iced::Color>,
+    epaisseur: f32,
+    rayon: f32,
+) -> Element<'a, Msg> {
     let Some(t) = tranche else { return b };
     let ombre = if t.a > 0.0 {
         iced::Shadow {
@@ -1902,21 +1913,21 @@ pub fn en_relief<'a>(b: Element<'a, Msg>, tranche: Option<iced::Color>) -> Eleme
         iced::Shadow::default()
     };
     let base = container(b).padding(iced::Padding {
-        bottom: EPAISSEUR,
+        bottom: epaisseur,
         ..iced::Padding::ZERO
     });
     let dessous = container(
         container(Space::new().width(Length::Fill).height(Length::Fill)).style(move |_| {
             container::Style {
                 background: Some(iced::Background::Color(t)),
-                border: iced::Border::default().rounded(8),
+                border: iced::Border::default().rounded(rayon),
                 shadow: ombre,
                 ..Default::default()
             }
         }),
     )
     .padding(iced::Padding {
-        top: EPAISSEUR,
+        top: epaisseur,
         ..iced::Padding::ZERO
     })
     .width(Length::Fill)

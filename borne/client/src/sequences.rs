@@ -7,8 +7,8 @@
 
 use crate::app::Msg;
 use crate::style;
-use iced::widget::{container, image, pin};
-use iced::{Element, Length, Point};
+use iced::widget::image;
+use iced::{Element, Length};
 
 /// Côté d'une image dans les bandes (sequences.json, `cote`).
 pub const COTE: f32 = 240.0;
@@ -78,14 +78,16 @@ impl Seq {
         }
     }
 
-    /// Poignée de la bande pour le thème courant, créée une seule fois.
-    fn poignee(self) -> image::Handle {
+    /// Image `i` pour le thème courant. La bande est décodée une seule fois et découpée en
+    /// images RGBA (le découpage par `clip` n'est pas respecté par le rendu tiny-skia).
+    fn poignee(self, i: u32) -> image::Handle {
         let nuit = style::est_nuit();
         BANDES.with(|b| {
-            b.borrow_mut()
+            let mut b = b.borrow_mut();
+            let images = b
                 .entry((self, nuit))
-                .or_insert_with(|| image::Handle::from_bytes(self.octets(nuit)))
-                .clone()
+                .or_insert_with(|| decouper(self.octets(nuit)));
+            images[(i as usize).min(images.len().saturating_sub(1))].clone()
         })
     }
 
@@ -110,26 +112,32 @@ impl Seq {
 }
 
 thread_local! {
-    static BANDES: std::cell::RefCell<std::collections::HashMap<(Seq, bool), image::Handle>> =
+    static BANDES: std::cell::RefCell<std::collections::HashMap<(Seq, bool), Vec<image::Handle>>> =
         std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// Découpe une bande PNG horizontale d'images carrées (côté = hauteur) en poignées RGBA.
+fn decouper(png: &'static [u8]) -> Vec<image::Handle> {
+    let Ok(img) = ::image::load_from_memory_with_format(png, ::image::ImageFormat::Png) else {
+        return vec![image::Handle::from_bytes(png)];
+    };
+    let rgba = img.to_rgba8();
+    let cote = rgba.height();
+    (0..rgba.width() / cote.max(1))
+        .map(|k| {
+            let v = ::image::imageops::crop_imm(&rgba, k * cote, 0, cote, cote).to_image();
+            image::Handle::from_rgba(cote, cote, v.into_raw())
+        })
+        .collect()
 }
 
 /// Image `i` de la séquence, affichée à `cote` px (240 ou 120 : taille de rendu ou sa moitié exacte).
 pub fn vue<'a>(s: Seq, i: u32, cote: f32) -> Element<'a, Msg> {
     let (n, _) = s.format();
-    let i = i.min(n - 1);
-    container(
-        pin(image(s.poignee())
-            .width(Length::Fixed(cote * n as f32))
-            .height(Length::Fixed(cote)))
-        .position(Point::new(-(i as f32) * cote, 0.0))
-        .width(Length::Fill)
-        .height(Length::Fill),
-    )
-    .width(Length::Fixed(cote))
-    .height(Length::Fixed(cote))
-    .clip(true)
-    .into()
+    image(s.poignee(i.min(n - 1)))
+        .width(Length::Fixed(cote))
+        .height(Length::Fixed(cote))
+        .into()
 }
 
 #[cfg(test)]

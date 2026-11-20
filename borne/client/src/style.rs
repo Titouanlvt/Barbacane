@@ -238,18 +238,13 @@ pub fn verdict(fond: Color, bord: Color) -> impl Fn(&Theme) -> container::Style 
             .rounded(Radius::new(16))
             .width(2)
             .color(bord),
-        shadow: Shadow {
-            color: fonce(bord),
-            offset: iced::Vector::new(0.0, 6.0),
-            blur_radius: 0.0,
-        },
         text_color: Some(c().encre),
         ..Default::default()
     }
 }
 
 /// Teinte foncée d'une couleur d'état (tranche des aplats d'état, charte v2).
-fn fonce(etat: Color) -> Color {
+pub fn fonce(etat: Color) -> Color {
     let p = c();
     [
         (p.sain, p.sain_fonce),
