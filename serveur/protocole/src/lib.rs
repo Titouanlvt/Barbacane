@@ -20,6 +20,8 @@ pub mod maj;
 /// Quarantaine des fichiers bloqués (ajout compatible, désactivée par défaut,
 /// `docs/suite/quarantaine.md`).
 pub mod quarantaine;
+/// Rapports minimaux de passage (ajout compatible, protocole §10, D2).
+pub mod passage;
 /// Utilisateurs et clés USB (ajout compatible, `docs/suite/serveur-utilisateurs.md`).
 pub mod utilisateurs;
 

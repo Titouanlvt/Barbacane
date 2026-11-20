@@ -17,6 +17,7 @@ pub mod http;
 pub mod iso_bornes;
 pub mod multipart;
 pub mod pages;
+pub mod pages_passages;
 pub mod pages_utilisateurs;
 pub mod quarantaine;
 pub mod sessions;
@@ -35,6 +36,7 @@ use barbacane_audit::{ClePublique, Enregistrement, Evenement};
 use barbacane_passerelle::admin::Admin;
 use barbacane_passerelle::fournisseur;
 use barbacane_passerelle::outils::maintenant;
+use barbacane_passerelle::passages::Passages;
 use barbacane_passerelle::registre::{Motif, StatutBorne, StatutDemande};
 use barbacane_passerelle::utilisateurs::{BaseUtilisateurs, Utilisateurs, nom_mode};
 use barbacane_protocole::DUREE_JETON_S;
@@ -600,6 +602,33 @@ impl Web {
                 self.page_utilisateurs(&ctx, &base, saisie.map(|s| (s, trouve)), None, None)
             }
             "/sites" => self.page_sites(&admin, &ctx, None)?,
+            "/passages" | "/passages/detail" => {
+                admin.stockage.auditer(
+                    &u.acteur(),
+                    Evenement::Administration {
+                        action: "consultation-passages".into(),
+                    },
+                )?;
+                let p = Passages::ouvrir(&admin.stockage)?;
+                let noms = admin
+                    .stockage
+                    .lire()?
+                    .bornes
+                    .into_iter()
+                    .map(|b| (b.uuid, b.nom))
+                    .collect();
+                if r.chemin == "/passages" {
+                    let l = p.derniers(pages_passages::PASSAGES_AFFICHES)?;
+                    page(200, pages_passages::liste(&ctx, &l, &noms))
+                } else {
+                    let v = |k: &str| r.parametres.get(k).map(String::as_str).unwrap_or("");
+                    let partie = v("partie").parse::<u32>().unwrap_or(0);
+                    match p.detail(v("borne"), v("id"), partie)? {
+                        Some(s) => page(200, pages_passages::detail(&ctx, v("borne"), &s, &noms)),
+                        None => refus(404, "Rapport de passage inconnu."),
+                    }
+                }
+            }
             "/cles-usb" => {
                 let base = Utilisateurs::ouvrir(&admin.stockage)?.lire()?;
                 page(200, pages_utilisateurs::cles_usb(&ctx, &base, None))

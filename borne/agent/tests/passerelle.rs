@@ -407,3 +407,106 @@ fn paquet_altere_sur_le_serveur_ecarte() {
     assert_eq!(etat_publie(&a).mise_a_jour, None);
     let _ = uuid;
 }
+
+/// Rapport de passage tel qu'admind le dépose (aucun nom de fichier).
+fn passage(id: &str) -> Vec<u8> {
+    use barbacane_protocole::passage::{FichierPassage, RapportPassage, Verdict};
+    barbacane_protocole::encoder(&RapportPassage {
+        version: barbacane_protocole::VERSION,
+        id: id.into(),
+        horodatage: maintenant(),
+        verdict: Verdict::Sain,
+        support: "d".repeat(64),
+        partie: 1,
+        parties: 1,
+        fichiers: vec![FichierPassage {
+            taille: 3,
+            sha256: "e".repeat(64),
+            verdict: Verdict::Sain,
+        }],
+    })
+    .unwrap()
+}
+
+#[test]
+fn rapports_de_passage_envoyes_rejoues_retires_apres_200() {
+    use barbacane_passerelle::passages::Passages;
+    let b = banc();
+    let mut a = agent(&b);
+    let uuid = enroler(&b, &mut a, maintenant());
+    const ID1: &str = "1c6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11";
+    const ID2: &str = "2c6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11";
+    assert!(
+        a.file()
+            .ajouter(&format!("0001-{ID1}-0001"), &passage(ID1))
+            .unwrap()
+    );
+    // Coupure : serveur injoignable → rien n'est retiré.
+    let ferme = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let c = config_agent(&b, &b.pki.join("ca-serveur/cert.pem"), ferme);
+    let mut hors = Agent::nouveau(c.clone(), CoffreFichier::nouveau(&c.etat)).unwrap();
+    hors.cycle();
+    assert_eq!(hors.etat.mode, Mode::Degradee);
+    assert_eq!((hors.file().len(), hors.etat.rapports_en_attente), (1, 1));
+    // Retour du serveur : envoyé puis retiré après 200.
+    let mut a = agent(&b);
+    a.cycle();
+    assert_eq!(a.etat.mode, Mode::Connectee, "{}", a.etat.message);
+    assert!(a.file().is_empty(), "{}", a.etat.message);
+    let p = Passages::ouvrir(&b.admin.stockage).unwrap();
+    assert_eq!(p.derniers(10).unwrap().len(), 1);
+    assert_eq!(p.derniers(10).unwrap()[0].borne, uuid);
+    // Rejeu (accusé perdu avant le retrait) : 200, pas de doublon côté serveur.
+    assert!(
+        a.file()
+            .ajouter(&format!("0002-{ID1}-0001"), &passage(ID1))
+            .unwrap()
+    );
+    // Élément non conforme au schéma (nom ajouté) : mis de côté, jamais envoyé.
+    let mut v: serde_json::Value = serde_json::from_slice(&passage(ID2)).unwrap();
+    v["fichiers"][0]["nom"] = "secret.docx".into();
+    assert!(
+        a.file()
+            .ajouter(
+                &format!("0003-{ID2}-0001"),
+                &serde_json::to_vec(&v).unwrap()
+            )
+            .unwrap()
+    );
+    assert_eq!(a.transmettre_passages().unwrap(), 1);
+    assert!(a.file().is_empty());
+    assert_eq!(p.derniers(10).unwrap().len(), 1, "idempotent");
+    assert!(
+        a.config
+            .etat
+            .join(format!("rejet-0003-{ID2}-0001.json"))
+            .exists()
+    );
+    let audit = String::from_utf8(b.admin.stockage.journal_audit().lire().unwrap()).unwrap();
+    assert_eq!(audit.matches("\"rapport_passage\"").count(), 1);
+    assert!(!audit.contains("secret"));
+}
+
+#[test]
+fn file_pleine_borne_hors_service() {
+    let b = banc();
+    let mut c = config_agent(&b, &b.pki.join("ca-serveur/cert.pem"), 1);
+    c.file_max = 1;
+    let a = Agent::nouveau(c.clone(), CoffreFichier::nouveau(&c.etat)).unwrap();
+    const ID: &str = "1c6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11";
+    assert!(
+        a.file()
+            .ajouter(&format!("0001-{ID}-0001"), &passage(ID))
+            .unwrap()
+    );
+    assert!(a.file().pleine());
+    assert!(
+        !a.file()
+            .ajouter(&format!("0002-{ID}-0001"), &passage(ID))
+            .unwrap()
+    );
+}

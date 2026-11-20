@@ -16,7 +16,11 @@
 //!   (mTLS), son empreinte contrôlée, puis déposé pour admind, qui seul le vérifie (signature)
 //!   et l'applique sur décision de l'administrateur local ; résultat rapporté au serveur.
 //!
-//! Aucune donnée ni nom de fichier n'est envoyé (D2) : le battement ne porte que des compteurs.
+//! - **rapports de passage** ([`file`]) : déposés par admind (tailles, empreintes, verdicts),
+//!   revalidés, envoyés sur `/rapport/passage`, retirés seulement après l'accusé `200`.
+//!
+//! Aucune donnée ni nom de fichier n'est envoyé (D2) : le battement ne porte que des compteurs,
+//! les rapports de passage que des tailles, empreintes et verdicts.
 #![forbid(unsafe_code)]
 
 pub mod coffre;
@@ -34,6 +38,7 @@ use barbacane_protocole::maj::{
     AccuseBattementMaj, AccuseRapportMaj, DemandeTelechargement, MiseAJourDisponible, RapportMaj,
     route as route_maj,
 };
+use barbacane_protocole::passage::{AccuseRapportPassage, RapportPassage, route as route_passage};
 use barbacane_protocole::{
     AccuseDemande, Battement, CodeErreur, ConsultationDemande, Decision, DemandeEnrolement,
     DemandeRenouvellement, EtatBorne, EtatDemande, Jeton, Message, ReponseCertificat,
@@ -53,6 +58,8 @@ use crate::transport::{Client, Echec, Identite, Telechargement};
 pub const VERSION_LOGICIEL: &str = env!("CARGO_PKG_VERSION");
 /// Surveillance du fichier de jeton quand il n'y a rien d'autre à faire.
 pub const PERIODE_JETON: Duration = Duration::from_secs(5);
+/// Rapports de passage envoyés au plus par cycle (le reste au battement suivant).
+pub const PASSAGES_PAR_CYCLE: usize = 200;
 /// Taille maximale du fichier de jeton (port + 26 caractères + espaces).
 const JETON_MAX: u64 = 256;
 
@@ -564,6 +571,10 @@ impl<C: Coffre> Agent<C> {
                     eprintln!("agent : mise à jour : {e:#}");
                     self.etat.message = format!("liaison établie ; mise à jour : {e:#}");
                 }
+                if let Err(e) = self.transmettre_passages() {
+                    eprintln!("agent : rapports de passage : {e:#}");
+                    self.etat.message = format!("liaison établie ; rapports de passage : {e:#}");
+                }
                 Ok(Duration::from_secs(a.prochain_battement_s.into()))
             }
             Reponse::Erreur(CodeErreur::BorneRefusee) => self.refuser("borne_refusee"),
@@ -717,6 +728,50 @@ impl<C: Coffre> Agent<C> {
                 )
             }
         }
+    }
+
+    /// Envoie les rapports de passage en file, dans l'ordre ; chacun n'est retiré qu'après
+    /// l'accusé `200` (un rejeu après coupure est accusé `200` par le serveur idempotent).
+    /// Coupure : arrêt, nouvel essai au cycle suivant. Renvoie le nombre de rapports acceptés.
+    pub fn transmettre_passages(&mut self) -> Result<usize> {
+        let mut n = 0;
+        while n < PASSAGES_PAR_CYCLE {
+            let Some((nom, octets)) = self.file.premier()? else {
+                break;
+            };
+            // Revalidation par le schéma strict : rien d'autre que le message prévu ne part.
+            if decoder::<RapportPassage>(&octets).is_err() {
+                self.file.ecarter(&nom)?;
+                continue;
+            }
+            let (statut, reponse) = self
+                .client
+                .requete(
+                    self.adresse_service(),
+                    Some(self.identite()?),
+                    "POST",
+                    route_passage::PASSAGE,
+                    &octets,
+                )
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            match interpreter::<AccuseRapportPassage>(statut, 200, &reponse)? {
+                Reponse::Ok(_) => {
+                    self.file.retirer(&nom)?;
+                    n += 1;
+                }
+                // Jamais acceptable par ce serveur : mis de côté (pas effacé).
+                Reponse::Erreur(
+                    CodeErreur::RequeteInvalide
+                    | CodeErreur::TropGros
+                    | CodeErreur::VersionNonGeree,
+                ) => self.file.ecarter(&nom)?,
+                Reponse::Erreur(code) => bail!("rapport de passage refusé : {code}"),
+            }
+        }
+        if n > 0 {
+            eprintln!("agent : {n} rapport(s) de passage transmis");
+        }
+        Ok(n)
     }
 
     /// Âge de la base antivirale la plus récente (0 si illisible).

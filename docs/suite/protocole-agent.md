@@ -332,21 +332,59 @@ télécharge le paquet proposé, contrôle taille et `sha256` annoncés, le dép
 Administration → Serveur), admind vérifie avec la clé de la borne par la chaîne existante, puis
 l'agent rapporte `appliquee` ou `echec`. Détails : `borne-en-ligne.md` § Mises à jour.
 
-## 10. PRÉVU : rapports minimaux de passage (ajout, D2)
+## 10. Ajout : rapports minimaux de passage (20/11/2026, D2, version 1 inchangée)
 
-Non fait au 2e jalon de la borne en ligne (priorité : enrôlement par l'écran et mises à jour).
-Conception retenue, pour le jalon suivant :
+**FAIT** (branche `rapports-passage`) :
 
-- **Route** `POST /rapport/passage` (écoute mTLS seulement), message nouveau, **sans nom de
-  fichier ni chemin** (D2) : `{"version":1,"id":<uuid du passage>,"horodatage":…,"verdict":"sain"|"menace"|"refuse"|"erreur","support":<identifiant de support = SHA-256 de vendorid:productid:numéro de série>,"fichiers":[{"taille":…,"sha256":…,"verdict":…}]}`,
-  fichiers bornés (≤ 10 000 par message, sinon découpage `partie`/`parties`), corps ≤ 1 Mio.
-- **Production** : par admind (root), qui lit les rapports détaillés de l'analyseur
-  (`/var/lib/barbacane/rapports/*.json`) et n'en retient que ces champs ; l'agent (processus
-  réseau) ne voit **jamais** un nom de fichier. Dépôt dans la file locale bornée de l'agent
-  (`file.json`, jamais de perte, pleine → borne hors service), rejeu après coupure, retrait du
-  premier élément seulement après `200` (idempotent : `id` déjà reçu → `200`).
-- **Serveur** : réception, stockage (registre, puis PostgreSQL), événement d'audit
-  `rapport_passage` (uuid de borne, id, verdict ; ajout au schéma de `barbacane-audit`).
+- **Route** `POST /rapport/passage` (écoute mTLS seulement ; absente de l'écoute d'enrôlement →
+  `404`), message `RapportPassage` (`serveur/protocole/src/passage.rs`), **sans nom de fichier
+  ni chemin** (D2 ; schéma strict : tout champ en plus est refusé) :
+  `{"version":1,"id":<uuid>,"horodatage":…,"verdict":"sain"|"menace"|"refuse"|"erreur","support":<64 hex>,"partie":1,"parties":1,"fichiers":[{"taille":…,"sha256":<64 hex>,"verdict":…}]}`.
+  Corps ≤ 1 Mio (refus `413` sur `Content-Length`, avant lecture), ≤ 10 000 fichiers par
+  message ; la borne découpe par 5 000 (pire cas ~640 Kio), `parties` ≤ 1 000. Réponse
+  `AccuseRapportPassage {version, heure_serveur, deja_recu}`.
+- **Idempotent** : un `(borne, id, partie)` déjà reçu → `200` avec `deja_recu: true`, rien
+  n'est réécrit ni réaudité.
+- **Support** : SHA-256 hexadécimal de `vvvv:pppp:série` (vendorid et productid en 4 chiffres
+  hexadécimaux minuscules, numéro de série USB tel que lu par usbsas). Lecteur optique :
+  `0000:0000:BARBACANE-LECTEUR-OPTIQUE`.
+- **Verdicts** : fichier `CLEAN` → `sain` ; `DIRTY` avec signature (antivirus, YARA) →
+  `menace` ; autre `DIRTY` (politique, archive, bombe) → `refuse`. Passage : `erreur` si
+  l'analyse a échoué, sinon `menace` > `refuse` > `sain`. Empreinte absente (fichier refusé
+  avant lecture) → 64 zéros.
+- **Production** (`borne/admind/src/serveur.rs`) : après chaque analyse réussie, l'interface
+  (borne en ligne seulement : champ `serveur` présent dans l'état) appelle l'op
+  `serveur_passage {id, vendorid, productid, serial}` d'admind (sans PIN, refusée hors ligne).
+  admind (root) relit lui-même `/var/lib/barbacane/rapports/*-<id>.json` en ne désérialisant que
+  `size`, `sha256`, `verdict`, `signature` (les chemins ne sont même pas gardés en mémoire),
+  puis dépose chaque partie atomiquement dans `/var/lib/barbacane-agent/passage-<horodatage>-<id>-<partie>.json`
+  (0600, compte de l'agent ; directement dans le dossier d'état, que l'agent ne peut pas
+  remplacer par un lien). Anti-doublon : 10 000 derniers identifiants (`passages-deposes.json`).
+- **File** (`borne/agent/src/file.rs`) : ces fichiers, dans l'ordre des noms ; capacité
+  `file_max` (1 000). Pleine → admind refuse tout dépôt, son état porte
+  `serveur.file_pleine: true` et l'interface refuse toute nouvelle analyse (écran d'erreur
+  existant : « Borne hors service… ») ; le battement annonce `hors_service`.
+- **Envoi** (agent) : après chaque battement accepté, jusqu'à 200 rapports ; chacun est
+  revalidé par le schéma strict, envoyé, et **retiré seulement après `200`** ; coupure → arrêt,
+  rejeu au cycle suivant. Refus définitif (`requete_invalide`, `trop_gros`,
+  `version_non_geree`) → mis de côté (`rejet-…`), jamais effacé.
+- **Serveur** (`serveur/passerelle/src/passages.rs`) : `<registre>/passages/<uuid
+  borne>/<id>-<partie>.json` + `index.jsonl` (résumés), événement d'audit `rapport_passage`
+  (`borne`, `passage`, `partie`, `verdict`, `fichiers`) écrit AVANT le stockage. Web :
+  rubrique **Passages** (`/passages`, `/passages/detail`), lecture seule, tous rôles (auditeur
+  compris), consultation auditée.
+- **Hors ligne inchangée** : sans `/etc/barbacane/agent.toml`, l'interface n'appelle rien,
+  l'op est refusée, l'état d'admind n'a pas de champ `serveur` (test
+  `passage_hors_ligne_refuse`) ; aucun changement visuel de la borne.
+- **Preuves** : `serveur/passerelle/tests/passages.rs` (accepté, doublon `200`, trop gros `413`,
+  sans certificat refusé, aucun nom dans aucun stockage ni dans l'audit),
+  `borne/agent/tests/passerelle.rs` (coupure, rejeu, retrait après `200`, mise de côté, file
+  pleine), `borne/admind/src/tests.rs` (extraction sans nom, découpage, hors service).
+
+**PRÉVU** : stockage PostgreSQL (registre fichiers seulement) ; rapport d'une analyse en
+**échec** (l'interface n'a pas d'identifiant d'analyse dans ce cas : seul `erreur` d'un rapport
+`status: error` lu est géré) ; rapports signés par la borne (conception §3.1) ; rétention et
+purge côté serveur ; preuve QEMU de bout en bout (borne en ligne réelle).
 
 ## 11. Ajout : utilisateurs et clés USB (20/11/2026, version 1 inchangée)
 

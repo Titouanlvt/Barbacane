@@ -456,6 +456,27 @@ impl Ctx {
             log::info!("espace de travail recréé (nouvelle clé de session)");
             return Ok(json!({"ok": true, "message": "Espace de travail recréé."}));
         }
+        // Borne en ligne seulement : rapport minimal d'une analyse terminée (sans PIN : l'interface
+        // le demande après chaque analyse ; admind relit lui-même le rapport de l'analyseur et
+        // n'en garde ni nom ni chemin). Refusé sur une borne hors ligne.
+        if op == "serveur_passage" {
+            let _g = self.op.lock().unwrap();
+            let l = serveur::Liaison::exiger(self)?;
+            let u32_de = |k: &str| {
+                req[k]
+                    .as_u64()
+                    .and_then(|v| u32::try_from(v).ok())
+                    .with_context(|| format!("{k} manquant"))
+            };
+            let n = l.deposer_passage(
+                self,
+                req["id"].as_str().unwrap_or_default(),
+                u32_de("vendorid")?,
+                u32_de("productid")?,
+                req["serial"].as_str().unwrap_or_default(),
+            )?;
+            return Ok(json!({"ok": true, "parties": n}));
+        }
         let _g = self.op.lock().unwrap();
         if op == "login" {
             return Ok(json!({"token": self.login(req["pin"].as_str().unwrap_or_default())?}));
