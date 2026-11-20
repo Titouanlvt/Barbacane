@@ -16,6 +16,8 @@ fn ctx(dir: &Path) -> Ctx {
         listes_dir: dir.join("listes"),
         update_pubkey: dir.join("maj.pub"),
         dry_run: true,
+        // Absente : borne hors ligne (profil v1), sauf dans les tests « serveur ».
+        agent_config: dir.join("agent.toml"),
         ..Config::default()
     };
     for d in [
@@ -533,4 +535,215 @@ fn installation_des_paquets_sans_no_download() {
     assert!(argv.contains(&"Dir::Etc::SourceList=/dev/null".to_string()));
     assert!(argv.contains(&"Dir::Etc::SourceParts=/dev/null".to_string()));
     assert!(argv.last().unwrap().starts_with('/'));
+}
+
+// ───────────── Borne en ligne (agent) : inactif en profil hors ligne ─────────────
+
+/// Profil en ligne simulé : configuration d'agent, dossiers d'état et d'exécution.
+fn en_ligne(c: &Ctx, t: &Path) -> (PathBuf, PathBuf) {
+    let etat = t.join("agent");
+    let run = t.join("run");
+    std::fs::create_dir_all(etat.join("maj")).unwrap();
+    std::fs::create_dir_all(&run).unwrap();
+    std::fs::write(
+        &c.conf.agent_config,
+        format!(
+            "adresse = \"10.0.2.2\"\nport_enrolement = 43118\nport_service = 43117\nca_serveur = \"/x\"\nempreinte_ca_serveur = \"{}\"\netat = \"{}\"\nexecution = \"{}\"\n",
+            "0".repeat(64),
+            etat.display(),
+            run.display()
+        ),
+    )
+    .unwrap();
+    (etat, run)
+}
+
+/// Secret bien formé (26 caractères base32 décodant 16 octets).
+fn secret() -> String {
+    barbacane_protocole::Jeton::nouveau(1, &[7; 16]).secret
+}
+
+#[test]
+fn hors_ligne_aucune_fonction_serveur() {
+    let t = tempfile::tempdir().unwrap();
+    let c = ctx(t.path());
+    let tok = login(&c);
+    let st = req(&c, json!({"op": "status"})).unwrap();
+    assert!(st.get("serveur").is_none(), "état v1 inchangé : {st}");
+    for op in ["serveur_jeton", "serveur_appliquer_maj"] {
+        let e = req(
+            &c,
+            json!({"op": op, "token": tok, "jeton": format!("43118-{}", secret())}),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(e.contains("hors ligne"), "{op} : {e}");
+    }
+}
+
+#[test]
+fn jeton_valide_strictement_et_depose() {
+    let t = tempfile::tempdir().unwrap();
+    let c = ctx(t.path());
+    let (etat, run) = en_ligne(&c, t.path());
+    assert!(
+        req(
+            &c,
+            json!({"op": "serveur_jeton", "jeton": format!("43118-{}", secret())})
+        )
+        .is_err(),
+        "sans session"
+    );
+    let tok = login(&c);
+    let s = secret();
+    for (mauvais, motif) in [
+        ("n'importe quoi".to_string(), "mal formé"),
+        (format!("43118-{}", &s[..25]), "mal formé"),
+        (format!("43118-{s}\n../x"), "mal formé"),
+        (format!("1234-{s}"), "port"),
+        ("4".repeat(200), "trop long"),
+    ] {
+        let e = req(
+            &c,
+            json!({"op": "serveur_jeton", "token": tok, "jeton": mauvais}),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(e.contains(motif), "{mauvais} : {e}");
+        assert!(!etat.join("jeton").exists());
+    }
+    // Espaces et minuscules tolérés (saisie au clavier virtuel), normalisé.
+    req(
+        &c,
+        json!({"op": "serveur_jeton", "token": tok, "jeton": format!(" 43118 - {}", s.to_lowercase())}),
+    )
+    .unwrap();
+    assert_eq!(
+        std::fs::read_to_string(etat.join("jeton")).unwrap(),
+        format!("43118-{s}\n")
+    );
+    use std::os::unix::fs::PermissionsExt;
+    assert_eq!(
+        std::fs::metadata(etat.join("jeton"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777,
+        0o600
+    );
+    // État de l'agent relayé (champs connus seulement).
+    std::fs::write(
+        run.join("etat.json"),
+        r#"{"mode":"attente_validation","empreinte":"ab12","secret":"x","message":"m"}"#,
+    )
+    .unwrap();
+    let st = req(&c, json!({"op": "status"})).unwrap();
+    assert_eq!(st["serveur"]["agent"]["mode"], "attente_validation");
+    assert_eq!(st["serveur"]["agent"]["empreinte"], "ab12");
+    assert!(st["serveur"]["agent"].get("secret").is_none());
+    assert_eq!(st["serveur"]["port_enrolement"], 43118);
+}
+
+/// Dépose dans le dossier de l'agent un paquet « téléchargé » et son annonce.
+fn annoncer(etat: &Path, pkg: &Path, version: u64, sha: Option<String>) {
+    let d = etat.join("maj");
+    for e in std::fs::read_dir(&d).unwrap() {
+        std::fs::remove_file(e.unwrap().path()).unwrap();
+    }
+    let nom = format!("barbacane-maj-{version}.bcu");
+    std::fs::copy(pkg, d.join(&nom)).unwrap();
+    std::fs::copy(
+        format!("{}.minisig", pkg.display()),
+        d.join(format!("{nom}.minisig")),
+    )
+    .unwrap();
+    let octets = std::fs::read(pkg).unwrap();
+    let sha = sha.unwrap_or_else(|| hex::encode(Sha256::digest(&octets)));
+    std::fs::write(
+        d.join("annonce.json"),
+        json!({"version_maj": version, "sha256": sha, "taille": octets.len()}).to_string(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn maj_du_serveur_verifiee_par_la_borne() {
+    let t = tempfile::tempdir().unwrap();
+    let c = ctx(t.path());
+    let (etat, _) = en_ligne(&c, t.path());
+    let tok = login(&c);
+    let k = t.path().join("k");
+    std::fs::create_dir_all(&k).unwrap();
+    for (p, s) in [
+        (c.conf.update_pubkey.clone(), k.join("maj.key")),
+        (k.join("autre.pub"), k.join("autre.key")),
+    ] {
+        assert!(
+            Command::new("minisign")
+                .args(["-G", "-W", "-p"])
+                .arg(p)
+                .arg("-s")
+                .arg(s)
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    let appliquer = || req(&c, json!({"op": "serveur_appliquer_maj", "token": tok}));
+    let resultat = || {
+        serde_json::from_slice::<Value>(&std::fs::read(etat.join("maj/resultat.json")).unwrap())
+            .unwrap()
+    };
+    assert!(
+        appliquer()
+            .unwrap_err()
+            .to_string()
+            .contains("aucune mise à jour")
+    );
+
+    // Signé par une autre clé que celle de la borne : refusé, échec rendu à l'agent.
+    let p = paquet(t.path(), &k.join("autre.key"), 300, None, false);
+    annoncer(&etat, &p, 300, None);
+    assert!(
+        appliquer()
+            .unwrap_err()
+            .to_string()
+            .contains("signature invalide")
+    );
+    assert_eq!(resultat(), json!({"version_maj": 300, "resultat": "echec"}));
+    assert_eq!(c.update_version(), 0);
+
+    // Empreinte annoncée fausse : refusé avant toute vérification.
+    let p = paquet(t.path(), &k.join("maj.key"), 301, None, false);
+    annoncer(&etat, &p, 301, Some("0".repeat(64)));
+    assert!(appliquer().unwrap_err().to_string().contains("empreinte"));
+    // Version annoncée différente du manifeste signé : refusé.
+    annoncer(&etat, &p, 302, None);
+    assert!(appliquer().unwrap_err().to_string().contains("annonçait"));
+    assert_eq!(resultat()["resultat"], "echec");
+
+    // Valide : appliqué par la chaîne existante (signature, anti-retour, manifeste).
+    annoncer(&etat, &p, 301, None);
+    let r = appliquer().unwrap();
+    assert_eq!(r["version"], 301);
+    assert_eq!(c.update_version(), 301);
+    assert_eq!(
+        resultat(),
+        json!({"version_maj": 301, "resultat": "appliquee"})
+    );
+    // Rejeu du même paquet : retour arrière refusé.
+    annoncer(&etat, &p, 301, None);
+    assert!(
+        appliquer()
+            .unwrap_err()
+            .to_string()
+            .contains("retour arrière")
+    );
+
+    // Lien symbolique posé à la place du paquet : refusé.
+    annoncer(&etat, &p, 301, None);
+    let bcu = etat.join("maj/barbacane-maj-301.bcu");
+    std::fs::remove_file(&bcu).unwrap();
+    std::os::unix::fs::symlink(&p, &bcu).unwrap();
+    assert!(appliquer().is_err());
 }

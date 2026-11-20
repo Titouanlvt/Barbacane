@@ -12,6 +12,7 @@ use barbacane_agent::coffre::CoffreFichier;
 use barbacane_agent::config::Config as ConfigAgent;
 use barbacane_agent::{Agent, EtatPublic, Mode, validite};
 use barbacane_passerelle::admin::Admin;
+use barbacane_passerelle::maj::EtatMajBorne;
 use barbacane_passerelle::outils::maintenant;
 use barbacane_passerelle::registre::Motif;
 use barbacane_passerelle::{Config, Passerelle, servir, servir_enrolement};
@@ -265,4 +266,144 @@ fn jeton_d_un_autre_port_ou_mal_forme_supprime() {
     a.cycle();
     assert!(!a.config.etat.join("jeton").exists());
     assert_eq!(a.etat.mode, Mode::NonEnrolee);
+}
+
+// ───────────── Mises à jour relayées par le serveur (§9 du protocole) ─────────────
+
+fn executer(c: &mut Command) {
+    let s = c.output().unwrap();
+    assert!(
+        s.status.success(),
+        "{c:?} : {}{}",
+        String::from_utf8_lossy(&s.stdout),
+        String::from_utf8_lossy(&s.stderr)
+    );
+}
+
+/// Clé minisign jetable, plancher 100 et paquet `n` déposé puis diffusé (vrais scripts de
+/// préparation, comme `serveur/passerelle/tests/maj.rs`). Renvoie le `.bcu` d'origine.
+fn diffuser(b: &Banc, n: u64) -> PathBuf {
+    let racine = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let d = b.dossier.path().join("maj-prep");
+    std::fs::create_dir_all(&d).unwrap();
+    executer(
+        Command::new("minisign")
+            .args(["-G", "-W", "-p"])
+            .arg(d.join("bornes.pub"))
+            .arg("-s")
+            .arg(d.join("bornes.key")),
+    );
+    std::fs::copy(d.join("bornes.pub"), b.admin.maj.chemin_cle()).unwrap();
+    executer(
+        Command::new(racine.join("serveur/maj/barbacane-plancher-prepare"))
+            .arg("--cle")
+            .arg(d.join("bornes.key"))
+            .args(["--version-min", "100", "--sortie"])
+            .arg(d.join("plancher")),
+    );
+    b.admin
+        .maj_plancher(&d.join("plancher/plancher.json"))
+        .unwrap();
+    let liste = d.join("images.sha256");
+    std::fs::write(&liste, format!("{}  essai.iso\n", "ab".repeat(32))).unwrap();
+    executer(
+        Command::new(racine.join("borne/update/barbacane-update-prepare"))
+            .arg("--cle")
+            .arg(d.join("bornes.key"))
+            .arg("--sortie")
+            .arg(d.join("sortie"))
+            .args([
+                "--version",
+                &n.to_string(),
+                "--sans-clamav",
+                "--images-officielles",
+            ])
+            .arg(&liste),
+    );
+    let bcu = d.join("sortie").join(format!("barbacane-maj-{n}.bcu"));
+    b.admin.maj_deposer(&bcu).unwrap();
+    b.admin.maj_diffuser(n).unwrap();
+    bcu
+}
+
+fn suivi(b: &Banc, uuid: &str) -> Option<EtatMajBorne> {
+    b.admin.maj_etat().unwrap().bornes.get(uuid).map(|s| s.etat)
+}
+
+#[test]
+fn mise_a_jour_telechargee_deposee_rapportee_jamais_appliquee() {
+    let b = banc();
+    let mut a = agent(&b);
+    let uuid = enroler(&b, &mut a, maintenant());
+    let bcu = diffuser(&b, 200);
+    let maj = a.config.etat.join("maj");
+
+    // Battement : proposition, téléchargement mTLS, empreinte conforme, dépôt pour admind.
+    a.cycle();
+    assert_eq!(a.etat.mode, Mode::Connectee, "{}", a.etat.message);
+    assert_eq!(
+        std::fs::read(maj.join("barbacane-maj-200.bcu")).unwrap(),
+        std::fs::read(&bcu).unwrap(),
+        "paquet reçu identique"
+    );
+    assert_eq!(
+        std::fs::read_to_string(maj.join("barbacane-maj-200.bcu.minisig")).unwrap(),
+        std::fs::read_to_string(format!("{}.minisig", bcu.display())).unwrap()
+    );
+    assert!(maj.join("annonce.json").is_file());
+    let e = etat_publie(&a).mise_a_jour.unwrap();
+    assert!(e.prete && !e.rapport_en_attente && e.version_maj == 200);
+    assert_eq!(suivi(&b, &uuid), Some(EtatMajBorne::Telechargee));
+    // Rien d'appliqué par l'agent ; pas de second téléchargement au battement suivant.
+    let avant = std::fs::metadata(maj.join("barbacane-maj-200.bcu"))
+        .unwrap()
+        .modified()
+        .unwrap();
+    std::thread::sleep(Duration::from_millis(20));
+    a.cycle();
+    assert_eq!(
+        std::fs::metadata(maj.join("barbacane-maj-200.bcu"))
+            .unwrap()
+            .modified()
+            .unwrap(),
+        avant
+    );
+
+    // admind rend le résultat (application décidée par l'administrateur) → rapport au serveur.
+    std::fs::write(
+        maj.join("resultat.json"),
+        r#"{"version_maj":200,"resultat":"appliquee"}"#,
+    )
+    .unwrap();
+    a.cycle();
+    assert_eq!(a.etat.mode, Mode::Connectee, "{}", a.etat.message);
+    assert_eq!(suivi(&b, &uuid), Some(EtatMajBorne::Appliquee));
+    assert_eq!(std::fs::read_dir(&maj).unwrap().count(), 0, "dossier soldé");
+    assert_eq!(etat_publie(&a).mise_a_jour, None);
+    // Plus proposée : plus rien n'est téléchargé.
+    a.cycle();
+    assert_eq!(std::fs::read_dir(&maj).unwrap().count(), 0);
+}
+
+#[test]
+fn paquet_altere_sur_le_serveur_ecarte() {
+    let b = banc();
+    let mut a = agent(&b);
+    let uuid = enroler(&b, &mut a, maintenant());
+    diffuser(&b, 200);
+    // Paquet modifié sur le serveur après le dépôt (empreinte annoncée = celle du dépôt).
+    let stocke = b.config.registre.join("maj/paquets/barbacane-maj-200.bcu");
+    let mut o = std::fs::read(&stocke).unwrap();
+    let n = o.len();
+    o[n / 2] ^= 1;
+    std::fs::write(&stocke, o).unwrap();
+    a.cycle();
+    assert_eq!(a.etat.mode, Mode::Connectee);
+    assert!(a.etat.message.contains("empreinte"), "{}", a.etat.message);
+    let maj = a.config.etat.join("maj");
+    assert!(!maj.join("annonce.json").exists());
+    assert!(!maj.join("barbacane-maj-200.bcu").exists());
+    assert!(!maj.join(".reception").exists());
+    assert_eq!(etat_publie(&a).mise_a_jour, None);
+    let _ = uuid;
 }

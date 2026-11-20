@@ -168,13 +168,10 @@ fn classer(e: std::io::Error) -> Echec {
     }
 }
 
-/// `HTTP/1.1 NNN …`, en-têtes, `Content-Length` obligatoire et exact.
-pub fn analyser_reponse(reponse: &[u8]) -> Result<(u16, Vec<u8>)> {
-    let fin = reponse
-        .windows(4)
-        .position(|f| f == b"\r\n\r\n")
-        .context("réponse sans fin d'en-têtes")?;
-    let entete = std::str::from_utf8(&reponse[..fin]).context("en-têtes non UTF-8")?;
+/// Analyse les en-têtes d'une réponse (sans la ligne vide finale) : statut et `Content-Length`
+/// (obligatoire, unique) ; `Transfer-Encoding` refusé.
+fn analyser_entete(entete: &[u8]) -> Result<(u16, usize, Option<String>)> {
+    let entete = std::str::from_utf8(entete).context("en-têtes non UTF-8")?;
     let mut lignes = entete.split("\r\n");
     let premiere = lignes.next().unwrap_or_default();
     let mut morceaux = premiere.splitn(3, ' ');
@@ -187,6 +184,7 @@ pub fn analyser_reponse(reponse: &[u8]) -> Result<(u16, Vec<u8>)> {
         .and_then(|s| s.parse().ok())
         .context("statut HTTP")?;
     let mut longueur = None;
+    let mut type_contenu = None;
     for l in lignes {
         let (k, v) = l.split_once(':').context("en-tête mal formé")?;
         if k.trim().eq_ignore_ascii_case("content-length") {
@@ -195,15 +193,138 @@ pub fn analyser_reponse(reponse: &[u8]) -> Result<(u16, Vec<u8>)> {
             }
             longueur = Some(v.trim().parse::<usize>().context("Content-Length")?);
         }
+        if k.trim().eq_ignore_ascii_case("content-type") {
+            type_contenu = Some(v.trim().to_ascii_lowercase());
+        }
         if k.trim().eq_ignore_ascii_case("transfer-encoding") {
             bail!("Transfer-Encoding refusé");
         }
     }
+    let longueur = longueur.context("Content-Length absent")?;
+    Ok((statut, longueur, type_contenu))
+}
+
+/// `HTTP/1.1 NNN …`, en-têtes, `Content-Length` obligatoire et exact.
+pub fn analyser_reponse(reponse: &[u8]) -> Result<(u16, Vec<u8>)> {
+    let fin = reponse
+        .windows(4)
+        .position(|f| f == b"\r\n\r\n")
+        .context("réponse sans fin d'en-têtes")?;
+    let (statut, longueur, _) = analyser_entete(&reponse[..fin])?;
     let corps = &reponse[fin + 4..];
-    if Some(corps.len()) != longueur {
+    if corps.len() != longueur {
         bail!("Content-Length absent ou inexact");
     }
     Ok((statut, corps.to_vec()))
+}
+
+/// Taille maximale des en-têtes d'une réponse.
+const ENTETE_MAX: usize = 4096;
+
+/// Issue d'un téléchargement.
+#[derive(Debug)]
+pub enum Telechargement {
+    /// Paquet reçu en entier, de la taille annoncée ; SHA-256 (hexadécimal) des octets écrits.
+    Recu { sha256: String },
+    /// Réponse d'erreur du serveur (statut, corps JSON borné).
+    Erreur(u16, Vec<u8>),
+}
+
+impl Client {
+    /// `POST` puis réception d'un corps binaire **écrit au fil de l'eau** dans `sortie`
+    /// (jamais tout en mémoire), d'exactement `taille` octets : `Content-Length` différent,
+    /// type autre que `application/octet-stream`, octets en trop ou en moins → refus.
+    pub fn telecharger(
+        &self,
+        adresse: SocketAddr,
+        identite: Identite,
+        chemin: &str,
+        corps: &[u8],
+        taille: u64,
+        sortie: &mut impl Write,
+    ) -> Result<Telechargement, Echec> {
+        let config = self
+            .config(Some(identite))
+            .map_err(|e| Echec::Protocole(format!("configuration TLS : {e:#}")))?;
+        let conn = ClientConnection::new(config, self.nom_serveur.clone())
+            .map_err(|e| Echec::Protocole(e.to_string()))?;
+        let flux = TcpStream::connect_timeout(&adresse, DELAI)
+            .map_err(|e| Echec::Injoignable(format!("{adresse} : {e}")))?;
+        let _ = flux.set_read_timeout(Some(DELAI));
+        let _ = flux.set_write_timeout(Some(DELAI));
+        let mut tls = StreamOwned::new(conn, flux);
+        let mut brut = format!(
+            "POST {chemin} HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            self.nom_serveur.to_str(),
+            corps.len()
+        )
+        .into_bytes();
+        brut.extend_from_slice(corps);
+        tls.write_all(&brut).map_err(classer)?;
+        tls.flush().map_err(classer)?;
+        // En-têtes : lus octet par octet jusqu'à la ligne vide, bornés.
+        let mut entete = Vec::with_capacity(512);
+        let mut octet = [0u8; 1];
+        while !entete.ends_with(b"\r\n\r\n") {
+            if entete.len() >= ENTETE_MAX {
+                return Err(Echec::Protocole("en-têtes trop longs".into()));
+            }
+            match tls.read(&mut octet).map_err(classer)? {
+                0 => return Err(Echec::Injoignable("connexion coupée (en-têtes)".into())),
+                _ => entete.push(octet[0]),
+            }
+        }
+        let (statut, longueur, type_contenu) = analyser_entete(&entete[..entete.len() - 4])
+            .map_err(|e| Echec::Protocole(format!("{e:#}")))?;
+        if statut != 200 {
+            if longueur > TAILLE_REPONSE_MAX {
+                return Err(Echec::Protocole("réponse trop grosse".into()));
+            }
+            let mut c = vec![0u8; longueur];
+            tls.read_exact(&mut c).map_err(classer)?;
+            return Ok(Telechargement::Erreur(statut, c));
+        }
+        if type_contenu.as_deref() != Some("application/octet-stream") {
+            return Err(Echec::Protocole("type de contenu inattendu".into()));
+        }
+        if longueur as u64 != taille {
+            return Err(Echec::Protocole(format!(
+                "taille reçue {longueur} différente de la taille annoncée {taille}"
+            )));
+        }
+        let mut empreinte = ring::digest::Context::new(&ring::digest::SHA256);
+        let mut tampon = vec![0u8; 64 * 1024];
+        let mut reste = taille;
+        while reste > 0 {
+            let n = usize::try_from(reste.min(tampon.len() as u64)).unwrap_or(tampon.len());
+            let lu = tls.read(&mut tampon[..n]).map_err(classer)?;
+            if lu == 0 {
+                return Err(Echec::Injoignable(format!(
+                    "connexion coupée ({} octets manquants)",
+                    reste
+                )));
+            }
+            empreinte.update(&tampon[..lu]);
+            sortie
+                .write_all(&tampon[..lu])
+                .map_err(|e| Echec::Protocole(format!("écriture locale : {e}")))?;
+            reste -= lu as u64;
+        }
+        // Rien après le corps annoncé.
+        match tls.read(&mut octet) {
+            Ok(0) => {}
+            Ok(_) => {
+                return Err(Echec::Protocole(
+                    "octets au-delà de la taille annoncée".into(),
+                ));
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {}
+            Err(e) => return Err(classer(e)),
+        }
+        Ok(Telechargement::Recu {
+            sha256: hex::encode(empreinte.finish()),
+        })
+    }
 }
 
 #[cfg(test)]

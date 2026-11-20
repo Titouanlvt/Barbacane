@@ -323,3 +323,27 @@ Règles :
   + 1 s par 512 Kio.
 - Un rapport ne vaut qu'une fois par version proposée (`404 introuvable` ensuite).
 - Aucun nouveau code d'erreur (la liste du §5 est inchangée).
+
+### 9.1 Côté borne (agent et admind, 20/11/2026, 2e jalon de la borne en ligne)
+
+L'agent bat sur `/maj/battement` (et non plus `/battement` : mêmes contrôles côté serveur). Il
+télécharge le paquet proposé, contrôle taille et `sha256` annoncés, le dépose pour
+`barbacane-admind`, **n'applique jamais rien** ; l'administrateur local décide (écran
+Administration → Serveur), admind vérifie avec la clé de la borne par la chaîne existante, puis
+l'agent rapporte `appliquee` ou `echec`. Détails : `borne-en-ligne.md` § Mises à jour.
+
+## 10. PRÉVU : rapports minimaux de passage (ajout, D2)
+
+Non fait au 2e jalon de la borne en ligne (priorité : enrôlement par l'écran et mises à jour).
+Conception retenue, pour le jalon suivant :
+
+- **Route** `POST /rapport/passage` (écoute mTLS seulement), message nouveau, **sans nom de
+  fichier ni chemin** (D2) : `{"version":1,"id":<uuid du passage>,"horodatage":…,"verdict":"sain"|"menace"|"refuse"|"erreur","support":<identifiant de support = SHA-256 de vendorid:productid:numéro de série>,"fichiers":[{"taille":…,"sha256":…,"verdict":…}]}`,
+  fichiers bornés (≤ 10 000 par message, sinon découpage `partie`/`parties`), corps ≤ 1 Mio.
+- **Production** : par admind (root), qui lit les rapports détaillés de l'analyseur
+  (`/var/lib/barbacane/rapports/*.json`) et n'en retient que ces champs ; l'agent (processus
+  réseau) ne voit **jamais** un nom de fichier. Dépôt dans la file locale bornée de l'agent
+  (`file.json`, jamais de perte, pleine → borne hors service), rejeu après coupure, retrait du
+  premier élément seulement après `200` (idempotent : `id` déjà reçu → `200`).
+- **Serveur** : réception, stockage (registre, puis PostgreSQL), événement d'audit
+  `rapport_passage` (uuid de borne, id, verdict ; ajout au schéma de `barbacane-audit`).

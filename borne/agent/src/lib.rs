@@ -12,6 +12,9 @@
 //!   fonctionner comme la v1 (l'agent ne commande rien) ; file locale bornée ([`file`]) ;
 //! - **borne refusée** (révoquée, certificat expiré) : plus aucune connexion jusqu'à un nouvel
 //!   enrôlement décidé par l'administrateur.
+//! - **mises à jour** ([`maj`]) : battement `/maj/battement` ; le `.bcu` proposé est téléchargé
+//!   (mTLS), son empreinte contrôlée, puis déposé pour admind, qui seul le vérifie (signature)
+//!   et l'applique sur décision de l'administrateur local ; résultat rapporté au serveur.
 //!
 //! Aucune donnée ni nom de fichier n'est envoyé (D2) : le battement ne porte que des compteurs.
 #![forbid(unsafe_code)]
@@ -19,6 +22,7 @@
 pub mod coffre;
 pub mod config;
 pub mod file;
+pub mod maj;
 pub mod transport;
 
 use std::net::SocketAddr;
@@ -26,10 +30,14 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, bail};
+use barbacane_protocole::maj::{
+    AccuseBattementMaj, AccuseRapportMaj, DemandeTelechargement, MiseAJourDisponible, RapportMaj,
+    route as route_maj,
+};
 use barbacane_protocole::{
-    AccuseBattement, AccuseDemande, Battement, CodeErreur, ConsultationDemande, Decision,
-    DemandeEnrolement, DemandeRenouvellement, EtatBorne, EtatDemande, Jeton, Message,
-    ReponseCertificat, ReponseErreur, VERSION, decoder, encoder, route,
+    AccuseDemande, Battement, CodeErreur, ConsultationDemande, Decision, DemandeEnrolement,
+    DemandeRenouvellement, EtatBorne, EtatDemande, Jeton, Message, ReponseCertificat,
+    ReponseErreur, VERSION, decoder, encoder, route,
 };
 use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
@@ -38,7 +46,8 @@ use serde::{Deserialize, Serialize};
 use crate::coffre::{Coffre, Emplacement, ecrire_atomique};
 use crate::config::Config;
 use crate::file::FileLocale;
-use crate::transport::{Client, Echec, Identite};
+use crate::maj::{DossierMaj, EtatMiseAJour, MARGE_ESPACE};
+use crate::transport::{Client, Echec, Identite, Telechargement};
 
 /// Version annoncée au serveur.
 pub const VERSION_LOGICIEL: &str = env!("CARGO_PKG_VERSION");
@@ -79,6 +88,10 @@ pub struct EtatPublic {
     pub rapports_en_attente: usize,
     pub file_pleine: bool,
     pub message: String,
+    /// Mise à jour proposée par le serveur : téléchargée et contrôlée (`prete`), ou résultat de
+    /// l'application en attente de transmission. Jamais appliquée par l'agent.
+    #[serde(default)]
+    pub mise_a_jour: Option<EtatMiseAJour>,
 }
 
 impl Default for EtatPublic {
@@ -93,6 +106,7 @@ impl Default for EtatPublic {
             rapports_en_attente: 0,
             file_pleine: false,
             message: String::new(),
+            mise_a_jour: None,
         }
     }
 }
@@ -226,6 +240,7 @@ impl<C: Coffre> Agent<C> {
         };
         self.etat.rapports_en_attente = self.file.len();
         self.etat.file_pleine = self.file.pleine();
+        self.etat.mise_a_jour = DossierMaj::nouveau(&self.config.etat).etat();
         if let Err(e) = self.publier_etat() {
             eprintln!("agent : publication de l'état : {e:#}");
         }
@@ -530,7 +545,7 @@ impl<C: Coffre> Agent<C> {
             self.adresse_service(),
             Some(identite),
             "POST",
-            route::BATTEMENT,
+            route_maj::BATTEMENT,
             &corps,
         ) {
             Ok(r) => r,
@@ -538,13 +553,17 @@ impl<C: Coffre> Agent<C> {
             Err(e) => return Ok(self.liaison_perdue(e, Mode::Connectee)),
         };
         self.echecs = 0;
-        match interpreter::<AccuseBattement>(statut, 200, &reponse)? {
+        match interpreter::<AccuseBattementMaj>(statut, 200, &reponse)? {
             Reponse::Ok(a) => {
                 self.etat.mode = Mode::Connectee;
                 self.etat.derniere_liaison = Some(maintenant());
                 self.etat.ecart_horloge_s = Some(a.ecart_s);
                 self.etat.horloge_derivee = false;
                 self.etat.message = "liaison avec le serveur établie".into();
+                if let Err(e) = self.suivre_maj(a.mise_a_jour.as_ref()) {
+                    eprintln!("agent : mise à jour : {e:#}");
+                    self.etat.message = format!("liaison établie ; mise à jour : {e:#}");
+                }
                 Ok(Duration::from_secs(a.prochain_battement_s.into()))
             }
             Reponse::Erreur(CodeErreur::BorneRefusee) => self.refuser("borne_refusee"),
@@ -604,6 +623,98 @@ impl<C: Coffre> Agent<C> {
             Reponse::Erreur(code) => {
                 self.coffre.supprimer(Emplacement::Nouvelle)?;
                 bail!("renouvellement refusé : {code}")
+            }
+        }
+    }
+
+    /// Après un battement accepté : transmet le résultat déposé par admind, puis télécharge
+    /// la mise à jour proposée si elle n'est pas déjà prête. N'applique jamais rien.
+    fn suivre_maj(&mut self, proposee: Option<&MiseAJourDisponible>) -> Result<()> {
+        let dossier = DossierMaj::nouveau(&self.config.etat);
+        if let Some(r) = dossier.resultat()? {
+            let corps = encoder(&RapportMaj {
+                version: VERSION,
+                version_maj: r.version_maj,
+                resultat: r.resultat,
+            })
+            .map_err(|c| anyhow::anyhow!("rapport : {c}"))?;
+            let (statut, reponse) = self
+                .client
+                .requete(
+                    self.adresse_service(),
+                    Some(self.identite()?),
+                    "POST",
+                    route_maj::RAPPORT,
+                    &corps,
+                )
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            match interpreter::<AccuseRapportMaj>(statut, 200, &reponse)? {
+                // Déjà rapporté ou plus proposé : rien à garder non plus.
+                Reponse::Ok(_) | Reponse::Erreur(CodeErreur::Introuvable) => {
+                    eprintln!(
+                        "agent : résultat de la mise à jour {} transmis ({:?})",
+                        r.version_maj, r.resultat
+                    );
+                    dossier.solder()?;
+                }
+                Reponse::Erreur(code) => bail!("rapport refusé : {code}"),
+            }
+        }
+        let Some(m) = proposee else {
+            return Ok(());
+        };
+        if !dossier.a_telecharger(m)? {
+            return Ok(());
+        }
+        let libre = espace_libre(&self.config.etat).unwrap_or(0);
+        if libre < m.taille.saturating_add(MARGE_ESPACE) {
+            bail!(
+                "espace insuffisant pour la mise à jour {} ({} octets, {libre} libres)",
+                m.version_maj,
+                m.taille
+            );
+        }
+        let corps = encoder(&DemandeTelechargement {
+            version: VERSION,
+            version_maj: m.version_maj,
+        })
+        .map_err(|c| anyhow::anyhow!("téléchargement : {c}"))?;
+        let (chemin, mut fichier) = dossier.ouvrir_reception()?;
+        let issue = self.client.telecharger(
+            self.adresse_service(),
+            self.identite()?,
+            route_maj::TELECHARGEMENT,
+            &corps,
+            m.taille,
+            &mut fichier,
+        );
+        let issue = match issue {
+            Ok(i) => i,
+            Err(e) => {
+                let _ = std::fs::remove_file(&chemin);
+                bail!("téléchargement de la mise à jour {} : {e}", m.version_maj);
+            }
+        };
+        match issue {
+            Telechargement::Recu { sha256 } => {
+                maj::synchroniser(&mut fichier)?;
+                drop(fichier);
+                dossier.installer(&chemin, m, &sha256)?;
+                eprintln!(
+                    "agent : mise à jour {} reçue ({} octets, empreinte conforme) : à vérifier et appliquer par l'administrateur",
+                    m.version_maj, m.taille
+                );
+                Ok(())
+            }
+            Telechargement::Erreur(statut, corps) => {
+                let _ = std::fs::remove_file(&chemin);
+                let code = decoder::<ReponseErreur>(&corps)
+                    .map(|e| e.code.to_string())
+                    .unwrap_or_else(|_| format!("HTTP {statut}"));
+                bail!(
+                    "téléchargement de la mise à jour {} refusé : {code}",
+                    m.version_maj
+                )
             }
         }
     }

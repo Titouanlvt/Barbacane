@@ -228,13 +228,27 @@ pub(crate) fn apt_install_argv(debs: &[PathBuf]) -> Vec<String> {
 }
 
 pub fn apply(ctx: &Ctx) -> Result<Outcome> {
+    apply_from(ctx, &ctx.conf.import_dir, None)
+}
+
+/// Même chaîne que pour une clé USB, depuis `dir`. `attendue` (paquet relayé par le serveur) :
+/// la version du manifeste (signé) doit être exactement celle annoncée.
+pub fn apply_from(ctx: &Ctx, dir: &Path, attendue: Option<u64>) -> Result<Outcome> {
     let c = &ctx.conf;
-    let (pkg, sig) = find(&c.import_dir)?;
+    let (pkg, sig) = find(dir)?;
     verify_signature(&c.update_pubkey, &pkg, &sig)?;
     let work = tempfile::Builder::new()
         .prefix("maj-")
         .tempdir_in(&c.state_dir)?;
     let m = unpack(&pkg, work.path())?;
+    if let Some(v) = attendue
+        && m.version != v
+    {
+        bail!(
+            "paquet version {} refusé : le serveur annonçait la version {v}",
+            m.version
+        );
+    }
     let current = ctx.update_version();
     if m.version <= current {
         bail!(

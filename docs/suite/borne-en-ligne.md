@@ -44,22 +44,51 @@ entrante. Un autre processus de la borne (même root) ne peut pas sortir.
   `systemd-network`. Recommandé : bail réservé par adresse MAC et sous-réseau dédié aux bornes.
 - **Statique** : aucune exception, mais une ISO par borne (adresse inscrite dans l'ISO).
 
-## Enrôlement d'une borne (lab, en attendant l'écran d'administration)
+## Enrôlement d'une borne (2e jalon : écran Administration → Serveur)
 
 1. Sur le serveur : `barbacane-registre CONFIG jeton site-1` → `43118-XXXXXXXX…` (1 h, usage unique).
-2. Sur la borne : déposer le jeton dans `/var/lib/barbacane-agent/jeton` (l'écran d'admind est à
-   venir) ; l'agent dépose sa demande et publie l'empreinte dans `/run/barbacane-agent/etat.json`.
-3. Sur le serveur : `barbacane-registre CONFIG demandes`, **comparer l'empreinte**, puis
+2. Sur la borne : Administration (PIN) → **Serveur** → « Saisir un jeton » (clavier virtuel
+   existant, minuscules acceptées). L'interface n'écrit rien : elle appelle l'op `serveur_jeton`
+   d'admind, qui valide le format et le port (= port d'enrôlement de l'ISO) puis dépose
+   atomiquement `/var/lib/barbacane-agent/jeton` (0600, compte de l'agent ; le secret n'est jamais
+   journalisé). L'agent dépose sa demande ; la page Serveur affiche l'**empreinte** en groupes de 4.
+3. Sur le serveur : `barbacane-registre CONFIG demandes`, **retaper l'empreinte** lue sur la borne,
    `valider ID EMPREINTE NOM`. L'agent installe le certificat et commence ses battements.
+
+Page Serveur : adresse du serveur, état (non enrôlée, en attente de validation, enrôlée, dégradée,
+refusée, agent arrêté), empreinte, dernière synchronisation, écart d'horloge, rapports en attente,
+dernier message de l'agent, mise à jour reçue. Données lues par admind dans `etat.json` (champs
+connus seulement, 64 Kio au plus) et relayées dans son op `status`.
+
+## Mises à jour reçues du serveur
+
+1. L'agent bat sur `/maj/battement` ; si une mise à jour est proposée, il la télécharge (mTLS,
+   corps écrit au fil de l'eau, taille exacte, SHA-256 annoncé) dans `/var/lib/barbacane-agent/maj/`
+   puis écrit `annonce.json` en dernier. Il ne l'applique **jamais** ; un paquet dont l'empreinte
+   diffère est supprimé (nouvel essai au battement suivant).
+2. Page Serveur : « Mise à jour N reçue du serveur » → **Vérifier et appliquer** (décision de
+   l'administrateur local). Op `serveur_appliquer_maj` d'admind : copie du paquet dans son dossier
+   privé (lien refusé, taille et empreinte annoncées contrôlées sur la copie : l'agent ne peut plus
+   la modifier), puis la **chaîne existante inchangée** (`update::apply_from`, la même que pour une
+   clé USB) : signature minisign avec `/etc/barbacane/maj.pub` (la signature reste la seule
+   autorité), anti-retour, manifeste ; en plus, version du manifeste signé = version annoncée.
+3. admind rend `resultat.json` (`appliquee` ou `echec`) ; l'agent le transmet par `/maj/rapport`
+   au battement suivant, puis vide le dossier.
 
 ## Interface de la borne
 
-Inchangée (charte v1, même parcours ; le pied de page dit toujours « station blanche hors ligne »). Aucun indicateur n'est ajouté à ce jalon ; l'état de liaison
-est disponible dans `etat.json` pour un indicateur discret ultérieur (profil en-ligne seulement).
+Charte v1, mêmes widgets. **Profil hors ligne : strictement inchangée** — sans
+`/etc/barbacane/agent.toml` (posé seulement par l'ISO en ligne), admind ne publie aucun bloc
+`serveur`, refuse les ops `serveur_*`, le menu n'a pas de bouton « Serveur » et le pied de page dit
+« station blanche hors ligne » (tests `hors_ligne_aucune_fonction_serveur`,
+`hors_ligne_sans_page_serveur`). Profil en ligne : bouton « Serveur » dans le menu ; pied de page
+« station blanche en ligne » dès que l'agent publie son état.
 
 ## Tests et preuves
 
-- `cargo test -p barbacane-agent` ; `tests/suite/agent-bout-en-bout.sh` (vrais binaires, sans VM).
+- `cargo test -p barbacane-agent -p barbacane-admind -p barbacane-client` ;
+  `tests/suite/agent-bout-en-bout.sh` (vrais binaires, sans VM : jeton par admind, mise à jour
+  reçue, appliquée sur décision, rapportée ; paquet d'une autre clé refusé par la borne).
 - `tests/iso/en-ligne.sh ISO SERVEUR PE PS` : contenu de l'ISO en ligne (agent, service durci,
   pare-feu, empreinte, preseed). `tests/iso/hors-ligne.sh` inchangé, appliqué à l'ISO hors ligne.
 - `tests/iso/qemu-en-ligne.sh` : installation QEMU, enrôlement réel face à une passerelle de test,
@@ -72,6 +101,6 @@ Aucun à ce jour.
 ## Reste à faire
 
 - Clé de la borne dans le **TPM** (D9) : trait `Coffre` prêt, implémentation fichier au lab.
-- Écran d'administration (admind) : saisie du jeton, affichage de l'empreinte ; indicateur discret.
+- Rapports minimaux de passage vers le serveur (PRÉVU, voir `protocole-agent.md` §10).
 - Réglage de l'horloge sur l'heure du serveur par un service privilégié ; blocage après le délai
   de grâce (conception §3.1) ; politique, rapports, journaux, mises à jour (protocole v2).

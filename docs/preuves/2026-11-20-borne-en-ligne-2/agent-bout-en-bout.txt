@@ -1,0 +1,63 @@
+== PKI de TEST et ports
+== 1. jeton (barbacane-registre) → saisi sur la borne (admind) → demande déposée
+Jeton d'enrôlement (usage unique, valable jusqu'à 2026-11-20 16:34:41 UTC) :
+34216-XX6DRQOFG74YVOVMECUV2DU2IQ
+jeton d'un autre port : {"error":"ce jeton a été émis pour le port 12 ; cette borne est installée pour le port 34216 (jeton d'un autre serveur ?)"}
+{"message":"Jeton enregistré : la demande d'enrôlement va être envoyée au serveur."}
+empreinte affichée par la borne : 0cacff150b53e7e4329706601d8b39e958ce296bd179f18ecdbd884d6ea61f6d
+admind → interface : "attente_validation" 0cacff150b53e7e4329706601d8b39e958ce296bd179f18ecdbd884d6ea61f6d
+600 /travail/e2e-en-ligne-2/agent/cle-attente.pem
+== 2. validation par l'administrateur → battement dans la supervision
+demande  a75604c00cc8ed702257885a7f1a0fd8
+  site       site-1
+  déposée    2026-11-20 15:34:45 UTC
+  logiciel   0.1.0
+  empreinte  0cac ff15 0b53 e7e4 3297 0660 1d8b 39e9 58ce 296b d179 f18e cdbd 884d 6ea6 1f6d
+Comparer l'empreinte à celle affichée par la borne AVANT de valider.
+Demande validée : borne c4f096c4-26ff-4bb2-888e-6ac66169f5d2 (certificat de 90 jours émis).
+Heure du serveur : 2026-11-20 15:34:50 UTC
+c4f096c4-26ff-4bb2-888e-6ac66169f5d2  borne-e2e    site-1   active    version=0.1.0 état=EnService vue=2026-11-20 15:34:49 UTC écart=0s expire=2027-02-18 15:34:49 UTC
+== 2 bis. mise à jour diffusée par le serveur → reçue → appliquée par l'administrateur → rapportée
+Plancher signé installé : aucune version inférieure à 100 ne sera acceptée.
+Paquet 200 accepté (signature des bornes vérifiée) : sha256 c3f0595ff797e8e72c346e8c65c2285129b5f28d93147df4b8e4d4f1b0ec2604, 289 octets.
+Le proposer aux bornes : maj-diffuser 200
+Paquet 200 proposé aux bornes à leur prochain battement.
+plancher 100  diffusé 200
+paquet 200  289 octets  sha256 c3f0595ff797e8e72c346e8c65c2285129b5f28d93147df4b8e4d4f1b0ec2604  déposé 2026-11-20 15:34:50 UTC
+c4f096c4-26ff-4bb2-888e-6ac66169f5d2  paquet 200  telechargee  depuis 2026-11-20 15:35:49 UTC
+{"reboot":false,"report":"Paquet de mise à jour version 200 du 2026-11-20 15:34 UTC\n- liste d'images officielles : 1 image(s)\n","version":200}
+plancher 100  diffusé 200
+paquet 200  289 octets  sha256 c3f0595ff797e8e72c346e8c65c2285129b5f28d93147df4b8e4d4f1b0ec2604  déposé 2026-11-20 15:34:50 UTC
+c4f096c4-26ff-4bb2-888e-6ac66169f5d2  paquet 200  appliquee  depuis 2026-11-20 15:36:49 UTC
+barbacane-registre : refusé : signature invalide pour la clé des bornes
+{"error":"signature invalide (clé de signature inconnue)"}
+== 3. serveur arrêté → mode dégradé → reprise
+{
+  "mode": "degradee",
+  "empreinte": null,
+  "derniere_liaison": 1795189009,
+  "ecart_horloge_s": 0,
+  "horloge_derivee": false,
+  "certificat_expire_le": 1802964889,
+  "rapports_en_attente": 0,
+  "file_pleine": false,
+  "message": "mode dégradé (la borne fonctionne hors ligne) : serveur injoignable : 127.0.0.1:21651 : Connection refused (os error 111)",
+  "mise_a_jour": null
+}
+== 4. révocation → mode refusée, agent vivant
+Borne révoquée ; CRL republiée (refus à la prochaine connexion).
+{
+  "mode": "refusee",
+  "empreinte": null,
+  "derniere_liaison": 1795189071,
+  "ecart_horloge_s": 0,
+  "horloge_derivee": false,
+  "certificat_expire_le": 1802964889,
+  "rapports_en_attente": 0,
+  "file_pleine": false,
+  "message": "borne refusée par le serveur (received fatal alert: CertificateRevoked) : nouvel enrôlement nécessaire",
+  "mise_a_jour": null
+}
+Heure du serveur : 2026-11-20 15:38:57 UTC
+c4f096c4-26ff-4bb2-888e-6ac66169f5d2  borne-e2e    site-1   révoquée  version=0.1.0 état=EnService vue=2026-11-20 15:37:51 UTC écart=0s expire=2027-02-18 15:34:49 UTC
+OK : jeton par admind, enrôlement validé, battement supervisé, mise à jour reçue puis appliquée par l'administrateur et rapportée, paquet d'une autre clé refusé, mode dégradé puis reprise, révocation → refusée (dossier : /travail/e2e-en-ligne-2)

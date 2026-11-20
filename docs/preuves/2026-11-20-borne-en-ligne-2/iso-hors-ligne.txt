@@ -1,0 +1,27 @@
+DEBUT HL 2026-11-20T15:55:05+00:00
+Construction de l'ISO Barbacane (journal : /travail/iso-en-ligne-2/hl/barbacane-hl.log)
+
+ISO prête en 1 min 33 s
+  fichier  : /travail/iso-en-ligne-2/hl/barbacane-hl.iso (1.1G)
+  sha256   : fd20454839f20db8f918ec7dc5794521020689f110ec6d0acdeb3793ca9157a4   (à noter avec la date)
+  journal  : /travail/iso-en-ligne-2/hl/barbacane-hl.log
+Étape suivante : copier l'ISO sur une clé USB (guide, étape 2).
+HL CODE 0
+paquets installés par Barbacane : 272
+OK : ISO hors ligne sans agent, sans paquet réseau, sortie bloquée (boucle locale seule)
+HL GARDE 0
+IDENTIQUE  fichiers (1782 lignes)
+IDENTIQUE  debs (272 lignes)
+IDENTIQUE  fic-barbacane (53 lignes)
+IDENTIQUE  fic-usbsas (53 lignes)
+IDENTIQUE  scripts (5 lignes)
+IDENTIQUE  donnees (10 lignes)
+--- empreintes des paquets
+diffère : barbacane_0.1.0-1_amd64.deb
+diffère : usbsas-hid_0.5.0-1_amd64.deb
+diffère : usbsas-server_0.3.4-1_amd64.deb
+269 paquets identiques
+5e0c3fbae7319c230a39a0e1a468f51400653ca8a10d9b67e658b7421a7b3fc7  /travail/v100/barbacane-1.0.0.iso
+fd20454839f20db8f918ec7dc5794521020689f110ec6d0acdeb3793ca9157a4  /travail/iso-en-ligne-2/hl/barbacane-hl.iso
+CMP CODE 0
+FIN

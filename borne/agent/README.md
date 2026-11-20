@@ -32,6 +32,16 @@ Fichiers :
 - `/run/barbacane-agent/etat.json` (0644, aucun secret) : mode, empreinte de la demande, dernière
   liaison, écart d'horloge, fin de validité du certificat, file locale.
 
+## Mises à jour relayées par le serveur (2e jalon, 20/11/2026)
+
+Battement sur `/maj/battement`. Mise à jour proposée → téléchargement mTLS écrit au fil de l'eau
+dans `maj/.reception` (taille exacte, SHA-256 annoncé ; sinon supprimé), puis
+`maj/barbacane-maj-N.bcu`, `.bcu.minisig` et `annonce.json` (en dernier). L'agent **n'applique
+rien** : admind vérifie (clé de la borne) et applique sur décision de l'administrateur local
+(écran Administration → Serveur), puis dépose `maj/resultat.json`, que l'agent transmet par
+`/maj/rapport` avant de vider `maj/`. Jeton : déposé par admind (op `serveur_jeton`).
+Détails : `docs/suite/borne-en-ligne.md`.
+
 ## Clé de la borne : fichier au lab, TPM ensuite (D9)
 
 La clé privée est générée **sur la borne** (aléa du noyau, `ring`) et ne la quitte jamais ; seul le
