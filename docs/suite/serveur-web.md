@@ -104,8 +104,8 @@ bornes, CRL bornes), `cle_audit_publique` (vérification de la chaîne).
 
 ## 7. Charte v2 (adaptation simple)
 
-Feuille `serveur/web/statique/barbacane.css` : jetons de couleur de `docs/charte/web/jetons.css`
-(test de cohérence), composants web de `components/bundle.css` (navigation, tuiles, tableau,
+Feuille servie `/statique/barbacane.css` = `docs/charte/web/jetons.css` **inclus tel quel à la
+compilation** (chemins des polices réécrits vers `/statique/polices/`) + `serveur/web/statique/composants.css` : composants web de `components/bundle.css` (navigation, tuiles, tableau,
 formulaire, avis, états, boutons) **sans** transition ni animation ; thème Jour/Nuit par
 `prefers-color-scheme` ; polices de `docs/charte/fonts` (OFL). Pas d'attribut `style` (interdit
 par la CSP) : les couleurs d'état passent par des classes.
