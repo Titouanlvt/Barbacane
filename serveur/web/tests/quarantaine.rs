@@ -138,9 +138,8 @@ fn banc() -> Banc {
     )
     .unwrap();
     let conf_passerelle = format!(
-        "adresse = 127.0.0.1\nport = 41001\nport_enrolement = 41002\nchaine_serveur = {p}/serveur/chaine.pem\ncle_serveur = {p}/serveur/cle.pem\nca_bornes = {p}/ca-bornes/cert.pem\ncle_ca_bornes = {p}/ca-bornes/cle.pem\ncrl_bornes = {p}/ca-bornes/crl.pem\nregistre = {}\ndossier_homologation = {}\n",
+        "adresse = 127.0.0.1\nport = 41001\nport_enrolement = 41002\nchaine_serveur = {p}/serveur/chaine.pem\ncle_serveur = {p}/serveur/cle.pem\nca_bornes = {p}/ca-bornes/cert.pem\ncle_ca_bornes = {p}/ca-bornes/cle.pem\ncrl_bornes = {p}/ca-bornes/crl.pem\nregistre = {}\n",
         d.join("etat").display(),
-        d.join("dossier-homologation.md").display(),
         p = pki.display()
     );
     std::fs::write(d.join("passerelle.conf"), &conf_passerelle).unwrap();
@@ -157,6 +156,15 @@ fn banc() -> Banc {
     std::fs::write(
         d.join("dossier-homologation.md"),
         "# TEST\n\nmesures_dr_serveur: non\n",
+    )
+    .unwrap();
+    std::fs::create_dir_all(d.join("etat")).unwrap();
+    std::fs::write(
+        d.join("etat/quarantaine.conf"),
+        format!(
+            "dossier_homologation = {}\n",
+            d.join("dossier-homologation.md").display()
+        ),
     )
     .unwrap();
     let w = Web::nouveau(config).unwrap();
@@ -370,11 +378,7 @@ fn quarantaine_desactivee_double_validation_auditeur_refuse() {
     assert!(r.texte().contains("Active"));
     // Un élément déposé (comme par la passerelle), export par double validation.
     let admin = Admin::ouvrir(b.passerelle.clone()).unwrap();
-    let q = barbacane_passerelle::quarantaine::Quarantaine::ouvrir(
-        &admin.stockage,
-        &b.passerelle.dossier_homologation,
-    )
-    .unwrap();
+    let q = barbacane_passerelle::quarantaine::Quarantaine::ouvrir(&admin.stockage).unwrap();
     let contenu = b"fichier bloque de TEST";
     let e = q
         .recevoir(

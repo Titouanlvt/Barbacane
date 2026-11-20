@@ -130,9 +130,6 @@ pub struct Config {
     pub crl_bornes: PathBuf,
     /// Dossier d'état du registre des bornes.
     pub registre: PathBuf,
-    /// Copie installée du dossier d'homologation (verrou de la quarantaine, facultatif :
-    /// `quarantaine::DOSSIER_HOMOLOGATION_DEFAUT`).
-    pub dossier_homologation: PathBuf,
 }
 
 impl Config {
@@ -147,7 +144,6 @@ impl Config {
         let (mut port, mut port_enrolement) = (None, None);
         let (mut chaine, mut cle, mut ca, mut cle_ca, mut crl, mut registre) =
             (None, None, None, None, None, None);
-        let mut homologation = None;
         for (n, ligne) in texte.lines().enumerate() {
             let ligne = ligne.trim();
             if ligne.is_empty() || ligne.starts_with('#') {
@@ -171,7 +167,6 @@ impl Config {
                 "cle_ca_bornes" => cle_ca.replace(PathBuf::from(v)).is_some(),
                 "crl_bornes" => crl.replace(PathBuf::from(v)).is_some(),
                 "registre" => registre.replace(PathBuf::from(v)).is_some(),
-                "dossier_homologation" => homologation.replace(PathBuf::from(v)).is_some(),
                 autre => bail!("ligne {} : clé inconnue « {autre} »", n + 1),
             };
             if deja {
@@ -193,8 +188,6 @@ impl Config {
             cle_ca_bornes: cle_ca.context("cle_ca_bornes absente")?,
             crl_bornes: crl.context("crl_bornes absente")?,
             registre: registre.context("registre absent")?,
-            dossier_homologation: homologation
-                .unwrap_or_else(|| PathBuf::from(quarantaine::DOSSIER_HOMOLOGATION_DEFAUT)),
         })
     }
 
@@ -563,7 +556,7 @@ impl Passerelle {
 
     /// Quarantaine (dossier `quarantaine/` du registre ; désactivée par défaut).
     pub fn quarantaine(&self) -> Result<quarantaine::Quarantaine> {
-        quarantaine::Quarantaine::ouvrir(&self.stockage, &self.config.dossier_homologation)
+        quarantaine::Quarantaine::ouvrir(&self.stockage)
     }
 
     /// Dépôt des mises à jour (dossier `maj/` du registre).

@@ -33,7 +33,9 @@ use crate::registre::{Refus, Stockage};
 /// Seule ligne du dossier d'homologation qui autorise la quarantaine.
 pub const LIGNE_EN_PLACE: &str = "mesures_dr_serveur: en place";
 const CHAMP: &str = "mesures_dr_serveur";
-/// Copie installée du dossier d'homologation (configurable : `dossier_homologation`).
+/// Copie installée du dossier d'homologation, par défaut. Configurable sans toucher à la
+/// configuration de la passerelle : `<registre>/quarantaine.conf`, ligne
+/// `dossier_homologation = CHEMIN` (voir [`chemin_homologation`]).
 pub const DOSSIER_HOMOLOGATION_DEFAUT: &str =
     "/usr/share/doc/barbacane-serveur/dossier-homologation.md";
 /// Durée de conservation (conception §3.6 : 30 jours, purge automatique).
@@ -72,6 +74,36 @@ pub fn mesures_dr(chemin: &Path) -> Result<(), String> {
         [] => Err("le dossier d'homologation ne porte pas le champ mesures_dr_serveur".into()),
         _ => Err("champ mesures_dr_serveur répété dans le dossier d'homologation".into()),
     }
+}
+
+/// Chemin du dossier d'homologation : `<registre>/quarantaine.conf` s'il existe (une seule clé
+/// `dossier_homologation`, toute autre ligne refusée), sinon [`DOSSIER_HOMOLOGATION_DEFAUT`].
+pub fn chemin_homologation(stockage: &Stockage) -> Result<PathBuf> {
+    let f = stockage.dossier().join("quarantaine.conf");
+    let texte = match std::fs::read_to_string(&f) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(PathBuf::from(DOSSIER_HOMOLOGATION_DEFAUT));
+        }
+        Err(e) => return Err(e).context("quarantaine.conf"),
+    };
+    let mut chemin = None;
+    for (n, l) in texte.lines().enumerate() {
+        let l = l.trim();
+        if l.is_empty() || l.starts_with('#') {
+            continue;
+        }
+        match l.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
+            Some(("dossier_homologation", v)) if chemin.is_none() && !v.is_empty() => {
+                chemin = Some(PathBuf::from(v));
+            }
+            _ => bail!(
+                "quarantaine.conf, ligne {} : « dossier_homologation = CHEMIN » attendu",
+                n + 1
+            ),
+        }
+    }
+    Ok(chemin.unwrap_or_else(|| PathBuf::from(DOSSIER_HOMOLOGATION_DEFAUT)))
 }
 
 // ───────────────────────────── Chiffrement ────────────────────────────────────────────────────
@@ -244,7 +276,8 @@ pub struct Quarantaine {
 
 impl Quarantaine {
     /// Dossier `quarantaine/` du registre (0700), `elements/` dedans.
-    pub fn ouvrir(stockage: &Stockage, homologation: &Path) -> Result<Quarantaine> {
+    pub fn ouvrir(stockage: &Stockage) -> Result<Quarantaine> {
+        let homologation = chemin_homologation(stockage)?;
         let dossier = stockage.dossier().join("quarantaine");
         std::fs::DirBuilder::new()
             .recursive(true)
@@ -253,7 +286,7 @@ impl Quarantaine {
             .context("dossier de quarantaine")?;
         Ok(Quarantaine {
             dossier,
-            homologation: homologation.to_owned(),
+            homologation,
             stockage: stockage.clone(),
         })
     }
@@ -592,7 +625,12 @@ mod tests {
         )
         .unwrap();
         let stockage = Stockage::ouvrir(&d.path().join("etat")).unwrap();
-        let q = Quarantaine::ouvrir(&stockage, &dossier).unwrap();
+        std::fs::write(
+            d.path().join("etat/quarantaine.conf"),
+            format!("dossier_homologation = {}\n", dossier.display()),
+        )
+        .unwrap();
+        let q = Quarantaine::ouvrir(&stockage).unwrap();
         Banc {
             _d: d,
             dossier,

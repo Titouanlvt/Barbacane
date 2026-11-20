@@ -48,7 +48,6 @@ fn banc(crl: &str) -> Banc {
         cle_ca_bornes: pki.join("ca-bornes/cle.pem"),
         crl_bornes: pki.join(crl),
         registre: dossier.path().join("registre"),
-        dossier_homologation: dossier.path().join("dossier-homologation.md"),
     };
     let ecoute = TcpListener::bind("127.0.0.1:0").unwrap();
     let adresse = ecoute.local_addr().unwrap();

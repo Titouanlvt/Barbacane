@@ -141,7 +141,7 @@ pub fn page(
 impl Web {
     fn quarantaine(&self) -> Result<Quarantaine> {
         let stockage = barbacane_passerelle::registre::Stockage::ouvrir(&self.passerelle.registre)?;
-        Quarantaine::ouvrir(&stockage, &self.passerelle.dossier_homologation)
+        Quarantaine::ouvrir(&stockage)
     }
 
     pub(crate) fn page_quarantaine(

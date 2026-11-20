@@ -76,7 +76,6 @@ fn banc() -> Banc {
         cle_ca_bornes: pki.join("ca-bornes/cle.pem"),
         crl_bornes: pki.join("ca-bornes/crl.pem"),
         registre: dossier.path().join("etat"),
-        dossier_homologation: dossier.path().join("dossier-homologation.md"),
     };
     let p = Passerelle::nouvelle(config.clone()).unwrap();
     let p2 = p.clone();
@@ -561,12 +560,14 @@ fn quarantaine_refusee_par_la_passerelle_si_desactivee() {
         "{journal}"
     );
     // Verrou levé (fichier de TEST) + double validation : dépôt accepté.
+    let dossier = b.dossier.path().join("dossier-homologation.md");
+    std::fs::write(&dossier, "mesures_dr_serveur: en place\n").unwrap();
     std::fs::write(
-        &b.config.dossier_homologation,
-        "mesures_dr_serveur: en place\n",
+        b.config.registre.join("quarantaine.conf"),
+        format!("dossier_homologation = {}\n", dossier.display()),
     )
     .unwrap();
-    let q = Quarantaine::ouvrir(&b.admin.stockage, &b.config.dossier_homologation).unwrap();
+    let q = Quarantaine::ouvrir(&b.admin.stockage).unwrap();
     let d = q.demander_activation("web:alice", maintenant()).unwrap();
     assert!(matches!(
         q.valider(&d, "web:carole", maintenant()).unwrap(),
