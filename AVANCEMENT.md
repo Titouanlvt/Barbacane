@@ -24,7 +24,7 @@
 | Serveur : utilisateurs et clés USB | `serveur-utilisateurs` / `wt-serveur-utilisateurs` | fusionné (55933b2, CI locale FIN 0) ; reste borne : écrans identifiant/PIN, politique USB ; LDAPS prouvé sur faux annuaire seulement, AD sans TLS 1.3 refusé | décision TLS 1.2 annuaire |
 | Serveur : ISO des bornes depuis le serveur (§9) | `serveur-iso-bornes` / `wt-serveur-iso-bornes` | fusionné (CI locale FIN 0 sur la fusion) ; remaster prouvé sur la vraie ISO, QEMU : enrôlement sans saisie, battement, jeton effacé | validation de l’écart à D4 (port fixé à la construction) |
 | Rapports de passage (§10) | `rapports-passage` / `wt-rapports-passage` | sous-agent en cours | — |
-| Quarantaine (désactivée par défaut, étape 11) | `quarantaine` / `wt-quarantaine` | sous-agent en cours | — |
+| Quarantaine (désactivée par défaut, étape 11) | `quarantaine` / `wt-quarantaine` | fusionné (CI locale FIN 0) ; verrou `mesures_dr_serveur` (reste `non`), double validation, AES-256-GCM ; ISO serveur n’installe pas encore le dossier d’homologation | TPM, envoi par la borne |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
 ## Plan et état
