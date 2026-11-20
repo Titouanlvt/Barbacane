@@ -2,6 +2,7 @@
 # CI locale : mêmes vérifications que .github/workflows/ci.yml, en parallèle, sur une VM du lab
 # (bu, Debian 13, cargo, shellcheck). La CI GitHub n'est plus qu'une confirmation.
 #   tests/ci-locale.sh [--iso]      → résumé, code 0 si tout passe ; journaux dans $CI_JOURNAUX
+# SHELLCHECK : binaire à utiliser (même version que la CI GitHub : 0.11 sur ubuntu-latest au 20/11/2026).
 # --iso : construit aussi l'ISO (profil hors-ligne) puis tests/iso/hors-ligne.sh et tests/iso/qemu.sh.
 # Sur la VM de lab : clamd (AppArmor) doit pouvoir lire le dossier des sources ; pour /travail sur bu :
 #   /etc/apparmor.d/local/usr.sbin.clamd ← « /travail/** r, » et « /travail/tmp/** rwk, ». target/ doit être
@@ -17,7 +18,8 @@ declare -A PID
 lancer() { local n=$1; shift; ( timeout "${DELAI:-90m}" bash -c "$*" ) > "$J/$n.log" 2>&1 & PID[$n]=$!; }
 
 # Rapides, indépendants de la compilation
-lancer shellcheck 'shellcheck systeme/*.sh systeme/iso/*.sh tests/*.sh tests/*/*.sh borne/update/barbacane-update-*'
+# shellcheck disable=SC2016  # développé par le bash -c de lancer
+lancer shellcheck '${SHELLCHECK:-shellcheck} systeme/*.sh systeme/iso/*.sh tests/*.sh tests/*/*.sh borne/update/barbacane-update-*'
 lancer fmt 'cargo fmt --all --check'
 lancer audit 'command -v cargo-audit >/dev/null || cargo install -q --locked cargo-audit; cargo audit'
 [ "${GARDE_FOU:-0}" = 1 ] && lancer garde-fou 'sudo tests/garde-fou/scripts.sh'

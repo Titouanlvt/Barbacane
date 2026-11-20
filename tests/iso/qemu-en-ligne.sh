@@ -22,7 +22,7 @@ for n in 9 8 7 6 5; do
 done
 [ -n "$NBD" ] || { echo "aucun nbd libre" >&2; exit 1; }
 PIDS=()
-# shellcheck disable=SC2317  # appelée par trap
+# shellcheck disable=SC2317,SC2329  # appelée par trap
 fin() { for p in "${PIDS[@]}"; do kill "$p" 2>/dev/null || true; done; umount "$W/rw" 2>/dev/null || true; qemu-nbd -d "$NBD" >/dev/null 2>&1 || true; }
 trap fin EXIT
 
