@@ -85,6 +85,16 @@ pub enum ResultatMaj {
     Echec,
 }
 
+/// Verdict d'un passage rapporté par une borne (protocole §10).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VerdictPassage {
+    Sain,
+    Menace,
+    Refuse,
+    Erreur,
+}
+
 /// Résultat d'une vérification d'utilisateur demandée par une borne
 /// (`docs/suite/serveur-utilisateurs.md`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -103,7 +113,7 @@ pub enum ResultatUtilisateur {
 }
 
 /// Événements audités. Toute évolution change [`VERSION_SCHEMA`] — exception : les ajouts
-/// des étapes « mises à jour » et « utilisateurs » (20/11/2026), faits avant toute
+/// des étapes « mises à jour », « utilisateurs » et « rapports de passage » (20/11/2026), faits avant toute
 /// installation du serveur, gardent la version 1 (aucun journal existant à relire).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -223,6 +233,15 @@ pub enum Evenement {
         borne: String,
         version_politique: u64,
     },
+    /// Rapport minimal de passage reçu d'une borne (protocole §10) : JAMAIS de nom de fichier
+    /// ni de chemin (D2) ; une ligne par partie nouvellement reçue (un rejeu n'en ajoute pas).
+    RapportPassage {
+        borne: String,
+        passage: String,
+        partie: u32,
+        verdict: VerdictPassage,
+        fichiers: u64,
+    },
     /// Autre action d'administration (consultation, export…) : nom court.
     Administration {
         action: String,
@@ -264,6 +283,7 @@ impl Evenement {
             | MajProposee { borne, .. }
             | MajTelechargee { borne, .. }
             | MajRapportee { borne, .. } => ident_valide(borne),
+            RapportPassage { borne, passage, .. } => ident_valide(borne) && ident_valide(passage),
             MajDeposee { sha256, .. } | MajRefusee { sha256, .. } => hex_valide(sha256, 64),
             Administration { action } => ident_valide(action),
             UtilisateursImportes { source, .. } => ident_valide(source),
@@ -871,6 +891,22 @@ mod tests {
                 "{variante}"
             );
         }
+    }
+
+    #[test]
+    fn rapport_passage_sans_nom() {
+        let e = |passage: &str| Evenement::RapportPassage {
+            borne: "0b6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11".into(),
+            passage: passage.into(),
+            partie: 1,
+            verdict: VerdictPassage::Menace,
+            fichiers: 2,
+        };
+        assert!(e("1c6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11").valider());
+        assert!(!e("rapport/secret.docx").valider());
+        assert!(!e("a b").valider());
+        let ligne = serde_json::to_string(&e("x")).unwrap();
+        assert!(ligne.contains("\"rapport_passage\""), "{ligne}");
     }
 
     #[test]

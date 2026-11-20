@@ -14,6 +14,7 @@ pub mod admin;
 pub mod ca;
 pub mod maj;
 pub mod outils;
+pub mod passages;
 pub mod registre;
 pub mod utilisateurs;
 
@@ -29,6 +30,7 @@ use barbacane_audit::{Anomalie, Evenement};
 use barbacane_protocole::maj::{
     AccuseBattementMaj, AccuseRapportMaj, DemandeTelechargement, RapportMaj, route as route_maj,
 };
+use barbacane_protocole::passage::{AccuseRapportPassage, RapportPassage, route as route_passage};
 use barbacane_protocole::utilisateurs::{
     DemandeChangementPin, DemandePolitique, DemandeVerification, route as route_utilisateurs,
 };
@@ -474,6 +476,7 @@ const ROUTES_SERVICE: &[(&str, &str, usize)] = &[
         DemandeTelechargement::TAILLE_MAX,
     ),
     ("POST", route_maj::RAPPORT, RapportMaj::TAILLE_MAX),
+    ("POST", route_passage::PASSAGE, RapportPassage::TAILLE_MAX),
     (
         "POST",
         route_utilisateurs::POLITIQUE,
@@ -533,6 +536,7 @@ impl Passerelle {
         stockage.lire()?;
         DepotMaj::ouvrir(&stockage)?.lire()?;
         utilisateurs::Utilisateurs::ouvrir(&stockage)?.lire()?;
+        passages::Passages::ouvrir(&stockage)?;
         Ok(Arc::new(Passerelle {
             config,
             stockage,
@@ -762,6 +766,20 @@ impl Passerelle {
                     &AccuseRapportMaj {
                         version: VERSION,
                         heure_serveur: t,
+                    },
+                )
+            }
+            route_passage::PASSAGE => {
+                let m: RapportPassage = decoder(&r.corps).map_err(Refus)?;
+                self.authentifier(id, t)?;
+                let deja_recu = passages::Passages::ouvrir(&self.stockage)?
+                    .recevoir(&id.uuid, &m, ACTEUR, t)?;
+                json(
+                    200,
+                    &AccuseRapportPassage {
+                        version: VERSION,
+                        heure_serveur: t,
+                        deja_recu,
                     },
                 )
             }

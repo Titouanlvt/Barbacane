@@ -37,6 +37,7 @@ pub enum Rubrique {
     ClesUsb,
     Audit,
     IsoBornes,
+    Passages,
 }
 
 const SYMBOLE: &str = "<svg viewBox=\"0 0 64 64\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M6 58V12h4v4h4v-4h4v4h4v42ZM12.5 26v10h3V26ZM42 58V16h4v-4h4v4h4v-4h4v46ZM48.5 26v10h3V26ZM22 58V24h20v34ZM27 58V43a5 5 0 0 1 10 0v15Z\"/><rect class=\"b-herse\" x=\"27\" y=\"46\" width=\"10\" height=\"2\"/><rect class=\"b-herse\" x=\"27\" y=\"51\" width=\"10\" height=\"2\"/></svg>";
@@ -77,6 +78,12 @@ const NAV: &[(Rubrique, &str, &str, &str)] = &[
         "/cles-usb",
         "Clés USB",
         "<rect x=\"8\" y=\"2\" width=\"8\" height=\"7\" rx=\"1\"/><path d=\"M6 9h12v7a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z\"/>",
+    ),
+    (
+        Rubrique::Passages,
+        "/passages",
+        "Passages",
+        "<path d=\"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z\"/><path d=\"m9 12 2 2 4-4\"/>",
     ),
     (
         Rubrique::Audit,
@@ -771,6 +778,7 @@ fn libelle_evenement(cle: &str) -> &'static str {
         "maj_proposee" => "Paquet proposé",
         "maj_telechargee" => "Paquet téléchargé",
         "maj_rapportee" => "Mise à jour rapportée",
+        "rapport_passage" => "Rapport de passage",
         "utilisateurs_importes" => "Utilisateurs importés",
         "utilisateur_verifie" => "Vérification d'utilisateur",
         "utilisateur_verrouille" => "Compte verrouillé (alerte)",
