@@ -46,3 +46,8 @@ CI locale (`lab/ci-locale-bu.sh borne-en-ligne-2`, état 5098fbd) : audit, fmt, 
 - QEMU profil en ligne avec l'écran Serveur (`tests/iso/qemu-en-ligne.sh` non rejoué) ; pas de
   capture de la page Serveur (Xvfb absent de bu).
 - Rapports minimaux de passage : PRÉVU (`docs/suite/protocole-agent.md` §10).
+
+## Non-régression de la borne v1 (hôte du lab, 20/11)
+Borne de dev 950 (ISO de TEST, **sans agent** : pas de `/etc/barbacane/agent.toml`), correctif construit depuis
+`origin/borne-en-ligne-2`, puis campagne rapide : **43 OK, 0 échec** (correctif, transfert, blanchiment, export,
+clé vide, illisible, retrait, verrouillage, journal) — `campagne-v1-950.txt`.
