@@ -1,5 +1,13 @@
 # Avancement — mission « Barbacane suite » (depuis le 19/11/2026, Claude en autonomie)
 
+## Chantiers en cours (règle du 20/11 : parallèle, CI locale avant push, jamais attendre la CI)
+| Chantier | Branche / worktree | État | Attend |
+|---|---|---|---|
+| CI locale | `ci-locale` / `wt-ci-locale` | `tests/ci-locale.sh` écrit ; `lab/ci-locale-bu.sh BRANCHE` (bu) | 1er passage sur bu (`logs/ci-locale-ci-locale.log`) |
+| Charte v2 | `borne-charte-v2` / `wt-charte` | verdict et séquences 3D corrigés après captures sur 950 ; OCR PPM corrigé | correctif + captures Jour/Nuit sur 950 (`logs/charte-apres.log`) |
+| Socle serveur (étape 5) | `serveur-socle` / `wt-serveur-socle` | sous-agent : PKI de test, passerelle mTLS rustls, tests | travail du sous-agent |
+| Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
+
 ## Plan et état
 | Étape | État |
 |---|---|
