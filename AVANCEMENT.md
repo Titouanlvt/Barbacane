@@ -18,7 +18,7 @@
 | Serveur : ISO durcie, LUKS2+TPM, nftables, chrony local, sauvegarde | `serveur-iso` / `wt-serveur-iso` (depuis `serveur-socle`) | sous-agent en cours | — |
 | Borne en ligne : `barbacane-agent`, `--profil en-ligne` | `borne-en-ligne` | **fusionné** (CI locale verte ; QEMU : enrôlement, battement, pare-feu ; ISO hors ligne identique à v1.0, `docs/preuves/2026-11-20-profil-en-ligne/`). Reste : jeton/empreinte dans admind, pied de page « en ligne », TPM, routes /maj/* côté agent | — |
 | Serveur : audit chaîné + mises à jour centralisées | `serveur-maj-audit` | **fusionné** c6ea2a4 (CI locale verte ; audit SHA-384 + points de contrôle ECDSA P-384, .bcu vérifié, plancher signé, routes /maj/*) | — |
-| Serveur : interface web d'administration (charte v2 simple, sans JS) | `serveur-web` / `wt-serveur-web` | sous-agent en cours | — |
+| Serveur : interface web d'administration (charte v2 simple, sans JS) | `serveur-web` | **fusionné** cfcf867 (CI locale verte ; mTLS admin + Argon2id, CSRF, CSP, 26 tests). Captures en cours (`lab/web-captures.sh`). PRÉVU : CA administrateurs dans racine-test.sh, double validation, TPM, service systemd | — |
 | Borne 950 remise en v1 | — | **fait** : code v1, transfert OK | — |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
