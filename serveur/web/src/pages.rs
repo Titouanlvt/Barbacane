@@ -33,6 +33,7 @@ pub enum Rubrique {
     Enrolement,
     Maj,
     Audit,
+    IsoBornes,
 }
 
 const SYMBOLE: &str = "<svg viewBox=\"0 0 64 64\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M6 58V12h4v4h4v-4h4v4h4v42ZM12.5 26v10h3V26ZM42 58V16h4v-4h4v4h4v-4h4v46ZM48.5 26v10h3V26ZM22 58V24h20v34ZM27 58V43a5 5 0 0 1 10 0v15Z\"/><rect class=\"b-herse\" x=\"27\" y=\"46\" width=\"10\" height=\"2\"/><rect class=\"b-herse\" x=\"27\" y=\"51\" width=\"10\" height=\"2\"/></svg>";
@@ -62,6 +63,12 @@ const NAV: &[(Rubrique, &str, &str, &str)] = &[
         "Journal d'audit",
         "<path d=\"M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01\"/>",
     ),
+    (
+        Rubrique::IsoBornes,
+        "/iso-bornes",
+        "ISO des bornes",
+        "<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/>",
+    ),
 ];
 
 fn tete(h: &mut Html, titre: &str) {
@@ -71,14 +78,14 @@ fn tete(h: &mut Html, titre: &str) {
 }
 
 /// Champ caché du jeton anti-CSRF (toujours le premier champ du formulaire).
-fn csrf(h: &mut Html, jeton: &str) {
+pub(crate) fn csrf(h: &mut Html, jeton: &str) {
     h.b("<input type=\"hidden\" name=\"csrf\" value=\"")
         .t(jeton)
         .b("\">");
 }
 
 /// Page complète avec navigation.
-fn coque(
+pub(crate) fn coque(
     ctx: &Contexte,
     rubrique: Rubrique,
     fil: &str,
@@ -121,7 +128,7 @@ fn coque(
 }
 
 /// Avis (information, alerte, blocage, succès).
-fn avis(h: &mut Html, classe: &'static str, texte: &str) {
+pub(crate) fn avis(h: &mut Html, classe: &'static str, texte: &str) {
     h.b("<div class=\"b-avis ")
         .b(classe)
         .b("\" role=\"status\"><span>")

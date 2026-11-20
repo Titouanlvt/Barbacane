@@ -43,7 +43,7 @@ administrateur avec empreinte retapée reste obligatoire.
 
 ## 3. Page web « ISO des bornes » (administrateur seulement)
 
-Conception retenue : téléchargement de la générique et de la hors ligne (empreintes affichées, avec
+Module `serveur/web/src/iso_bornes.rs`, routes `GET /iso-bornes`, `POST /iso-bornes/preparer`, `POST /iso-bornes/telecharger` ; configuration facultative `iso_bornes` (défaut `/var/lib/barbacane-serveur/iso-bornes`) et `outil_iso_borne` (défaut `/usr/local/sbin/barbacane-iso-borne`). ISO personnalisées dans `<registre>/iso-personnalisees/<id>/` (0700, 4 au plus), réservées par renommage atomique au téléchargement. Fonctionnement : téléchargement de la générique et de la hors ligne (empreintes affichées, avec
 le rappel de les comparer à la note imprimée) ; « Préparer une ISO pour un site » : jeton créé,
 ISO produite par l'outil, téléchargeable **une seule fois** (POST avec jeton anti-CSRF, flux sans
 mise en mémoire, durée de connexion allongée selon la taille), supprimée après le téléchargement
@@ -59,5 +59,5 @@ ou à l'expiration du jeton (1 h) ; chaque préparation et chaque téléchargeme
 | Lecture du jeton de l'ISO à l'installation (`fin-en-ligne.sh`) | FAIT (shellcheck) ; installation QEMU : PRÉVU |
 | ISO serveur : embarquement + empreintes + outil + xorriso | FAIT (refus prouvés sur bu) ; construction complète : PRÉVU |
 | Remaster sur la vraie ISO en ligne (1,1 Go) | FAIT (bu : 1296 fichiers identiques, seule différence `parametres.conf`, volume conservé, 5 refus) |
-| Page web, test « auditeur interdit », « téléchargement unique » | PRÉVU (cargo impossible : disque de bu plein) |
+| Page web + `serveur/web/tests/iso_bornes.rs` (auditeur 403 sur page et actions, empreinte affichée, générique téléchargée à l'identique, personnalisée téléchargée une fois puis supprimée, jeton jamais affiché, jeton de l'ISO : expiré refusé / accepté une fois / réutilisé refusé, ISO expirée supprimée, audit) | FAIT (bu) |
 | QEMU : borne installée depuis l'ISO personnalisée, demande déposée sans saisie | PRÉVU |
