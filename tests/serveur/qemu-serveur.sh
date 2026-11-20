@@ -9,7 +9,7 @@
 #
 #   tests/serveur/qemu-serveur.sh ISO DOSSIER [PKI]
 #     ISO    construite pour ce banc :
-#            serveur/iso/build-iso-serveur.sh --ip-bornes 10.0.2.15/24 --ip-admin 10.0.3.15/24 \
+#            serveur/iso/build-iso-serveur.sh --if-bornes ens8 --ip-bornes 10.0.2.15/24 --if-admin ens9 --ip-admin 10.0.3.15/24 \
 #              --pki-test PKI --hache-admin FICHIER --console-serie
 #     PKI    dossier de serveur/pki/racine-test.sh (certificat de borne pour l'essai mTLS) ; sans lui,
 #            la passerelle doit être « en attente de PKI » (condition non remplie, pas d'échec).
@@ -49,7 +49,8 @@ grep -q "^IP_BORNES='10.0.2.15/24'" "$W/serveur.conf" && grep -q "^IP_ADMIN='10.
     || { echo "ISO non construite pour ce banc (--ip-bornes 10.0.2.15/24 --ip-admin 10.0.3.15/24)" >&2; exit 2; }
 IF_BORNES=$(sed -n "s/^IF_BORNES='\(.*\)'/\1/p" "$W/serveur.conf")
 IF_ADMIN=$(sed -n "s/^IF_ADMIN='\(.*\)'/\1/p" "$W/serveur.conf")
-[ "$IF_BORNES" = enp0s8 ] && [ "$IF_ADMIN" = enp0s9 ] || { echo "interfaces attendues : enp0s8 (bornes), enp0s9 (admin)" >&2; exit 2; }
+# Machine QEMU « pc » : les cartes en 0x8 et 0x9 se nomment ens8 et ens9 (emplacement ACPI).
+[ "$IF_BORNES" = ens8 ] && [ "$IF_ADMIN" = ens9 ] || { echo "interfaces attendues : ens8 (bornes), ens9 (admin)" >&2; exit 2; }
 
 # ------------------------------------------------------------------ machine virtuelle
 rm -rf "$W/tpm"; mkdir -p "$W/tpm"
@@ -62,7 +63,7 @@ tpm() { # démarre swtpm pour UNE exécution de QEMU (il s'arrête à la déconn
     echo "swtpm n'a pas démarré" >&2; exit 1
 }
 AVEC_TPM=(-chardev "socket,id=chrtpm,path=$W/swtpm.sock" -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-crb,tpmdev=tpm0)
-# Deux réseaux isolés (restrict=on : aucune sortie possible) ; interfaces enp0s8 (bornes), enp0s9 (admin).
+# Deux réseaux isolés (restrict=on : aucune sortie possible) ; interfaces ens8 (bornes), ens9 (admin).
 commun=(-enable-kvm -cpu host -m 4096 -smp 2 -bios "$OVMF" -vga std -display none
     -drive "file=$W/disque.qcow2,if=none,id=disque" -device "virtio-blk-pci,drive=disque,bootindex=1"
     -netdev user,id=nb,restrict=on,net=10.0.2.0/24 -device virtio-net-pci,netdev=nb,addr=0x8
@@ -121,7 +122,9 @@ for _ in $(seq 120); do
     kill -0 $PID 2>/dev/null || break
 done
 mon mon.sock "screendump $W/ecran.ppm"
-lisible "$W/demarrage.log" | sed -n '/=== BARBACANE-ETAT DEBUT/,/=== BARBACANE-ETAT FIN/p' > "$W/etat.txt"
+# Sur la console, chaque ligne du service porte le préfixe « [ t] barbacane-serveur-etat[pid]: ».
+lisible "$W/demarrage.log" | sed -nE 's/^.*barbacane-serveur-etat\[[0-9]+\]: //p' \
+    | sed -n '/=== BARBACANE-ETAT DEBUT/,/=== BARBACANE-ETAT FIN/p' > "$W/etat.txt"
 if [ "$lu" = 1 ]; then
     ok "démarré sans phrase de passe (TPM) : état du serveur lu sur la console"
 else
@@ -178,7 +181,7 @@ for ch in entree transit sortie; do
     awk -v c="chain $ch" '$0 ~ c { p = 1 } p && /policy/ { print; exit }' <<<"$nft" | grep -q 'policy drop' \
         && ok "pare-feu : chaîne $ch, politique drop" || echec "pare-feu : chaîne $ch sans politique drop"
 done
-autorises=$(grep -E '\baccept\b' <<<"$nft" | sed 's/^[[:space:]]*//' | sort)
+autorises=$(grep -E '\baccept\b' <<<"$nft" | sed 's/^[[:space:]]*//' | sort || true)
 attendu=$(printf '%s\n' 'ct state established,related accept' 'ct state established,related accept' 'iif "lo" accept' \
     "iifname \"$IF_ADMIN\" tcp dport 443 ct state new accept" \
     "iifname \"$IF_BORNES\" ip daddr 10.0.2.15 tcp dport $PORT ct state new accept" 'oif "lo" accept' | sort)
