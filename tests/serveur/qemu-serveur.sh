@@ -90,8 +90,14 @@ while kill -0 $PID 2>/dev/null; do
     if lisible "$W/installation.log" | grep -q '\[!!\]'; then
         sleep 5; kill $PID 2>/dev/null || true; break
     fi
+    # Avec le TPM émulé, QEMU ne s'arrête pas toujours seul au redémarrage final malgré -no-reboot.
+    if lisible "$W/installation.log" | grep -q 'Requesting system reboot'; then
+        sleep 10; mon mon-install.sock quit; sleep 5; break
+    fi
 done
-if ! wait $PID; then
+if lisible "$W/installation.log" | grep -q 'Requesting system reboot'; then
+    wait $PID 2>/dev/null || true
+elif ! wait $PID; then
     echo "ÉCHEC : installation interrompue, fin de la console :" >&2
     lisible "$W/installation.log" | grep -v '^\s*$' | awk '!vu[$0]++' | tail -n 60
     exit 1
