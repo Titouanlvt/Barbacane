@@ -582,6 +582,25 @@ impl Stockage {
         self.dossier.join("registre.json")
     }
 
+    /// Dossier d'état (registre, journal d'audit, mises à jour).
+    pub fn dossier(&self) -> &Path {
+        &self.dossier
+    }
+
+    /// Journal d'audit chaîné (`audit.jsonl`, ajout seul ; `docs/suite/serveur-maj-audit.md`).
+    pub fn journal_audit(&self) -> barbacane_audit::Journal {
+        barbacane_audit::Journal::new(self.dossier.join("audit.jsonl"))
+    }
+
+    /// Ajoute un événement au journal d'audit, horodaté à la réception. Une erreur doit faire
+    /// échouer l'opération (aucune action sans trace) : appeler DANS la transaction.
+    pub fn auditer(&self, acteur: &str, evenement: barbacane_audit::Evenement) -> Result<()> {
+        self.journal_audit()
+            .ajouter(crate::outils::maintenant(), acteur, evenement)
+            .map(|_| ())
+            .context("journal d'audit")
+    }
+
     fn verrou(&self) -> Result<File> {
         let f = OpenOptions::new()
             .create(true)

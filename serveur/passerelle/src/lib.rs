@@ -12,6 +12,7 @@
 
 pub mod admin;
 pub mod ca;
+pub mod maj;
 pub mod outils;
 pub mod registre;
 
@@ -23,10 +24,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail};
+use barbacane_audit::{Anomalie, Evenement};
+use barbacane_protocole::maj::{
+    AccuseBattementMaj, AccuseRapportMaj, DemandeTelechargement, RapportMaj, route as route_maj,
+};
 use barbacane_protocole::{
-    AccuseDemande, Battement, CodeErreur, ConsultationDemande, DemandeEnrolement,
-    DemandeRenouvellement, EtatDemande, Message, ReponseCertificat, ReponseErreur, Sante,
-    TAILLE_ENTETE_MAX, VERSION, decoder, encoder, route,
+    AccuseBattement, AccuseDemande, Battement, CodeErreur, ConsultationDemande, DemandeEnrolement,
+    DemandeRenouvellement, ECART_HORLOGE_MAX_S, EtatBorne, EtatDemande, Message, ReponseCertificat,
+    ReponseErreur, Sante, TAILLE_ENTETE_MAX, VERSION, decoder, ecart_horloge, encoder, route,
 };
 use rustls::crypto::CryptoProvider;
 use rustls::crypto::ring::{cipher_suite, kx_group};
@@ -40,6 +45,7 @@ use x509_parser::prelude::{ASN1Time, FromDer, X509Certificate};
 use x509_parser::revocation_list::CertificateRevocationList;
 
 use crate::ca::{CaBornes, verifier_csr};
+use crate::maj::DepotMaj;
 use crate::outils::{aleatoire, maintenant, serie_hex};
 use crate::registre::{Identite, Refus, Stockage, code_de};
 
@@ -52,6 +58,11 @@ const DELAI: Duration = Duration::from_secs(10);
 /// Durée TOTALE d'une connexion de service (poignée de main + requête + réponse) : un client
 /// lent (« slowloris ») ne garde pas une place au-delà.
 pub const DELAI_TOTAL_SERVICE: Duration = Duration::from_secs(20);
+/// Téléchargements de `.bcu` simultanés au plus.
+pub const TELECHARGEMENTS_MAX: usize = 8;
+/// Débit minimal exigé d'un téléchargement : la durée totale admise est
+/// [`DELAI_TOTAL_SERVICE`] + 1 s par tranche de ce nombre d'octets.
+pub const DEBIT_MIN_TELECHARGEMENT: u64 = 512 * 1024;
 /// Durée TOTALE d'une connexion d'enrôlement (écoute sans authentification : plus court).
 pub const DELAI_TOTAL_ENROLEMENT: Duration = Duration::from_secs(10);
 
@@ -452,6 +463,13 @@ const ROUTES_SERVICE: &[(&str, &str, usize)] = &[
         route::RENOUVELLEMENT,
         DemandeRenouvellement::TAILLE_MAX,
     ),
+    ("POST", route_maj::BATTEMENT, Battement::TAILLE_MAX),
+    (
+        "POST",
+        route_maj::TELECHARGEMENT,
+        DemandeTelechargement::TAILLE_MAX,
+    ),
+    ("POST", route_maj::RAPPORT, RapportMaj::TAILLE_MAX),
 ];
 
 // ───────────────────────────── Passerelle ─────────────────────────────────────────────────────
@@ -463,6 +481,29 @@ pub struct Passerelle {
     pub ca: CaBornes,
 }
 
+/// Téléchargements en cours (tout le processus).
+static TELECHARGEMENTS: AtomicUsize = AtomicUsize::new(0);
+
+/// Acteur audité de la passerelle.
+const ACTEUR: &str = "passerelle";
+
+/// Place de téléchargement, rendue à la destruction.
+struct Place;
+impl Drop for Place {
+    fn drop(&mut self) {
+        TELECHARGEMENTS.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
+/// Paquet prêt à être envoyé à une borne.
+struct Envoi {
+    fichier: std::fs::File,
+    taille: u64,
+    uuid: String,
+    version_maj: u64,
+    _place: Place,
+}
+
 impl Passerelle {
     /// Contrôle au démarrage : configurations TLS (donc CRL valide), CA bornes, registre.
     pub fn nouvelle(config: Config) -> Result<Arc<Passerelle>> {
@@ -471,11 +512,17 @@ impl Passerelle {
         let ca = CaBornes::charger(&config.ca_bornes, &config.cle_ca_bornes)?;
         let stockage = Stockage::ouvrir(&config.registre)?;
         stockage.lire()?;
+        DepotMaj::ouvrir(&stockage)?.lire()?;
         Ok(Arc::new(Passerelle {
             config,
             stockage,
             ca,
         }))
+    }
+
+    /// Dépôt des mises à jour (dossier `maj/` du registre).
+    pub fn maj(&self) -> Result<DepotMaj> {
+        DepotMaj::ouvrir(&self.stockage)
     }
 
     /// Route d'enrôlement (aucune authentification du client).
@@ -494,6 +541,13 @@ impl Passerelle {
                         &d.version_logiciel,
                         &id,
                         t,
+                    )?;
+                    self.stockage.auditer(
+                        ACTEUR,
+                        Evenement::EnrolementDemande {
+                            demande: id.clone(),
+                            empreinte: csr.empreinte.clone(),
+                        },
                     )
                 })?;
                 self.stockage.journaliser(
@@ -535,6 +589,111 @@ impl Passerelle {
         admin::publier_crl(&self.ca, &self.config, reg, t)
     }
 
+    /// Battement d'une borne authentifiée. Anomalies auditées au changement d'état : dérive
+    /// d'horloge, passage hors service, borne refusée.
+    fn battre(&self, id: &Identite, b: &Battement, t: u64) -> Result<AccuseBattement> {
+        let resultat = self.stockage.transaction(|reg| {
+            if reg.authentifier(id, t)? {
+                self.republier_crl(reg, t)?;
+            }
+            let (avant_derive, avant_hs) = reg
+                .bornes
+                .iter()
+                .find(|x| x.uuid == id.uuid)
+                .map(|x| {
+                    (
+                        x.ecart_horloge_s
+                            .is_some_and(|e| e.unsigned_abs() > ECART_HORLOGE_MAX_S),
+                        x.dernier_battement
+                            .as_ref()
+                            .is_some_and(|d| d.etat == EtatBorne::HorsService),
+                    )
+                })
+                .unwrap_or_default();
+            let r = reg.battement(&id.uuid, b, t)?;
+            let (ecart_s, derive) = ecart_horloge(b.heure_borne, t);
+            let anomalie = if derive && !avant_derive {
+                Some(Anomalie::HorlogeDerivee)
+            } else if !derive && b.etat == EtatBorne::HorsService && !avant_hs {
+                Some(Anomalie::HorsService)
+            } else {
+                None
+            };
+            if let Some(anomalie) = anomalie {
+                self.stockage.auditer(
+                    ACTEUR,
+                    Evenement::BattementAnormal {
+                        borne: id.uuid.clone(),
+                        anomalie,
+                        ecart_s,
+                    },
+                )?;
+            }
+            Ok(r)
+        });
+        match resultat {
+            Ok(Ok(accuse)) => Ok(accuse),
+            Ok(Err(code)) => Err(Refus(code).into()),
+            Err(e) => {
+                if code_de(&e) == CodeErreur::BorneRefusee {
+                    self.auditer_refus(id)?;
+                }
+                Err(e)
+            }
+        }
+    }
+
+    /// Borne présentant un certificat valide mais refusée par le registre.
+    fn auditer_refus(&self, id: &Identite) -> Result<()> {
+        if barbacane_audit::ident_valide(&id.uuid) {
+            self.stockage.auditer(
+                ACTEUR,
+                Evenement::BattementAnormal {
+                    borne: id.uuid.clone(),
+                    anomalie: Anomalie::BorneRefusee,
+                    ecart_s: 0,
+                },
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Contrôle applicatif seul (borne connue, active, certificat courant).
+    fn authentifier(&self, id: &Identite, t: u64) -> Result<()> {
+        let r = self.stockage.transaction(|reg| {
+            if reg.authentifier(id, t)? {
+                self.republier_crl(reg, t)?;
+            }
+            Ok(())
+        });
+        if let Err(e) = &r
+            && code_de(e) == CodeErreur::BorneRefusee
+        {
+            self.auditer_refus(id)?;
+        }
+        r
+    }
+
+    /// `POST /maj/telechargement` : contrôles, place de téléchargement, fichier ouvert.
+    fn preparer_envoi(&self, r: &Requete, id: Option<&Identite>) -> Result<Envoi> {
+        let id = id.ok_or(Refus(CodeErreur::BorneRefusee))?;
+        let d: DemandeTelechargement = decoder(&r.corps).map_err(Refus)?;
+        self.authentifier(id, maintenant())?;
+        if TELECHARGEMENTS.fetch_add(1, Ordering::SeqCst) >= TELECHARGEMENTS_MAX {
+            TELECHARGEMENTS.fetch_sub(1, Ordering::SeqCst);
+            return Err(Refus(CodeErreur::Surcharge).into());
+        }
+        let place = Place;
+        let (fichier, taille) = self.maj()?.fichier_propose(&id.uuid, d.version_maj)?;
+        Ok(Envoi {
+            fichier,
+            taille,
+            uuid: id.uuid.clone(),
+            version_maj: d.version_maj,
+            _place: place,
+        })
+    }
+
     /// Route de service (borne authentifiée par mTLS).
     pub fn service(&self, r: &Requete, cn: &str, id: Option<&Identite>) -> Result<(u16, Vec<u8>)> {
         let t = maintenant();
@@ -553,16 +712,33 @@ impl Passerelle {
         match r.chemin.as_str() {
             route::BATTEMENT => {
                 let b: Battement = decoder(&r.corps).map_err(Refus)?;
-                let resultat = self.stockage.transaction(|reg| {
-                    if reg.authentifier(id, t)? {
-                        self.republier_crl(reg, t)?;
-                    }
-                    reg.battement(&id.uuid, &b, t)
-                })?;
-                match resultat {
-                    Ok(accuse) => json(200, &accuse),
-                    Err(code) => Err(Refus(code).into()),
-                }
+                json(200, &self.battre(id, &b, t)?)
+            }
+            route_maj::BATTEMENT => {
+                let b: Battement = decoder(&r.corps).map_err(Refus)?;
+                let a = self.battre(id, &b, t)?;
+                json(
+                    200,
+                    &AccuseBattementMaj {
+                        version: VERSION,
+                        heure_serveur: a.heure_serveur,
+                        ecart_s: a.ecart_s,
+                        prochain_battement_s: a.prochain_battement_s,
+                        mise_a_jour: self.maj()?.offre(&id.uuid)?,
+                    },
+                )
+            }
+            route_maj::RAPPORT => {
+                let m: RapportMaj = decoder(&r.corps).map_err(Refus)?;
+                self.authentifier(id, t)?;
+                self.maj()?.rapport(&id.uuid, m.version_maj, m.resultat)?;
+                json(
+                    200,
+                    &AccuseRapportMaj {
+                        version: VERSION,
+                        heure_serveur: t,
+                    },
+                )
             }
             route::RENOUVELLEMENT => {
                 let d: DemandeRenouvellement = decoder(&r.corps).map_err(Refus)?;
@@ -570,7 +746,14 @@ impl Passerelle {
                     if reg.authentifier(id, t)? {
                         self.republier_crl(reg, t)?;
                     }
-                    reg.renouveler(&self.ca, id, &d.csr_pem, t)
+                    let pem = reg.renouveler(&self.ca, id, &d.csr_pem, t)?;
+                    self.stockage.auditer(
+                        ACTEUR,
+                        Evenement::CertificatRenouvele {
+                            borne: id.uuid.clone(),
+                        },
+                    )?;
+                    Ok(pem)
                 })?;
                 self.stockage.journaliser(
                     t,
@@ -629,6 +812,16 @@ fn traiter(flux: TcpStream, p: &Passerelle, enrolement: bool) -> Result<String> 
             let (s, c) = erreur(code);
             (s, c, format!("requête refusée : {code}"))
         }
+        Ok(r) if !enrolement && r.chemin == route_maj::TELECHARGEMENT => {
+            match p.preparer_envoi(&r, id.as_ref()) {
+                Ok(envoi) => return envoyer_paquet(tls, p, envoi, &cn),
+                Err(e) => {
+                    let code = code_de(&e);
+                    let (s, c) = erreur(code);
+                    (s, c, format!("{} {} → {code} ({e:#})", r.methode, r.chemin))
+                }
+            }
+        }
         Ok(r) => {
             let resultat = if enrolement {
                 p.enrolement(&r)
@@ -649,6 +842,39 @@ fn traiter(flux: TcpStream, p: &Passerelle, enrolement: bool) -> Result<String> 
     tls.conn.send_close_notify();
     tls.flush()?;
     Ok(format!("« {cn} » {resume}"))
+}
+
+/// Envoie un `.bcu` (application/octet-stream) ; l'échéance de la connexion est allongée selon
+/// la taille (débit minimal [`DEBIT_MIN_TELECHARGEMENT`]). État `telechargee` au dernier octet.
+fn envoyer_paquet(
+    mut tls: StreamOwned<ServerConnection, FluxBorne>,
+    p: &Passerelle,
+    envoi: Envoi,
+    cn: &str,
+) -> Result<String> {
+    tls.sock.fin = Instant::now()
+        + DELAI_TOTAL_SERVICE
+        + Duration::from_secs(envoi.taille / DEBIT_MIN_TELECHARGEMENT);
+    let entete = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        envoi.taille
+    );
+    tls.write_all(entete.as_bytes())?;
+    let envoye = std::io::copy(&mut (&envoi.fichier).take(envoi.taille), &mut tls)?;
+    if envoye != envoi.taille {
+        bail!(
+            "paquet tronqué à l'envoi ({envoye} / {} octets)",
+            envoi.taille
+        );
+    }
+    tls.conn.send_close_notify();
+    tls.flush()?;
+    p.maj()?
+        .marquer_telechargee(&envoi.uuid, envoi.version_maj)?;
+    Ok(format!(
+        "« {cn} » paquet {} envoyé ({} octets)",
+        envoi.version_maj, envoi.taille
+    ))
 }
 
 fn boucle(ecoute: TcpListener, p: Arc<Passerelle>, enrolement: bool) -> Result<()> {

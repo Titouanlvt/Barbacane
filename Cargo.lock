@@ -852,9 +852,11 @@ name = "barbacane-passerelle"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "barbacane-audit",
  "barbacane-protocole",
  "data-encoding",
  "hex",
+ "minisign-verify",
  "rcgen",
  "ring",
  "rustls",
