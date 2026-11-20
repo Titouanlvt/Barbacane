@@ -17,7 +17,8 @@
 | Serveur : enrôlement, protocole agent, battement, heure | `serveur-enrolement` | **fusionné** (01b1b1e, CI locale verte, 35 tests) ; délai total par connexion (20 s / 10 s, 8 places d'enrôlement) fusionné 9eb8df9 | — |
 | Serveur : ISO durcie, LUKS2+TPM, nftables, chrony local, sauvegarde | `serveur-iso` / `wt-serveur-iso` (depuis `serveur-socle`) | sous-agent en cours | — |
 | Borne en ligne : `barbacane-agent`, `--profil en-ligne`, nftables sortie serveur seul | `borne-en-ligne` / `wt-borne-en-ligne` | sous-agent en cours (ISO hors ligne doit rester identique) | — |
-| Serveur : audit chaîné + mises à jour centralisées (dépôt .bcu vérifié, plancher, diffusion) | `serveur-maj-audit` / `wt-serveur-maj-audit` | sous-agent en cours | — |
+| Serveur : audit chaîné + mises à jour centralisées | `serveur-maj-audit` | **fusionné** c6ea2a4 (CI locale verte ; audit SHA-384 + points de contrôle ECDSA P-384, .bcu vérifié, plancher signé, routes /maj/*) | — |
+| Serveur : interface web d'administration (charte v2 simple, sans JS) | `serveur-web` / `wt-serveur-web` | sous-agent en cours | — |
 | Borne 950 remise en v1 | — | **fait** : code v1, transfert OK | — |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
