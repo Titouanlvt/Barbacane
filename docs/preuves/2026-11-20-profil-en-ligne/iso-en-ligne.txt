@@ -1,0 +1,68 @@
+paquets installés par Barbacane : 273
+OK : ISO en ligne avec l'agent durci ; rien en entrée ; sortie vers 10.0.2.2:{43118,43117} seulement (agent)
+code 0
+=== /barbacane/en-ligne/nftables.conf
+#!/usr/sbin/nft -f
+# Barbacane : borne EN LIGNE (profil en-ligne seulement ; la borne hors ligne garde
+# nftables.conf). Rien n'est accepté en entrée sauf les réponses du serveur à une connexion
+# ouverte par la borne ; en sortie, SEUL le compte barbacane-agent peut joindre le serveur, et
+# seulement sur ses deux ports (enrôlement, service). IPv6 entièrement bloqué.
+# Modèle : 10.0.2.2, 43118, 43117 remplacés par build-iso.sh ; les lignes
+# « #DHCP# » ne sont gardées (décommentées) qu'avec --reseau dhcp.
+flush ruleset
+
+table inet barbacane {
+    chain input {
+        type filter hook input priority 0; policy drop;
+        iif "lo" accept
+        ip saddr 10.0.2.2 tcp sport { 43118, 43117 } ct state established accept
+        udp sport 67 udp dport 68 ct state established accept
+    }
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+    }
+    chain output {
+        type filter hook output priority 0; policy drop;
+        oif "lo" accept
+        ip daddr 10.0.2.2 tcp dport { 43118, 43117 } meta skuid "barbacane-agent" ct state { new, established } accept
+        udp sport 68 udp dport 67 meta skuid "systemd-network" accept
+    }
+}
+=== /barbacane/en-ligne/10-barbacane.network
+# Borne en ligne : IPv4 seulement, aucune découverte (LLDP, IPv6, mDNS).
+[Match]
+Type=ether
+Name=en* eth*
+
+[Network]
+DHCP=ipv4
+LinkLocalAddressing=no
+IPv6AcceptRA=no
+LLDP=no
+EmitLLDP=no
+MulticastDNS=no
+LLMNR=no
+
+[DHCPv4]
+UseDNS=no
+UseNTP=no
+UseHostname=no
+SendHostname=no
+UseDomains=no
+=== /barbacane/en-ligne/serveur.conf
+# Écrit par build-iso.sh --profil en-ligne : seule adresse joignable par l'agent.
+[Service]
+IPAddressAllow=10.0.2.2/32
+=== /barbacane/en-ligne/agent.toml
+# Écrit par build-iso.sh --profil en-ligne (2026-11-20)
+adresse = "10.0.2.2"
+nom_serveur = "passerelle.barbacane.invalid"
+port_enrolement = 43118
+port_service = 43117
+ca_serveur = "/etc/barbacane/agent/ca-serveur.pem"
+empreinte_ca_serveur = "c2c272d370e04459c713dd8d7faadee329c4bb842438a75da846c7b818375e84"
+d-i preseed/late_command string sh /cdrom/barbacane/fin-installation.sh && sh /cdrom/barbacane/en-ligne/fin-en-ligne.sh
+=== paquets : ISO en ligne comparée à l ISO hors ligne
+5a6
+> barbacane-agent_0.1.0-1_amd64.deb
+aceda33f7c9fdae7dceecddb12946349e5ec13152f928c94c9e6aad37c78798a  ../el/barbacane-el.iso

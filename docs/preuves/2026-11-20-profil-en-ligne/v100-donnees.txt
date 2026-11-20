@@ -1,0 +1,10 @@
+./
+./var/
+./var/lib/
+./var/lib/barbacane/
+./var/lib/barbacane/yara/
+./var/lib/clamav/
+./var/lib/clamav/bytecode.cvd
+./var/lib/clamav/daily.cvd
+./var/lib/clamav/freshclam.dat
+./var/lib/clamav/main.cvd

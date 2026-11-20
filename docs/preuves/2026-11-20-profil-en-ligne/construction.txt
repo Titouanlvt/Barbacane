@@ -1,0 +1,63 @@
+DEBUT HL 2026-11-20T10:32:59+00:00
+Construction de l'ISO Barbacane (journal : /travail/iso-en-ligne/hl/barbacane-hl.log)
+[1/6] Outils de construction
+      OK (0 min 02 s)
+[2/6] Paquets Barbacane (compilation : 10 à 40 min)
+      Mémoire disponible : 21 Go (+ 0 Go d'échange) → 7 compilation(s) en parallèle
+      OK (10 min 02 s)
+[3/6] ISO netinst Debian 13 (téléchargement et empreinte)
+      debian-13.7.0-amd64-netinst.iso (empreinte vérifiée)
+      OK (0 min 23 s)
+[4/6] Dépendances (résolues dans un Debian 13 minimal)
+      272 paquets embarqués
+      OK (0 min 44 s)
+[5/6] Données initiales (base ClamAV, clé de mise à jour)
+      base ClamAV : 3 fichier(s)
+      clé de mise à jour : /travail/iso-en-ligne/src/systeme/iso/maj.pub
+      OK (0 min 12 s)
+[6/6] Assemblage de l'ISO
+      OK (0 min 04 s)
+
+ISO prête en 11 min 29 s
+  fichier  : /travail/iso-en-ligne/hl/barbacane-hl.iso (1.1G)
+  sha256   : a2ea67781829c6ec9ebde77b13032a70124caad0892d6bb419241f6549c524ae   (à noter avec la date)
+  journal  : /travail/iso-en-ligne/hl/barbacane-hl.log
+Étape suivante : copier l'ISO sur une clé USB (guide, étape 2).
+HL CODE 0
+paquets installés par Barbacane : 272
+OK : ISO hors ligne sans agent, sans paquet réseau, sortie bloquée (boucle locale seule)
+HL GARDE 0
+DEBUT EL 2026-11-20T10:44:30+00:00
+Construction de l'ISO Barbacane (journal : /travail/iso-en-ligne/el/barbacane-el.log)
+[1/6] Outils de construction
+      OK (0 min 02 s)
+[2/6] Paquets Barbacane (compilation : 10 à 40 min)
+      Mémoire disponible : 14 Go (+ 0 Go d'échange) → 4 compilation(s) en parallèle
+      OK (1 min 14 s)
+[3/6] ISO netinst Debian 13 (téléchargement et empreinte)
+      debian-13.7.0-amd64-netinst.iso (empreinte vérifiée)
+      OK (0 min 22 s)
+[4/6] Dépendances (résolues dans un Debian 13 minimal)
+      273 paquets embarqués
+      OK (0 min 33 s)
+[5/6] Données initiales (base ClamAV, clé de mise à jour)
+      base ClamAV : 3 fichier(s)
+      clé de mise à jour : /travail/iso-en-ligne/src/systeme/iso/maj.pub
+      profil en-ligne : serveur 10.0.2.2 (enrôlement 43118, service 43117), réseau dhcp, CA serveur épinglée c2c272d370e04459c713dd8d7faadee329c4bb842438a75da846c7b818375e84
+      OK (0 min 12 s)
+[6/6] Assemblage de l'ISO
+      OK (0 min 03 s)
+
+ISO prête en 2 min 28 s
+  fichier  : /travail/iso-en-ligne/el/barbacane-el.iso (1.1G)
+  sha256   : aceda33f7c9fdae7dceecddb12946349e5ec13152f928c94c9e6aad37c78798a   (à noter avec la date)
+  journal  : /travail/iso-en-ligne/el/barbacane-el.log
+Étape suivante : copier l'ISO sur une clé USB (guide, étape 2).
+EL CODE 0
+paquets installés par Barbacane : 273
+OK : ISO en ligne avec l'agent durci ; rien en entrée ; sortie vers 10.0.2.2:{43118,43117} seulement (agent)
+EL GARDE 0
+paquets installés par Barbacane : 273
+ÉCHEC : paquet réseau interdit dans l'ISO hors ligne : barbacane-agent
+EL HORS-LIGNE (doit échouer) 1
+FIN

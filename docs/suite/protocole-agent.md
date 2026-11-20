@@ -279,7 +279,8 @@ sans réponse HTTP.
 
 ## 8. PRÉVU
 
-- `barbacane-agent` (borne, profil `en-ligne`, D12), clés dans le TPM ; interface web
+- `barbacane-agent` : enrôlement, battement, renouvellement et mode dégradé **faits** le 20/11
+  (`borne/agent/`, `docs/suite/borne-en-ligne.md`) ; reste : clés dans le TPM ; interface web
   d'administration (D10) à la place de la commande locale ; double validation des révocations
   massives (conception §3.10).
 - Plancher signé hors ligne et politique à chaud dans la réponse de retrait (conception §3.7) ;

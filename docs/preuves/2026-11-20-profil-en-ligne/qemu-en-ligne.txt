@@ -1,0 +1,73 @@
+paquets installés par Barbacane : 273
+OK : ISO en ligne avec l'agent durci ; rien en entrée ; sortie vers 10.0.2.2:{43118,43117} seulement (agent)
+== installation (sans carte réseau)
+== passerelle de test, jeton déposé sur le disque, sonde (test uniquement)
+== premier démarrage (réseau QEMU user, DHCP)
+demande  94e7d2cbfdbcb3d27636f1ea575e89da
+  site       site-1
+  déposée    2026-11-20 10:51:27 UTC
+  logiciel   0.1.0
+  empreinte  e0e5 6838 05bd d75c 4ad1 6164 50b0 8e9a cd9f ff8a 505a 72ae 8e44 7aae 6198 75a8
+Comparer l'empreinte à celle affichée par la borne AVANT de valider.
+Demande validée : borne cedfbf4b-97e8-4fa2-9e15-f039cfef5ba7 (certificat de 90 jours émis).
+Heure du serveur : 2026-11-20 10:52:05 UTC
+cedfbf4b-97e8-4fa2-9e15-f039cfef5ba7  borne-qemu   site-1   active    version=0.1.0 état=EnService vue=2026-11-20 10:51:57 UTC écart=-1s expire=2027-02-18 10:51:35 UTC
+OK : battement de la borne visible dans la supervision
+Fri Nov 20 10:52:26 AM UTC 2026
+active
+active
+active
+lo               UNKNOWN        127.0.0.1/8 
+ens3             UP             10.0.2.15/24 metric 1024 
+table inet barbacane {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ip saddr 10.0.2.2 tcp sport { 43117, 43118 } ct state established accept
+		udp sport 67 udp dport 68 ct state established accept
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+	}
+
+	chain output {
+		type filter hook output priority filter; policy drop;
+		oif "lo" accept
+		ip daddr 10.0.2.2 tcp dport { 43117, 43118 } meta skuid 106 ct state { established, new } accept
+		udp sport 68 udp dport 67 meta skuid 998 accept
+	}
+}
+State Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
+{
+  "mode": "connectee",
+  "empreinte": null,
+  "derniere_liaison": 1795171916,
+  "ecart_horloge_s": -1,
+  "horloge_derivee": false,
+  "certificat_expire_le": 1802947895,
+  "rapports_en_attente": 0,
+  "file_pleine": false,
+  "message": "liaison avec le serveur établie"
+}total 8
+-rw------- 1 barbacane-agent barbacane-agent 2014 Nov 20 11:51 chaine.pem
+-rw------- 1 barbacane-agent barbacane-agent  241 Nov 20 11:51 cle.pem
+IPAddressAllow=10.0.2.2/32
+IPAddressDeny=::/0 0.0.0.0/0
+CapabilityBoundingSet=
+User=barbacane-agent
+SORTIE root vers 10.0.2.2/22 : bloquée
+SORTIE root vers 10.0.2.2/43117 : bloquée
+SORTIE root vers 10.0.2.3/53 : bloquée
+Nov 20 11:51:26 barbacane systemd[1]: Started barbacane-agent.service - Barbacane : agent de la borne en ligne (seul accès réseau, vers le seul serveur).
+Nov 20 11:51:26 barbacane barbacane-agent[671]: agent : serveur 10.0.2.2 (enrôlement 43118, service 43117), CA serveur épinglée c2c272d370e04459c713dd8d7faadee329c4bb842438a75da846c7b818375e84
+Nov 20 11:51:26 barbacane barbacane-agent[671]: agent : demande déposée ; empreinte à comparer par l'administrateur : e0e5683805bdd75c4ad1616450b08e9acd9fff8a505a72ae8e447aae619875a8
+Nov 20 11:51:56 barbacane barbacane-agent[671]: agent : certificat de la borne installé
+OK : agent connecté (etat.json)
+OK : sortie root vers 10.0.2.2/22 bloquée
+OK : sortie root vers 10.0.2.2/43117 bloquée
+OK : sortie root vers 10.0.2.3/53 bloquée
+OK : service restreint à 10.0.2.2/32
+OK : clé de la borne 0600
+OK : interface démarrée (1)
+QEMU FIN 0
