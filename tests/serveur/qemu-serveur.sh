@@ -43,8 +43,8 @@ n=$(wc -l < "$W/debs.txt")
 [ "$n" -gt 50 ] || { echo "ÉCHEC : liste des paquets de l'ISO vide ($n)" >&2; exit 1; }
 if grep -xFf "$INTERDITS" "$W/debs.txt"; then echec "paquet interdit dans l'ISO"; else ok "ISO : $n paquets, aucun interdit"; fi
 grep -q '^d-i netcfg/enable boolean false' "$W/preseed.cfg" && ok "preseed : aucun réseau à l'installation" || echec "preseed : réseau actif"
-grep -q '^d-i partman-auto/method string crypto' "$W/preseed.cfg" && grep -q '^d-i partman-crypto/keysize string 512' "$W/preseed.cfg" \
-    && ok "preseed : disque chiffré, clé de 512 bits (AES-256-XTS)" || echec "preseed : chiffrement du disque absent"
+grep -q '^d-i partman-auto/method string crypto' "$W/preseed.cfg" && grep -q '^d-i partman-crypto/keysize string 256' "$W/preseed.cfg" \
+    && ok "preseed : disque chiffré, AES-256 (clé XTS de 512 bits : partman double 256)" || echec "preseed : chiffrement du disque absent"
 PHRASE=$(sed -n 's/^d-i partman-crypto\/passphrase password //p' "$W/preseed.cfg")
 grep -q "^IP_BORNES='10.0.2.15/24'" "$W/serveur.conf" && grep -q "^IP_ADMIN='10.0.3.15/24'" "$W/serveur.conf" \
     || { echo "ISO non construite pour ce banc (--ip-bornes 10.0.2.15/24 --ip-admin 10.0.3.15/24)" >&2; exit 2; }
@@ -84,7 +84,13 @@ timeout 40m qemu-system-x86_64 "${commun[@]}" "${AVEC_TPM[@]}" -no-reboot -seria
     -drive "if=none,id=cle,format=raw,readonly=on,file=$ISO" -device "usb-storage,drive=cle" \
     -monitor "unix:$W/mon-install.sock,server,nowait" &
 PID=$!
-while kill -0 $PID 2>/dev/null; do sleep 60; mon mon-install.sock "screendump $W/installateur.ppm"; done
+# Une boîte d'erreur de l'installateur (« [!!] … failed ») ne se ferme jamais seule : arrêt immédiat.
+while kill -0 $PID 2>/dev/null; do
+    sleep 30; mon mon-install.sock "screendump $W/installateur.ppm"
+    if lisible "$W/installation.log" | grep -qiE 'failed|an error occurred|installation step failed'; then
+        sleep 5; kill $PID 2>/dev/null || true; break
+    fi
+done
 if ! wait $PID; then
     echo "ÉCHEC : installation interrompue, fin de la console :" >&2
     lisible "$W/installation.log" | grep -v '^\s*$' | awk '!vu[$0]++' | tail -n 60
