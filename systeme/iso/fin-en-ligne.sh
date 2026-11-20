@@ -23,3 +23,20 @@ install -m 0644 $X/serveur.conf $T/etc/systemd/system/barbacane-agent.service.d/
 # résolveur DNS, pas de synchronisation NTP (l'heure vient du serveur, canal authentifié).
 in-target systemctl unmask systemd-networkd.service systemd-networkd.socket
 in-target systemctl enable systemd-networkd.service barbacane-agent.service nftables.service
+# ISO PERSONNALISÉE par le serveur (serveur/iso-bornes, docs/suite/serveur-iso-bornes.md) :
+# fichier de paramètres ajouté par remaster. Adresse et port doivent être ceux de l'ISO ;
+# le jeton devient le fichier « jeton » de l'agent, lu au premier démarrage (aucune saisie).
+P=/cdrom/barbacane/en-ligne/parametres.conf
+if [ -f $P ]; then
+    v() { sed -n "s/^$1 = //p" $P | head -1; }
+    J=$(v jeton) A=$(v adresse) PE=$(v port_enrolement) S=$(v site)
+    grep -qx "adresse = \"$A\"" $X/agent.toml || { echo "parametres.conf : adresse $A différente de l'ISO" >&2; exit 1; }
+    grep -qx "port_enrolement = $PE" $X/agent.toml || { echo "parametres.conf : port $PE différent de l'ISO" >&2; exit 1; }
+    echo "$J" | grep -qxE "$PE-[A-Z2-7]{26}" || { echo "parametres.conf : jeton mal formé" >&2; exit 1; }
+    echo "$S" | grep -qxE 'site-[0-9]{1,6}' || { echo "parametres.conf : site invalide" >&2; exit 1; }
+    install -d -m 0700 $T/var/lib/barbacane-agent
+    (umask 077; echo "$J" > $T/var/lib/barbacane-agent/jeton)
+    in-target chown -R barbacane-agent:barbacane-agent /var/lib/barbacane-agent
+    echo "$S" > $T/etc/barbacane/agent/site
+    logger -t barbacane "borne en ligne : jeton d'enrôlement de l'ISO personnalisée posé ($S)" || true
+fi

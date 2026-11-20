@@ -25,6 +25,10 @@
 #     --console-serie      BANC DE TEST : installateur et système installé aussi sur la console série
 #                          (ttyS0, installateur en anglais : seules les langues ASCII y sont proposées)
 #     --verbeux            détail à l'écran (sinon dans le journal, à côté de l'ISO)
+#     --iso-borne-en-ligne ISO  --iso-borne-hors-ligne ISO   ISO des bornes de la MÊME version
+#                          (docs/suite/serveur-iso-bornes.md) : embarquées avec leur SHA-256 et l'outil
+#                          de remaster ; les deux ensemble ; --sha256-bornes FICHIER (sha256sum) exigé :
+#                          empreintes notées hors bande à la construction des ISO des bornes
 set -Eeuo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ICI="$(cd "$(dirname "$0")" && pwd)"
@@ -32,6 +36,7 @@ REPO="$(cd "$ICI/../.." && pwd)"
 IF_BORNES=enp0s8 IP_BORNES=10.20.0.1/24 IF_ADMIN=enp0s9 IP_ADMIN=10.99.0.1/24 PORT_ADMIN=443 PORT=''
 SOURCE_HEURE='' COMPTE_ADMIN=barbadmin HACHE_ADMIN_F='' PKI_TEST='' PASSERELLE='' PAQUETS='' NETINST=''
 SORTIE="$PWD/barbacane-serveur.iso" VERBEUX=0 CONSOLE_SERIE=0
+ISO_EL='' ISO_HL='' SHA_BORNES=''
 while [ $# -gt 0 ]; do
     case "$1" in
         --if-bornes) IF_BORNES="$2"; shift 2 ;;
@@ -50,7 +55,10 @@ while [ $# -gt 0 ]; do
         --sortie) SORTIE="$(realpath -m "$2")"; shift 2 ;;
         --verbeux) VERBEUX=1; shift ;;
         --console-serie) CONSOLE_SERIE=1; shift ;;
-        -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
+        --iso-borne-en-ligne) ISO_EL="$(realpath "$2")"; shift 2 ;;
+        --iso-borne-hors-ligne) ISO_HL="$(realpath "$2")"; shift 2 ;;
+        --sha256-bornes) SHA_BORNES="$(realpath "$2")"; shift 2 ;;
+        -h|--help) sed -n '2,31p' "$0"; exit 0 ;;
         *) echo "option inconnue : $1 (voir --help)" >&2; exit 1 ;;
     esac
 done
@@ -73,6 +81,18 @@ cidr_ok "$IP_ADMIN" || refus "--ip-admin $IP_ADMIN (a.b.c.d/n attendu)"
 port_ok "$PORT_ADMIN" || refus "--port-admin $PORT_ADMIN"
 [ -z "$PORT" ] || { port_ok "$PORT" && [ "$PORT" -ge 1024 ]; } || refus "--port $PORT (1024–65535)"
 [ -z "$SOURCE_HEURE" ] || ip_ok "$SOURCE_HEURE" || refus "--source-heure $SOURCE_HEURE (adresse IPv4 attendue)"
+if [ -n "$ISO_EL$ISO_HL" ]; then
+    command -v xorriso >/dev/null || refus "xorriso requis pour contrôler les ISO des bornes (apt install xorriso)"
+    [ -f "$ISO_EL" ] && [ -f "$ISO_HL" ] || refus "--iso-borne-en-ligne et --iso-borne-hors-ligne : les deux ISO"
+    [ -f "$SHA_BORNES" ] || refus "--sha256-bornes FICHIER exigé avec les ISO des bornes"
+    for i in "$ISO_EL" "$ISO_HL"; do
+        e=$(sha256sum "$i" | cut -d' ' -f1)
+        grep -Eq "^${e}[[:space:]]+\\*?(.*/)?$(basename "$i")\$" "$SHA_BORNES" || refus "$i : empreinte $e absente de $SHA_BORNES"
+    done
+    "$ICI/../iso-bornes/barbacane-iso-borne" parametres "$ISO_EL" >/dev/null || refus "$ISO_EL : pas une ISO de borne en ligne"
+    if xorriso -indev "$ISO_HL" -find /barbacane/en-ligne 2>/dev/null | grep -q en-ligne; then refus "$ISO_HL : profil en ligne, pas l'ISO hors ligne"; fi
+    if xorriso -indev "$ISO_EL" -find /barbacane/en-ligne -name parametres.conf 2>/dev/null | grep -q parametres; then refus "$ISO_EL : ISO personnalisée (jeton) refusée"; fi
+fi
 [[ "$COMPTE_ADMIN" =~ ^[a-z][a-z0-9-]{1,30}$ ]] || refus "--compte-admin $COMPTE_ADMIN"
 
 # ------------------------------------------------------------------ affichage et journal
@@ -201,7 +221,16 @@ F="$T/fichiers"
 cp -a "$ICI/fichiers" "$F"
 install -D -m 755 "$REPO/serveur/sauvegarde/barbacane-sauvegarde" "$F/usr/local/sbin/barbacane-sauvegarde"
 install -D -m 644 "$T/passerelle.tar" "$F/usr/share/barbacane-serveur/images/passerelle.tar"
+install -D -m 755 "$REPO/serveur/iso-bornes/barbacane-iso-borne" "$F/usr/local/sbin/barbacane-iso-borne"
 tar --sort=name --owner=0 --group=0 --numeric-owner -cf "$B/fichiers.tar" -C "$F" .
+if [ -n "$ISO_EL" ]; then
+    # Hors de fichiers.tar (1 Go chacune) : copiées par fin-installation-serveur.sh.
+    mkdir -p "$B/iso-bornes"
+    cp "$ISO_EL" "$B/iso-bornes/barbacane-borne-en-ligne.iso"
+    cp "$ISO_HL" "$B/iso-bornes/barbacane-borne-hors-ligne.iso"
+    (cd "$B/iso-bornes" && sha256sum ./*.iso > SHA256SUMS)
+    note "ISO des bornes embarquées : $(tr '\n' ' ' < "$B/iso-bornes/SHA256SUMS")"
+fi
 if [ -n "$HACHE_ADMIN_F" ]; then
     HACHE_ADMIN=$(head -n1 "$HACHE_ADMIN_F")
     MDP_AFFICHE=''

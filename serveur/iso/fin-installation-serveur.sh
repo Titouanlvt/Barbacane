@@ -18,6 +18,13 @@ tar -xf $X/fichiers.tar -C /target
 mkdir -p /target/etc/barbacane-serveur
 cp $X/serveur.conf /target/etc/barbacane-serveur/serveur.conf
 chmod 600 /target/etc/barbacane-serveur/serveur.conf
+if [ -d $X/iso-bornes ]; then
+    # ISO des bornes (serveur-iso-bornes.md) : empreintes revérifiées avant copie, lecture seule.
+    (cd $X/iso-bornes && sha256sum -c SHA256SUMS) || { journal "ISO des bornes : empreinte fausse"; exit 1; }
+    mkdir -p /target/var/lib/barbacane-serveur/iso-bornes
+    cp $X/iso-bornes/* /target/var/lib/barbacane-serveur/iso-bornes/
+    chmod 444 /target/var/lib/barbacane-serveur/iso-bornes/*
+fi
 if [ -d $X/pki-test ]; then
     mkdir -p /target/etc/barbacane-serveur/pki-test
     cp $X/pki-test/* /target/etc/barbacane-serveur/pki-test/
