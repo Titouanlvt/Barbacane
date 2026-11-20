@@ -347,3 +347,12 @@ Conception retenue, pour le jalon suivant :
   premier élément seulement après `200` (idempotent : `id` déjà reçu → `200`).
 - **Serveur** : réception, stockage (registre, puis PostgreSQL), événement d'audit
   `rapport_passage` (uuid de borne, id, verdict ; ajout au schéma de `barbacane-audit`).
+
+## 11. Ajout : utilisateurs et clés USB (20/11/2026, version 1 inchangée)
+
+Ajout **compatible**, sur le modèle du §9 : trois routes de l'écoute **mTLS** seulement
+(`/utilisateurs/politique`, `/utilisateurs/verification`, `/utilisateurs/pin`), messages nouveaux
+(`serveur/protocole/src/utilisateurs.rs`), aucun message existant modifié, aucun nouveau code
+d'erreur. Ces messages portent, par exception au principe 3 du §1, un identifiant d'utilisateur
+et un PIN (mode Authentification) : le PIN n'est jamais conservé ni journalisé, l'identifiant
+n'apparaît dans l'audit que sous forme de pseudonyme. Détail : `serveur-utilisateurs.md` §4.

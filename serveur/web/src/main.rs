@@ -4,6 +4,7 @@
 //! barbacane-web CONFIG                              sert l'interface (écoute d'administration)
 //! barbacane-web compte IDENTIFIANT RÔLE CERT.pem    ligne du fichier des comptes ; mot de passe
 //!                                                   lu sur l'entrée standard (première ligne)
+//! barbacane-web annuaire CONFIG                     synchronise les identifiants (LDAPS)
 //! ```
 //! RÔLE : `administrateur` ou `auditeur`. Voir `docs/suite/serveur-web.md`.
 #![forbid(unsafe_code)]
@@ -19,7 +20,7 @@ use barbacane_web::{Config, Web, servir};
 use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
 
-const USAGE: &str = "usage : barbacane-web CONFIG | barbacane-web compte IDENTIFIANT (administrateur|auditeur) CERT.pem < mot-de-passe";
+const USAGE: &str = "usage : barbacane-web CONFIG | barbacane-web compte IDENTIFIANT (administrateur|auditeur) CERT.pem < mot-de-passe | barbacane-web annuaire CONFIG";
 
 fn executer(args: &[String]) -> Result<()> {
     match args {
@@ -31,6 +32,26 @@ fn executer(args: &[String]) -> Result<()> {
             std::io::stdin().lock().read_line(&mut mdp)?;
             let mdp = mdp.trim_end_matches(['\r', '\n']);
             println!("{}", ligne_compte(id, role, &der, mdp)?);
+            Ok(())
+        }
+        [c, config] if c == "annuaire" => {
+            let config = Config::lire(&PathBuf::from(config))?;
+            let annuaire = config
+                .annuaire
+                .context("clé « annuaire » absente de la configuration")?;
+            let passerelle = barbacane_passerelle::Config::lire(&config.passerelle)?;
+            let admin = barbacane_passerelle::admin::Admin::ouvrir(passerelle)?;
+            let u = barbacane_passerelle::utilisateurs::Utilisateurs::ouvrir(&admin.stockage)?;
+            let b = barbacane_web::annuaire::synchroniser(
+                &annuaire,
+                &u,
+                &barbacane_passerelle::admin::acteur_local(),
+                barbacane_passerelle::outils::maintenant(),
+            )?;
+            println!(
+                "annuaire : {} actifs, {} ajoutés, {} retirés, {} ignorés",
+                b.actifs, b.ajoutes, b.retires, b.ignores
+            );
             Ok(())
         }
         [config] => {

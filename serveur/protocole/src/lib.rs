@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
 
 /// Mises à jour centralisées (ajout compatible, protocole §9).
 pub mod maj;
+/// Utilisateurs et clés USB (ajout compatible, `docs/suite/serveur-utilisateurs.md`).
+pub mod utilisateurs;
 
 /// Version du protocole portée par chaque message.
 pub const VERSION: u16 = 1;

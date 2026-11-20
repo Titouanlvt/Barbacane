@@ -85,7 +85,26 @@ pub enum ResultatMaj {
     Echec,
 }
 
-/// Événements audités. Toute évolution change [`VERSION_SCHEMA`].
+/// Résultat d'une vérification d'utilisateur demandée par une borne
+/// (`docs/suite/serveur-utilisateurs.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResultatUtilisateur {
+    Acceptee,
+    /// Identifiant inconnu ou PIN faux.
+    Refusee,
+    PinAChanger,
+    /// Compte verrouillé (5 échecs) : refusé sans vérifier le PIN.
+    Verrouille,
+    /// Borne bloquée (trop d'échecs sur cette borne).
+    BorneBloquee,
+    /// Mode du site incompatible (mode Aucun, PIN absent ou superflu) : rien n'est conservé.
+    HorsMode,
+}
+
+/// Événements audités. Toute évolution change [`VERSION_SCHEMA`] — exception : les ajouts
+/// des étapes « mises à jour » et « utilisateurs » (20/11/2026), faits avant toute
+/// installation du serveur, gardent la version 1 (aucun journal existant à relire).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Evenement {
@@ -147,6 +166,63 @@ pub enum Evenement {
         version_maj: u64,
         resultat: ResultatMaj,
     },
+    /// Utilisateurs (étape 4) : JAMAIS d'identifiant en clair ni de PIN, seulement le
+    /// pseudonyme `u-<16 hex>` (HMAC-SHA256 à clé du serveur), ou `inconnu`.
+    UtilisateursImportes {
+        source: String,
+        ajoutes: u64,
+        retires: u64,
+        actifs: u64,
+    },
+    UtilisateurVerifie {
+        borne: String,
+        utilisateur: String,
+        resultat: ResultatUtilisateur,
+    },
+    /// Alerte : 5 échecs consécutifs, compte verrouillé jusqu'au déverrouillage.
+    UtilisateurVerrouille {
+        utilisateur: String,
+        borne: String,
+    },
+    /// Alerte : trop d'échecs sur une borne, vérifications refusées jusqu'à `jusqua`.
+    BorneBloquee {
+        borne: String,
+        jusqua: u64,
+    },
+    PinReinitialise {
+        utilisateur: String,
+    },
+    PinChange {
+        utilisateur: String,
+        borne: String,
+    },
+    UtilisateurDeverrouille {
+        utilisateur: String,
+    },
+    UtilisateursPurges {
+        nombre: u64,
+    },
+    ModeSite {
+        site: String,
+        mode: String,
+    },
+    PolitiqueUsbSite {
+        site: String,
+        entree_non_enrolees: String,
+    },
+    CleUsbEnrolee {
+        cle: String,
+        fabricant: String,
+        site: String,
+    },
+    CleUsbRetiree {
+        cle: String,
+    },
+    /// Politique d'un site servie à une borne (au changement de version seulement).
+    PolitiqueServie {
+        borne: String,
+        version_politique: u64,
+    },
     /// Autre action d'administration (consultation, export…) : nom court.
     Administration {
         action: String,
@@ -190,6 +266,28 @@ impl Evenement {
             | MajRapportee { borne, .. } => ident_valide(borne),
             MajDeposee { sha256, .. } | MajRefusee { sha256, .. } => hex_valide(sha256, 64),
             Administration { action } => ident_valide(action),
+            UtilisateursImportes { source, .. } => ident_valide(source),
+            UtilisateurVerifie {
+                borne, utilisateur, ..
+            }
+            | UtilisateurVerrouille { utilisateur, borne }
+            | PinChange { utilisateur, borne } => ident_valide(borne) && ident_valide(utilisateur),
+            BorneBloquee { borne, .. } | PolitiqueServie { borne, .. } => ident_valide(borne),
+            PinReinitialise { utilisateur } | UtilisateurDeverrouille { utilisateur } => {
+                ident_valide(utilisateur)
+            }
+            ModeSite { site, mode } => ident_valide(site) && ident_valide(mode),
+            PolitiqueUsbSite {
+                site,
+                entree_non_enrolees,
+            } => ident_valide(site) && ident_valide(entree_non_enrolees),
+            CleUsbEnrolee {
+                cle,
+                fabricant,
+                site,
+            } => ident_valide(cle) && hex_valide(fabricant, 4) && ident_valide(site),
+            CleUsbRetiree { cle } => ident_valide(cle),
+            UtilisateursPurges { .. } => true,
             PointDeControle {
                 empreinte,
                 cle,

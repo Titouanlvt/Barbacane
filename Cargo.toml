@@ -91,3 +91,10 @@ opt-level = 3
 debug = "line-tables-only"
 [profile.dev.package."*"]
 debug = false
+
+# Argon2id à 64 Mio (PIN des utilisateurs, serveur/passerelle) : optimisé même en mode test,
+# sinon chaque dérivation prend plusieurs secondes et les tests d'anti force brute s'éternisent.
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.blake2]
+opt-level = 3

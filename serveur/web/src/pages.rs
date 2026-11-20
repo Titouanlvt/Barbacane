@@ -21,7 +21,7 @@ pub struct Contexte<'a> {
 }
 
 impl Contexte<'_> {
-    fn admin(&self) -> bool {
+    pub(crate) fn admin(&self) -> bool {
         self.role == Role::Administrateur
     }
 }
@@ -32,6 +32,9 @@ pub enum Rubrique {
     Supervision,
     Enrolement,
     Maj,
+    Utilisateurs,
+    Sites,
+    ClesUsb,
     Audit,
 }
 
@@ -57,6 +60,24 @@ const NAV: &[(Rubrique, &str, &str, &str)] = &[
         "<path d=\"M12 3v12\"/><path d=\"m17 8-5-5-5 5\"/><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/>",
     ),
     (
+        Rubrique::Utilisateurs,
+        "/utilisateurs",
+        "Utilisateurs",
+        "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>",
+    ),
+    (
+        Rubrique::Sites,
+        "/sites",
+        "Sites et modes",
+        "<path d=\"M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z\"/><circle cx=\"12\" cy=\"9\" r=\"2.5\"/>",
+    ),
+    (
+        Rubrique::ClesUsb,
+        "/cles-usb",
+        "Clés USB",
+        "<rect x=\"8\" y=\"2\" width=\"8\" height=\"7\" rx=\"1\"/><path d=\"M6 9h12v7a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z\"/>",
+    ),
+    (
         Rubrique::Audit,
         "/audit",
         "Journal d'audit",
@@ -71,14 +92,14 @@ fn tete(h: &mut Html, titre: &str) {
 }
 
 /// Champ caché du jeton anti-CSRF (toujours le premier champ du formulaire).
-fn csrf(h: &mut Html, jeton: &str) {
+pub(crate) fn csrf(h: &mut Html, jeton: &str) {
     h.b("<input type=\"hidden\" name=\"csrf\" value=\"")
         .t(jeton)
         .b("\">");
 }
 
 /// Page complète avec navigation.
-fn coque(
+pub(crate) fn coque(
     ctx: &Contexte,
     rubrique: Rubrique,
     fil: &str,
@@ -121,7 +142,7 @@ fn coque(
 }
 
 /// Avis (information, alerte, blocage, succès).
-fn avis(h: &mut Html, classe: &'static str, texte: &str) {
+pub(crate) fn avis(h: &mut Html, classe: &'static str, texte: &str) {
     h.b("<div class=\"b-avis ")
         .b(classe)
         .b("\" role=\"status\"><span>")
@@ -148,7 +169,7 @@ pub fn grouper(h: &str) -> String {
         .join(" ")
 }
 
-fn etat(h: &mut Html, classe: &'static str, mot: &'static str) {
+pub(crate) fn etat(h: &mut Html, classe: &'static str, mot: &'static str) {
     h.b("<span class=\"b-etat b-etat--")
         .b(classe)
         .b("\">")
@@ -156,7 +177,7 @@ fn etat(h: &mut Html, classe: &'static str, mot: &'static str) {
         .b("</span>");
 }
 
-fn tuile(h: &mut Html, n: usize, classe: &'static str, nom: &'static str) {
+pub(crate) fn tuile(h: &mut Html, n: usize, classe: &'static str, nom: &'static str) {
     h.b("<div class=\"b-tuile");
     if n > 0 && !classe.is_empty() {
         h.b(" b-tuile--").b(classe);
@@ -743,6 +764,19 @@ fn libelle_evenement(cle: &str) -> &'static str {
         "maj_proposee" => "Paquet proposé",
         "maj_telechargee" => "Paquet téléchargé",
         "maj_rapportee" => "Mise à jour rapportée",
+        "utilisateurs_importes" => "Utilisateurs importés",
+        "utilisateur_verifie" => "Vérification d'utilisateur",
+        "utilisateur_verrouille" => "Compte verrouillé (alerte)",
+        "borne_bloquee" => "Borne bloquée (alerte)",
+        "pin_reinitialise" => "PIN réinitialisé",
+        "pin_change" => "PIN changé",
+        "utilisateur_deverrouille" => "Compte déverrouillé",
+        "utilisateurs_purges" => "Utilisateurs purgés",
+        "mode_site" => "Mode du site",
+        "politique_usb_site" => "Politique USB du site",
+        "cle_usb_enrolee" => "Clé USB enrôlée",
+        "cle_usb_retiree" => "Clé USB retirée",
+        "politique_servie" => "Politique servie",
         "administration" => "Administration",
         "point_de_controle" => "Point de contrôle signé",
         _ => "Autre",
