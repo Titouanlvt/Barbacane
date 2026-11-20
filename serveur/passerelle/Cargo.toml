@@ -1,0 +1,17 @@
+[package]
+name = "barbacane-passerelle"
+description = "Passerelle mTLS du serveur Barbacane (suite) : TLS 1.3 seul, bornes authentifiées, CRL fail-closed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# Toutes déjà présentes dans Cargo.lock (justification : docs/suite/serveur-socle.md §4).
+anyhow = "1.0.104"
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "logging"] }
+x509-parser = "0.18.1"
+
+[dev-dependencies]
+# tls12 : seulement pour prouver que la passerelle REFUSE un client TLS 1.2.
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+tempfile = "3.27.0"
