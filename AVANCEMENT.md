@@ -14,9 +14,10 @@
 | CI locale | `ci-locale` / `wt-ci-locale` | `tests/ci-locale.sh` écrit ; `lab/ci-locale-bu.sh BRANCHE` (bu) | 1er passage sur bu (`logs/ci-locale-ci-locale.log`) |
 | Charte v2 borne | `borne-charte-v2` / `wt-charte` | **SUSPENDU le 20/11** (priorité serveur). Branche gardée, non fusionnée : jetons générés, relief, verdict en tranche, séquences 3D découpées image par image, captures Jour (`docs/captures/charte-v2/jour`), OCR PPM corrigé (à reporter dans integration). Reste : captures Nuit, creusé, pastilles, herse, campagne. `main` n'a aucun changement visuel de la borne depuis v1.0 (`git diff v1.0 main -- borne/` vide) | — |
 | Socle serveur (étape 5) | `serveur-socle` / `wt-serveur-socle` | fait par sous-agent, relu : PKI de TEST (CA P-384, feuilles P-256), passerelle rustls TLS 1.3 seul, AES-GCM, CRL relue à chaque connexion, fail-closed ; 9 tests | **fusionné dans integration** (CI locale verte) |
-| Serveur : enrôlement, protocole agent, battement, heure | `serveur-enrolement` | **fusionné** (01b1b1e, CI locale verte, 35 tests) ; en cours : délai total par connexion (anti-slowloris) | sous-agent |
+| Serveur : enrôlement, protocole agent, battement, heure | `serveur-enrolement` | **fusionné** (01b1b1e, CI locale verte, 35 tests) ; délai total par connexion (20 s / 10 s, 8 places d'enrôlement) fusionné 9eb8df9 | — |
 | Serveur : ISO durcie, LUKS2+TPM, nftables, chrony local, sauvegarde | `serveur-iso` / `wt-serveur-iso` (depuis `serveur-socle`) | sous-agent en cours | — |
 | Borne en ligne : `barbacane-agent`, `--profil en-ligne`, nftables sortie serveur seul | `borne-en-ligne` / `wt-borne-en-ligne` | sous-agent en cours (ISO hors ligne doit rester identique) | — |
+| Serveur : audit chaîné + mises à jour centralisées (dépôt .bcu vérifié, plancher, diffusion) | `serveur-maj-audit` / `wt-serveur-maj-audit` | sous-agent en cours | — |
 | Borne 950 remise en v1 | — | **fait** : code v1, transfert OK | — |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
