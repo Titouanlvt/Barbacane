@@ -1,6 +1,7 @@
 #!/bin/bash
 # Construit les paquets de production (sans « mock ») : usbsas-server, usbsas-hid, barbacane.
 # Sortie : systeme/mkosi/paquets/ (utilisés par install.sh --debs et par mkosi).
+# AVEC_AGENT=1 (build-iso.sh --profil en-ligne SEULEMENT) : construit aussi barbacane-agent.
 set -euo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -59,4 +60,10 @@ mkdir -p "$OUT"
 # ou la mise à jour, et apt/dpkg installerait la plus récente, pas celle qu'on vient de construire.
 rm -f "$OUT"/*.deb
 cp "$CARGO_TARGET_DIR"/debian/usbsas-server_*.deb "$CARGO_TARGET_DIR"/debian/usbsas-hid_*.deb "$CARGO_TARGET_DIR"/debian/barbacane_*.deb "$OUT/"
+# Borne en ligne : l'agent réseau, paquet à part (jamais dans la borne hors ligne, D12).
+if [ "${AVEC_AGENT:-0}" = 1 ]; then
+    cargo build --release --locked -p barbacane-agent
+    cargo-deb --no-build "${REV_ARGS[@]}" -p barbacane-agent
+    cp "$CARGO_TARGET_DIR"/debian/barbacane-agent_*.deb "$OUT/"
+fi
 ls -l "$OUT"

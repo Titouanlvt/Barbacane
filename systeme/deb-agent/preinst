@@ -1,0 +1,9 @@
+#!/bin/sh
+# Paquet barbacane-agent : jamais sur un hôte Proxmox VE (docs/incident-proxmox.md).
+set -e
+if [ -e /etc/pve ]; then
+    echo "REFUS : hôte Proxmox VE détecté (/etc/pve). barbacane-agent ne s'installe que sur une borne en ligne ou dans une VM." >&2
+    exit 1
+fi
+
+#DEBHELPER#

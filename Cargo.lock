@@ -755,6 +755,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "barbacane-agent"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "barbacane-passerelle",
+ "barbacane-protocole",
+ "hex",
+ "rcgen",
+ "ring",
+ "rustix 1.1.6",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml",
+ "x509-parser",
+]
+
+[[package]]
 name = "barbacane-analyzer"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,19 @@
+#!/bin/sh
+# Paquet barbacane-agent (borne EN LIGNE seulement) : compte dédié sans shell ni dossier
+# personnel, service activé. Le service ne démarre qu'avec /etc/barbacane/agent.toml, posé par
+# l'ISO en ligne avec le pare-feu et la restriction d'adresse (systeme/iso/build-iso.sh).
+set -e
+
+if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
+    getent group barbacane-agent >/dev/null || addgroup --system barbacane-agent
+    id -u barbacane-agent >/dev/null 2>&1 || \
+        adduser --system --ingroup barbacane-agent --home /nonexistent --no-create-home \
+            --shell /usr/sbin/nologin barbacane-agent
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    systemctl enable barbacane-agent.service >/dev/null 2>&1 || true
+    if [ -d /run/systemd/system ]; then
+        systemctl try-restart barbacane-agent.service >/dev/null 2>&1 || true
+    fi
+fi
+
+#DEBHELPER#

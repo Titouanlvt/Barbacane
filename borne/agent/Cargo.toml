@@ -1,0 +1,48 @@
+[package]
+name = "barbacane-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Barbacane (borne en ligne) : agent réseau, enrôlement et battement mTLS vers le seul serveur"
+
+[dependencies]
+# Toutes déjà présentes dans Cargo.lock (utilisées par la passerelle ou la borne) : aucune
+# dépendance nouvelle à auditer.
+anyhow = "1.0.104"
+barbacane-protocole = { path = "../../serveur/protocole" }
+hex = "0.4.3"
+rcgen = { version = "0.14.10", default-features = false, features = ["crypto", "pem", "ring"] }
+ring = "0.17.14"
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "logging"] }
+# statvfs sans code unsafe (espace libre annoncé dans le battement).
+rustix = { version = "1.1.6", features = ["fs"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+toml = "1.2.0"
+x509-parser = "0.18.1"
+
+[dev-dependencies]
+# Passerelle de TEST en cours de processus (PKI générée par serveur/pki/racine-test.sh).
+barbacane-passerelle = { path = "../../serveur/passerelle" }
+barbacane-protocole = { path = "../../serveur/protocole" }
+tempfile = "3.27.0"
+
+# Paquet Debian « barbacane-agent » : profil en-ligne SEULEMENT (build-iso.sh --profil en-ligne,
+# décision D12). Jamais dans l'ISO hors ligne (garde-fou tests/iso/hors-ligne.sh).
+[package.metadata.deb]
+name = "barbacane-agent"
+maintainer = "Barbacane"
+copyright = "Barbacane"
+license-file = ["../../LICENSE", "0"]
+extended-description = "Agent de la borne Barbacane en ligne : seul processus réseau, connexion sortante TLS 1.3 mutuelle vers le seul serveur de gestion (CA épinglée). Enrôlement, battement, renouvellement du certificat."
+revision = "1"
+depends = "$auto, barbacane, nftables"
+section = "utility"
+priority = "optional"
+maintainer-scripts = "../../systeme/deb-agent/"
+assets = [
+  ["target/release/barbacane-agent", "usr/bin/", "755"],
+  ["../../systeme/systemd/barbacane-agent.service", "usr/lib/systemd/system/", "644"],
+  ["../../systeme/nftables/en-ligne.conf.modele", "usr/share/barbacane-agent/", "644"],
+  ["../../systeme/etc/agent.toml.exemple", "usr/share/barbacane-agent/", "644"],
+]

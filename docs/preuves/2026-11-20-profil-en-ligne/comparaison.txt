@@ -1,0 +1,13 @@
+IDENTIQUE  fichiers (1782 lignes)
+IDENTIQUE  debs (272 lignes)
+IDENTIQUE  fic-barbacane (53 lignes)
+IDENTIQUE  fic-usbsas (53 lignes)
+IDENTIQUE  scripts (5 lignes)
+IDENTIQUE  donnees (10 lignes)
+--- empreintes des paquets
+diffère : barbacane_0.1.0-1_amd64.deb
+diffère : usbsas-hid_0.5.0-1_amd64.deb
+diffère : usbsas-server_0.3.4-1_amd64.deb
+269 paquets identiques
+5e0c3fbae7319c230a39a0e1a468f51400653ca8a10d9b67e658b7421a7b3fc7  /travail/v100/barbacane-1.0.0.iso
+a2ea67781829c6ec9ebde77b13032a70124caad0892d6bb419241f6549c524ae  /travail/iso-en-ligne/hl/barbacane-hl.iso

@@ -7,6 +7,9 @@
 #   systeme/iso/build-iso.sh [--debs DOSSIER] [--cle-publique maj.pub]
 #                                     [--clamav DOSSIER] [--yara DOSSIER] [--netinst ISO] [--sortie FICHIER.iso]
 #                                     [--verbeux] [--profil hors-ligne|en-ligne]
+#   profil en-ligne seulement (borne de la suite) :
+#                                     --ca-serveur CA.pem --serveur IPV4 --port-enrolement PORT --port-service PORT
+#                                     [--nom-serveur NOM] [--reseau dhcp|IPV4/PREFIXE] [--routeur IPV4]
 #     --debs          paquets usbsas-server, usbsas-hid, barbacane (défaut : construits par build-debs.sh)
 #     --cle-publique  clé minisign des mises à jour (défaut : systeme/iso/maj.pub s'il existe)
 #     --clamav        base ClamAV initiale (défaut : téléchargée avec freshclam)
@@ -15,12 +18,21 @@
 #     --verbeux       affiche tout le détail à l'écran (sinon : dans le journal, à côté de l'ISO)
 #     --profil        hors-ligne (DÉFAUT : la borne v1, aucun code réseau) ou en-ligne (borne de la
 #                     suite, avec barbacane-agent ; docs/conception-barbacane-suite.md §10)
+#     --ca-serveur    certificat de la CA « serveur » : SEULE ancre de confiance de l'agent, épinglée
+#                     (empreinte SHA-256 inscrite dans la configuration de l'agent)
+#     --serveur       adresse IPv4 du serveur : seule destination autorisée (pare-feu, systemd)
+#     --port-enrolement / --port-service   ports de la passerelle (tirés à l'installation du serveur, D4)
+#     --nom-serveur   nom du certificat du serveur (défaut : passerelle.barbacane.invalid)
+#     --reseau        dhcp (défaut ; seule exception du pare-feu : DHCP par systemd-networkd) ou
+#                     adresse statique IPV4/PREFIXE (une ISO par borne) ; --routeur : passerelle IPv4
 set -Eeuo pipefail
 # « su » sans « - » garde le PATH de l'utilisateur, sans /usr/sbin : debootstrap, mkfs… y sont.
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ICI="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$ICI/../.." && pwd)"
 DEBS='' CLE_PUB='' CLAMAV='' YARA='' NETINST='' SORTIE="$PWD/barbacane.iso" VERBEUX=0 PROFIL=hors-ligne
+# Profil en-ligne seulement
+CA_SERVEUR='' SERVEUR='' PORT_ENROLEMENT='' PORT_SERVICE='' NOM_SERVEUR=passerelle.barbacane.invalid RESEAU=dhcp ROUTEUR='' EN_LIGNE_OPTS=0
 [ -f "$ICI/maj.pub" ] && CLE_PUB="$ICI/maj.pub"
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -32,14 +44,50 @@ while [ $# -gt 0 ]; do
         --sortie) SORTIE="$(realpath -m "$2")"; shift 2 ;;
         --verbeux) VERBEUX=1; shift ;;
         --profil) PROFIL="$2"; shift 2 ;;
-        -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+        --ca-serveur) CA_SERVEUR="$(realpath "$2")"; EN_LIGNE_OPTS=1; shift 2 ;;
+        --serveur) SERVEUR="$2"; EN_LIGNE_OPTS=1; shift 2 ;;
+        --port-enrolement) PORT_ENROLEMENT="$2"; EN_LIGNE_OPTS=1; shift 2 ;;
+        --port-service) PORT_SERVICE="$2"; EN_LIGNE_OPTS=1; shift 2 ;;
+        --nom-serveur) NOM_SERVEUR="$2"; EN_LIGNE_OPTS=1; shift 2 ;;
+        --reseau) RESEAU="$2"; EN_LIGNE_OPTS=1; shift 2 ;;
+        --routeur) ROUTEUR="$2"; EN_LIGNE_OPTS=1; shift 2 ;;
+        -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
         *) echo "option inconnue : $1 (voir --help)" >&2; exit 1 ;;
     esac
 done
 
+ipv4() { [[ "$1" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] &&
+    [ "${BASH_REMATCH[1]}" -le 255 ] && [ "${BASH_REMATCH[2]}" -le 255 ] &&
+    [ "${BASH_REMATCH[3]}" -le 255 ] && [ "${BASH_REMATCH[4]}" -le 255 ]; }
+port() { [[ "$1" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$1" -le 65535 ]; }
 case "$PROFIL" in
-    hors-ligne) ;;
-    en-ligne) echo "profil en-ligne : pas encore disponible (barbacane-agent, étape 5 de la suite)" >&2; exit 1 ;;
+    hors-ligne)
+        # La borne v1 : aucune option réseau n'est admise (rien ne change dans l'ISO).
+        [ "$EN_LIGNE_OPTS" = 0 ] || { echo "options --ca-serveur, --serveur, --port-*, --nom-serveur, --reseau, --routeur : profil en-ligne seulement" >&2; exit 1; }
+        ;;
+    en-ligne)
+        [ -f "${CA_SERVEUR:-/nonexistent}" ] || { echo "profil en-ligne : --ca-serveur FICHIER obligatoire (CA serveur épinglée)" >&2; exit 1; }
+        ipv4 "$SERVEUR" || { echo "profil en-ligne : --serveur ADRESSE_IPV4 obligatoire (pas de nom : aucune résolution DNS sur la borne)" >&2; exit 1; }
+        if ! { port "$PORT_ENROLEMENT" && port "$PORT_SERVICE" && [ "$PORT_ENROLEMENT" != "$PORT_SERVICE" ]; }; then
+            echo "profil en-ligne : --port-enrolement et --port-service obligatoires, distincts (1–65535)" >&2; exit 1
+        fi
+        [[ "$NOM_SERVEUR" =~ ^[a-z0-9.-]{1,253}$ ]] || { echo "--nom-serveur invalide" >&2; exit 1; }
+        if [ "$RESEAU" != dhcp ]; then
+            if ! { [[ "$RESEAU" =~ ^(.+)/([0-9]{1,2})$ ]] && ipv4 "${BASH_REMATCH[1]}" && [ "${BASH_REMATCH[2]}" -ge 8 ] && [ "${BASH_REMATCH[2]}" -le 32 ]; }; then
+                echo "--reseau : dhcp ou IPV4/PREFIXE (8 à 32)" >&2; exit 1
+            fi
+        fi
+        if [ -n "$ROUTEUR" ] && ! { [ "$RESEAU" != dhcp ] && ipv4 "$ROUTEUR"; }; then
+            echo "--routeur : IPv4, avec une adresse statique seulement" >&2; exit 1
+        fi
+        # Un seul certificat, aucune clé : c'est l'ancre de confiance, rien d'autre.
+        if [ "$(grep -c -- '-----BEGIN CERTIFICATE-----' "$CA_SERVEUR")" != 1 ] || grep -q 'PRIVATE KEY' "$CA_SERVEUR"; then
+            echo "--ca-serveur : un seul certificat PEM attendu, sans clé" >&2; exit 1
+        fi
+        openssl x509 -in "$CA_SERVEUR" -noout -ext basicConstraints 2>/dev/null | grep -q 'CA:TRUE' \
+            || { echo "--ca-serveur : certificat illisible ou qui n'est pas une CA" >&2; exit 1; }
+        EMPREINTE_CA=$(openssl x509 -in "$CA_SERVEUR" -outform DER | sha256sum | cut -d' ' -f1)
+        ;;
     *) echo "profil inconnu : $PROFIL (hors-ligne ou en-ligne)" >&2; exit 1 ;;
 esac
 
@@ -112,14 +160,17 @@ journal apt-get install -y -qq --no-install-recommends xorriso debootstrap wget 
 # ------------------------------------------------------------------ 2. paquets Barbacane
 etape "Paquets Barbacane (compilation : 10 à 40 min)"
 if [ -z "$DEBS" ]; then
+    [ "$PROFIL" = en-ligne ] && export AVEC_AGENT=1
     journal "$REPO/systeme/build-debs.sh"
     DEBS="$REPO/systeme/mkosi/paquets"
     note "$(grep -m1 '^Mémoire disponible' "$JOURNAL" || true)"
 else
     note "paquets fournis : $DEBS"
 fi
-for p in usbsas-server usbsas-hid barbacane; do
-    ls "$DEBS"/${p}_*.deb >/dev/null 2>&1 || { echo "paquet $p absent de $DEBS" >> "$JOURNAL"; false; }
+PAQUETS_BARBACANE=(usbsas-server usbsas-hid barbacane)
+[ "$PROFIL" = en-ligne ] && PAQUETS_BARBACANE+=(barbacane-agent)
+for p in "${PAQUETS_BARBACANE[@]}"; do
+    ls "$DEBS/${p}"_*.deb >/dev/null 2>&1 || { echo "paquet $p absent de $DEBS" >> "$JOURNAL"; false; }
 done
 
 # ------------------------------------------------------------------ 3. ISO Debian
@@ -140,6 +191,7 @@ journal debootstrap --variant=minbase trixie "$T/chroot" "$MIROIR"
 echo "deb $MIROIR trixie main contrib non-free non-free-firmware" > "$T/chroot/etc/apt/sources.list"
 mkdir -p "$T/chroot/debs"
 cp "$DEBS"/usbsas-server_*.deb "$DEBS"/usbsas-hid_*.deb "$DEBS"/barbacane_*.deb "$T/chroot/debs/"
+[ "$PROFIL" = en-ligne ] && cp "$DEBS"/barbacane-agent_*.deb "$T/chroot/debs/"
 journal chroot "$T/chroot" apt-get update -qq
 mapfile -t PAQUETS < <(grep -vE '^\s*(#|$)|^(barbacane|usbsas-server|usbsas-hid)$' "$ICI/paquets.txt")
 journal chroot "$T/chroot" sh -c 'apt-get install -y -qq --download-only --no-install-recommends "$@" /debs/*.deb' sh "${PAQUETS[@]}"
@@ -170,6 +222,46 @@ fi
 # L'installateur exige un mot de passe root : aléatoire, jamais conservé, compte verrouillé ensuite
 sed "s|@HACHE_ROOT@|$(head -c 32 /dev/urandom | base64 | openssl passwd -6 -stdin)|" "$ICI/preseed.cfg" > "$B/preseed.cfg"
 cp "$ICI/choisir-disque.sh" "$ICI/fin-installation.sh" "$ICI/configurer.sh" "$B/"
+if [ "$PROFIL" = en-ligne ]; then
+    # Borne en ligne : configuration de l'agent, CA épinglée, pare-feu, réseau, restriction
+    # d'adresse du service ; posés par fin-en-ligne.sh après fin-installation.sh (inchangé).
+    # L'installation elle-même reste SANS réseau (netcfg/enable false).
+    E="$B/en-ligne"
+    mkdir -p "$E"
+    cp "$CA_SERVEUR" "$E/ca-serveur.pem"
+    cat > "$E/agent.toml" <<TOML
+# Écrit par build-iso.sh --profil en-ligne ($(date -u +%F))
+adresse = "$SERVEUR"
+nom_serveur = "$NOM_SERVEUR"
+port_enrolement = $PORT_ENROLEMENT
+port_service = $PORT_SERVICE
+ca_serveur = "/etc/barbacane/agent/ca-serveur.pem"
+empreinte_ca_serveur = "$EMPREINTE_CA"
+TOML
+    if [ "$RESEAU" = dhcp ]; then DHCP_SED='s/^#DHCP#//'; else DHCP_SED='/^#DHCP#/d'; fi
+    sed -e "s/@SERVEUR@/$SERVEUR/g" -e "s/@PORT_ENROLEMENT@/$PORT_ENROLEMENT/g" \
+        -e "s/@PORT_SERVICE@/$PORT_SERVICE/g" -e "$DHCP_SED" \
+        "$REPO/systeme/nftables/en-ligne.conf.modele" > "$E/nftables.conf"
+    if grep -q '@' "$E/nftables.conf"; then echo "nftables en ligne : paramètre non remplacé" >> "$JOURNAL"; false; fi
+    {
+        printf '# Borne en ligne : IPv4 seulement, aucune découverte (LLDP, IPv6, mDNS).\n'
+        printf '[Match]\nType=ether\nName=en* eth*\n\n[Network]\n'
+        if [ "$RESEAU" = dhcp ]; then
+            printf 'DHCP=ipv4\n'
+        else
+            printf 'Address=%s\n' "$RESEAU"
+            [ -z "$ROUTEUR" ] || printf 'Gateway=%s\n' "$ROUTEUR"
+        fi
+        printf 'LinkLocalAddressing=no\nIPv6AcceptRA=no\nLLDP=no\nEmitLLDP=no\nMulticastDNS=no\nLLMNR=no\n'
+        [ "$RESEAU" != dhcp ] || printf '\n[DHCPv4]\nUseDNS=no\nUseNTP=no\nUseHostname=no\nSendHostname=no\nUseDomains=no\n'
+    } > "$E/10-barbacane.network"
+    printf '# Écrit par build-iso.sh --profil en-ligne : seule adresse joignable par l'"'"'agent.\n[Service]\nIPAddressAllow=%s/32\n' \
+        "$SERVEUR" > "$E/serveur.conf"
+    cp "$ICI/fin-en-ligne.sh" "$E/"
+    sed -i 's|^d-i preseed/late_command string sh /cdrom/barbacane/fin-installation.sh$|d-i preseed/late_command string sh /cdrom/barbacane/fin-installation.sh \&\& sh /cdrom/barbacane/en-ligne/fin-en-ligne.sh|' "$B/preseed.cfg"
+    grep -q 'en-ligne/fin-en-ligne.sh' "$B/preseed.cfg" || { echo "preseed : late_command en ligne non posé" >> "$JOURNAL"; false; }
+    note "profil en-ligne : serveur $SERVEUR (enrôlement $PORT_ENROLEMENT, service $PORT_SERVICE), réseau $RESEAU, CA serveur épinglée $EMPREINTE_CA"
+fi
 
 # ------------------------------------------------------------------ 6. assemblage
 etape "Assemblage de l'ISO"
