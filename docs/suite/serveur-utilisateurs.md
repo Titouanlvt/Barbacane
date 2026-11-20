@@ -33,9 +33,11 @@ la borne), `serveur/passerelle/src/utilisateurs.rs` (base, PIN, anti force brute
 - Identifiant normalisé `[a-z0-9._-]`, 1 à 64 (minuscules ; AD compare sans casse), même fonction
   côté borne et côté import (`normaliser_identifiant`). Non conformes : ignorés et comptés.
 - **Synchronisation LDAPS** (`barbacane-web annuaire CONFIG` ou bouton de la page Utilisateurs) :
-  - `ldaps://` seulement (ni `ldap://`, ni StartTLS) ; TLS 1.3 ou 1.2 selon l'annuaire — **seule
-    ancre de confiance : la CA de l'annuaire épinglée** (fichier PEM de la configuration), nom
-    du serveur vérifié ; aucun magasin du système ;
+  - `ldaps://` seulement (ni `ldap://`, ni StartTLS) ; **TLS 1.3 seul** (D6, mêmes suites et
+    groupes que la passerelle) — **seule ancre de confiance : la CA de l'annuaire épinglée**
+    (fichier PEM de la configuration), nom du serveur vérifié ; aucun magasin du système.
+    Limite : un contrôleur de domaine sans TLS 1.3 (Windows Server antérieur à 2022) est refusé ;
+    l'ouverture à TLS 1.2 demanderait la fonction `tls12` de rustls (décision à prendre) ;
   - compte de service en **lecture seule** (droits minimaux : lire l'attribut d'identifiant des
     comptes du groupe Barbacane), mot de passe dans un fichier 0600 lisible du seul service
     (TPM : PRÉVU avec les autres secrets du serveur, conception §3.4) ;
@@ -150,7 +152,9 @@ Exemple de refus (octets exacts) : `{"version":1,"decision":"refusee","heure_ser
   identifiant ↔ pseudonyme conservée **1 an** après le retrait (durée des journaux, conception
   §1) puis **purgée automatiquement** (à chaque transaction, purge auditée). Après purge, les
   pseudonymes des journaux de plus d'un an ne sont plus attribuables. Sessions : 30 min.
-  Sauvegardes : la base suit la rotation des sauvegardes (1 an, `serveur-iso.md`).
+  Sauvegardes : la base (`<registre>/utilisateurs/`) est dans le dossier d'état sauvegardé ; la
+  rotation des sauvegardes (`serveur-iso.md`, 14 par défaut) borne la durée de vie d'un
+  enregistrement purgé.
 - Le mode « Aucun » ne crée aucune donnée personnelle : rien n'est écrit dans la base, et
   l'audit ne porte que la borne (preuve `mode_aucun_aucune_donnee_personnelle`).
 
@@ -170,7 +174,27 @@ Exemple de refus (octets exacts) : `{"version":1,"decision":"refusee","heure_ser
   audité ; la politique servie à une borne est auditée quand sa version change (pas à chaque
   battement).
 
-## 8. Preuves
+## 8. Configuration
+
+Interface web : clé facultative `annuaire = /etc/barbacane/annuaire.conf` (fichier `cle = valeur`) :
+
+```
+url = ldaps://dc1.exemple.fr:636
+ca = /etc/barbacane/annuaire-ca.pem
+compte = CN=svc-barbacane,OU=Services,DC=exemple,DC=fr
+mot_de_passe_fichier = /etc/barbacane/annuaire.mdp
+base = OU=Agents,DC=exemple,DC=fr
+filtre = (&(objectClass=user)(memberOf=CN=Barbacane,OU=Groupes,DC=exemple,DC=fr))
+attribut = sAMAccountName
+```
+
+Base : `<registre>/utilisateurs/` (0700) : `base.json` + `base.verrou` (même approche que le
+registre : verrou exclusif, écriture atomique, aucune dépendance ; pas de SQLite, cf.
+`protocole-agent.md` §6), `cle-pseudonyme` et `poivre-pin` (32 octets, 0600, créés au premier
+démarrage, refusés s'ils sont lisibles par d'autres comptes). Ces deux secrets sont à sauvegarder
+avec la base : sans le poivre, aucun PIN ne se vérifie plus (réinitialisation de tous).
+
+## 9. Preuves
 
 | Exigence | Test |
 |---|---|
@@ -186,7 +210,7 @@ Exemple de refus (octets exacts) : `{"version":1,"decision":"refusee","heure_ser
 | Auditeur ne peut rien modifier ; CSRF ; échappement | `utilisateurs_auditeur_lecture_seule`, `utilisateurs_csrf_et_echappement` |
 | PIN affiché une seule fois | `reinitialisation_pin_affiche_une_fois` |
 
-## 9. État
+## 10. État
 
 | Élément | État |
 |---|---|

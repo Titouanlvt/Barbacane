@@ -22,6 +22,9 @@ révocation ou de mise à jour n'est dupliqué : la page appelle les mêmes fonc
 | Révocation | `GET /bornes/revoquer?uuid=…`, `POST /bornes/revoquer` | administrateur | page de confirmation qui reprend la borne par son nom, motif obligatoire, nom de la borne à retaper ; CRL republiée dans la même transaction |
 | Mises à jour | `GET /maj`, `POST /maj/plancher`, `POST /maj/depot`, `POST /maj/diffuser` | tous (actions : administrateur) | plancher signé, paquets déposés, paquet diffusé, état par borne ; dépôt d'un plancher ou d'un `.bcu` avec leur `.minisig` (vérification complète par `DepotMaj`) |
 | Journal d'audit | `GET /audit`, `GET /audit/verification` | tous | derniers enregistrements (pagination) ; vérification de toute la chaîne (forme, numéros, chaînage, points de contrôle signés) avec la clé publique d'audit |
+| Utilisateurs | `GET /utilisateurs[?identifiant=…]`, `POST /utilisateurs/synchroniser`, `/utilisateurs/pin`, `/utilisateurs/deverrouiller` | tous (actions : administrateur) | synchronisation LDAPS, recherche, réinitialisation du PIN (affiché une fois), déverrouillage ; auditeur : identifiants en clair, autres rôles : pseudonymes (`serveur-utilisateurs.md` §6) |
+| Sites et modes | `GET /sites`, `POST /sites/mode`, `POST /sites/entree` | tous (actions : administrateur) | mode utilisateur par site, clés non enrôlées en entrée |
+| Clés USB | `GET /cles-usb`, `POST /cles-usb/enroler`, `POST /cles-usb/retirer` | tous (actions : administrateur) | enrôlement par fabricant + numéro de série, site, usages |
 | Déconnexion | `POST /deconnexion` | tous | session détruite |
 | Ressources | `GET /statique/…` | tous (session non exigée, certificat exigé) | feuille de style de la charte v2 et polices TTF de `docs/charte/fonts`, embarquées dans le binaire |
 
@@ -98,9 +101,11 @@ Ressources : tout est servi par le binaire (CSS, polices). Aucune ressource exte
 Fichier `cle = valeur` : `adresse`, `port` (écoute d'administration, différente des ports de la
 passerelle), `chaine_serveur`, `cle_serveur` (certificat TLS de l'interface), `ca_administrateurs`,
 `crl_administrateurs`, `comptes`, `passerelle` (configuration de la passerelle : registre, CA
-bornes, CRL bornes), `cle_audit_publique` (vérification de la chaîne).
+bornes, CRL bornes), `cle_audit_publique` (vérification de la chaîne) ; facultative : `annuaire` (LDAPS,
+`serveur-utilisateurs.md` §8).
 
-`barbacane-web CONFIG` sert l'interface ; `barbacane-web compte …` produit une ligne de compte.
+`barbacane-web CONFIG` sert l'interface ; `barbacane-web compte …` produit une ligne de compte ;
+`barbacane-web annuaire CONFIG` synchronise les identifiants (minuteur systemd : PRÉVU).
 
 ## 7. Charte v2 (adaptation simple)
 
@@ -132,7 +137,8 @@ produire les captures : `apt install chromium-headless-shell` sur bu, puis `test
 | Tableau de bord, enrôlement (jeton, validation par empreinte retapée, refus), révocation, mises à jour (plancher, dépôt, diffusion, état), journal d'audit (consultation, vérification) | FAIT |
 | CA « administrateurs » dans `serveur/pki/racine-test.sh` et la cérémonie | PRÉVU (générée par les tests en attendant) |
 | Clé de l'interface et de la CA administrateurs dans le TPM, service systemd durci, pare-feu de l'interface d'administration | PRÉVU (ISO serveur) |
-| Double validation (§3.10), utilisateurs et PIN (étape 4), clés USB, rapports, politique | PRÉVU |
+| Utilisateurs et PIN (étape 4), clés USB (étape 5) : pages et synchronisation LDAPS | FAIT (`serveur-utilisateurs.md`) |
+| Double validation (§3.10), rapports, politique | PRÉVU |
 | Comparaison aux exports d'empreintes d'audit depuis la page | PRÉVU (`barbacane-audit verifier` en ligne de commande) |
 | Captures PNG Jour/Nuit | PRÉVU : script prêt (`tests/web/captures.sh`), navigateur absent de bu |
 | Journal d'audit très long : la page et la vérification lisent tout le fichier | PRÉVU (lecture de la fin seulement pour la consultation) |

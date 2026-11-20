@@ -323,3 +323,12 @@ Règles :
   + 1 s par 512 Kio.
 - Un rapport ne vaut qu'une fois par version proposée (`404 introuvable` ensuite).
 - Aucun nouveau code d'erreur (la liste du §5 est inchangée).
+
+## 10. Ajout : utilisateurs et clés USB (20/11/2026, version 1 inchangée)
+
+Ajout **compatible**, sur le modèle du §9 : trois routes de l'écoute **mTLS** seulement
+(`/utilisateurs/politique`, `/utilisateurs/verification`, `/utilisateurs/pin`), messages nouveaux
+(`serveur/protocole/src/utilisateurs.rs`), aucun message existant modifié, aucun nouveau code
+d'erreur. Ces messages portent, par exception au principe 3 du §1, un identifiant d'utilisateur
+et un PIN (mode Authentification) : le PIN n'est jamais conservé ni journalisé, l'identifiant
+n'apparaît dans l'audit que sous forme de pseudonyme. Détail : `serveur-utilisateurs.md` §4.
