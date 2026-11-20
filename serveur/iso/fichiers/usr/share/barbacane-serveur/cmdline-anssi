@@ -1,0 +1,1 @@
+slab_nomerge init_on_alloc=1 init_on_free=1 page_alloc.shuffle=1 pti=on randomize_kstack_offset=on vsyscall=none debugfs=off lockdown=integrity module.sig_enforce=1 iommu=force ipv6.disable=1 audit=1 audit_backlog_limit=8192

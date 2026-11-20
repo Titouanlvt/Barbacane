@@ -1,0 +1,28 @@
+# Paquets ajoutés au système de base Debian 13 du SERVEUR Barbacane (suite, v2).
+# Résolus avec leurs dépendances dans un Debian 13 minimal par build-iso-serveur.sh, puis
+# installés SANS aucune source apt par fin-installation-serveur.sh. Rien ici n'entre dans la
+# borne hors ligne v1 (systeme/iso/paquets.txt est la seule liste de la borne).
+
+# Pare-feu (liste blanche, docs/suite/serveur-iso.md §4)
+nftables
+# Heure de référence locale, sans source Internet (§3.11)
+chrony
+# Conteneurs sans root (D11) : réseau pasta, plages d'identifiants, session utilisateur systemd
+podman
+passt
+uidmap
+dbus-user-session
+catatonit
+# Disque chiffré LUKS2 scellé au TPM (D9) : systemd-cryptenroll + initramfs systemd (dracut)
+cryptsetup
+cryptsetup-bin
+systemd-cryptsetup
+tpm2-tools
+dracut
+lvm2
+# Durcissement et traçabilité (guide ANSSI GNU/Linux)
+auditd
+apparmor
+sudo
+# Sauvegarde chiffrée (CMS AES-256-GCM, signature ECDSA) vers support amovible
+openssl

@@ -1,0 +1,14 @@
+# Serveur Barbacane : état du serveur affiché sur la console à chaque démarrage (et dans le
+# journal) : disque, pare-feu, routes, heure, services, paquets. Aucune donnée secrète.
+[Unit]
+Description=État du serveur Barbacane (console)
+After=multi-user.target nftables.service chrony.service systemd-networkd.service user@.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/barbacane-serveur-etat --attendre
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

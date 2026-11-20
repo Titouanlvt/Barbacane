@@ -1,0 +1,76 @@
+#!/bin/bash
+# État du serveur Barbacane : faits bruts (disque, pare-feu, routes, écoute, heure, services,
+# paquets) entre deux marqueurs, puis un résumé. Lancé à chaque démarrage sur la console
+# (barbacane-serveur-etat.service) et à la demande par l'administrateur (sudo). Rien de secret.
+#   barbacane-serveur-etat [--attendre]   (--attendre : laisse d'abord démarrer les conteneurs)
+set -uo pipefail
+export LC_ALL=C.UTF-8
+SVC=barbacane-svc
+C=/etc/barbacane-serveur
+uid=$(id -u "$SVC" 2>/dev/null || echo 0)
+utilisateur() { runuser -u "$SVC" -- env XDG_RUNTIME_DIR="/run/user/$uid" "$@"; }
+if [ "${1:-}" = --attendre ]; then
+    for _ in $(seq 90); do
+        e=$(utilisateur systemctl --user show -p ActiveState --value barbacane-passerelle.service 2>/dev/null)
+        c=$(utilisateur systemctl --user show -p ConditionResult --value barbacane-passerelle.service 2>/dev/null)
+        case "$e:$c" in active:*|failed:*|inactive:no) break ;; esac
+        sleep 2
+    done
+fi
+ko=0
+alerte() { echo "ALERTE : $*"; ko=1; }
+section() { printf -- '--- %s\n' "$1"; }
+
+echo "=== BARBACANE-ETAT DEBUT $(date -Is)"
+section version
+cat "$C/version" 2>/dev/null || echo inconnue
+section disque
+lsblk -o NAME,TYPE,FSTYPE,SIZE,MOUNTPOINTS
+nom=$(awk '!/^#/ && NF >= 2 { print $1; exit }' /etc/crypttab)
+cryptsetup status "$nom" | grep -E 'type|cipher|keysize|device:' | sed 's/^ *//'
+src=$(awk '!/^#/ && NF >= 2 { print $2; exit }' /etc/crypttab)
+case "$src" in UUID=*) dev="/dev/disk/by-uuid/${src#UUID=}" ;; *) dev="$src" ;; esac
+cryptsetup luksDump "$dev" | awk '/^Tokens:/ { t = 1 } /^Digests:/ { t = 0 } t && /systemd-/ { print "jeton :", $2 } /^Keyslots:/ { k = 1 } /^Tokens:/ { k = 0 } k && /^  [0-9]+: luks2/ { n++ } END { print "emplacements de clé :", n }'
+section routes
+ip -4 route show table main
+ip route show table main | grep -q '^default' && alerte "route par défaut présente"
+section pare-feu
+nft list ruleset
+section ecoute
+ss -Htln | awk '{ print $4 }' | sort -u
+section heure
+grep -E '^[[:space:]]*(server|pool|peer|refclock|local)' /etc/chrony/chrony.conf
+chronyc -n sources 2>&1
+chronyc -n tracking 2>&1 | grep -E 'Reference ID|Stratum|Leap status'
+section services
+for u in nftables chrony systemd-networkd systemd-journald auditd "user@$uid"; do
+    printf '%s %s\n' "$u" "$(systemctl is-active "$u")"
+done
+for u in barbacane-images barbacane-passerelle; do
+    printf 'utilisateur:%s %s condition=%s\n' "$u" \
+        "$(utilisateur systemctl --user is-active "$u" 2>/dev/null)" \
+        "$(utilisateur systemctl --user show -p ConditionResult --value "$u" 2>/dev/null)"
+done
+section conteneurs
+utilisateur podman ps --format '{{.Names}} {{.Image}} {{.Status}}' 2>&1
+utilisateur podman inspect -f 'readonly={{.HostConfig.ReadonlyRootfs}} privileged={{.HostConfig.Privileged}} caps={{.EffectiveCaps}}' barbacane-passerelle 2>/dev/null || true
+section processus-passerelle
+ps -o user=,pid=,args= -C barbacane-passerelle 2>/dev/null || true
+section paquets
+dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' | awk '$1 == "ii" { print $2 }' > /run/barbacane-paquets.txt
+echo "installés : $(wc -l < /run/barbacane-paquets.txt)"
+while read -r p; do
+    [ -z "$p" ] || ! grep -qx "$p" /run/barbacane-paquets.txt || alerte "paquet interdit installé : $p"
+done < /usr/share/barbacane-serveur/paquets-interdits
+rm -f /run/barbacane-paquets.txt
+section journal
+journalctl --header 2>/dev/null | grep -m1 'File path' || true
+ls -d /var/log/journal/*/ 2>/dev/null
+section cle-de-secours
+if [ -e /root/cle-de-secours-luks.txt ]; then
+    echo "À FAIRE : clé de secours du disque encore dans /root/cle-de-secours-luks.txt : la transcrire (coffre) puis « shred -u » ce fichier"
+else
+    echo "transcrite et retirée du disque"
+fi
+echo "=== BARBACANE-ETAT FIN alertes=$ko"
+exit "$ko"

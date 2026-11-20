@@ -1,0 +1,12 @@
+# Serveur Barbacane : chargement des images de conteneurs embarquées dans l'ISO (aucun registre,
+# aucun Internet). Exécuté par le gestionnaire systemd de barbacane-svc.
+[Unit]
+Description=Images de conteneurs Barbacane (chargées depuis l'ISO)
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/barbacane-serveur-images @VERSION@
+
+[Install]
+WantedBy=default.target

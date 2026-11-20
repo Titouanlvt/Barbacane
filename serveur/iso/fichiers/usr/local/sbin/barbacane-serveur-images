@@ -1,0 +1,9 @@
+#!/bin/sh
+# Charge dans le stockage Podman de l'utilisateur courant (barbacane-svc) les images embarquées
+# dans l'ISO du serveur, si elles n'y sont pas déjà. Aucun registre, aucun réseau.
+#   barbacane-serveur-images VERSION
+set -eu
+v=$1
+i=/usr/share/barbacane-serveur/images/passerelle.tar
+podman image exists "localhost/barbacane-passerelle:$v" && exit 0
+podman import --change 'ENTRYPOINT=["/barbacane-passerelle"]' "$i" "localhost/barbacane-passerelle:$v"
