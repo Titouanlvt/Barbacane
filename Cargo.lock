@@ -786,6 +786,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "barbacane-audit"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "data-encoding",
+ "hex",
+ "ring",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "barbacane-client"
 version = "0.1.0"
 dependencies = [
@@ -839,9 +852,11 @@ name = "barbacane-passerelle"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "barbacane-audit",
  "barbacane-protocole",
  "data-encoding",
  "hex",
+ "minisign-verify",
  "rcgen",
  "ring",
  "rustls",

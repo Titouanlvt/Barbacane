@@ -32,7 +32,8 @@ members = [
   "borne/admind",
   "borne/optique",
   "serveur/protocole",
-  "serveur/passerelle"
+  "serveur/passerelle",
+  "serveur/audit"
 ]
 # Copie externe (licence MIT), non membre : ni fmt ni clippy du projet, dépendances de test non résolues
 exclude = ["noyau/fscommon"]
@@ -64,7 +65,8 @@ default-members = [
   "borne/admind",
   "borne/optique",
   "serveur/protocole",
-  "serveur/passerelle"
+  "serveur/passerelle",
+  "serveur/audit"
 ]
 resolver = "3"
 

@@ -8,9 +8,12 @@ license.workspace = true
 [dependencies]
 # Toutes déjà présentes dans Cargo.lock (justification : docs/suite/serveur-socle.md §4).
 anyhow = "1.0.104"
+barbacane-audit = { path = "../audit" }
 barbacane-protocole = { path = "../protocole" }
 data-encoding = "2.11.1"
 hex = "0.4.3"
+# Vérification des .bcu avant acceptation (déjà utilisé par borne/admind).
+minisign-verify = "0.3.0"
 rcgen = { version = "0.14.10", default-features = false, features = ["crypto", "pem", "ring", "x509-parser"] }
 ring = "0.17.14"
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "logging"] }

@@ -1,12 +1,17 @@
 //! Opérations d'administration locale (commande `barbacane-registre`). L'interface web
 //! (D10) viendra les appeler à son tour ; chaque opération est journalisée.
 
+use std::os::unix::fs::MetadataExt;
+use std::path::Path;
+
 use anyhow::{Context, Result};
+use barbacane_audit::Evenement;
 use barbacane_protocole::{DUREE_JETON_S, Jeton};
 use serde_json::json;
 
 use crate::Config;
 use crate::ca::CaBornes;
+use crate::maj::{DepotMaj, EtatMaj, Paquet};
 use crate::outils::{aleatoire, nouvel_uuid};
 use crate::registre::{Demande, LigneSupervision, Motif, Registre, StatutDemande, Stockage};
 
@@ -16,15 +21,35 @@ pub fn publier_crl(ca: &CaBornes, config: &Config, reg: &mut Registre, t: u64) -
     Ok(())
 }
 
+/// Acteur audité d'une commande locale : `admin:uid-<n>` (compte du processus).
+pub fn acteur_local() -> String {
+    match std::fs::metadata("/proc/self") {
+        Ok(m) => format!("admin:uid-{}", m.uid()),
+        Err(_) => "admin:uid-inconnu".into(),
+    }
+}
+
 pub struct Admin {
     pub config: Config,
     pub stockage: Stockage,
+    pub maj: DepotMaj,
+    acteur: String,
 }
 
 impl Admin {
     pub fn ouvrir(config: Config) -> Result<Admin> {
         let stockage = Stockage::ouvrir(&config.registre)?;
-        Ok(Admin { config, stockage })
+        let maj = DepotMaj::ouvrir(&stockage)?;
+        Ok(Admin {
+            config,
+            stockage,
+            maj,
+            acteur: acteur_local(),
+        })
+    }
+
+    fn auditer(&self, evenement: Evenement) -> Result<()> {
+        self.stockage.auditer(&self.acteur, evenement)
     }
 
     fn ca(&self) -> Result<CaBornes> {
@@ -34,8 +59,13 @@ impl Admin {
     /// Nouveau jeton (1 h, usage unique) pour un site ; le secret n'est affiché qu'une fois.
     pub fn creer_jeton(&self, site: &str, t: u64) -> Result<Jeton> {
         let jeton = Jeton::nouveau(self.config.port_enrolement, &aleatoire::<16>());
-        self.stockage
-            .transaction(|r| r.creer_jeton(site, &jeton.secret, t))?;
+        self.stockage.transaction(|r| {
+            r.creer_jeton(site, &jeton.secret, t)?;
+            self.auditer(Evenement::JetonCree {
+                site: site.into(),
+                expire_le: t + DUREE_JETON_S,
+            })
+        })?;
         self.stockage.journaliser(
             t,
             "jeton_cree",
@@ -46,6 +76,9 @@ impl Admin {
 
     /// Demandes en attente de décision (non expirées).
     pub fn demandes(&self, t: u64) -> Result<Vec<Demande>> {
+        self.auditer(Evenement::Administration {
+            action: "consultation-demandes".into(),
+        })?;
         Ok(self
             .stockage
             .lire()?
@@ -59,16 +92,24 @@ impl Admin {
     pub fn valider(&self, id: &str, empreinte: &str, nom: Option<&str>, t: u64) -> Result<String> {
         let ca = self.ca()?;
         let uuid = nouvel_uuid();
-        let uuid = self
-            .stockage
-            .transaction(|r| r.valider(&ca, id, empreinte, nom, &uuid, t))?;
+        let uuid = self.stockage.transaction(|r| {
+            let uuid = r.valider(&ca, id, empreinte, nom, &uuid, t)?;
+            self.auditer(Evenement::EnrolementValide {
+                demande: id.into(),
+                borne: uuid.clone(),
+            })?;
+            Ok(uuid)
+        })?;
         self.stockage
             .journaliser(t, "demande_validee", json!({"demande": id, "borne": uuid}));
         Ok(uuid)
     }
 
     pub fn refuser(&self, id: &str, t: u64) -> Result<()> {
-        self.stockage.transaction(|r| r.refuser(id, t))?;
+        self.stockage.transaction(|r| {
+            r.refuser(id, t)?;
+            self.auditer(Evenement::EnrolementRefuse { demande: id.into() })
+        })?;
         self.stockage
             .journaliser(t, "demande_refusee", json!({"demande": id}));
         Ok(())
@@ -79,7 +120,14 @@ impl Admin {
         let ca = self.ca()?;
         self.stockage.transaction(|r| {
             r.revoquer(uuid, motif, t)?;
-            publier_crl(&ca, &self.config, r, t)
+            publier_crl(&ca, &self.config, r, t)?;
+            self.auditer(Evenement::Revocation {
+                borne: uuid.into(),
+                motif: serde_json::to_value(motif)?
+                    .as_str()
+                    .unwrap_or("inconnu")
+                    .into(),
+            })
         })?;
         self.stockage
             .journaliser(t, "borne_revoquee", json!({"borne": uuid, "motif": motif}));
@@ -91,6 +139,9 @@ impl Admin {
         let ca = self.ca()?;
         let n = self.stockage.transaction(|r| {
             publier_crl(&ca, &self.config, r, t)?;
+            self.auditer(Evenement::CrlPubliee {
+                numero: r.numero_crl,
+            })?;
             Ok(r.numero_crl)
         })?;
         self.stockage
@@ -99,6 +150,30 @@ impl Admin {
     }
 
     pub fn supervision(&self, t: u64) -> Result<Vec<LigneSupervision>> {
+        self.auditer(Evenement::Administration {
+            action: "consultation-supervision".into(),
+        })?;
         Ok(self.stockage.lire().context("registre")?.supervision(t))
+    }
+
+    /// Installe un plancher signé hors ligne (`FICHIER` + `FICHIER.minisig`).
+    pub fn maj_plancher(&self, fichier: &Path) -> Result<u64> {
+        self.maj.installer_plancher(fichier, &self.acteur)
+    }
+
+    /// Dépose un `.bcu` (+ `.minisig`) vérifié avec la clé des bornes.
+    pub fn maj_deposer(&self, bcu: &Path) -> Result<Paquet> {
+        self.maj.deposer(bcu, &self.acteur)
+    }
+
+    pub fn maj_diffuser(&self, version: u64) -> Result<()> {
+        self.maj.diffuser(version, &self.acteur)
+    }
+
+    pub fn maj_etat(&self) -> Result<EtatMaj> {
+        self.auditer(Evenement::Administration {
+            action: "consultation-maj".into(),
+        })?;
+        self.maj.lire()
     }
 }

@@ -8,10 +8,15 @@
 //! barbacane-registre CONFIG revoquer UUID MOTIF   (volee|reformee|cle-suspecte|changement-site|fin-de-vie)
 //! barbacane-registre CONFIG crl
 //! barbacane-registre CONFIG supervision           (code 3 si au moins une alerte)
+//! barbacane-registre CONFIG maj-plancher FICHIER   (plancher signé hors ligne + FICHIER.minisig)
+//! barbacane-registre CONFIG maj-deposer FICHIER.bcu (+ FICHIER.bcu.minisig, clé des bornes)
+//! barbacane-registre CONFIG maj-diffuser VERSION
+//! barbacane-registre CONFIG maj-etat
 //! ```
+//! Chaque opération est inscrite au journal d'audit chaîné (`audit.jsonl` du registre).
 #![forbid(unsafe_code)]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use anyhow::{Context, Result, bail};
@@ -20,7 +25,7 @@ use barbacane_passerelle::admin::Admin;
 use barbacane_passerelle::outils::{date_utc, maintenant};
 use barbacane_passerelle::registre::Motif;
 
-const USAGE: &str = "usage : barbacane-registre CONFIG (jeton SITE | demandes | valider ID EMPREINTE [NOM] | refuser ID | revoquer UUID MOTIF | crl | supervision)";
+const USAGE: &str = "usage : barbacane-registre CONFIG (jeton SITE | demandes | valider ID EMPREINTE [NOM] | refuser ID | revoquer UUID MOTIF | crl | supervision | maj-plancher FICHIER | maj-deposer FICHIER.bcu | maj-diffuser VERSION | maj-etat)";
 
 /// Empreinte lisible : groupes de 4 caractères.
 fn grouper(h: &str) -> String {
@@ -121,6 +126,52 @@ fn executer(args: &[String]) -> Result<ExitCode> {
             }
             if alertes > 0 {
                 return Ok(ExitCode::from(3));
+            }
+        }
+        "maj-plancher" => {
+            let n = admin.maj_plancher(Path::new(arg(0)?))?;
+            println!("Plancher signé installé : aucune version inférieure à {n} ne sera acceptée.");
+        }
+        "maj-deposer" => {
+            let p = admin.maj_deposer(Path::new(arg(0)?))?;
+            println!(
+                "Paquet {} accepté (signature des bornes vérifiée) : sha256 {}, {} octets.",
+                p.version_maj, p.sha256, p.taille
+            );
+            println!("Le proposer aux bornes : maj-diffuser {}", p.version_maj);
+        }
+        "maj-diffuser" => {
+            let n: u64 = arg(0)?.parse().context("VERSION : entier attendu")?;
+            admin.maj_diffuser(n)?;
+            println!("Paquet {n} proposé aux bornes à leur prochain battement.");
+        }
+        "maj-etat" => {
+            let e = admin.maj_etat()?;
+            println!(
+                "plancher {}  diffusé {}",
+                e.plancher
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "aucun".into()),
+                e.diffusee
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "aucun".into())
+            );
+            for p in &e.paquets {
+                println!(
+                    "paquet {}  {} octets  sha256 {}  déposé {}",
+                    p.version_maj,
+                    p.taille,
+                    p.sha256,
+                    date_utc(p.depose_le)
+                );
+            }
+            for (uuid, s) in &e.bornes {
+                println!(
+                    "{uuid}  paquet {}  {}  depuis {}",
+                    s.version_maj,
+                    serde_json::to_string(&s.etat)?.trim_matches('"'),
+                    date_utc(s.le)
+                );
             }
         }
         _ => bail!(USAGE),
