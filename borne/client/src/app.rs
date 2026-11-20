@@ -77,6 +77,8 @@ pub enum Msg {
     Reveil,
     /// Bouton « Maintenir pour effacer » enfoncé (true) ou relâché (false)
     Maintien(bool),
+    /// Borne en ligne : rapport minimal de passage déposé par admind pour l'agent
+    Passage(Result<serde_json::Value, String>),
 }
 
 pub struct App {
@@ -422,6 +424,27 @@ impl App {
         self.dst = Some(barbacane_parcours::optique(&e.libelle));
     }
 
+    /// Borne en ligne seulement : demande à admind le rapport minimal de l'analyse `id` (il
+    /// relit lui-même le rapport de l'analyseur ; seuls l'identifiant et le support source lui
+    /// sont donnés). Hors ligne (aucun champ « serveur » dans l'état) : rien, comme la v1.
+    fn rapport_passage(&self, id: &str) -> Task<Msg> {
+        let en_ligne = self.etat.as_ref().is_some_and(|e| e["serveur"].is_object());
+        let Some(src) = self.src.as_ref().filter(|_| en_ligne) else {
+            return Task::none();
+        };
+        let req = serde_json::json!({
+            "op": "serveur_passage",
+            "id": id,
+            "vendorid": src.vendorid,
+            "productid": src.productid,
+            "serial": src.serial,
+        });
+        Task::perform(
+            crate::admin::call(self.cfg.admin_socket.clone(), req),
+            Msg::Passage,
+        )
+    }
+
     /// Ordre simple au service optique (éjection…), sans bloquer l'interface.
     fn optique_op(&self, op: &'static str) -> Task<Msg> {
         let sock = self.cfg.optique_socket.clone();
@@ -496,6 +519,15 @@ impl App {
         match m {
             Msg::Worker(ev) => self.on_worker(ev),
             Msg::Choisir(mode) => {
+                // Borne en ligne seulement (aucun champ « serveur » hors ligne) : la file des
+                // rapports de passage est pleine → hors service, aucun passage sans rapport.
+                if self.src.is_some() && file_passages_pleine(self.etat.as_ref()) {
+                    self.screen = Screen::Erreur {
+                        message: "Borne hors service : les rapports des passages précédents n'ont pas encore pu être transmis au serveur. Aucune analyse n'est possible pour l'instant ; prévenez votre administrateur.".into(),
+                        retry: false,
+                    };
+                    return Task::none();
+                }
                 if let Some(src) = self.src.clone() {
                     self.mode = mode;
                     self.progress = None;
@@ -634,6 +666,12 @@ impl App {
                 }
                 Task::none()
             }
+            Msg::Passage(r) => {
+                if let Err(e) = r {
+                    log::warn!("rapport de passage : {e}");
+                }
+                self.refresh_etat()
+            }
             Msg::Admin(am) => admin_ui::update(self, am),
         }
     }
@@ -704,8 +742,10 @@ impl App {
                 return admin_ui::analysed(self, r.map(|_| ()));
             }
             Ev::Analysed(Ok(a)) => {
+                let t = self.rapport_passage(&a.report.id);
                 self.analysis = Some(a);
                 self.screen = Screen::Resume;
+                return t;
             }
             Ev::Analysed(Err(e)) => {
                 self.screen = Screen::Erreur {
@@ -1797,6 +1837,12 @@ pub fn icone_etat<'a>(svg: &'static [u8], taille: f32, c: iced::Color) -> Elemen
         .into()
 }
 
+/// Borne en ligne : file des rapports de passage pleine (état d'admind). Toujours faux hors
+/// ligne (aucun champ « serveur »).
+pub fn file_passages_pleine(etat: Option<&serde_json::Value>) -> bool {
+    etat.is_some_and(|e| e["serveur"]["file_pleine"] == serde_json::Value::Bool(true))
+}
+
 /// Pied de page : « station blanche hors ligne » (v1), sauf sur une borne en ligne dont
 /// l'agent est actif (il publie son état).
 pub fn mention_station(etat: &serde_json::Value) -> &'static str {
@@ -1941,5 +1987,25 @@ mod tests_veille {
             let (x, y) = super::position_veille(i as f32);
             assert!((-0.8..=0.8).contains(&x) && (-0.8..=0.8).contains(&y));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests_passages {
+    use serde_json::json;
+
+    #[test]
+    fn hors_service_seulement_en_ligne_et_file_pleine() {
+        assert!(!super::file_passages_pleine(None));
+        // Borne hors ligne (v1) : aucun champ « serveur », jamais hors service par ce biais.
+        assert!(!super::file_passages_pleine(Some(
+            &json!({"pin_set": true})
+        )));
+        assert!(!super::file_passages_pleine(Some(
+            &json!({"serveur": {"file_pleine": false}})
+        )));
+        assert!(super::file_passages_pleine(Some(
+            &json!({"serveur": {"file_pleine": true}})
+        )));
     }
 }

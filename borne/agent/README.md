@@ -28,7 +28,7 @@ Fichiers :
   `/etc/barbacane/agent/ca-serveur.pem` : CA serveur, dont le SHA-256 du DER est **aussi** dans
   `agent.toml` : un fichier qui ne correspond pas empêche l'agent de démarrer.
 - `/var/lib/barbacane-agent/` (0700, compte `barbacane-agent`) : `cle.pem` (0600), `chaine.pem`,
-  `attente.json`, `file.json`, `jeton` (déposé par l'administrateur), `refusee`.
+  `attente.json`, `passage-*.json` (file), `jeton` (déposé par l'administrateur), `refusee`.
 - `/run/barbacane-agent/etat.json` (0644, aucun secret) : mode, empreinte de la demande, dernière
   liaison, écart d'horloge, fin de validité du certificat, file locale.
 
@@ -53,9 +53,12 @@ s'y substituera sans autre changement.
 
 ## File locale bornée
 
-`file.json` : jamais de perte ; pleine (`file_max`, 1000 par défaut) → ajout refusé et la borne se
-déclare `hors_service` dans le battement. Le protocole v1 n'a pas encore de route de rapports :
-aucun élément n'y est déposé à ce jalon (elle alimente `rapports_en_attente`).
+Fichiers `passage-<horodatage>-<id>-<partie>.json` du dossier d'état, déposés par admind (seul
+producteur) : rapports minimaux de passage (protocole §10, aucun nom de fichier). Jamais de perte ;
+pleine (`file_max`, 1000 par défaut) → admind refuse le dépôt, l'interface met la borne hors
+service et le battement annonce `hors_service`. L'agent revalide chaque élément (schéma strict),
+l'envoie sur `/rapport/passage` après le battement et ne le retire qu'après `200` ; un élément
+refusé définitivement est renommé `rejet-…` (jamais effacé).
 
 ## Limites de ce jalon (suite)
 

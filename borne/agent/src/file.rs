@@ -1,102 +1,148 @@
-//! File locale bornée des éléments à transmettre au serveur (conception §3.1).
+//! File locale bornée des rapports de passage à transmettre au serveur (conception §3.1,
+//! protocole §10).
 //!
-//! Règle : **jamais de perte**. Quand la file est pleine, un ajout est REFUSÉ (l'appelant
-//! le signale ; la conception prévoit alors le blocage de la borne) ; rien n'est écrasé.
-//! À ce jalon (protocole v1 : enrôlement et battement seulement), aucun rapport n'y est encore
-//! déposé : la file ne sert qu'au compteur `rapports_en_attente` du battement. Les rapports
-//! (étape 3 de la suite) y entreront, sans nom de fichier (D2).
+//! Éléments = fichiers `passage-<horodatage>-<id>-<partie>.json` du dossier d'état, déposés
+//! atomiquement par admind (root), seul producteur ; l'agent, seul consommateur, les envoie
+//! dans l'ordre des noms et ne retire un élément qu'après l'accusé `200` du serveur (rejeu
+//! après coupure ; le serveur est idempotent). Règle : **jamais de perte** : quand la file est
+//! pleine, admind refuse tout nouveau dépôt et la borne est mise hors service (aucun passage
+//! sans rapport). Un élément que le serveur ne pourra jamais accepter (schéma refusé) est mis
+//! de côté (`rejet-…`), jamais effacé. Aucun nom de fichier analysé n'y figure (D2) : admind
+//! n'y écrit que tailles, empreintes et verdicts, et l'agent revalide chaque élément avec le
+//! schéma strict du protocole avant l'envoi.
 
+use std::fs::File;
+use std::io::Read;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
+use barbacane_protocole::passage::TAILLE_RAPPORT_MAX;
 
 use crate::coffre::ecrire_atomique;
 
-/// Taille maximale d'un élément (octets).
-pub const ELEMENT_MAX: usize = 16 * 1024;
+/// Préfixe des éléments (le même qu'admind).
+pub const PREFIXE: &str = "passage-";
+/// Préfixe d'un élément mis de côté.
+pub const PREFIXE_REJET: &str = "rejet-";
 
 pub struct FileLocale {
-    chemin: PathBuf,
+    dossier: PathBuf,
     max: usize,
-    elements: Vec<String>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Pleine;
+/// Nom d'élément bien formé : préfixe, `[0-9a-f-]`, `.json`, court.
+fn nom_valide(nom: &str) -> bool {
+    nom.len() <= 96
+        && nom
+            .strip_prefix(PREFIXE)
+            .and_then(|n| n.strip_suffix(".json"))
+            .is_some_and(|n| {
+                !n.is_empty()
+                    && n.bytes()
+                        .all(|c| c.is_ascii_digit() || b"abcdef-".contains(&c))
+            })
+}
 
 impl FileLocale {
-    /// Ouvre la file (fichier JSON du dossier d'état) ; absente = vide. Un contenu illisible ou
-    /// au-delà de la capacité est une erreur (jamais ignorée silencieusement).
+    /// File du dossier d'état `dossier`, de capacité `max`.
     pub fn ouvrir(dossier: &Path, max: usize) -> Result<FileLocale> {
-        let chemin = dossier.join("file.json");
-        let elements: Vec<String> = match std::fs::read(&chemin) {
-            Ok(o) => {
-                if o.len() > max.saturating_mul(ELEMENT_MAX + 8) + 2 {
-                    bail!("file locale plus grosse que sa capacité");
-                }
-                serde_json::from_slice(&o).context("file locale illisible")?
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
-            Err(e) => return Err(e).context("lecture de la file locale"),
-        };
-        if elements.len() > max || elements.iter().any(|e| e.len() > ELEMENT_MAX) {
-            bail!("file locale au-delà de sa capacité");
-        }
-        Ok(FileLocale {
-            chemin,
+        let f = FileLocale {
+            dossier: dossier.to_owned(),
             max,
-            elements,
-        })
+        };
+        f.noms()?;
+        Ok(f)
     }
 
+    /// Noms des éléments, du plus ancien au plus récent.
+    fn noms(&self) -> Result<Vec<String>> {
+        let mut n: Vec<String> = std::fs::read_dir(&self.dossier)
+            .context("file locale")?
+            .flatten()
+            .filter_map(|e| e.file_name().into_string().ok())
+            .filter(|n| n.starts_with(PREFIXE))
+            .collect();
+        n.sort();
+        Ok(n)
+    }
+
+    /// Nombre d'éléments ; illisible → la capacité (sûreté : la file est alors « pleine »).
     pub fn len(&self) -> usize {
-        self.elements.len()
+        self.noms().map(|n| n.len()).unwrap_or(self.max)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.elements.is_empty()
+        self.len() == 0
     }
 
     pub fn pleine(&self) -> bool {
-        self.elements.len() >= self.max
+        self.len() >= self.max
     }
 
-    /// Ajoute un élément (persisté avant de rendre la main). File pleine : refus, rien perdu.
-    pub fn ajouter(&mut self, element: String) -> Result<Result<(), Pleine>> {
-        if element.len() > ELEMENT_MAX {
-            bail!("élément trop gros pour la file locale");
+    /// Premier élément : (nom, contenu). Un élément mal nommé, qui n'est pas un fichier
+    /// ordinaire ou trop gros est mis de côté.
+    pub fn premier(&self) -> Result<Option<(String, Vec<u8>)>> {
+        for nom in self.noms()? {
+            if !nom_valide(&nom) {
+                self.ecarter(&nom)?;
+                continue;
+            }
+            let lu = std::fs::OpenOptions::new()
+                .read(true)
+                .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits() as i32)
+                .open(self.dossier.join(&nom))
+                .and_then(|f| {
+                    let m = f.metadata()?;
+                    let mut o = Vec::new();
+                    if m.file_type().is_file() && m.len() <= TAILLE_RAPPORT_MAX as u64 {
+                        f.take(TAILLE_RAPPORT_MAX as u64 + 1).read_to_end(&mut o)?;
+                    }
+                    Ok(o)
+                });
+            match lu {
+                Ok(o) if !o.is_empty() && o.len() <= TAILLE_RAPPORT_MAX => {
+                    return Ok(Some((nom, o)));
+                }
+                _ => self.ecarter(&nom)?,
+            }
         }
-        if self.pleine() {
-            return Ok(Err(Pleine));
-        }
-        self.elements.push(element);
-        if let Err(e) = self.sauver() {
-            self.elements.pop();
-            return Err(e);
-        }
-        Ok(Ok(()))
+        Ok(None)
     }
 
-    /// Premier élément (le plus ancien), sans le retirer.
-    pub fn premier(&self) -> Option<&str> {
-        self.elements.first().map(String::as_str)
-    }
-
-    /// Retire le premier élément, une fois sa transmission confirmée par le serveur.
-    pub fn retirer_premier(&mut self) -> Result<()> {
-        if self.elements.is_empty() {
-            return Ok(());
-        }
-        let e = self.elements.remove(0);
-        if let Err(err) = self.sauver() {
-            self.elements.insert(0, e);
-            return Err(err);
-        }
+    /// Retire un élément, une fois sa transmission confirmée par le serveur.
+    pub fn retirer(&self, nom: &str) -> Result<()> {
+        match std::fs::remove_file(self.dossier.join(nom)) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e).context("retrait d'un élément de la file"),
+        }?;
+        File::open(&self.dossier)?.sync_all()?;
         Ok(())
     }
 
-    fn sauver(&self) -> Result<()> {
-        ecrire_atomique(&self.chemin, &serde_json::to_vec(&self.elements)?, 0o600)
+    /// Met un élément de côté (jamais effacé) : il ne compte plus dans la file.
+    pub fn ecarter(&self, nom: &str) -> Result<()> {
+        eprintln!("agent : élément de file {nom:?} refusé : mis de côté");
+        let reste = nom.strip_prefix(PREFIXE).unwrap_or(nom);
+        std::fs::rename(
+            self.dossier.join(nom),
+            self.dossier.join(format!("{PREFIXE_REJET}{reste}")),
+        )
+        .context("mise de côté d'un élément de la file")
+    }
+
+    /// Ajout (tests ; en service, seul admind dépose). File pleine : `false`, rien n'est écrit.
+    pub fn ajouter(&self, nom: &str, contenu: &[u8]) -> Result<bool> {
+        if self.pleine() {
+            return Ok(false);
+        }
+        ecrire_atomique(
+            &self.dossier.join(format!("{PREFIXE}{nom}.json")),
+            contenu,
+            0o600,
+        )?;
+        Ok(true)
     }
 }
 
@@ -105,28 +151,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bornee_sans_perte_et_persistante() {
+    fn bornee_ordonnee_sans_perte() {
         let d = tempfile::tempdir().unwrap();
-        let mut f = FileLocale::ouvrir(d.path(), 2).unwrap();
+        let f = FileLocale::ouvrir(d.path(), 2).unwrap();
         assert!(f.is_empty());
-        assert_eq!(f.ajouter("a".into()).unwrap(), Ok(()));
-        assert_eq!(f.ajouter("b".into()).unwrap(), Ok(()));
+        assert!(f.ajouter("0002-b", b"b").unwrap());
+        assert!(f.ajouter("0001-a", b"a").unwrap());
+        assert!(!f.ajouter("0003-c", b"c").unwrap(), "pleine : refus");
+        assert!(f.pleine());
+        let (nom, o) = f.premier().unwrap().unwrap();
         assert_eq!(
-            f.ajouter("c".into()).unwrap(),
-            Err(Pleine),
-            "pleine : refus"
+            (nom.as_str(), o.as_slice()),
+            ("passage-0001-a.json", &b"a"[..])
         );
-        let mut f = FileLocale::ouvrir(d.path(), 2).unwrap();
-        assert_eq!((f.len(), f.premier()), (2, Some("a")), "rien n'est perdu");
-        f.retirer_premier().unwrap();
-        assert_eq!(
-            FileLocale::ouvrir(d.path(), 2).unwrap().premier(),
-            Some("b")
-        );
-        assert!(f.ajouter("x".repeat(ELEMENT_MAX + 1)).is_err());
-        assert!(
-            FileLocale::ouvrir(d.path(), 0).is_err(),
-            "capacité réduite sous le contenu"
-        );
+        f.retirer(&nom).unwrap();
+        assert_eq!(f.premier().unwrap().unwrap().1, b"b");
+        // Élément mal nommé ou trop gros : mis de côté, pas effacé.
+        std::fs::write(d.path().join("passage-0000-Z.json"), b"x").unwrap();
+        std::fs::write(
+            d.path().join("passage-0000-0.json"),
+            vec![b' '; TAILLE_RAPPORT_MAX + 1],
+        )
+        .unwrap();
+        assert_eq!(f.premier().unwrap().unwrap().1, b"b");
+        assert!(d.path().join("rejet-0000-Z.json").exists());
+        assert!(d.path().join("rejet-0000-0.json").exists());
+        assert_eq!(f.len(), 1);
     }
 }

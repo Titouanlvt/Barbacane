@@ -747,3 +747,148 @@ fn maj_du_serveur_verifiee_par_la_borne() {
     std::os::unix::fs::symlink(&p, &bcu).unwrap();
     assert!(appliquer().is_err());
 }
+
+// ───────────── Rapports minimaux de passage (borne en ligne seulement) ─────────────
+
+const ANALYSE: &str = "1c6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11";
+
+/// Rapport détaillé de l'analyseur (forme de `report::detailed`), avec des noms sensibles.
+fn rapport_analyseur(c: &Ctx, id: &str, n_sains: usize) {
+    let mut files = vec![
+        json!({"path": "Confidentiel/plan-secret.docx", "container": null, "size": 68,
+               "sha256": "a".repeat(64), "file_type": "text/plain", "verdict": "DIRTY",
+               "reason": "menace détectée par ClamAV : Eicar", "engine": "ClamAV",
+               "signature": "Eicar-Signature", "output": null}),
+        json!({"path": "Confidentiel/macro.xlsm", "container": null, "size": 10,
+               "sha256": "b".repeat(64), "file_type": "x", "verdict": "DIRTY",
+               "reason": "type refusé", "engine": null, "signature": null, "output": null}),
+    ];
+    for i in 0..n_sains {
+        files.push(
+            json!({"path": format!("Confidentiel/sain-{i}.txt"), "container": null,
+            "size": i, "sha256": format!("{i:064x}"), "file_type": "text/plain",
+            "verdict": "CLEAN", "reason": "", "engine": null, "signature": null,
+            "output": format!("Confidentiel/sain-{i}.txt")}),
+        );
+    }
+    std::fs::write(
+        c.conf
+            .reports_dir
+            .join(format!("20261120-101010-{id}.json")),
+        serde_json::to_vec(&json!({"id": id, "user_id": "u", "status": "scanned",
+            "error": null, "started": "x", "finished": "y", "antivirus": {},
+            "summary": {}, "files": files}))
+        .unwrap(),
+    )
+    .unwrap();
+}
+
+fn elements(etat: &Path) -> Vec<PathBuf> {
+    let mut v: Vec<PathBuf> = std::fs::read_dir(etat)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| {
+            p.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("passage-")
+        })
+        .collect();
+    v.sort();
+    v
+}
+
+fn passage_op(id: &str) -> Value {
+    json!({"op": "serveur_passage", "id": id, "vendorid": 0x0781, "productid": 0x5581, "serial": "4C530001"})
+}
+
+#[test]
+fn passage_hors_ligne_refuse() {
+    let t = tempfile::tempdir().unwrap();
+    let c = ctx(t.path());
+    rapport_analyseur(&c, ANALYSE, 1);
+    let e = req(&c, passage_op(ANALYSE)).unwrap_err().to_string();
+    assert!(e.contains("hors ligne"), "{e}");
+    let st = req(&c, json!({"op": "status"})).unwrap();
+    assert!(st.get("serveur").is_none());
+}
+
+#[test]
+fn passage_extrait_sans_nom_de_fichier() {
+    let t = tempfile::tempdir().unwrap();
+    let c = ctx(t.path());
+    let (etat, _) = en_ligne(&c, t.path());
+    // 7 001 fichiers : deux parties (5 000 par partie).
+    rapport_analyseur(&c, ANALYSE, 6_999);
+    let r = req(&c, passage_op(ANALYSE)).unwrap();
+    assert_eq!(r["parties"], 2);
+    let el = elements(&etat);
+    assert_eq!(el.len(), 2);
+    let mut total = 0;
+    for (i, p) in el.iter().enumerate() {
+        let o = std::fs::read(p).unwrap();
+        let texte = String::from_utf8(o.clone()).unwrap();
+        for interdit in ["Confidentiel", "secret", ".docx", ".txt", "path", "Eicar"] {
+            assert!(!texte.contains(interdit), "{interdit} dans {}", p.display());
+        }
+        let m: barbacane_protocole::passage::RapportPassage =
+            barbacane_protocole::decoder(&o).unwrap();
+        assert_eq!(
+            (m.id.as_str(), m.partie, m.parties),
+            (ANALYSE, i as u32 + 1, 2)
+        );
+        assert_eq!(m.verdict, barbacane_protocole::passage::Verdict::Menace);
+        assert_eq!(
+            m.support,
+            hex::encode(Sha256::digest(b"0781:5581:4C530001")),
+            "SHA-256 de vid:pid:série"
+        );
+        total += m.fichiers.len();
+        if i == 0 {
+            use barbacane_protocole::passage::Verdict;
+            assert_eq!(m.fichiers[0].verdict, Verdict::Menace);
+            assert_eq!(m.fichiers[1].verdict, Verdict::Refuse);
+            assert_eq!(m.fichiers[2].verdict, Verdict::Sain);
+            assert_eq!(m.fichiers[0].taille, 68);
+        }
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            std::fs::metadata(p).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+    }
+    assert_eq!(total, 7_001);
+    // Doublon (l'interface redemande) : rien de plus.
+    assert_eq!(req(&c, passage_op(ANALYSE)).unwrap()["parties"], 0);
+    assert_eq!(elements(&etat).len(), 2);
+    // Entrées hostiles refusées.
+    for mauvais in [
+        json!({"op": "serveur_passage", "id": "../../etc/passwd", "vendorid": 1, "productid": 1, "serial": "x"}),
+        json!({"op": "serveur_passage", "id": ANALYSE, "vendorid": 70000, "productid": 1, "serial": "x"}),
+        json!({"op": "serveur_passage", "id": "2c6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11", "vendorid": 1, "productid": 1, "serial": "x"}),
+    ] {
+        assert!(req(&c, mauvais.clone()).is_err(), "{mauvais}");
+    }
+    let st = req(&c, json!({"op": "status"})).unwrap();
+    assert_eq!(st["serveur"]["rapports_en_file"], 2);
+    assert_eq!(st["serveur"]["file_pleine"], false);
+}
+
+#[test]
+fn passage_file_pleine_hors_service() {
+    let t = tempfile::tempdir().unwrap();
+    let c = ctx(t.path());
+    let (etat, _) = en_ligne(&c, t.path());
+    let mut conf = std::fs::read_to_string(&c.conf.agent_config).unwrap();
+    conf.push_str("file_max = 1\n");
+    std::fs::write(&c.conf.agent_config, conf).unwrap();
+    rapport_analyseur(&c, ANALYSE, 1);
+    req(&c, passage_op(ANALYSE)).unwrap();
+    let st = req(&c, json!({"op": "status"})).unwrap();
+    assert_eq!(st["serveur"]["file_pleine"], true);
+    let autre = "2c6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11";
+    rapport_analyseur(&c, autre, 1);
+    let e = req(&c, passage_op(autre)).unwrap_err().to_string();
+    assert!(e.contains("hors service"), "{e}");
+    assert_eq!(elements(&etat).len(), 1, "rien d'écrasé");
+}
