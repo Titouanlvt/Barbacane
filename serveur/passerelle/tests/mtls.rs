@@ -8,7 +8,7 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
 
-use barbacane_passerelle::{Config, servir};
+use barbacane_passerelle::{Config, Passerelle, servir};
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName};
 use rustls::{
@@ -41,14 +41,25 @@ fn banc(crl: &str) -> Banc {
     let config = Config {
         adresse: "127.0.0.1".parse().unwrap(),
         port: 1,
+        port_enrolement: 2,
         chaine_serveur: pki.join("serveur/chaine.pem"),
         cle_serveur: pki.join("serveur/cle.pem"),
         ca_bornes: pki.join("ca-bornes/cert.pem"),
+        cle_ca_bornes: pki.join("ca-bornes/cle.pem"),
         crl_bornes: pki.join(crl),
+        registre: dossier.path().join("registre"),
     };
     let ecoute = TcpListener::bind("127.0.0.1:0").unwrap();
     let adresse = ecoute.local_addr().unwrap();
-    std::thread::spawn(move || servir(ecoute, config));
+    // Contrôle au démarrage ignoré ici (CRL expirée volontairement) : la passerelle doit
+    // refuser à chaque connexion, ce que prouvent les tests.
+    let passerelle = std::sync::Arc::new(Passerelle {
+        stockage: barbacane_passerelle::registre::Stockage::ouvrir(&config.registre).unwrap(),
+        ca: barbacane_passerelle::ca::CaBornes::charger(&config.ca_bornes, &config.cle_ca_bornes)
+            .unwrap(),
+        config,
+    });
+    std::thread::spawn(move || servir(ecoute, passerelle));
     Banc {
         _dossier: dossier,
         pki,
@@ -100,10 +111,9 @@ fn borne_valide_acceptee_et_identifiee() {
     let b = banc("ca-bornes/crl.pem");
     let r = sante(&b, Some("borne-01"), &rustls::version::TLS13).expect("connexion refusée");
     assert!(r.starts_with("HTTP/1.1 200 OK"), "{r}");
-    assert!(
-        r.ends_with("{\"etat\":\"ok\",\"borne\":\"borne borne-01\"}"),
-        "{r}"
-    );
+    let corps = r.split("\r\n\r\n").nth(1).unwrap();
+    let sante: barbacane_protocole::Sante = barbacane_protocole::decoder(corps.as_bytes()).unwrap();
+    assert_eq!(sante.borne, "borne borne-01", "{r}");
 }
 
 #[test]

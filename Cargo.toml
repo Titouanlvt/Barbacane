@@ -31,6 +31,7 @@ members = [
   "borne/client",
   "borne/admind",
   "borne/optique",
+  "serveur/protocole",
   "serveur/passerelle"
 ]
 # Copie externe (licence MIT), non membre : ni fmt ni clippy du projet, dépendances de test non résolues
@@ -62,6 +63,7 @@ default-members = [
   "borne/client",
   "borne/admind",
   "borne/optique",
+  "serveur/protocole",
   "serveur/passerelle"
 ]
 resolver = "3"

@@ -839,9 +839,26 @@ name = "barbacane-passerelle"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "barbacane-protocole",
+ "data-encoding",
+ "hex",
+ "rcgen",
+ "ring",
  "rustls",
+ "serde",
+ "serde_json",
  "tempfile",
+ "time",
  "x509-parser",
+]
+
+[[package]]
+name = "barbacane-protocole"
+version = "0.1.0"
+dependencies = [
+ "data-encoding",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

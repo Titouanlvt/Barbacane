@@ -1,0 +1,12 @@
+[package]
+name = "barbacane-protocole"
+description = "Protocole borne ↔ serveur Barbacane (suite) : messages versionnés, schéma strict, tailles bornées"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# Toutes déjà présentes dans Cargo.lock (utilisées par la borne ou tirées par x509-parser).
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+data-encoding = "2.11.1"

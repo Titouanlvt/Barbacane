@@ -10,5 +10,7 @@ défaut) n'utilise pas ce dossier, et `tests/iso/hors-ligne.sh` le vérifie sur 
 ## Socle (étape 5)
 
 - `pki/racine-test.sh DOSSIER` : PKI de **TEST** (jamais dans le dépôt).
-- `passerelle/` : passerelle mTLS (`cargo test -p barbacane-passerelle`, openssl requis).
+- `protocole/` : messages borne ↔ serveur v1, partagés avec le futur agent (`docs/suite/protocole-agent.md`).
+- `passerelle/` : passerelle (écoutes de service mTLS et d'enrôlement), registre des bornes et
+  commande d'administration `barbacane-registre` (`cargo test -p barbacane-passerelle`, openssl requis).
 - Conception du jalon : `docs/suite/serveur-socle.md`.
