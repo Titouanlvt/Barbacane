@@ -14,6 +14,9 @@
 | CI locale | `ci-locale` / `wt-ci-locale` | `tests/ci-locale.sh` écrit ; `lab/ci-locale-bu.sh BRANCHE` (bu) | 1er passage sur bu (`logs/ci-locale-ci-locale.log`) |
 | Charte v2 borne | `borne-charte-v2` / `wt-charte` | **SUSPENDU le 20/11** (priorité serveur). Branche gardée, non fusionnée : jetons générés, relief, verdict en tranche, séquences 3D découpées image par image, captures Jour (`docs/captures/charte-v2/jour`), OCR PPM corrigé (à reporter dans integration). Reste : captures Nuit, creusé, pastilles, herse, campagne. `main` n'a aucun changement visuel de la borne depuis v1.0 (`git diff v1.0 main -- borne/` vide) | — |
 | Socle serveur (étape 5) | `serveur-socle` / `wt-serveur-socle` | fait par sous-agent, relu : PKI de TEST (CA P-384, feuilles P-256), passerelle rustls TLS 1.3 seul, AES-GCM, CRL relue à chaque connexion, fail-closed ; 9 tests | CI locale sur bu (`logs/ci-locale-serveur-socle.log`) puis fusion |
+| Serveur : enrôlement, protocole agent, battement, heure | `serveur-enrolement` / `wt-serveur-enrolement` (depuis `serveur-socle`) | sous-agent en cours | — |
+| Serveur : ISO durcie, LUKS2+TPM, nftables, chrony local, sauvegarde | `serveur-iso` / `wt-serveur-iso` (depuis `serveur-socle`) | sous-agent en cours | — |
+| Borne 950 remise en v1 | — | correctif `integration` + transfert (`logs/950-v1.log`) ; l'instantané « propre » avait reçu la charte v2 | — |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
 ## Plan et état
