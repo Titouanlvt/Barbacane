@@ -54,9 +54,15 @@ def capture(vm, png):
         if os.path.exists(ppm) and os.path.getsize(ppm) > 0:
             break
         time.sleep(0.1)
-    time.sleep(0.3)
-    with open(ppm, "rb") as f:
-        _, l, h, _ = f.read(32).split(maxsplit=3)[:4]
+    # Attendre que le fichier soit complet (en-tête + l*h*3 octets) : QEMU l'écrit par morceaux
+    for _ in range(100):
+        time.sleep(0.2)
+        with open(ppm, "rb") as f:
+            entete = f.read(32).split(maxsplit=4)
+        if len(entete) >= 4:
+            _, l, h = entete[:3]
+            if os.path.getsize(ppm) >= int(l) * int(h) * 3:
+                break
     subprocess.run(["python3", "-c", PPM2PNG, ppm, png], check=True)
     pretraiter(ppm, png)
     os.remove(ppm)
