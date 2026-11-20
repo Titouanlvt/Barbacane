@@ -227,6 +227,14 @@ pub enum Evenement {
     Administration {
         action: String,
     },
+    /// Quarantaine (étape 11, ajout du 20/11/2026 avant toute installation : version 1
+    /// gardée). `action` : nom court (`activation-refusee`, `reception`, `export-valide`…) ;
+    /// `element` : identifiant d'élément ou de demande, uuid de borne, ou `-`. Jamais de nom de
+    /// fichier ni de contenu.
+    Quarantaine {
+        action: String,
+        element: String,
+    },
     /// Écrit seulement par [`Journal::sceller`].
     PointDeControle {
         jusqua: u64,
@@ -266,6 +274,7 @@ impl Evenement {
             | MajRapportee { borne, .. } => ident_valide(borne),
             MajDeposee { sha256, .. } | MajRefusee { sha256, .. } => hex_valide(sha256, 64),
             Administration { action } => ident_valide(action),
+            Quarantaine { action, element } => ident_valide(action) && ident_valide(element),
             UtilisateursImportes { source, .. } => ident_valide(source),
             UtilisateurVerifie {
                 borne, utilisateur, ..

@@ -18,6 +18,7 @@ pub mod iso_bornes;
 pub mod multipart;
 pub mod pages;
 pub mod pages_utilisateurs;
+pub mod quarantaine;
 pub mod sessions;
 
 use std::collections::BTreeMap;
@@ -604,6 +605,7 @@ impl Web {
                 page(200, pages_utilisateurs::cles_usb(&ctx, &base, None))
             }
             iso_bornes::ROUTE => self.page_iso(u, t, None)?,
+            quarantaine::ROUTE => self.page_quarantaine(u, t, None)?,
             "/audit" => {
                 admin.stockage.auditer(
                     &u.acteur(),
@@ -903,6 +905,9 @@ impl Web {
             return Ok(rep);
         }
         let admin = self.admin(u)?;
+        if let Some(rep) = self.post_quarantaine(&r.chemin, f, u, t)? {
+            return Ok(rep);
+        }
         if let Some(rep) = self.post_utilisateurs(&r.chemin, f, u, &admin, t)? {
             return Ok(rep);
         }

@@ -906,6 +906,7 @@ dependencies = [
  "barbacane-audit",
  "barbacane-passerelle",
  "barbacane-protocole",
+ "data-encoding",
  "form_urlencoded",
  "hex",
  "httparse",
