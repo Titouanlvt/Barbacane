@@ -72,10 +72,10 @@ def capture(vm, png):
 
 # PPM → PNG sans dépendance (zlib de la bibliothèque standard)
 PPM2PNG = r"""
-import sys, zlib, struct
+import re, sys, zlib, struct
 d = open(sys.argv[1], 'rb').read()
-p = d.split(maxsplit=4)
-l, h, px = int(p[1]), int(p[2]), p[4]
+m = re.match(rb'P6\s+(\d+)\s+(\d+)\s+\d+\s', d)
+l, h, px = int(m.group(1)), int(m.group(2)), d[m.end():]
 raw = b''.join(b'\x00' + px[y*l*3:(y+1)*l*3] for y in range(h))
 c = lambda t, b: struct.pack('>I', len(b)) + t + b + struct.pack('>I', zlib.crc32(t + b))
 open(sys.argv[2], 'wb').write(b'\x89PNG\r\n\x1a\n' + c(b'IHDR', struct.pack('>IIBBBBB', l, h, 8, 2, 0, 0, 0))
@@ -92,8 +92,10 @@ def pretraiter(ppm, png):
     """Variantes pour l'OCR : niveaux de gris ×2, normale et inversée (textes clairs sur
     boutons foncés), binarisées, dans le dossier temporaire."""
     d = open(ppm, "rb").read()
-    p = d.split(maxsplit=4)
-    l, h, px = int(p[1]), int(p[2]), p[4]
+    # En-tête « P6 l h max » puis UN blanc : ne pas utiliser split() sur les pixels (un fond très
+    # sombre commence par des octets 0x09-0x0d que split() avalerait).
+    m = re.match(rb"P6\s+(\d+)\s+(\d+)\s+\d+\s", d)
+    l, h, px = int(m.group(1)), int(m.group(2)), d[m.end():]
     g = bytes((px[i] * 3 + px[i + 1] * 6 + px[i + 2]) // 10 for i in range(0, l * h * 3, 3))
     lignes = []
     for y in range(h):
