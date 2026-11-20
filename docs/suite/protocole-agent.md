@@ -32,13 +32,13 @@ fail-closed), D9 (clé de la borne dans le TPM). Profils de certificats :
 | En-têtes | 4 Kio au plus (ligne de requête comprise) |
 | Corps | borné par message (§4) ; au-delà : `413 trop_gros`, sans lecture du corps |
 | Réponse | `Content-Type: application/json`, `Connection: close` ; 16 Kio au plus (l'agent refuse au-delà) |
-| Délais | 10 s d'inactivité par connexion côté serveur |
+| Délais | côté serveur : 10 s d'inactivité par lecture ou écriture, et **durée totale** par connexion (poignée de main TLS + requête + réponse) de **20 s** (service) et **10 s** (enrôlement) : un client lent (« slowloris ») ne garde pas une place au-delà |
 
 ### 2.1 Deux écoutes distinctes (choix au regard de D1 et D6)
 
 | Écoute | Port | Certificat client | Routes | Connexions |
 |---|---|---|---|---|
-| **enrôlement** | `port_enrolement` (tiré à l'installation, inscrit dans le jeton, D4) | **aucun** | `POST /enrolement/demande`, `POST /enrolement/retrait` | 16 simultanées |
+| **enrôlement** | `port_enrolement` (tiré à l'installation, inscrit dans le jeton, D4) | **aucun** | `POST /enrolement/demande`, `POST /enrolement/retrait` | 8 simultanées |
 | **service** | `port` (tiré à l'installation, communiqué à la borne au retrait du certificat) | **obligatoire** (CA bornes, CRL relue à chaque poignée de main) | `GET /sante`, `POST /battement`, `POST /renouvellement` | 256 simultanées |
 
 Pourquoi deux écoutes plutôt qu'un vérificateur de certificat client « optionnel » limité à une
@@ -52,7 +52,7 @@ route :
   inversement.
 - **Filtrage et durcissement séparés (D1)** : le pare-feu peut n'ouvrir le port d'enrôlement
   qu'aux sous-réseaux des sites déclarés, voire le fermer hors campagne d'enrôlement, sans
-  toucher au service. Limites propres (16 connexions, corps de 4 Kio).
+  toucher au service. Limites propres (8 connexions, 10 s par connexion, corps de 4 Kio).
 - **Même cryptographie (D6)** : les deux écoutes utilisent la même configuration TLS 1.3 et le
   même certificat serveur ; seule la vérification du client diffère.
 
@@ -275,6 +275,7 @@ sans réponse HTTP.
 | Message hostile | taille avant analyse, schéma strict | `message_mal_forme_ou_trop_gros_refuse` |
 | Horloge faussée | heure du serveur, refus au-delà de 300 s, alerte | `derive_horloge_signalee` |
 | Borne muette | alerte `silence` | `battement_met_a_jour_la_supervision` |
+| Client lent occupant les places (slowloris) | durée totale par connexion, plafond de 8 sur l'enrôlement, compteurs séparés par écoute | `client_lent_coupe_sans_bloquer_les_bornes` |
 | Certificat remplacé réutilisé | précédent révoqué au premier usage du nouveau | `renouvellement_a_mi_vie` |
 
 ## 8. PRÉVU

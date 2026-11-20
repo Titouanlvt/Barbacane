@@ -20,7 +20,7 @@ use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail};
 use barbacane_protocole::{
@@ -44,11 +44,53 @@ use crate::outils::{aleatoire, maintenant, serie_hex};
 use crate::registre::{Identite, Refus, Stockage, code_de};
 
 /// Connexions de service traitées simultanément au plus (100 bornes visées).
-const CONNEXIONS_SERVICE_MAX: usize = 256;
-/// Connexions d'enrôlement simultanées au plus.
-const CONNEXIONS_ENROLEMENT_MAX: usize = 16;
-/// Délai d'inactivité d'une connexion.
+pub const CONNEXIONS_SERVICE_MAX: usize = 256;
+/// Connexions d'enrôlement simultanées au plus (l'enrôlement est rare ; écoute anonyme).
+pub const CONNEXIONS_ENROLEMENT_MAX: usize = 8;
+/// Délai d'inactivité d'une lecture ou d'une écriture.
 const DELAI: Duration = Duration::from_secs(10);
+/// Durée TOTALE d'une connexion de service (poignée de main + requête + réponse) : un client
+/// lent (« slowloris ») ne garde pas une place au-delà.
+pub const DELAI_TOTAL_SERVICE: Duration = Duration::from_secs(20);
+/// Durée TOTALE d'une connexion d'enrôlement (écoute sans authentification : plus court).
+pub const DELAI_TOTAL_ENROLEMENT: Duration = Duration::from_secs(10);
+
+/// Flux TCP à échéance : chaque lecture ou écriture reçoit comme délai le temps restant
+/// (au plus [`DELAI`]) ; échéance passée → `TimedOut`, quel que soit le débit du client.
+struct FluxBorne {
+    flux: TcpStream,
+    fin: Instant,
+}
+
+impl FluxBorne {
+    fn reste(&self) -> std::io::Result<Duration> {
+        let reste = self.fin.saturating_duration_since(Instant::now());
+        if reste.is_zero() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "délai total de la connexion dépassé",
+            ));
+        }
+        Ok(reste.min(DELAI))
+    }
+}
+
+impl Read for FluxBorne {
+    fn read(&mut self, tampon: &mut [u8]) -> std::io::Result<usize> {
+        self.flux.set_read_timeout(Some(self.reste()?))?;
+        self.flux.read(tampon)
+    }
+}
+
+impl Write for FluxBorne {
+    fn write(&mut self, octets: &[u8]) -> std::io::Result<usize> {
+        self.flux.set_write_timeout(Some(self.reste()?))?;
+        self.flux.write(octets)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.flux.flush()
+    }
+}
 
 /// Configuration lue dans un fichier `cle = valeur` (lignes `#` ignorées).
 #[derive(Debug, Clone)]
@@ -553,8 +595,15 @@ impl Passerelle {
 /// Une connexion : poignée de main, une requête, une réponse. Renvoie une description pour le
 /// journal.
 fn traiter(flux: TcpStream, p: &Passerelle, enrolement: bool) -> Result<String> {
-    flux.set_read_timeout(Some(DELAI))?;
-    flux.set_write_timeout(Some(DELAI))?;
+    let total = if enrolement {
+        DELAI_TOTAL_ENROLEMENT
+    } else {
+        DELAI_TOTAL_SERVICE
+    };
+    let flux = FluxBorne {
+        flux,
+        fin: Instant::now() + total,
+    };
     // Configuration (donc CRL) relue à chaque connexion : une révocation prend effet aussitôt.
     let tls = if enrolement {
         config_tls_enrolement(&p.config)?
@@ -636,12 +685,12 @@ fn boucle(ecoute: TcpListener, p: Arc<Passerelle>, enrolement: bool) -> Result<(
     Ok(())
 }
 
-/// Écoute de service (mTLS) : un fil par connexion, au plus 256.
+/// Écoute de service (mTLS) : un fil par connexion, au plus 256, 20 s chacune.
 pub fn servir(ecoute: TcpListener, p: Arc<Passerelle>) -> Result<()> {
     boucle(ecoute, p, false)
 }
 
-/// Écoute d'enrôlement (sans certificat client) : au plus 16 connexions.
+/// Écoute d'enrôlement (sans certificat client) : au plus 8 connexions de 10 s.
 pub fn servir_enrolement(ecoute: TcpListener, p: Arc<Passerelle>) -> Result<()> {
     boucle(ecoute, p, true)
 }
