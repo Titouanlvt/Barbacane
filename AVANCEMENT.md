@@ -22,6 +22,7 @@
 | Borne 950 remise en v1 | — | **fait** : code v1, transfert OK | — |
 | Borne en ligne 2 : page Serveur (charte v1), mises à jour depuis le serveur | `borne-en-ligne-2` | **fusionné** (CI locale verte ; 950 sans agent : 43 OK, parcours v1 inchangé). PRÉVU : rapports de passage, QEMU en ligne rejoué | — |
 | Serveur : utilisateurs et clés USB | `serveur-utilisateurs` / `wt-serveur-utilisateurs` | sous-agent en cours | — |
+| Serveur : ISO des bornes depuis le serveur (§9) | `serveur-iso-bornes` / `wt-serveur-iso-bornes` | sous-agent en cours | — |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
 ## Plan et état
