@@ -8,6 +8,11 @@ After=barbacane-images.service
 # la passerelle ne démarre pas (état « condition non remplie », pas un échec).
 ConditionPathExists=%h/pki/passerelle.conf
 
+[Quadlet]
+# Pas d'attente de network-online.target (dépendance ajoutée par défaut par quadlet) : adresses fixes,
+# aucun réseau extérieur à attendre ; si l'adresse « bornes » n'est pas encore montée, Restart= relance.
+DefaultDependencies=false
+
 [Container]
 Image=localhost/barbacane-passerelle:@VERSION@
 ContainerName=barbacane-passerelle

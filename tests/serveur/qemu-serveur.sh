@@ -195,7 +195,9 @@ autres=$(grep -vE '^(127\.|\[::1\])' <<<"$ecoute" | grep -v "^10.0.2.15:$PORT$" 
 # Heure
 h=$(section heure)
 if grep -qE '^[[:space:]]*(server|pool|peer)' <<<"$h"; then echec "chrony : source réseau configurée"; else ok "chrony : aucune source externe configurée"; fi
-grep -q 'Number of sources = 0\|^MS Name' <<<"$h" && ! grep -qE '^\^|^=' <<<"$h" \
+# Une ligne de source commence par « ^ » (serveur), « = » (pair) ou « # » (horloge de référence)
+# suivi de son état ; la ligne de séparation « ===… » n'en est pas une.
+grep -q '^MS Name' <<<"$h" && ! grep -qE '^[\^=#][*+x?~ -] ' <<<"$h" \
     && ok "chrony : aucune source active ($(grep -m1 'Stratum' <<<"$h" | tr -s ' '))" || echec "chrony : sources actives : $h"
 # Services
 s=$(section services)
@@ -244,10 +246,16 @@ if [ -z "$luks" ]; then
     echec "aucune partition LUKS sur le disque"
 else
     cryptsetup luksDump "$luks" > "$W/luksdump.txt"
-    grep -q '^Version: *2' "$W/luksdump.txt" && ok "en-tête LUKS2" || echec "en-tête non LUKS2"
+    grep -qE '^Version:[[:space:]]*2$' "$W/luksdump.txt" && ok "en-tête LUKS2" || echec "en-tête non LUKS2"
     grep -q 'aes-xts-plain64' "$W/luksdump.txt" && grep -q 'Key: *512 bits' "$W/luksdump.txt" \
         && ok "AES-XTS, clé de 512 bits" || echec "chiffrement inattendu"
-    grep -q 'systemd-tpm2' "$W/luksdump.txt" && ok "jeton systemd-tpm2 (PCR $(awk '/tpm2-hash-pcrs:/ { print $2; exit }' "$W/luksdump.txt"))" || echec "jeton TPM2 absent"
+    id_tpm=$(awk '/^  [0-9]+: systemd-tpm2/ { sub(":", "", $1); print $1; exit }' "$W/luksdump.txt")
+    if [ -n "$id_tpm" ]; then
+        pcr=$(cryptsetup token export --token-id "$id_tpm" "$luks" | grep -o '"tpm2-pcrs":\[[0-9,]*\]' || true)
+        [ "$pcr" = '"tpm2-pcrs":[7]' ] && ok "jeton systemd-tpm2 lié au PCR 7 ($pcr)" || echec "jeton TPM2 : PCR inattendus ($pcr)"
+    else
+        echec "jeton TPM2 absent"
+    fi
     grep -q 'systemd-recovery' "$W/luksdump.txt" && ok "jeton de clé de secours" || echec "clé de secours absente"
     n=$(grep -cE '^  [0-9]+: luks2' "$W/luksdump.txt")
     [ "$n" = 2 ] && ok "2 emplacements de clé (TPM + secours)" || echec "$n emplacements de clé (2 attendus)"
