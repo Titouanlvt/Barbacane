@@ -5,7 +5,7 @@
 |---|---|---|---|
 | CI locale | `ci-locale` / `wt-ci-locale` | `tests/ci-locale.sh` écrit ; `lab/ci-locale-bu.sh BRANCHE` (bu) | 1er passage sur bu (`logs/ci-locale-ci-locale.log`) |
 | Charte v2 | `borne-charte-v2` / `wt-charte` | verdict et séquences 3D corrigés après captures sur 950 ; OCR PPM corrigé | correctif + captures Jour/Nuit sur 950 (`logs/charte-apres.log`) |
-| Socle serveur (étape 5) | `serveur-socle` / `wt-serveur-socle` | sous-agent : PKI de test, passerelle mTLS rustls, tests | travail du sous-agent |
+| Socle serveur (étape 5) | `serveur-socle` / `wt-serveur-socle` | fait par sous-agent, relu : PKI de TEST (CA P-384, feuilles P-256), passerelle rustls TLS 1.3 seul, AES-GCM, CRL relue à chaque connexion, fail-closed ; 9 tests | CI locale sur bu (`logs/ci-locale-serveur-socle.log`) puis fusion |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
 ## Plan et état
