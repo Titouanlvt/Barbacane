@@ -7,6 +7,7 @@
 set -eu
 cd "$(dirname "$0")/../.."
 SORTIE=${1:-docs/preuves/serveur-web/captures}
+case $SORTIE in /*) ;; *) SORTIE=$PWD/$SORTIE ;; esac
 NAV=""
 for n in chromium-headless-shell chromium; do
 	if command -v "$n" >/dev/null; then NAV=$n; break; fi
@@ -24,6 +25,6 @@ for f in "$PAGES"/*.html; do
 	# --virtual-time-budget : polices chargées avant la capture ; aucun accès réseau (file://).
 	timeout 2m "$NAV" --headless --no-sandbox --disable-gpu --hide-scrollbars \
 		--window-size=1280,800 --virtual-time-budget=3000 \
-		--screenshot="$PWD/$SORTIE/$nom.png" "file://$f" >/dev/null 2>&1
+		--screenshot="$SORTIE/$nom.png" "file://$f" >/dev/null 2>&1
 	echo "$SORTIE/$nom.png"
 done
