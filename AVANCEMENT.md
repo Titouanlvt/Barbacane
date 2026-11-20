@@ -10,7 +10,7 @@
 | 2. Publication v1.0.0 | **fait** : étiquette `v1.0.0` = `main` = 08acd06 ; ISO `/nvme/contenu/iso-v100/` sha256 `5e0c3fba…3fc7` ; `docs/preuves/2026-11-19-v1.0.0/` (39/39) |
 | 3. Organisation du dépôt | **fait** (`docs/preuves/2026-11-19-profil-hors-ligne/`) |
 | 4. Préalables suite (DR) | **fait** (`docs/suite/`) |
-| Adaptation visuelle charte v2 (borne) | branche `borne-charte-v2` : jetons, relief, objets 3D faits ; reste creusé, pastilles, herse, vérif. visuelle 950 (`docs/charte/adaptation.md`) |
+| Adaptation visuelle charte v2 (borne) | `borne-charte-v2` à jour d'integration` (audit OK, clippy, 16 tests) ; vérification sur 950 en cours (`lab/charte-apres.sh`, `logs/charte-apres.log`, captures → `docs/captures/charte-v2/`) ; reste creusé, pastilles, herse |
 | 5–10. Barbacane suite | à faire |
 
 ## Étape 1 — inventaire (19/11)
