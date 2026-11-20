@@ -48,6 +48,17 @@ impl Admin {
         })
     }
 
+    /// Comme [`Admin::ouvrir`], pour un acteur audité donné (interface web : `web:<compte>`).
+    /// L'acteur doit respecter le schéma d'audit (`barbacane_audit::ident_valide`).
+    pub fn ouvrir_pour(config: Config, acteur: &str) -> Result<Admin> {
+        if !barbacane_audit::ident_valide(acteur) {
+            anyhow::bail!("acteur d'audit invalide");
+        }
+        let mut admin = Admin::ouvrir(config)?;
+        admin.acteur = acteur.to_owned();
+        Ok(admin)
+    }
+
     fn auditer(&self, evenement: Evenement) -> Result<()> {
         self.stockage.auditer(&self.acteur, evenement)
     }
