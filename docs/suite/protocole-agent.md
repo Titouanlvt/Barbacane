@@ -258,7 +258,9 @@ sans réponse HTTP.
 - Journal des opérations d'administration : `journal.jsonl` (ajout seul). Le journal d'audit
   **chaîné et signé** (conception §3.9) viendra avec l'étape « rapports et journaux ».
 - La clé de la CA bornes est un fichier PEM sur le serveur (lab) ; dans le TPM ensuite
-  (politique §6).
+  (politique §6). **Limite du socle** : le processus de la passerelle, exposé au réseau, lit
+  cette clé (renouvellement, CRL après remplacement). À séparer dans un service PKI à compte
+  dédié, joint par socket local, avant la production.
 
 ## 7. Menaces et preuves
 
@@ -266,6 +268,7 @@ sans réponse HTTP.
 |---|---|---|
 | Jeton rejoué ou volé tardivement | usage unique, 1 h, haché | `jeton_expire_ou_reutilise_refuse` |
 | Jeton volé à temps | validation humaine avec comparaison d'empreinte | `demande_non_validee_sans_certificat`, `empreinte_fausse_refusee` |
+| Certificat émis hors profil | sujet, SAN, extensions et durée fixés par le serveur | `validee_certificat_utilisable_en_mtls` |
 | Clé faible ou exportable | P-256 exigé, demande vérifiée ; clé dans le TPM (agent) | `cle_non_p256_refusee` |
 | Accès anonyme aux routes de service | écoute distincte, mTLS obligatoire | `routes_separees_par_ecoute` |
 | Borne volée | révocation, CRL republiée, relue à chaque connexion | `revocation_refuse_la_connexion_suivante` |
