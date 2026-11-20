@@ -119,8 +119,9 @@ par la CSP) : les couleurs d'état passent par des classes.
 
 `tests/web/captures.sh [SORTIE]` (VM de dev, jamais l'hôte) : l'exemple
 `cargo run -p barbacane-web --example captures -- DOSSIER` rend **avec le vrai code de rendu** les
-8 pages (connexion, tableau de bord, enrôlement avec jeton affiché, examen d'une demande avec
-erreur d'empreinte, révocation, mises à jour, journal, vérification) avec des données d'exemple,
+12 pages (connexion, tableau de bord, enrôlement avec jeton affiché, examen d'une demande avec
+erreur d'empreinte, révocation, mises à jour, journal, vérification ; utilisateurs vus par un
+administrateur avec PIN fictif affiché et par un auditeur, sites et modes, clés USB) avec des données d'exemple,
 en `data-theme="jour"` et `"nuit"`, puis un Chromium sans tête les photographie en 1280 px de large
 (`file://`, aucun réseau). Sortie par défaut : `docs/preuves/serveur-web/captures/`.
 

@@ -16,9 +16,14 @@ use barbacane_passerelle::maj::{EtatMaj, EtatMajBorne, Paquet, SuiviBorne};
 use barbacane_passerelle::registre::{
     Alerte, Borne, Demande, LigneSupervision, StatutBorne, StatutDemande,
 };
+use barbacane_passerelle::utilisateurs::{
+    BaseUtilisateurs, CleUsb, EchecsBorne, Import, ReglageSite, Utilisateur,
+};
 use barbacane_protocole::EtatBorne;
+use barbacane_protocole::utilisateurs::{EntreeNonEnrolees, ModeUtilisateurs};
 use barbacane_web::comptes::Role;
 use barbacane_web::pages::{self, Contexte, JetonAffiche};
+use barbacane_web::pages_utilisateurs::{self as pu, LigneSite, VueUtilisateurs};
 
 const T: u64 = 1_795_600_000;
 
@@ -271,6 +276,82 @@ fn main() {
         non_scelles: 0,
         derniere: "7e".repeat(48),
     };
+    // Utilisateurs, sites, clés USB (données d'EXEMPLE ; PIN fictif).
+    let mut base = BaseUtilisateurs::default();
+    for (i, (id, pin, echecs, verrou)) in [
+        ("a.martin", true, 0, false),
+        ("b.durand", true, 5, true),
+        ("c.leroy", false, 0, false),
+        ("j.dupont", true, 1, false),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        base.utilisateurs.push(Utilisateur {
+            identifiant: id.into(),
+            pseudonyme: format!(
+                "u-{:016x}",
+                0x3a7f_19c2_0d4e_8b61_u64.wrapping_mul(i as u64 + 3)
+            ),
+            actif: true,
+            ajoute_le: T - 86400 * 30,
+            retire_le: None,
+            pin: pin.then(|| "(dérivé)".into()),
+            pin_le: pin.then_some(T - 86400),
+            pin_a_changer: false,
+            echecs,
+            verrouille_le: verrou.then_some(T - 600),
+            derniere_verification: pin.then_some(T - 600 * (i as u64 + 1)),
+        });
+    }
+    base.dernier_import = Some(Import {
+        le: T - 7200,
+        source: "annuaire".into(),
+        actifs: 4,
+    });
+    base.bornes.insert(
+        "b2".into(),
+        EchecsBorne {
+            echecs: 0,
+            dernier_echec: T - 60,
+            blocages: 1,
+            bloquee_jusqua: T + 840,
+        },
+    );
+    base.cles_usb.push(CleUsb {
+        id: "usb-5e21a9c4".into(),
+        fabricant: "0781".into(),
+        serie: "4C530001230517112263".into(),
+        libelle: "Clé de sortie du SOC".into(),
+        site: Some("site-1".into()),
+        entree: false,
+        sortie: true,
+        enrolee_le: T - 86400 * 3,
+    });
+    let ctx_audit = Contexte {
+        compte: "bob",
+        role: Role::Auditeur,
+        csrf: "exemple",
+        maintenant: T,
+    };
+    let sites = [
+        LigneSite {
+            site: "site-1".into(),
+            bornes: 3,
+            reglage: ReglageSite {
+                mode: ModeUtilisateurs::Authentification,
+                entree_non_enrolees: EntreeNonEnrolees::Interdite,
+            },
+            cles: 1,
+        },
+        LigneSite {
+            site: "site-2".into(),
+            bornes: 2,
+            reglage: ReglageSite::default(),
+            cles: 0,
+        },
+    ];
+    let trouve = base.utilisateur("j.dupont").cloned();
     let pages_rendues = [
         ("connexion", pages::connexion("exemple", None)),
         ("tableau", pages::tableau(&ctx, &lignes, 1)),
@@ -313,6 +394,36 @@ fn main() {
         ),
         ("audit", pages::audit(&ctx, &journal, 1, 1)),
         ("verification", pages::verification(&ctx, Ok(bilan))),
+        (
+            "utilisateurs",
+            pu::utilisateurs(
+                &ctx,
+                &VueUtilisateurs {
+                    base: &base,
+                    annuaire_configure: true,
+                    recherche: Some(("j.dupont", trouve.as_ref())),
+                    pin: Some(("j.dupont", "58204716")),
+                    message: None,
+                    maintenant: T,
+                },
+            ),
+        ),
+        (
+            "utilisateurs-auditeur",
+            pu::utilisateurs(
+                &ctx_audit,
+                &VueUtilisateurs {
+                    base: &base,
+                    annuaire_configure: true,
+                    recherche: None,
+                    pin: None,
+                    message: None,
+                    maintenant: T,
+                },
+            ),
+        ),
+        ("sites", pu::sites(&ctx, &sites, None)),
+        ("cles-usb", pu::cles_usb(&ctx, &base, None)),
     ];
     for (nom, html) in pages_rendues {
         let html = html.replace("\"/statique/", "\"statique/");
