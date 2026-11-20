@@ -15,6 +15,7 @@ pub mod ca;
 pub mod maj;
 pub mod outils;
 pub mod registre;
+pub mod utilisateurs;
 
 use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
@@ -27,6 +28,9 @@ use anyhow::{Context, Result, bail};
 use barbacane_audit::{Anomalie, Evenement};
 use barbacane_protocole::maj::{
     AccuseBattementMaj, AccuseRapportMaj, DemandeTelechargement, RapportMaj, route as route_maj,
+};
+use barbacane_protocole::utilisateurs::{
+    DemandeChangementPin, DemandePolitique, DemandeVerification, route as route_utilisateurs,
 };
 use barbacane_protocole::{
     AccuseBattement, AccuseDemande, Battement, CodeErreur, ConsultationDemande, DemandeEnrolement,
@@ -470,6 +474,21 @@ const ROUTES_SERVICE: &[(&str, &str, usize)] = &[
         DemandeTelechargement::TAILLE_MAX,
     ),
     ("POST", route_maj::RAPPORT, RapportMaj::TAILLE_MAX),
+    (
+        "POST",
+        route_utilisateurs::POLITIQUE,
+        DemandePolitique::TAILLE_MAX,
+    ),
+    (
+        "POST",
+        route_utilisateurs::VERIFICATION,
+        DemandeVerification::TAILLE_MAX,
+    ),
+    (
+        "POST",
+        route_utilisateurs::PIN,
+        DemandeChangementPin::TAILLE_MAX,
+    ),
 ];
 
 // ───────────────────────────── Passerelle ─────────────────────────────────────────────────────
@@ -513,11 +532,17 @@ impl Passerelle {
         let stockage = Stockage::ouvrir(&config.registre)?;
         stockage.lire()?;
         DepotMaj::ouvrir(&stockage)?.lire()?;
+        utilisateurs::Utilisateurs::ouvrir(&stockage)?.lire()?;
         Ok(Arc::new(Passerelle {
             config,
             stockage,
             ca,
         }))
+    }
+
+    /// Utilisateurs, sites et clés USB (dossier `utilisateurs/` du registre).
+    pub fn utilisateurs(&self) -> Result<utilisateurs::Utilisateurs> {
+        utilisateurs::Utilisateurs::ouvrir(&self.stockage)
     }
 
     /// Dépôt des mises à jour (dossier `maj/` du registre).
@@ -739,6 +764,21 @@ impl Passerelle {
                         heure_serveur: t,
                     },
                 )
+            }
+            route_utilisateurs::POLITIQUE => {
+                let _: DemandePolitique = decoder(&r.corps).map_err(Refus)?;
+                self.authentifier(id, t)?;
+                json(200, &self.utilisateurs()?.politique_pour(id, ACTEUR, t)?)
+            }
+            route_utilisateurs::VERIFICATION => {
+                let d: DemandeVerification = decoder(&r.corps).map_err(Refus)?;
+                self.authentifier(id, t)?;
+                json(200, &self.utilisateurs()?.verifier(id, &d, ACTEUR, t)?)
+            }
+            route_utilisateurs::PIN => {
+                let d: DemandeChangementPin = decoder(&r.corps).map_err(Refus)?;
+                self.authentifier(id, t)?;
+                json(200, &self.utilisateurs()?.changer_pin(id, &d, ACTEUR, t)?)
             }
             route::RENOUVELLEMENT => {
                 let d: DemandeRenouvellement = decoder(&r.corps).map_err(Refus)?;

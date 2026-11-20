@@ -871,6 +871,7 @@ name = "barbacane-passerelle"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "argon2",
  "barbacane-audit",
  "barbacane-protocole",
  "data-encoding",

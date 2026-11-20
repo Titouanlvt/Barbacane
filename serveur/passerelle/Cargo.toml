@@ -8,6 +8,8 @@ license.workspace = true
 [dependencies]
 # Toutes déjà présentes dans Cargo.lock (justification : docs/suite/serveur-socle.md §4).
 anyhow = "1.0.104"
+# PIN des utilisateurs (Argon2id), déjà utilisée par borne/admind et serveur/web.
+argon2 = { version = "0.6.0", features = ["getrandom"] }
 barbacane-audit = { path = "../audit" }
 barbacane-protocole = { path = "../protocole" }
 data-encoding = "2.11.1"
