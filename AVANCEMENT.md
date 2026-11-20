@@ -1,10 +1,18 @@
 # Avancement — mission « Barbacane suite » (depuis le 19/11/2026, Claude en autonomie)
 
+## Priorité (20/11, utilisateur)
+1. **Serveur (Barbacane suite)** d'abord, ordre de `docs/conception-barbacane-suite.md` §8 : socle (ISO serveur,
+   PKI, passerelle mTLS, enrôlement validé, heure, supervision, sauvegarde) → borne en ligne (`--profil en-ligne`,
+   `barbacane-agent`, charte **v1**) → mises à jour, rapports/journaux, utilisateurs, clés USB, ISO des bornes,
+   quarantaine désactivée par défaut.
+2. **Charte v2 sur la borne : SUSPENDUE.** La borne reste en charte v1. La charte v2 sert seulement à
+   l'interface web du serveur (adaptation simple, sans effets coûteux).
+
 ## Chantiers en cours (règle du 20/11 : parallèle, CI locale avant push, jamais attendre la CI)
 | Chantier | Branche / worktree | État | Attend |
 |---|---|---|---|
 | CI locale | `ci-locale` / `wt-ci-locale` | `tests/ci-locale.sh` écrit ; `lab/ci-locale-bu.sh BRANCHE` (bu) | 1er passage sur bu (`logs/ci-locale-ci-locale.log`) |
-| Charte v2 | `borne-charte-v2` / `wt-charte` | verdict et séquences 3D corrigés après captures sur 950 ; OCR PPM corrigé | correctif + captures Jour/Nuit sur 950 (`logs/charte-apres.log`) |
+| Charte v2 borne | `borne-charte-v2` / `wt-charte` | **SUSPENDU le 20/11** (priorité serveur). Branche gardée, non fusionnée : jetons générés, relief, verdict en tranche, séquences 3D découpées image par image, captures Jour (`docs/captures/charte-v2/jour`), OCR PPM corrigé (à reporter dans integration). Reste : captures Nuit, creusé, pastilles, herse, campagne. `main` n'a aucun changement visuel de la borne depuis v1.0 (`git diff v1.0 main -- borne/` vide) | — |
 | Socle serveur (étape 5) | `serveur-socle` / `wt-serveur-socle` | fait par sous-agent, relu : PKI de TEST (CA P-384, feuilles P-256), passerelle rustls TLS 1.3 seul, AES-GCM, CRL relue à chaque connexion, fail-closed ; 9 tests | CI locale sur bu (`logs/ci-locale-serveur-socle.log`) puis fusion |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 

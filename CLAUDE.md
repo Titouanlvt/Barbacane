@@ -151,6 +151,13 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
   System). Adaptation VISUELLE seulement : la logique v1 (écrans, boutons, parcours) ne change pas ;
   écarts dans `docs/charte/adaptation.md`.
 
+## Priorité au 20/11/2026 (utilisateur)
+- **Serveur d'abord** (`docs/conception-barbacane-suite.md` §8), en parallèle (worktrees `../wt-<chantier>`,
+  sous-agents), CI locale avant push (`tests/ci-locale.sh`, `lab/ci-locale-bu.sh BRANCHE`), jamais attendre
+  la CI GitHub (`lab/ci-surveille.sh BRANCHE`).
+- **La borne reste en charte v1** : adaptation charte v2 de la borne suspendue (branche `borne-charte-v2`
+  gardée, non fusionnée). Charte v2 = interface web du serveur seulement, adaptation simple.
+
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
 2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).
