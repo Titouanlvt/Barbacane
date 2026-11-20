@@ -14,3 +14,6 @@ défaut) n'utilise pas ce dossier, et `tests/iso/hors-ligne.sh` le vérifie sur 
 - `passerelle/` : passerelle (écoutes de service mTLS et d'enrôlement), registre des bornes et
   commande d'administration `barbacane-registre` (`cargo test -p barbacane-passerelle`, openssl requis).
 - Conception du jalon : `docs/suite/serveur-socle.md`.
+- `iso/build-iso-serveur.sh` : ISO du serveur (Debian 13 durcie, LUKS2 scellé au TPM, Podman sans
+  root) ; banc : `tests/serveur/qemu-serveur.sh`. Conception : `docs/suite/serveur-iso.md`.
+- `sauvegarde/barbacane-sauvegarde` : sauvegarde chiffrée et signée ; test : `tests/serveur/sauvegarde.sh`.

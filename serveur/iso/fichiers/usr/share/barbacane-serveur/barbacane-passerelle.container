@@ -1,0 +1,33 @@
+# Serveur Barbacane : passerelle mTLS des bornes, conteneur Podman SANS ROOT (D11), géré par le
+# gestionnaire systemd de l'utilisateur barbacane-svc (quadlet). Image chargée depuis l'ISO.
+[Unit]
+Description=Passerelle mTLS des bornes Barbacane (Podman sans root)
+Requires=barbacane-images.service
+After=barbacane-images.service
+# En production, la PKI est déposée après la cérémonie (politique-certification.md) ; sans elle,
+# la passerelle ne démarre pas (état « condition non remplie », pas un échec).
+ConditionPathExists=%h/pki/passerelle.conf
+
+[Quadlet]
+# Pas d'attente de network-online.target (dépendance ajoutée par défaut par quadlet) : adresses fixes,
+# aucun réseau extérieur à attendre ; si l'adresse « bornes » n'est pas encore montée, Restart= relance.
+DefaultDependencies=false
+
+[Container]
+Image=localhost/barbacane-passerelle:@VERSION@
+ContainerName=barbacane-passerelle
+Exec=/pki/passerelle.conf
+ReadOnly=true
+NoNewPrivileges=true
+DropCapability=all
+Volume=%h/pki:/pki:ro
+Network=pasta
+PublishPort=@IP_BORNES@:@PORT@:@PORT@
+PodmanArgs=--pids-limit=512 --memory=512m
+
+[Service]
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

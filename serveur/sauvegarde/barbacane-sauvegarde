@@ -1,0 +1,175 @@
+#!/bin/bash
+# Sauvegarde et restauration du serveur Barbacane (conception §3.8, docs/suite/serveur-iso.md §7).
+#
+# Une sauvegarde est un fichier CMS (RFC 5652/5083) :
+#   chiffré   pour la CLÉ DE SAUVEGARDE (certificat ECDH P-384 du destinataire, AES-256-GCM, D6) :
+#             le serveur ne détient que la partie publique ; la clé privée reste hors du serveur
+#             (coffre), un serveur compromis ne peut donc pas relire ses anciennes sauvegardes ;
+#   signé     par la clé de signature du serveur (ECDSA P-384/SHA-384) : une archive fabriquée
+#             par un tiers (qui n'a que la clé publique) est refusée à la restauration ;
+#   contrôlé  par un manifeste SHA-384 de chaque fichier, vérifié AVANT toute écriture, et par
+#             une empreinte SHA-384 du fichier chiffré (support abîmé détecté sans clé).
+#
+#   barbacane-sauvegarde creer      --destination DOSSIER [--racine /] [--liste FICHIER] [--garder N]
+#                                   [--destinataire CERT] [--signature-cle CLÉ --signature-cert CERT]
+#   barbacane-sauvegarde verifier   --archive FICHIER --cle-privee CLÉ --signataire CERT
+#   barbacane-sauvegarde restaurer  --archive FICHIER --cle-privee CLÉ --signataire CERT [--racine /]
+#   barbacane-sauvegarde cles-destinataire DOSSIER [--sans-phrase]   (poste hors ligne : clé de sauvegarde)
+#   barbacane-sauvegarde cles-signature DOSSIER                       (serveur : clé de signature)
+# Options communes : --passin ARG (phrase de la clé privée, syntaxe openssl : pass:…, file:…, env:…).
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C.UTF-8
+C=/etc/barbacane-serveur/sauvegarde
+CMD=${1:-}
+[ $# -gt 0 ] && shift
+DEST='' RACINE=/ LISTE="$C/liste" GARDER=14 DESTINATAIRE="$C/destinataire.pem"
+SIG_CLE="$C/signature.cle.pem" SIG_CERT="$C/signature.pem" ARCHIVE='' CLE_PRIVEE='' SIGNATAIRE='' PASSIN=''
+SANS_PHRASE=0 DOSSIER=''
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --destination) DEST="$2"; shift 2 ;;
+        --racine) RACINE="$2"; shift 2 ;;
+        --liste) LISTE="$2"; shift 2 ;;
+        --garder) GARDER="$2"; shift 2 ;;
+        --destinataire) DESTINATAIRE="$2"; shift 2 ;;
+        --signature-cle) SIG_CLE="$2"; shift 2 ;;
+        --signature-cert) SIG_CERT="$2"; shift 2 ;;
+        --archive) ARCHIVE="$2"; shift 2 ;;
+        --cle-privee) CLE_PRIVEE="$2"; shift 2 ;;
+        --signataire) SIGNATAIRE="$2"; shift 2 ;;
+        --passin) PASSIN="$2"; shift 2 ;;
+        --sans-phrase) SANS_PHRASE=1; shift ;;
+        -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
+        -*) echo "option inconnue : $1" >&2; exit 2 ;;
+        *) DOSSIER="$1"; shift ;;
+    esac
+done
+erreur() { echo "ÉCHEC : $*" >&2; exit 1; }
+info() { echo "sauvegarde : $*"; }
+W=''
+nettoyer() { [ -z "$W" ] || rm -rf "$W"; }
+trap nettoyer EXIT
+travail() { W=$(mktemp -d -p "${TMPDIR:-/var/tmp}" barbacane-sauvegarde.XXXXXX); }
+[[ "$GARDER" =~ ^[1-9][0-9]{0,3}$ ]] || erreur "--garder : entier de 1 à 9999 attendu"
+passin() { [ -z "$PASSIN" ] || printf '%s\n' -passin "$PASSIN"; }
+
+# ------------------------------------------------------------------ déchiffrement et contrôles (sans rien écrire)
+# Résultat : $W/paquet/{META,MANIFEST,donnees.tar} authentifiés et cohérents.
+ouvrir() {
+    [ -f "$ARCHIVE" ] || erreur "archive introuvable : $ARCHIVE"
+    [ -f "$CLE_PRIVEE" ] || erreur "--cle-privee (clé de sauvegarde, hors serveur) requise"
+    [ -f "$SIGNATAIRE" ] || erreur "--signataire (certificat de signature du serveur, consigné hors serveur) requis"
+    if [ -f "$ARCHIVE.sha384" ]; then
+        (cd "$(dirname "$ARCHIVE")" && sha384sum --quiet -c "$(basename "$ARCHIVE").sha384") \
+            || erreur "empreinte du fichier chiffré différente : support abîmé ou archive modifiée"
+    else
+        erreur "empreinte $ARCHIVE.sha384 absente"
+    fi
+    travail
+    # shellcheck disable=SC2046 # passin() rend 0 ou 2 mots
+    openssl cms -decrypt -binary -inform DER -in "$ARCHIVE" -inkey "$CLE_PRIVEE" $(passin) -out "$W/signe.der" 2>"$W/err" \
+        || { cat "$W/err" >&2; erreur "déchiffrement impossible (mauvaise clé de sauvegarde, ou archive altérée : GCM)"; }
+    openssl cms -verify -binary -inform DER -in "$W/signe.der" -CAfile "$SIGNATAIRE" -purpose any \
+        -out "$W/paquet.tar" 2>"$W/err" \
+        || { cat "$W/err" >&2; erreur "signature invalide : archive non produite par ce serveur"; }
+    mkdir "$W/paquet"
+    tar -xf "$W/paquet.tar" -C "$W/paquet" META MANIFEST donnees.tar
+    local attendu
+    attendu=$(awk -F= '$1 == "donnees_sha384" { print $2 }' "$W/paquet/META")
+    [ "$(sha384sum < "$W/paquet/donnees.tar" | cut -d' ' -f1)" = "$attendu" ] || erreur "donnees.tar ne correspond pas à META"
+    # Chaque fichier est vérifié contre le manifeste dans une zone de transit, avant toute écriture.
+    mkdir "$W/transit"
+    tar -xf "$W/paquet/donnees.tar" -C "$W/transit" --numeric-owner
+    (cd "$W/transit" && sha384sum --quiet --strict -c "$W/paquet/MANIFEST") || erreur "manifeste : fichier altéré"
+    local n_manifeste n_fichiers
+    n_manifeste=$(wc -l < "$W/paquet/MANIFEST")
+    n_fichiers=$(cd "$W/transit" && find . -type f | wc -l)
+    [ "$n_manifeste" = "$n_fichiers" ] || erreur "manifeste : $n_fichiers fichiers pour $n_manifeste attendus"
+    info "archive authentique et intègre : $(awk -F= '$1 == "date" { print $2 }' "$W/paquet/META"), $n_fichiers fichiers"
+}
+
+case "$CMD" in
+creer)
+    { [ -n "$DEST" ] && [ -d "$DEST" ]; } || erreur "--destination : dossier du support amovible monté requis"
+    [ -f "$DESTINATAIRE" ] || erreur "certificat de la clé de sauvegarde absent : $DESTINATAIRE"
+    { [ -f "$SIG_CLE" ] && [ -f "$SIG_CERT" ]; } || erreur "clé de signature du serveur absente ($SIG_CLE, $SIG_CERT)"
+    [ -f "$LISTE" ] || erreur "liste des chemins à sauvegarder absente : $LISTE"
+    # Le support doit être distinct du disque du serveur (copie HORS du serveur, §3.8).
+    if [ "$RACINE" = / ] && [ "$(stat -c %d "$DEST")" = "$(stat -c %d /)" ]; then
+        erreur "$DEST est sur le disque système : monter le support amovible"
+    fi
+    travail
+    mkdir "$W/paquet"
+    # Chemins relatifs à la racine, un par ligne ; lignes vides et commentaires ignorés.
+    grep -vE '^\s*(#|$)' "$LISTE" | sed 's|^/*||' > "$W/chemins"
+    while read -r p; do [ -e "$RACINE/$p" ] || erreur "chemin à sauvegarder absent : /$p"; done < "$W/chemins"
+    tar --create --file "$W/paquet/donnees.tar" --directory "$RACINE" --numeric-owner --acls --xattrs \
+        --sort=name --exclude='*/.local/share/containers' --files-from "$W/chemins"
+    mkdir "$W/transit"
+    tar -xf "$W/paquet/donnees.tar" -C "$W/transit" --numeric-owner
+    (cd "$W/transit" && find . -type f -print0 | sort -z | xargs -0r sha384sum) > "$W/paquet/MANIFEST"
+    rm -rf "$W/transit"
+    date_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    {
+        echo "format=barbacane-sauvegarde-1"
+        echo "date=$date_iso"
+        echo "hote=$(hostname)"
+        echo "version=$(cat /etc/barbacane-serveur/version 2>/dev/null || echo inconnue)"
+        echo "fichiers=$(wc -l < "$W/paquet/MANIFEST")"
+        echo "donnees_sha384=$(sha384sum < "$W/paquet/donnees.tar" | cut -d' ' -f1)"
+    } > "$W/paquet/META"
+    tar -cf "$W/paquet.tar" -C "$W/paquet" META MANIFEST donnees.tar
+    openssl cms -sign -binary -nodetach -md sha384 -signer "$SIG_CERT" -inkey "$SIG_CLE" \
+        -outform DER -in "$W/paquet.tar" -out "$W/signe.der"
+    nom="barbacane-sauvegarde-$(hostname)-$(date -u +%Y%m%dT%H%M%SZ).cms"
+    openssl cms -encrypt -binary -aes-256-gcm -recip "$DESTINATAIRE" -keyopt ecdh_kdf_md:sha384 \
+        -outform DER -in "$W/signe.der" -out "$DEST/$nom.part"
+    sync -f "$DEST/$nom.part" 2>/dev/null || sync
+    mv "$DEST/$nom.part" "$DEST/$nom"
+    (cd "$DEST" && sha384sum "$nom" > "$nom.sha384")
+    sync
+    info "créée : $DEST/$nom ($(du -h "$DEST/$nom" | cut -f1), $(wc -l < "$W/paquet/MANIFEST") fichiers)"
+    # Rotation : les purges s'appliquent aussi aux sauvegardes (conception §3.8).
+    find "$DEST" -maxdepth 1 -name 'barbacane-sauvegarde-*.cms' -printf '%f\n' | sort -r | tail -n +"$((GARDER + 1))" \
+        | while read -r ancien; do rm -f "$DEST/$ancien" "$DEST/$ancien.sha384"; info "purgée : $ancien"; done
+    ;;
+verifier)
+    ouvrir
+    ;;
+restaurer)
+    ouvrir
+    [ -d "$RACINE" ] || erreur "racine de restauration absente : $RACINE"
+    tar -xpf "$W/paquet/donnees.tar" -C "$RACINE" --numeric-owner --acls --xattrs
+    info "restaurée dans $RACINE"
+    ;;
+cles-destinataire)
+    [ -n "$DOSSIER" ] || erreur "dossier de sortie requis"
+    mkdir -p "$DOSSIER"
+    [ ! -e "$DOSSIER/destinataire.cle.pem" ] || erreur "$DOSSIER/destinataire.cle.pem existe déjà"
+    chiffrer=(-aes-256-cbc)
+    [ "$SANS_PHRASE" = 1 ] && chiffrer=()
+    openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-384 "${chiffrer[@]}" -out "$DOSSIER/destinataire.cle.pem"
+    # shellcheck disable=SC2046
+    openssl req -new -x509 -key "$DOSSIER/destinataire.cle.pem" $(passin) -sha384 -days 3650 \
+        -subj "/CN=Barbacane cle de sauvegarde $(date +%Y%m%d)" \
+        -addext "keyUsage=critical,keyAgreement" -addext "basicConstraints=critical,CA:FALSE" \
+        -out "$DOSSIER/destinataire.pem"
+    info "clé privée : $DOSSIER/destinataire.cle.pem (HORS du serveur, coffre) ; certificat à copier sur le serveur : $DOSSIER/destinataire.pem"
+    ;;
+cles-signature)
+    [ -n "$DOSSIER" ] || erreur "dossier de sortie requis"
+    mkdir -p "$DOSSIER"
+    [ ! -e "$DOSSIER/signature.cle.pem" ] || erreur "$DOSSIER/signature.cle.pem existe déjà"
+    openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-384 -out "$DOSSIER/signature.cle.pem"
+    openssl req -new -x509 -key "$DOSSIER/signature.cle.pem" -sha384 -days 3650 \
+        -subj "/CN=Barbacane signature sauvegardes $(date +%Y%m%d)/OU=$(hostname | cut -c1-60)" \
+        -addext "keyUsage=critical,digitalSignature" -addext "basicConstraints=critical,CA:FALSE" \
+        -out "$DOSSIER/signature.pem"
+    info "empreinte du certificat de signature (à consigner HORS du serveur) : $(openssl x509 -in "$DOSSIER/signature.pem" -noout -fingerprint -sha256 | cut -d= -f2)"
+    ;;
+*)
+    sed -n '2,23p' "$0" >&2
+    exit 2
+    ;;
+esac

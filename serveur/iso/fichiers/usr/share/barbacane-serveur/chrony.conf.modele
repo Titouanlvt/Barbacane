@@ -1,0 +1,15 @@
+# Serveur Barbacane : heure de référence (conception §3.11, docs/suite/serveur-iso.md §5).
+# AUCUNE source Internet (pas de « pool », pas de serveur public). Source facultative : un
+# serveur NTP INTERNE du réseau d'administration (option --source-heure de l'ISO).
+@SOURCE_HEURE@
+# Sans source : l'horloge locale (RTC) fait référence ; strate élevée pour ne jamais primer
+# sur une vraie source si une est ajoutée.
+local stratum 10
+# Pas de service NTP réseau : les bornes prennent l'heure par le canal mTLS authentifié.
+port 0
+# Pas de port de commande réseau ; chronyc passe par la socket locale.
+cmdport 0
+driftfile /var/lib/chrony/chrony.drift
+makestep 1.0 3
+rtcsync
+logdir /var/log/chrony

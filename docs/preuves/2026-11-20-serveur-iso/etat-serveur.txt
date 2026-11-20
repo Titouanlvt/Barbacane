@@ -1,0 +1,103 @@
+=== BARBACANE-ETAT DEBUT 2026-11-20T16:59:20+01:00
+--- version
+suite-20261120
+--- disque
+NAME                     TYPE  FSTYPE       SIZE MOUNTPOINTS
+fd0                      disk                 4K
+sr0                      rom               1024M
+vda                      disk                24G
+├─vda1                   part  vfat         512M /boot/efi
+├─vda2                   part  ext4         977M /boot
+└─vda3                   part  crypto_LUKS 22.5G
+  └─vda3_crypt           crypt LVM2_member 22.5G
+    ├─barbacane-racine   lvm   ext4         3.7G /
+    ├─barbacane-var      lvm   ext4         4.3G /var
+    ├─barbacane-journaux lvm   ext4         2.2G /var/log
+    ├─barbacane-audit    lvm   ext4         476M /var/log/audit
+    ├─barbacane-home     lvm   ext4         188M /home
+    └─barbacane-donnees  lvm   ext4        11.7G /var/lib/barbacane-serveur
+type:    LUKS2
+cipher:  aes-xts-plain64
+keysize: 512 bits
+device:  /dev/vda3
+jeton : systemd-recovery
+jeton : systemd-tpm2
+emplacements de clé : 2
+--- interfaces
+ens8 présente : ens8 UP 10.0.2.15/24
+ens9 présente : ens9 UP 10.0.3.15/24
+--- routes
+10.0.2.0/24 dev ens8 proto kernel scope link src 10.0.2.15
+10.0.3.0/24 dev ens9 proto kernel scope link src 10.0.3.15
+--- pare-feu
+table inet barbacane {
+	chain entree {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ct state invalid drop
+		ct state established,related accept
+		iifname "ens8" ip daddr 10.0.2.15 tcp dport 47686 ct state new accept
+		iifname "ens9" tcp dport 443 ct state new accept
+		limit rate 6/minute burst 5 packets log prefix "barbacane-refus-entree "
+	}
+	chain transit {
+		type filter hook forward priority filter; policy drop;
+		limit rate 6/minute burst 5 packets log prefix "barbacane-refus-transit "
+	}
+	chain sortie {
+		type filter hook output priority filter; policy drop;
+		oif "lo" accept
+		ct state established,related accept
+		limit rate 6/minute burst 5 packets log prefix "barbacane-refus-sortie "
+	}
+}
+--- ecoute
+10.0.2.15:47686
+--- heure
+local stratum 10
+MS Name/IP address         Stratum Poll Reach LastRx Last sample
+===============================================================================
+Reference ID    : 7F7F0101 ()
+Stratum         : 10
+Leap status     : Normal
+--- services
+nftables active
+chrony active
+systemd-networkd active
+systemd-journald active
+auditd active
+user@999 active
+utilisateur:barbacane-images active condition=yes
+utilisateur:barbacane-passerelle active condition=yes
+--- passerelle-pki
+drwx------ barbacane-svc pki
+-r-------- barbacane-svc cle.pem
+-r-------- barbacane-svc ca-bornes.pem
+-r-------- barbacane-svc passerelle.conf
+-r-------- barbacane-svc crl-bornes.pem
+-r-------- barbacane-svc chaine.pem
+     Active: active (running) since Fri 2026-11-20 16:59:17 CET; 2s ago
+ Invocation: 4431b088eba8414a91b69ca41c12050f
+   Main PID: 1222 (conmon)
+      Tasks: 3 (limit: 4614)
+     Memory: 31.8M (peak: 47M)
+        CPU: 268ms
+     CGroup: /user.slice/user-999.slice/user@999.service/app.slice/barbacane-passerelle.service
+             ├─libpod-payload-3bd057af921d999b4ad03df5a00bf174c02d987db155982c7afa7984bbc32a75
+             │ └─1224 /barbacane-passerelle /pki/passerelle.conf
+             └─runtime
+               ├─1220 /usr/bin/pasta --config-net -t 10.0.2.15/47686-47686:47686-47686 --dns-forward 169.254.1.1 -u none -T none -U none --no-map-gw --quiet --netns /run/user/999/netns/netns-16d43175-7cc2-8300-76f9-7cca0a8e82b4 --map-guest-addr 169.254.1.2
+               └─1222 /usr/bin/conmon --api-version 1 -c 3bd057af921d999b4ad03df5a00bf174c02d987db155982c7afa7984bbc32a75 -u 3bd057af921d999b4ad03df5a00bf174c02d987db155982c7afa7984bbc32a75 -r /usr/bin/crun -b /var/lib/barbacane-serveur/svc/.local/share/containers/storage/overlay-containers/3bd057af921d999b4ad03df5a00bf174c02d987db155982c7afa7984bbc32a75/userdata -p /run/user/999/containers/overlay-containers/3bd057af921d999b4ad03df5a00bf174c02d987db155982c7afa7984bbc32a75/userdata/pidfile -n barbacane-passerelle --exit-dir /run/user/999/libpod/tmp/exits --persist-dir /run/user/999/libpod/tmp/persist/3bd057af921d999b4ad03df5a00bf174c02d987db155982c7afa7984bbc32a75 --full-attach -l journald --log-level warning --syslog --runtime-arg --log-format=json --runtime-arg --log --runtime-arg=/run/user/999/containers/overlay-containers/3bd057af921d999b4ad03df5a00bf174c02d987db155982c7afa7984bbc32a75/userdata/oci-log --conmon-pidfile /run/user/999/containers/overlay-containers/3bd057af921d999b4ad03df5a00bf174c02d987db155982c7afa7984bbc32a75/userdata/conmon.pid --exit-command /usr/bin/podman --exit-command-arg --root --exit-command-arg /var/lib/barbacane-serveur/svc/.local/share/containers/storage --exit-command-arg --runroot --exit-command-arg /run/user/999/containers --exit-command-arg --log-level --exit-command-arg warning --exit-command-arg --cgroup-manager --exit-command-arg systemd --exit-command-arg --tmpdir --exit-command-arg /run/user/999/libpod/tmp --exit-command-arg --network-config-dir --exit-command-arg "" --exit-command-arg --network-backend --exit-command-arg netavark --exit-command-arg --volumepath --exit-command-arg /var/lib/barbacane-serveur/svc/.local/share/containers/storage/volumes --exit-command-arg --db-backend --exit-command-arg sqlite --exit-command-arg --transient-store=false --exit-command-arg --runtime --exit-command-arg crun --exit-command-arg --storage-driver --exit-command-arg overlay --exit-command-arg --events-backend --exit-command-arg journald --exit-command-arg container --exit-command-arg cleanup --exit-command-arg --stopped-only --exit-command-arg --rm --exit-command-arg 3bd057af921d999b4ad03df5a00bf174c02d987db155982c7afa7984bbc32a75
+No jobs running.
+--- conteneurs
+barbacane-passerelle localhost/barbacane-passerelle:suite-20261120 Up 3 seconds
+readonly=true privileged=false caps=[]
+--- processus-passerelle
+barbaca+    1224 /barbacane-passerelle /pki/passerelle.conf
+--- paquets
+installés : 284
+--- journal
+File path: /var/log/journal/e48c49b5adda4e11a68e5a2f90a65c49/system.journal
+/var/log/journal/e48c49b5adda4e11a68e5a2f90a65c49/
+À FAIRE : clé de secours du disque encore dans /root/cle-de-secours-luks.txt : la transcrire (coffre) puis « shred -u » ce fichier
+=== BARBACANE-ETAT FIN alertes=0

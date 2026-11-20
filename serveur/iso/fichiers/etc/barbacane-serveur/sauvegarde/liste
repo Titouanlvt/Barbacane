@@ -1,0 +1,7 @@
+# Chemins sauvegardés par barbacane-sauvegarde (docs/suite/serveur-iso.md §7), un par ligne.
+# Le stockage des images de conteneurs (~/.local/share/containers) est exclu : rechargé depuis l'ISO.
+/etc/barbacane-serveur
+/var/lib/barbacane-serveur
+/etc/nftables.conf
+/etc/chrony/chrony.conf
+/etc/systemd/network

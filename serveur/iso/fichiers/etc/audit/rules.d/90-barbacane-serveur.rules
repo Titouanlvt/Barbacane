@@ -1,0 +1,23 @@
+## Serveur Barbacane : règles d'audit (guide ANSSI, journalisation renforcée).
+-D
+-b 8192
+-f 1
+# Comptes, droits, configuration du serveur
+-w /etc/passwd -p wa -k comptes
+-w /etc/shadow -p wa -k comptes
+-w /etc/group -p wa -k comptes
+-w /etc/gshadow -p wa -k comptes
+-w /etc/sudoers -p wa -k privileges
+-w /etc/sudoers.d/ -p wa -k privileges
+-w /etc/barbacane-serveur/ -p wa -k barbacane
+-w /etc/nftables.conf -p wa -k pare-feu
+-w /etc/crypttab -p wa -k disque
+-w /etc/chrony/ -p wa -k heure
+-w /var/lib/barbacane-serveur/svc/pki/ -p rwa -k pki
+# Modules du noyau, montages, heure, exécutions avec privilèges
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules
+-a always,exit -F arch=b64 -S mount,umount2 -F auid>=1000 -F auid!=unset -k montages
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k heure
+-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=unset -k root-par-admin
+# Règles figées jusqu'au prochain redémarrage
+-e 2
