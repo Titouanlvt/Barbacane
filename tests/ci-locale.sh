@@ -8,6 +8,8 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 J=${CI_JOURNAUX:-$(mktemp -d "${TMPDIR:-/tmp}/ci-locale-XXXXXX")}; mkdir -p "$J"
 CIBLE=${CARGO_TARGET_DIR:-$PWD/target}; export CARGO_TARGET_DIR=$CIBLE
+# Binaires usbsas des tests : suivre un dossier de compilation déplacé (.cargo/config.toml : target/release)
+export USBSAS_BIN_PATH=${USBSAS_BIN_PATH:-$CIBLE/release}
 declare -A PID
 lancer() { local n=$1; shift; ( timeout "${DELAI:-90m}" bash -c "$*" ) > "$J/$n.log" 2>&1 & PID[$n]=$!; }
 
