@@ -52,7 +52,9 @@ l'exécution (images des conteneurs sans root) ; il reste `nodev,nosuid`.
 ## 3. Chiffrement du disque et TPM (D6, D9)
 
 - `partman-crypto` formate le volume en **LUKS2** (`cryptsetup luksFormat`, type par défaut),
-  **aes-xts-plain64, clé de 512 bits** (AES-256 en XTS), dérivation Argon2id. La phrase de passe
+  **aes-xts-plain64, clé de 512 bits** (AES-256 en XTS), dérivation Argon2id. Au preseed :
+  `partman-crypto/keysize 256`, car partman **double** la taille en XTS (512 au preseed donnait
+  1024 bits, refusé : « Configuration of encrypted volumes failed »). La phrase de passe
   de l'installateur est **temporaire** : tirée au hasard à chaque construction d'ISO.
 - En fin d'installation (`configurer-serveur.sh`, TPM visible dans l'installateur car le noyau
   Debian intègre `tpm_crb`/`tpm_tis`) :
@@ -77,6 +79,13 @@ Limites (assumées, à présenter à l'AH) :
   démarrable) produit le même PCR 7. Parades : mot de passe du micrologiciel, ordre de démarrage
   verrouillé, démarrage USB désactivé, local en zone protégée. PRÉVU : politique `systemd-pcrlock`
   (PCR 0, 2, 4, 7) ou noyau unifié signé (UKI) avec politique PCR 11 signée ; option TPM + PIN.
+- **Le scellement suppose que l'installateur démarre par le même chemin que le système installé**
+  (micrologiciel → shim → GRUB) : le shim mesure `SbatLevel` dans le PCR 7. Constaté au banc : une
+  installation lancée par démarrage direct du noyau (QEMU `-kernel`, sans shim) scellait un autre
+  PCR 7, et le système installé demandait la clé de secours ; le même système démarré lui aussi
+  sans shim se déverrouillait. Le banc démarre donc l'ISO par le micrologiciel, comme un vrai
+  serveur. Une mise à jour du shim ou de `SbatLevel` change le PCR 7 : PRÉVU, re-scellement au
+  premier démarrage et après mise à jour (`systemd-cryptenroll --unlock-tpm2-device=auto`).
 - Démarrage sécurisé : utilisé s'il est actif dans le micrologiciel (shim et GRUB signés Debian) ;
   non activé dans le banc QEMU (OVMF sans clés), d'où un PCR 7 « démarrage sécurisé désactivé ».
 - LUKS n'est pas un produit qualifié : `dossier-homologation.md` §5 et §6 (HORS PROJET si l'AH
@@ -178,8 +187,12 @@ de signature consigné), métadonnées, puis extraction **en zone de transit** e
 
 ## 9. Vérification (banc QEMU, `tests/serveur/qemu-serveur.sh`)
 
-ISO de test construite avec `--ip-bornes 10.0.2.15/24 --ip-admin 10.0.3.15/24 --pki-test PKI
---hache-admin FICHIER`. Le banc : machine UEFI (OVMF), **TPM logiciel swtpm** (TPM CRB ; D9 : banc
+ISO de test construite avec `--if-bornes ens8 --ip-bornes 10.0.2.15/24 --if-admin ens9
+--ip-admin 10.0.3.15/24 --pki-test PKI --hache-admin FICHIER --console-serie` ; le banc complet
+(PKI de test hors dépôt, construction, test) : `tests/serveur/banc-lab.sh` sur la VM bu.
+Noms d'interfaces : nftables compare le **nom principal** (`iifname`), pas les noms alternatifs
+que systemd-networkd accepte ; QEMU (machine « pc ») nomme `ens8`/`ens9` les cartes en 0x8/0x9.
+`barbacane-serveur-etat` alerte si une interface configurée n'existe pas sous ce nom. Le banc : machine UEFI (OVMF), **TPM logiciel swtpm** (TPM CRB ; D9 : banc
 seulement), deux réseaux QEMU isolés (`restrict=on`), installation par la console série, puis :
 
 - ISO : aucun paquet interdit, réseau coupé à l'installation, chiffrement 512 bits au preseed ;
@@ -195,24 +208,49 @@ seulement), deux réseaux QEMU isolés (`restrict=on`), installation par la cons
 - de l'extérieur (redirections QEMU) : borne mTLS servie sur le réseau des bornes, client sans
   certificat refusé, passerelle injoignable depuis le réseau d'administration, 443 et 22 muets.
 
+Le conteneur de la passerelle est décrit avec `[Quadlet] DefaultDependencies=false` : sinon quadlet
+l'ordonne après `network-online.target`, jamais atteint au banc (passerelle restée en attente).
+
 Résultats : §10.
 
 ## 10. État
 
+Résultats du 20/11/2026 sur bu (Debian 13, KVM imbriqué, QEMU 10.0, OVMF, **swtpm 0.7.1 : TPM
+LOGICIEL, banc seulement**), ISO de test `suite-20261120` (219 paquets embarqués, 284 installés) :
+
+- `tests/serveur/sauvegarde.sh` : **SAUVEGARDE/RESTAURATION : OK** (restauration identique sur
+  17 lignes comparées ; 4 refus attendus ; rien d'écrit lors d'un refus ; rotation).
+- `tests/serveur/qemu-serveur.sh` : **SERVEUR QEMU : OK**, 42 contrôles OK, 0 échec
+  (`docs/preuves/2026-11-20-serveur-iso/qemu-serveur.txt`, état brut : `etat-serveur.txt`).
+  Installation sans intervention en 4 min ; démarrage sans saisie (TPM) ; port tiré 47686 ; borne
+  mTLS servie sur le réseau des bornes (`{"etat":"ok","borne":"borne borne-01"}`), client sans
+  certificat refusé, passerelle injoignable côté administration, 443/22 muets ; volume LUKS2
+  aes-xts-plain64 512 bits ; routes : deux réseaux directs, aucune par défaut ; 3 chaînes `drop`,
+  6 règles d'acceptation exactement attendues ; seul port réseau en écoute : `10.0.2.15:47686` ;
+  chrony : `local stratum 10`, aucune source ; nftables, chrony, networkd, journald, auditd,
+  session de `barbacane-svc` actifs ; passerelle dans Podman sans root (racine en lecture seule,
+  non privilégiée, aucune capacité, processus `barbacane-svc`) ; aucun paquet interdit ; journal
+  persistant ; sans TPM : arrêt sur la demande de clé ; en-tête : jetons `systemd-tpm2` (PCR 7) et
+  `systemd-recovery`, 2 emplacements, phrase d'installation refusée, `/boot` seule partition en clair.
+
 | Élément | État |
 |---|---|
 | Conception (ce document) | FAIT |
-| `build-iso-serveur.sh`, preseed, fin d'installation, configuration | voir résultats ci-dessous |
-| Sauvegarde / restauration + `tests/serveur/sauvegarde.sh` | FAIT (bu, 20/11) |
-| `tests/serveur/qemu-serveur.sh` | voir résultats ci-dessous |
+| `build-iso-serveur.sh`, preseed, fin d'installation, configuration | FAIT (banc QEMU + swtpm) |
+| Sauvegarde / restauration + `tests/serveur/sauvegarde.sh` | FAIT (bu) |
+| `tests/serveur/qemu-serveur.sh`, `tests/serveur/banc-lab.sh` | FAIT (bu) ; pas dans la CI GitHub (KVM + swtpm + root) |
+| Preuve sur machine physique avec TPM matériel et démarrage sécurisé | PRÉVU |
+| Re-scellement TPM au premier démarrage et après mise à jour du shim | PRÉVU |
 | Politique PCR renforcée (pcrlock / UKI signé), TPM + PIN | PRÉVU |
 | Clés serveur et CA dans le TPM (politique §6) | PRÉVU (jalon PKI) |
 | Interface web (port d'administration ouvert, aucun service encore) | PRÉVU (étape 5, suite) |
-| Sauvegarde quotidienne planifiée, vidage PostgreSQL, purges | PRÉVU |
+| Sauvegarde quotidienne planifiée, vidage PostgreSQL | PRÉVU |
 | Récepteur GNSS/radio comme source d'heure | PRÉVU |
 | `pam_faillock`, bannière légale, AIDE (intégrité des fichiers) | PRÉVU |
 | Chiffrement de disque qualifié/agréé, poste d'administration dédié, locaux | HORS PROJET (organisme / AH) |
 
 ## Bloquants
 
-Aucun pour l'instant.
+Aucun. Problèmes rencontrés et résolus au banc : taille de clé doublée par partman, phrase
+temporaire masquée par le `/run` d'in-target, `nft -c` impossible dans l'installateur, PCR 7
+différent sans shim, noms d'interfaces, attente de `network-online.target` par quadlet.

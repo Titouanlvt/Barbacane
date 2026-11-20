@@ -1,0 +1,52 @@
+== contrôle de l'ISO
+OK : ISO : 219 paquets, aucun interdit
+OK : preseed : aucun réseau à l'installation
+OK : preseed : disque chiffré, AES-256 (clé XTS de 512 bits : partman double 256)
+== installation (sans intervention, TPM logiciel swtpm)
+installation : 4 min
+OK : installation terminée (fin-installation-serveur.sh jusqu'au bout)
+== premier démarrage (déverrouillage par le TPM)
+OK : démarré sans phrase de passe (TPM) : état du serveur lu sur la console
+OK : port de la passerelle tiré à l'installation : 47686 (D4)
+OK : passerelle joignable depuis le réseau des bornes, borne mTLS acceptée : {"etat":"ok","borne":"borne borne-01"}
+OK : passerelle : client sans certificat refusé
+OK : passerelle injoignable depuis le réseau d'administration
+OK : port redirigé 47003 (443/22 sur l'interface bornes) : aucune réponse
+OK : port redirigé 47004 (443/22 sur l'interface bornes) : aucune réponse
+== état du serveur (console)
+OK : racine sur volume ouvert aes-xts-plain64, 512 bits
+OK : volume LUKS2
+OK : aucune route par défaut : 10.0.2.0/24 dev ens8 proto kernel scope link src 10.0.2.15;10.0.3.0/24 dev ens9 proto kernel scope link src 10.0.3.15;
+OK : pare-feu : chaîne entree, politique drop
+OK : pare-feu : chaîne transit, politique drop
+OK : pare-feu : chaîne sortie, politique drop
+OK : pare-feu : 6 règles d'acceptation, toutes attendues
+OK : écoute réseau : 10.0.2.15:47686 
+OK : chrony : aucune source externe configurée
+OK : chrony : aucune source active (MS Name/IP address Stratum Poll Reach LastRx Last sample)
+OK : service nftables actif
+OK : service chrony actif
+OK : service systemd-networkd actif
+OK : service systemd-journald actif
+OK : service auditd actif
+OK : gestionnaire systemd de barbacane-svc actif (linger)
+OK : images chargées depuis l'ISO
+OK : passerelle active (Podman sans root)
+OK : conteneur : racine en lecture seule, non privilégié, aucune capacité
+OK : processus de la passerelle exécuté par « barbaca+ » (pas root)
+OK : aucun paquet interdit installé (installés : 284)
+OK : journal persistant (/var/log/journal)
+OK : état : aucune alerte
+== démarrage SANS TPM (doit s'arrêter sur la demande de clé)
+OK : sans TPM : démarrage bloqué à la demande de clé
+== en-tête LUKS du disque (sans clé)
+OK : en-tête LUKS2
+OK : AES-XTS, clé de 512 bits
+OK : jeton systemd-tpm2 lié au PCR 7 ("tpm2-pcrs":[7])
+OK : jeton de clé de secours
+OK : 2 emplacements de clé (TPM + secours)
+OK : phrase de passe d'installation effacée du disque
+OK : une seule partition en clair (/boot)
+TPM : logiciel (swtpm Corp.), banc de test uniquement
+SERVEUR QEMU : OK
+QEMU FIN 0
