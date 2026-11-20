@@ -10,11 +10,13 @@
 //!   acteur `web:<compte>`).
 #![forbid(unsafe_code)]
 
+pub mod annuaire;
 pub mod comptes;
 pub mod html;
 pub mod http;
 pub mod multipart;
 pub mod pages;
+pub mod pages_utilisateurs;
 pub mod sessions;
 
 use std::collections::BTreeMap;
@@ -32,8 +34,12 @@ use barbacane_passerelle::admin::Admin;
 use barbacane_passerelle::fournisseur;
 use barbacane_passerelle::outils::maintenant;
 use barbacane_passerelle::registre::{Motif, StatutBorne, StatutDemande};
+use barbacane_passerelle::utilisateurs::{BaseUtilisateurs, Utilisateurs, nom_mode};
 use barbacane_protocole::DUREE_JETON_S;
 use barbacane_protocole::maj::{TAILLE_BCU_MAX, TAILLE_SIGNATURE_MAX};
+use barbacane_protocole::utilisateurs::{
+    EntreeNonEnrolees, ModeUtilisateurs, normaliser_identifiant,
+};
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, CertificateRevocationListDer, PrivateKeyDer};
 use rustls::server::{NoServerSessionStorage, WebPkiClientVerifier};
@@ -76,6 +82,8 @@ pub struct Config {
     pub passerelle: PathBuf,
     /// Clé publique d'audit (vérification de la chaîne).
     pub cle_audit_publique: PathBuf,
+    /// Configuration de l'annuaire LDAPS (facultative, `annuaire::ConfigAnnuaire`).
+    pub annuaire: Option<PathBuf>,
 }
 
 impl Config {
@@ -97,6 +105,7 @@ impl Config {
             "comptes",
             "passerelle",
             "cle_audit_publique",
+            "annuaire",
         ];
         for (n, ligne) in texte.lines().enumerate() {
             let ligne = ligne.trim();
@@ -130,6 +139,7 @@ impl Config {
             comptes: chemin("comptes")?,
             passerelle: chemin("passerelle")?,
             cle_audit_publique: chemin("cle_audit_publique")?,
+            annuaire: v.get("annuaire").map(PathBuf::from),
         })
     }
 
@@ -335,7 +345,11 @@ impl Web {
         if passerelle.port == config.port || passerelle.port_enrolement == config.port {
             bail!("l'écoute d'administration doit être distincte de celles de la passerelle");
         }
-        Admin::ouvrir(passerelle.clone())?;
+        let admin = Admin::ouvrir(passerelle.clone())?;
+        Utilisateurs::ouvrir(&admin.stockage)?.lire()?;
+        if let Some(a) = &config.annuaire {
+            annuaire::ConfigAnnuaire::lire(a)?;
+        }
         Ok(Arc::new(Web {
             config,
             passerelle,
@@ -549,6 +563,29 @@ impl Web {
                 }
             }
             "/maj" => self.page_maj(&admin, &ctx, None)?,
+            "/utilisateurs" => {
+                admin.stockage.auditer(
+                    &u.acteur(),
+                    Evenement::Administration {
+                        action: "consultation-utilisateurs".into(),
+                    },
+                )?;
+                let base = Utilisateurs::ouvrir(&admin.stockage)?.lire()?;
+                let saisie = r.parametres.get("identifiant").map(|s| s.trim());
+                let trouve = saisie.and_then(|s| {
+                    if u.role == Role::Auditeur && s.starts_with("u-") {
+                        base.par_pseudonyme(s)
+                    } else {
+                        normaliser_identifiant(s).and_then(|i| base.utilisateur(&i))
+                    }
+                });
+                self.page_utilisateurs(&ctx, &base, saisie.map(|s| (s, trouve)), None, None)
+            }
+            "/sites" => self.page_sites(&admin, &ctx, None)?,
+            "/cles-usb" => {
+                let base = Utilisateurs::ouvrir(&admin.stockage)?.lire()?;
+                page(200, pages_utilisateurs::cles_usb(&ctx, &base, None))
+            }
             "/audit" => {
                 admin.stockage.auditer(
                     &u.acteur(),
@@ -594,6 +631,219 @@ impl Web {
         })
     }
 
+    fn page_utilisateurs(
+        &self,
+        ctx: &Contexte,
+        base: &BaseUtilisateurs,
+        recherche: Option<(
+            &str,
+            Option<&barbacane_passerelle::utilisateurs::Utilisateur>,
+        )>,
+        pin: Option<(&str, &str)>,
+        message: Option<(bool, &str)>,
+    ) -> Reponse {
+        page(
+            if message.is_some_and(|(ok, _)| !ok) {
+                400
+            } else {
+                200
+            },
+            pages_utilisateurs::utilisateurs(
+                ctx,
+                &pages_utilisateurs::VueUtilisateurs {
+                    base,
+                    annuaire_configure: self.config.annuaire.is_some(),
+                    recherche,
+                    pin,
+                    message,
+                    maintenant: ctx.maintenant,
+                },
+            ),
+        )
+    }
+
+    fn page_sites(
+        &self,
+        admin: &Admin,
+        ctx: &Contexte,
+        message: Option<(bool, &str)>,
+    ) -> Result<Reponse> {
+        let reg = admin.stockage.lire()?;
+        let base = Utilisateurs::ouvrir(&admin.stockage)?.lire()?;
+        let mut noms: std::collections::BTreeSet<String> = base.sites.keys().cloned().collect();
+        noms.extend(reg.bornes.iter().map(|b| b.site.clone()));
+        noms.extend(base.cles_usb.iter().filter_map(|c| c.site.clone()));
+        let lignes: Vec<pages_utilisateurs::LigneSite> = noms
+            .into_iter()
+            .map(|site| pages_utilisateurs::LigneSite {
+                bornes: reg
+                    .bornes
+                    .iter()
+                    .filter(|b| b.site == site && b.statut == StatutBorne::Active)
+                    .count(),
+                reglage: base.reglage(&site),
+                cles: base.cles_du_site(&site).count(),
+                site,
+            })
+            .collect();
+        Ok(page(
+            if message.is_some_and(|(ok, _)| !ok) {
+                400
+            } else {
+                200
+            },
+            pages_utilisateurs::sites(ctx, &lignes, message),
+        ))
+    }
+
+    /// Actions des pages Utilisateurs, Sites et Clés USB (administrateur ; rôle et CSRF déjà
+    /// vérifiés). `None` : route d'une autre rubrique.
+    fn post_utilisateurs(
+        &self,
+        chemin: &str,
+        f: &BTreeMap<String, String>,
+        u: &Utilisateur,
+        admin: &Admin,
+        t: u64,
+    ) -> Result<Option<Reponse>> {
+        let ctx = u.contexte(t);
+        let champ = |k: &str| f.get(k).map(String::as_str).unwrap_or("").trim();
+        let ut = Utilisateurs::ouvrir(&admin.stockage)?;
+        let acteur = u.acteur();
+        let issue = |r: Result<String>| match r {
+            Ok(m) => (true, m),
+            Err(e) => (false, format!("Refusé : {e:#}")),
+        };
+        Ok(Some(match chemin {
+            "/utilisateurs/synchroniser" => {
+                let r = match &self.config.annuaire {
+                    None => Err(anyhow::anyhow!("annuaire non configuré")),
+                    Some(a) => annuaire::synchroniser(a, &ut, &acteur, t),
+                };
+                if r.is_err() {
+                    admin.stockage.auditer(
+                        &acteur,
+                        Evenement::Administration {
+                            action: "synchronisation-annuaire-refusee".into(),
+                        },
+                    )?;
+                }
+                let (ok, m) = issue(r.map(|b| {
+                    format!(
+                        "Annuaire synchronisé : {} identifiants actifs, {} ajoutés, {} retirés, {} ignorés (forme invalide).",
+                        b.actifs, b.ajoutes, b.retires, b.ignores
+                    )
+                }));
+                let base = ut.lire()?;
+                self.page_utilisateurs(&ctx, &base, None, None, Some((ok, &m)))
+            }
+            "/utilisateurs/pin" => {
+                let id = normaliser_identifiant(champ("identifiant")).unwrap_or_default();
+                match ut.reinitialiser_pin(&id, &acteur, t) {
+                    Ok(pin) => {
+                        let base = ut.lire()?;
+                        let trouve = base.utilisateur(&id);
+                        self.page_utilisateurs(
+                            &ctx,
+                            &base,
+                            Some((&id, trouve)),
+                            Some((&id, &pin)),
+                            None,
+                        )
+                    }
+                    Err(e) => {
+                        let base = ut.lire()?;
+                        let m = format!("Refusé : {e:#}");
+                        self.page_utilisateurs(&ctx, &base, None, None, Some((false, &m)))
+                    }
+                }
+            }
+            "/utilisateurs/deverrouiller" => {
+                let id = normaliser_identifiant(champ("identifiant")).unwrap_or_default();
+                let (ok, m) = issue(
+                    ut.deverrouiller(&id, &acteur, t)
+                        .map(|_| format!("Compte {id} déverrouillé.")),
+                );
+                let base = ut.lire()?;
+                let trouve = base.utilisateur(&id);
+                self.page_utilisateurs(&ctx, &base, Some((&id, trouve)), None, Some((ok, &m)))
+            }
+            "/sites/mode" => {
+                let site = champ("site");
+                let mode = match champ("mode") {
+                    "aucun" => Some(ModeUtilisateurs::Aucun),
+                    "identification" => Some(ModeUtilisateurs::Identification),
+                    "authentification" => Some(ModeUtilisateurs::Authentification),
+                    _ => None,
+                };
+                let r = match mode {
+                    None => Err(anyhow::anyhow!("mode inconnu")),
+                    Some(m) => ut
+                        .definir_mode(
+                            site,
+                            m,
+                            barbacane_passerelle::utilisateurs::quarantaine_active(&admin.stockage),
+                            &acteur,
+                            t,
+                        )
+                        .map(|_| format!("Site {site} : mode {} appliqué.", nom_mode(m))),
+                };
+                let (ok, m) = issue(r);
+                self.page_sites(admin, &ctx, Some((ok, &m)))?
+            }
+            "/sites/entree" => {
+                let site = champ("site");
+                let entree = match champ("entree") {
+                    "autorisee" => Some(EntreeNonEnrolees::Autorisee),
+                    "interdite" => Some(EntreeNonEnrolees::Interdite),
+                    _ => None,
+                };
+                let r = match entree {
+                    None => Err(anyhow::anyhow!("choix inconnu")),
+                    Some(e) => ut
+                        .definir_entree(site, e, &acteur, t)
+                        .map(|_| format!("Site {site} : politique d'entrée appliquée.")),
+                };
+                let (ok, m) = issue(r);
+                self.page_sites(admin, &ctx, Some((ok, &m)))?
+            }
+            "/cles-usb/enroler" => {
+                let site = Some(champ("site")).filter(|s| !s.is_empty());
+                let (ok, m) = issue(
+                    ut.enroler_cle(
+                        champ("fabricant"),
+                        champ("serie"),
+                        champ("libelle"),
+                        site,
+                        f.contains_key("entree"),
+                        f.contains_key("sortie"),
+                        &acteur,
+                        t,
+                    )
+                    .map(|id| format!("Clé enrôlée ({id}).")),
+                );
+                let base = ut.lire()?;
+                page(
+                    if ok { 200 } else { 400 },
+                    pages_utilisateurs::cles_usb(&ctx, &base, Some((ok, &m))),
+                )
+            }
+            "/cles-usb/retirer" => {
+                let id = champ("id");
+                let (ok, m) = issue(
+                    ut.retirer_cle(id, &acteur, t)
+                        .map(|_| format!("Clé {id} retirée.")),
+                );
+                let base = ut.lire()?;
+                page(
+                    if ok { 200 } else { 400 },
+                    pages_utilisateurs::cles_usb(&ctx, &base, Some((ok, &m))),
+                )
+            }
+            _ => return Ok(None),
+        }))
+    }
+
     fn page_maj(
         &self,
         admin: &Admin,
@@ -635,6 +885,9 @@ impl Web {
             return Ok(rep);
         }
         let admin = self.admin(u)?;
+        if let Some(rep) = self.post_utilisateurs(&r.chemin, f, u, &admin, t)? {
+            return Ok(rep);
+        }
         Ok(match r.chemin.as_str() {
             "/enrolement/jeton" => {
                 let site = champ("site").trim();

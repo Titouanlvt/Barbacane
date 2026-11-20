@@ -1047,3 +1047,297 @@ fn depot_bcu_par_la_page() {
         .count();
     assert_eq!(restes, 0);
 }
+
+// ───────────── Utilisateurs, sites, clés USB (docs/suite/serveur-utilisateurs.md) ─────────────
+
+fn base_utilisateurs(b: &Banc) -> barbacane_passerelle::utilisateurs::Utilisateurs {
+    let admin = Admin::ouvrir(b.passerelle.clone()).unwrap();
+    barbacane_passerelle::utilisateurs::Utilisateurs::ouvrir(&admin.stockage).unwrap()
+}
+
+fn importer(b: &Banc) {
+    base_utilisateurs(b)
+        .importer(
+            &["j.dupont".into(), "a.martin".into()],
+            "annuaire",
+            "web:alice",
+            maintenant(),
+        )
+        .unwrap();
+}
+
+/// Contenus de tous les fichiers sous `d`.
+fn fichiers(d: &Path) -> Vec<u8> {
+    let mut o = Vec::new();
+    for e in std::fs::read_dir(d).unwrap() {
+        let p = e.unwrap().path();
+        if p.is_dir() {
+            o.extend(fichiers(&p));
+        } else {
+            o.extend(std::fs::read(&p).unwrap());
+        }
+    }
+    o
+}
+
+const ROUTES_UTILISATEURS: &[&str] = &[
+    "/utilisateurs/synchroniser",
+    "/utilisateurs/pin",
+    "/utilisateurs/deverrouiller",
+    "/sites/mode",
+    "/sites/entree",
+    "/cles-usb/enroler",
+    "/cles-usb/retirer",
+];
+
+#[test]
+fn utilisateurs_auditeur_lecture_seule() {
+    let b = banc();
+    importer(&b);
+    let (c, csrf) = connecter(&b, &b.bob, "bob", MDP_BOB);
+    for page in ["/utilisateurs", "/sites", "/cles-usb"] {
+        let r = get(&b, &b.bob, page, Some(&c));
+        assert_eq!(r.statut, 200, "{page}");
+        for action in ROUTES_UTILISATEURS {
+            assert!(
+                !r.corps.contains(&format!("action=\"{action}\"")),
+                "{page} : {action}"
+            );
+        }
+    }
+    // L'auditeur voit les identifiants en clair et résout un pseudonyme.
+    let r = get(&b, &b.bob, "/utilisateurs", Some(&c));
+    assert!(r.corps.contains("j.dupont") && r.corps.contains("a.martin"));
+    let ps = base_utilisateurs(&b).pseudonyme("j.dupont");
+    let r = get(
+        &b,
+        &b.bob,
+        &format!("/utilisateurs?identifiant={ps}"),
+        Some(&c),
+    );
+    assert!(r.corps.contains("<dd class=\"b-mono\">j.dupont</dd>"));
+    for chemin in ROUTES_UTILISATEURS {
+        let r = post(
+            &b,
+            &b.bob,
+            chemin,
+            &c,
+            &[
+                ("csrf", &csrf),
+                ("identifiant", "j.dupont"),
+                ("site", "site-1"),
+                ("mode", "authentification"),
+                ("entree", "interdite"),
+                ("fabricant", "0781"),
+                ("serie", "4C53"),
+            ],
+        );
+        assert_eq!(r.statut, 403, "{chemin}");
+    }
+    let base = base_utilisateurs(&b).lire().unwrap();
+    assert!(base.utilisateurs.iter().all(|u| u.pin.is_none()));
+    assert!(
+        base.sites.is_empty() && base.cles_usb.is_empty(),
+        "rien modifié"
+    );
+    // L'administrateur ne voit que les pseudonymes, sauf le compte qu'il saisit.
+    let (ca, _) = connecter(&b, &b.alice, "alice", MDP_ALICE);
+    let r = get(&b, &b.alice, "/utilisateurs", Some(&ca));
+    assert!(!r.corps.contains("j.dupont") && r.corps.contains(&ps));
+    let r = get(
+        &b,
+        &b.alice,
+        "/utilisateurs?identifiant=J.Dupont",
+        Some(&ca),
+    );
+    assert!(r.corps.contains("j.dupont") && r.corps.contains("action=\"/utilisateurs/pin\""));
+    assert!(!r.corps.contains("a.martin"));
+    let j = journal(&b);
+    assert!(
+        j.iter()
+            .any(|e| administration(e, "web:bob", "consultation-utilisateurs"))
+    );
+}
+
+#[test]
+fn reinitialisation_pin_affiche_une_fois() {
+    let b = banc();
+    importer(&b);
+    let (c, csrf) = connecter(&b, &b.alice, "alice", MDP_ALICE);
+    let r = post(
+        &b,
+        &b.alice,
+        "/utilisateurs/pin",
+        &c,
+        &[("csrf", &csrf), ("identifiant", "j.dupont")],
+    );
+    assert_eq!(r.statut, 200, "{}", r.corps);
+    let debut = r.corps.find("<div class=\"b-code\">").expect("PIN affiché") + 20;
+    let pin = r.corps[debut..].split('<').next().unwrap().to_owned();
+    assert!(
+        pin.len() == 8 && pin.bytes().all(|o| o.is_ascii_digit()),
+        "{pin}"
+    );
+    assert!(r.corps.contains("Affiché une seule fois"));
+    assert_eq!(r.entete("Cache-Control"), Some("no-store"));
+    let r = get(&b, &b.alice, "/utilisateurs?identifiant=j.dupont", Some(&c));
+    assert!(!r.corps.contains(&pin), "PIN réaffiché");
+    assert!(r.corps.contains("PIN à changer"));
+    let etat = fichiers(b.dossier.path());
+    assert!(
+        !etat.windows(8).any(|f| f == pin.as_bytes()),
+        "PIN en clair dans un fichier"
+    );
+    let ps = base_utilisateurs(&b).pseudonyme("j.dupont");
+    let j = journal(&b);
+    assert!(j.iter().any(|e| e.acteur == "web:alice"
+        && e.evenement
+            == Evenement::PinReinitialise {
+                utilisateur: ps.clone()
+            }));
+    // Déverrouillage et mode du site par les pages.
+    let u = base_utilisateurs(&b);
+    u.transaction(maintenant(), |base| {
+        let x = base
+            .utilisateurs
+            .iter_mut()
+            .find(|x| x.identifiant == "j.dupont")
+            .unwrap();
+        x.verrouille_le = Some(1);
+        x.echecs = 5;
+        Ok(())
+    })
+    .unwrap();
+    let r = post(
+        &b,
+        &b.alice,
+        "/utilisateurs/deverrouiller",
+        &c,
+        &[("csrf", &csrf), ("identifiant", "j.dupont")],
+    );
+    assert_eq!(r.statut, 200, "{}", r.corps);
+    assert!(
+        u.lire()
+            .unwrap()
+            .utilisateur("j.dupont")
+            .unwrap()
+            .verrouille_le
+            .is_none()
+    );
+    let r = post(
+        &b,
+        &b.alice,
+        "/sites/mode",
+        &c,
+        &[
+            ("csrf", &csrf),
+            ("site", "site-3"),
+            ("mode", "authentification"),
+        ],
+    );
+    assert_eq!(r.statut, 200, "{}", r.corps);
+    assert!(r.corps.contains("site-3"));
+    assert_eq!(
+        u.lire().unwrap().reglage("site-3").mode,
+        barbacane_protocole::utilisateurs::ModeUtilisateurs::Authentification
+    );
+    let r = post(
+        &b,
+        &b.alice,
+        "/utilisateurs/synchroniser",
+        &c,
+        &[("csrf", &csrf)],
+    );
+    assert_eq!(r.statut, 400, "annuaire non configuré dans ce banc");
+}
+
+#[test]
+fn utilisateurs_csrf_et_echappement() {
+    let b = banc();
+    importer(&b);
+    let (c, csrf) = connecter(&b, &b.alice, "alice", MDP_ALICE);
+    let champs = |jeton: &'static str| {
+        vec![
+            ("csrf", jeton),
+            ("identifiant", "j.dupont"),
+            ("site", "site-1"),
+            ("mode", "authentification"),
+            ("entree", "interdite"),
+            ("fabricant", "0781"),
+            ("serie", "4C53"),
+            ("sortie", "1"),
+        ]
+    };
+    for chemin in ROUTES_UTILISATEURS {
+        let r = post(&b, &b.alice, chemin, &c, &champs("faux")[1..]);
+        assert_eq!(r.statut, 403, "{chemin} sans jeton");
+        let r = post(&b, &b.alice, chemin, &c, &champs("faux"));
+        assert_eq!(r.statut, 403, "{chemin} faux jeton");
+        let corps = formulaire(&[("csrf", csrf.as_str()), ("site", "site-1")]);
+        let r = post_brut(
+            &b,
+            &b.alice,
+            chemin,
+            &c,
+            "Sec-Fetch-Site: cross-site\r\n",
+            &corps,
+        );
+        assert_eq!(r.statut, 403, "{chemin} autre origine");
+    }
+    let base = base_utilisateurs(&b).lire().unwrap();
+    assert!(base.sites.is_empty() && base.cles_usb.is_empty());
+    assert!(base.utilisateurs.iter().all(|u| u.pin.is_none()));
+    // Libellé malveillant : échappé partout ; série invalide : refus échappé.
+    let r = post(
+        &b,
+        &b.alice,
+        "/cles-usb/enroler",
+        &c,
+        &[
+            ("csrf", &csrf),
+            ("fabricant", "0x0781"),
+            ("serie", "4c530001"),
+            ("libelle", "<script>alert(1)</script>"),
+            ("site", ""),
+            ("entree", "1"),
+        ],
+    );
+    assert_eq!(r.statut, 200, "{}", r.corps);
+    let r = get(&b, &b.alice, "/cles-usb", Some(&c));
+    assert!(r.corps.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    assert!(!r.corps.contains("<script") && !r.corps.contains("style="));
+    assert!(r.corps.contains("4C530001"), "série normalisée");
+    let r = post(
+        &b,
+        &b.alice,
+        "/cles-usb/enroler",
+        &c,
+        &[
+            ("csrf", &csrf),
+            ("fabricant", "\"><img src=x onerror=1>"),
+            ("serie", "A"),
+            ("entree", "1"),
+        ],
+    );
+    assert_eq!(r.statut, 400);
+    assert!(!r.corps.contains("<img"));
+    let r = get(
+        &b,
+        &b.alice,
+        "/utilisateurs?identifiant=%22%3E%3Cimg%20src%3Dx%3E",
+        Some(&c),
+    );
+    assert_eq!(r.statut, 200);
+    assert!(!r.corps.contains("<img") && r.corps.contains("&quot;&gt;&lt;img"));
+    // Retrait par la page.
+    let id = base_utilisateurs(&b).lire().unwrap().cles_usb[0].id.clone();
+    let r = post(
+        &b,
+        &b.alice,
+        "/cles-usb/retirer",
+        &c,
+        &[("csrf", &csrf), ("id", &id)],
+    );
+    assert_eq!(r.statut, 200, "{}", r.corps);
+    assert!(base_utilisateurs(&b).lire().unwrap().cles_usb.is_empty());
+}
