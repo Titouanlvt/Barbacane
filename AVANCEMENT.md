@@ -6,11 +6,11 @@
 | Lab 1 : NVMe dédié → pool ZFS `essais` | **fait** (`docs/lab/essais.md`, instantané `avant-pool-essais-20261119-1825`) |
 | Lab 2 : passthrough RTX 4000 | **non fait, par règle** : seule carte d'affichage de l'hôte (`docs/lab/gpu-passthrough.md`) |
 | Charte v2 dans `docs/charte/` | **fait par l'utilisateur** (branche `charte-v2`, identique à l'Artifact, vérifié) |
-| 1. Documentation v1 à jour (captures Jour/Nuit, PDF, README) | en cours |
-| 2. Publication v1.0.0 (notes de version, ISO de référence, étiquette) | à faire |
-| 3. Organisation du dépôt (profils ISO, test « hors ligne », serveur/, borne/agent/) | à faire |
-| 4. Préalables suite (politique de certification, AIPD, décisions) | à faire |
-| Adaptation visuelle charte v2 (borne) | à faire |
+| 1. Documentation v1 à jour | **fait** (captures Jour/Nuit `docs/captures/v1/`, guide, PDF, README) |
+| 2. Publication v1.0.0 | **fait** : étiquette `v1.0.0` = `main` = 08acd06 ; ISO `/nvme/contenu/iso-v100/` sha256 `5e0c3fba…3fc7` ; `docs/preuves/2026-11-19-v1.0.0/` (39/39) |
+| 3. Organisation du dépôt | **fait** (`docs/preuves/2026-11-19-profil-hors-ligne/`) |
+| 4. Préalables suite (DR) | **fait** (`docs/suite/`) |
+| Adaptation visuelle charte v2 (borne) | branche `borne-charte-v2` : jetons, relief, objets 3D faits ; reste creusé, pastilles, herse, vérif. visuelle 950 (`docs/charte/adaptation.md`) |
 | 5–10. Barbacane suite | à faire |
 
 ## Étape 1 — inventaire (19/11)
@@ -25,6 +25,7 @@
 | Résolution | consigne 1280×768 ; la VM de test affiche 1280×800 | captures en 1280×800 (même mise en page, 32 px de plus en bas) |
 
 ## Décisions (19/11)
+- Stockages : l'utilisateur autorise tous les stockages Proxmox (19/11, dont `nvme`). ISO v1.0.0 : `/nvme/contenu/iso-v100/` (sha256 `5e0c3fba…3fc7`).
 - RTX 4000 : pas de passthrough (seule carte VGA, `boot_vga=1`) → rendus 3D en CPU, mesure wgpu non faite.
 - Charte : la branche `charte-v2` de l'utilisateur prime sur ma copie depuis l'Artifact (contenu identique,
   plus complète : outils, maquettes). Ma copie n'est pas poussée.

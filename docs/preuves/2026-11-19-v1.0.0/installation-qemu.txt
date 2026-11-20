@@ -1,0 +1,18 @@
+/root/BARBACANE/logs/qemu-v100b.log:OK : aucun paquet réseau installé (336 paquets)
+/root/BARBACANE/logs/qemu-v100b.log:OK : barbacane-analyzer
+/root/BARBACANE/logs/qemu-v100b.log:OK : barbacane-admind
+/root/BARBACANE/logs/qemu-v100b.log:OK : barbacane-kiosk
+/root/BARBACANE/logs/qemu-v100b.log:OK : usbsas-server
+/root/BARBACANE/logs/qemu-v100b.log:OK : clamav-daemon
+/root/BARBACANE/logs/qemu-v100b.log:OK : bac à sable des archives fonctionnel dans le service
+/root/BARBACANE/logs/qemu-v100b.log:OK : GRUB verrouillé (superusers), entrée par défaut sans mot de passe
+/root/BARBACANE/logs/qemu-v100b.log:QEMU=0
+/root/BARBACANE/logs/qemu-v100.log:OK : aucun paquet réseau installé (336 paquets)
+/root/BARBACANE/logs/qemu-v100.log:OK : barbacane-analyzer
+/root/BARBACANE/logs/qemu-v100.log:OK : barbacane-admind
+/root/BARBACANE/logs/qemu-v100.log:OK : barbacane-kiosk
+/root/BARBACANE/logs/qemu-v100.log:ÉCHEC : usbsas-server
+/root/BARBACANE/logs/qemu-v100.log:OK : clamav-daemon
+/root/BARBACANE/logs/qemu-v100.log:OK : bac à sable des archives fonctionnel dans le service
+/root/BARBACANE/logs/qemu-v100.log:OK : GRUB verrouillé (superusers), entrée par défaut sans mot de passe
+/root/BARBACANE/logs/qemu-v100.log:QEMU=1
