@@ -3,6 +3,9 @@
 # (bu, Debian 13, cargo, shellcheck). La CI GitHub n'est plus qu'une confirmation.
 #   tests/ci-locale.sh [--iso]      → résumé, code 0 si tout passe ; journaux dans $CI_JOURNAUX
 # --iso : construit aussi l'ISO (profil hors-ligne) puis tests/iso/hors-ligne.sh et tests/iso/qemu.sh.
+# Sur la VM de lab : clamd (AppArmor) doit pouvoir lire le dossier des sources ; pour /travail sur bu :
+#   /etc/apparmor.d/local/usr.sbin.clamd ← « /travail/** r, » et « /travail/tmp/** rwk, ». target/ doit être
+#   le dossier de compilation (le test e2e attend target/release) : lab/ci-locale-bu.sh y met un lien.
 # GARDE_FOU=1 : lance aussi tests/garde-fou/scripts.sh (sudo ; VM jetable seulement).
 set -u
 cd "$(dirname "$0")/.." || exit 1
