@@ -6,13 +6,13 @@ set -u
 export TMPDIR=/travail/tmp CARGO_TARGET_DIR=/travail/cible-serveur-iso
 L=/travail/serveur-lab; mkdir -p $L
 R=/travail/serveur-iso
-cd $R
+cd "$R" || exit 1
 etape=${1:-tout}
 if [ "$etape" != qemu ]; then
   if [ ! -f $L/pki/racine/cert.pem ]; then rm -rf $L/pki; mkdir -p $L/pki; bash serveur/pki/racine-test.sh $L/pki || exit 1; fi
   # Mot de passe initial du compte d'administration du banc (aléatoire, expiré à la 1re connexion).
   [ -f $L/hache ] || head -c 12 /dev/urandom | base64 | openssl passwd -6 -stdin > $L/hache
-  P=(); [ -d $L/debs ] && P=(--paquets $L/debs)
+  P=(); [ -d $L/debs ] && P=(--paquets "$L/debs")
   timeout 60m bash serveur/iso/build-iso-serveur.sh --ip-bornes 10.0.2.15/24 --ip-admin 10.0.3.15/24 \
      --pki-test $L/pki --hache-admin $L/hache --console-serie --netinst /travail/serveur-cache/debian-13.7.0-amd64-netinst.iso \
      "${P[@]}" --sortie $L/serveur-test.iso || { echo "CONSTRUCTION ECHEC"; tail -40 $L/serveur-test.log; exit 1; }
