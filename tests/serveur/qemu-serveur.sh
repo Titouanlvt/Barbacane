@@ -84,10 +84,10 @@ timeout 40m qemu-system-x86_64 "${commun[@]}" "${AVEC_TPM[@]}" -no-reboot -seria
     -drive "if=none,id=cle,format=raw,readonly=on,file=$ISO" -device "usb-storage,drive=cle" \
     -monitor "unix:$W/mon-install.sock,server,nowait" &
 PID=$!
-# Une boîte d'erreur de l'installateur (« [!!] … failed ») ne se ferme jamais seule : arrêt immédiat.
+# Toute boîte « [!!] » (erreur ou question critique) bloque l'installation sans réponse : arrêt immédiat.
 while kill -0 $PID 2>/dev/null; do
     sleep 30; mon mon-install.sock "screendump $W/installateur.ppm"
-    if lisible "$W/installation.log" | grep -qiE 'failed|an error occurred|installation step failed'; then
+    if lisible "$W/installation.log" | grep -q '\[!!\]'; then
         sleep 5; kill $PID 2>/dev/null || true; break
     fi
 done
