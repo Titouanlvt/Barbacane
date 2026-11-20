@@ -14,8 +14,8 @@ pub mod admin;
 pub mod ca;
 pub mod maj;
 pub mod outils;
-pub mod quarantaine;
 pub mod passages;
+pub mod quarantaine;
 pub mod registre;
 pub mod utilisateurs;
 
@@ -31,10 +31,10 @@ use barbacane_audit::{Anomalie, Evenement};
 use barbacane_protocole::maj::{
     AccuseBattementMaj, AccuseRapportMaj, DemandeTelechargement, RapportMaj, route as route_maj,
 };
+use barbacane_protocole::passage::{AccuseRapportPassage, RapportPassage, route as route_passage};
 use barbacane_protocole::quarantaine::{
     AccuseQuarantaine, DepotQuarantaine, route as route_quarantaine,
 };
-use barbacane_protocole::passage::{AccuseRapportPassage, RapportPassage, route as route_passage};
 use barbacane_protocole::utilisateurs::{
     DemandeChangementPin, DemandePolitique, DemandeVerification, route as route_utilisateurs,
 };
