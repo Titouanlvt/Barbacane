@@ -175,3 +175,10 @@ Porte de sortie OBLIGATOIRE de chaque version : revue de sécurité (modèle de 
 | 2.12.0 | Ergonomie | Listes déroulantes, statistiques, export CSV | 2.8.0 |
 | 3.0.0 | Étude puis produit | Contrôle postes (Agent Poste, Clés Barbacane chiffrées) | 2.3.0, 2.7.0 |
 | après 3.0 | Évolution | Module SOC / SIEM | 2.2.0 |
+
+## Noms — version allégée (21/11, remplace la règle « mixte »)
+
+Demande de l'utilisateur : moins de thème château fort, pour ne perdre personne.
+- Partout (interfaces, messages, journaux, doc) : le NOM FONCTIONNEL seul — Borne autonome, Borne connectée, Clé Barbacane, Agent Poste, Serveur Barbacane, Console, Liaison bornes, Parc, Journal, Quarantaine, Dépôt, Contrôle postes, Autorité, Atelier signature.
+- Thème château fort : réservé au nom du produit (Barbacane) et au logo. Au plus un rappel discret dans la doc de présentation (schéma d'ensemble), jamais dans l'interface ni dans les procédures.
+- Les sous-titres (Herse, Donjon, Chemin de ronde, etc.) sont abandonnés.
