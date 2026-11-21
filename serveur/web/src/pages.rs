@@ -353,7 +353,7 @@ pub fn tableau(ctx: &Contexte, lignes: &[LigneSupervision], demandes: usize) -> 
             .t(&l.nom)
             .b("</span><br><span class=\"b-douce b-mono\">")
             .t(l.uuid.get(..8).unwrap_or(&l.uuid))
-            .b("</span></td><td>")
+            .b("</span></td><td class=\"b-net\">")
             .t(&l.site)
             .b("</td><td>");
         etat(&mut c, classe, mot);
@@ -397,7 +397,7 @@ pub fn tableau(ctx: &Contexte, lignes: &[LigneSupervision], demandes: usize) -> 
         }
         c.b("</td>");
         if ctx.admin() {
-            c.b("<td>");
+            c.b("<td class=\"b-net\">");
             if l.active {
                 c.b("<a class=\"b-btn b-btn--petit\" href=\"/bornes/revoquer?uuid=")
                     .u(&l.uuid)
