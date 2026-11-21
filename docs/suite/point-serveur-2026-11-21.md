@@ -121,7 +121,7 @@ Règle : une version = une seule famille de fonctions, dans l'ordre des dépenda
 
 ## Noms des services et systèmes (21/11, choix « mixte »)
 
-Règle : dans l'interface, les messages, les journaux et les commandes → toujours le NOM FONCTIONNEL. Dans la doc et les présentations → nom fonctionnel suivi d'un sous-titre thématique (château fort).
+Règle (précisée par l'utilisateur) : nom fonctionnel ET sous-titre, dans les interfaces comme dans la doc, selon la situation, pour ne pas perdre les utilisateurs. Par défaut : titres de pages, menus, en-têtes de chapitres → « Console · Chemin de ronde » ; messages, boutons, journaux, commandes, identifiants d'événements → nom fonctionnel seul (court, stable). Les deux noms restent toujours associés de la même façon partout.
 
 | Nom fonctionnel | Sous-titre (doc) | Ce que c'est | Nom technique actuel |
 |---|---|---|---|
@@ -141,3 +141,13 @@ Règle : dans l'interface, les messages, les journaux et les commandes → toujo
 | Atelier signature | « Sceau » | poste hors ligne qui signe mises à jour, modules et agents | clé de signature des mises à jour |
 
 À appliquer progressivement : libellés de l'interface et du manuel en 2.0.2 (sans renommer les binaires ni les chemins, pour ne rien casser) ; renommage technique éventuel des paquets/services à décider en 2.2.0 (installation modulaire).
+
+## Évolution future vers un SOC / SIEM (21/11)
+
+Barbacane pourra évoluer vers un SOC/SIEM : tout ce qui est construit doit le préparer, sans l'implémenter maintenant.
+- Événements structurés : format JSON stable et documenté, identifiants d'événements fixes (catégorie.action, ex. `borne.enrolement.valide`), horodatage UTC, identifiant de corrélation par passage / session, source (rôle + machine), gravité.
+- Noms stables : le nom fonctionnel du service sert d'identifiant de source dans les événements (ne pas le renommer ensuite).
+- Export : Syslog RFC 5424 (2.6) avec champs structurés ; prévoir un mapping vers un schéma standard (ECS ou OCSF, à choisir dans l'étude E1) et une API de lecture en lecture seule.
+- Données utiles à la détection déjà collectées : passages (empreintes, verdicts), enrôlements, révocations, connexions admin, refus mTLS, écarts d'horloge, file d'envoi pleine.
+- Sans fuite : jamais de nom de fichier, de PIN ni de contenu dans les événements (D2, RGPD) ; pseudonymes pour les utilisateurs.
+- À intégrer : contraintes dans E1 (conformité) et dans 2.6 (Syslog) ; un éventuel module « SOC » viendrait après 3.0.
