@@ -104,3 +104,17 @@ Règle : une version = une seule famille de fonctions, dans l'ordre des dépenda
   - Profils d'installation : « minimal » (borne hors ligne seule, sans serveur), « socle » (serveur + bornes en ligne), « complet », ou sur mesure.
   - Mises à jour signées : serveur (système + services), modules et bornes, sur la même chaîne de signature que les mises à jour des bornes ; support hors ligne (clé ou ISO de mise à jour), vérification de l'empreinte, sauvegarde avant mise à jour et retour arrière.
 - Version : nouvelle 2.2.0 « Installation modulaire et mises à jour » juste après les comptes administrateurs (2.1.0) ; les versions suivantes sont décalées d'un cran (PIN 2.3, chiffrement des bornes 2.4, utilisateurs 2.5, Syslog 2.6, liste blanche 2.7, quarantaine par la borne 2.8, TPM + PKI 2.9, ergonomie 2.10, dépôt vers le SI 2.11, device control 3.0).
+
+## Répartition des rôles (21/11, ajouté au point)
+
+- Risque relevé par l'utilisateur : tout gérer avec un seul serveur concentre le risque (compromission = bornes + comptes + écriture dans le SI + postes) et la panne.
+- Décision : en 2.2.0, chaque rôle est déployable sur sa propre machine (même logiciel). Rôles : gestion des bornes (passerelle + cœur + administration) ; relais de dépôt vers le SI (seul à écrire dans le SI) ; contrôle des postes (3.0) ; AC émettrice (TPM/HSM) ; collecteur de journaux (toujours à part) ; signature des mises à jour, modules et agents (toujours hors ligne, jamais sur un serveur).
+- Profils : petit site = une machine durcie, sans dépôt SI ni contrôle des postes ; site DR = au moins relais de dépôt et contrôle des postes séparés + poste d'administration dédié ; classifié = une machine par rôle.
+- L'étude E1 fixe le découpage minimal exigé par niveau.
+
+## Politique des agents .msi / .deb (3.0, à détailler dans l'étude)
+
+- Rédaction des politiques : rôle « administrateur des postes », distinct des administrateurs des bornes (séparation des tâches), sur le serveur « contrôle des postes ».
+- Politiques signées (clé du rôle dans TPM/HSM), vérifiées par l'agent avant application ; récupérées en mTLS (certificat machine) ; cache avec date d'expiration.
+- Paquets des agents signés hors ligne (Authenticode pour le .msi, dépôt APT signé GPG pour le .deb) ; déploiement par les outils du SI (GPO, Intune/SCCM, Ansible, dépôt APT interne).
+- Protection de l'agent : service non arrêtable par un utilisateur, alerte au serveur si l'agent disparaît ou ne remonte plus ; limite connue : un administrateur local du poste peut le contourner → droits d'administration locale encadrés par le SI.
