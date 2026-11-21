@@ -1,5 +1,7 @@
 # Avancement — mission « Barbacane suite » (depuis le 19/11/2026, Claude en autonomie)
 
+## v2.0.0 publiée le 21/11/2026 (tag `v2.0.0` sur 82910cd, preuves `docs/preuves/2026-11-21-v2.0.0/`) ; points PRÉVU → v2.1.0.
+
 ## Priorité (20/11, utilisateur)
 1. **Serveur (Barbacane suite)** d'abord, ordre de `docs/conception-barbacane-suite.md` §8 : socle (ISO serveur,
    PKI, passerelle mTLS, enrôlement validé, heure, supervision, sauvegarde) → borne en ligne (`--profil en-ligne`,
