@@ -1,7 +1,7 @@
 //! Page « Quarantaine » (administrateur seulement ; `docs/suite/quarantaine.md`).
 //!
-//! Désactivée par défaut : la page affiche l'état et sa raison (verrou d'homologation ou absence
-//! d'activation). Activation et export par double validation (deux administrateurs distincts).
+//! Désactivée par défaut : la page affiche l'état et sa raison, avec l'avertissement DR
+//! avant l'activation (option choisie par les administrateurs). Activation et export par double validation (deux administrateurs distincts).
 //! L'export est restitué en pièce jointe neutralisée (nom `quarantaine-<id>.bin`,
 //! `application/octet-stream`), jamais affiché. Tout accès est audité. Auditeur : 403.
 
@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use anyhow::Result;
 use barbacane_passerelle::outils::date_utc;
 use barbacane_passerelle::quarantaine::{
-    Action, CONSERVATION_J, Element, Quarantaine, Statut, Validation,
+    AVERTISSEMENT_DR, Action, CONSERVATION_J, Element, Quarantaine, Statut, Validation,
 };
 
 use crate::comptes::Role;
@@ -66,6 +66,7 @@ pub fn page(
         pages::etat(&mut c, "hors", "Désactivée");
         c.b("</p>");
         pages::avis(&mut c, "b-avis--alerte", s.raison.as_deref().unwrap_or(""));
+        pages::avis(&mut c, "b-avis--alerte", AVERTISSEMENT_DR);
     }
     c.b("<div class=\"b-formulaire__actions\">");
     if s.active {

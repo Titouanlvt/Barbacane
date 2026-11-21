@@ -2,16 +2,18 @@
 
 Conception : `docs/conception-barbacane-suite.md` §3.6, §3.10 ; homologation :
 `docs/suite/dossier-homologation.md` (§1, §2, §8). **Implémentée mais DÉSACTIVÉE par défaut**
-(niveau Diffusion Restreinte) : le dossier d'homologation porte `mesures_dr_serveur: non`, valeur
-qui n'est PAS changée par ce chantier. Aucun changement côté borne (v1 hors ligne et charte v1
+(niveau Diffusion Restreinte). **Décision du 21/11/2026** : la quarantaine est une option que
+l'administrateur choisit d'activer ou non ; le champ `mesures_dr_serveur` du dossier
+d'homologation (toujours `non`) n'est plus un verrou logiciel. Aucun changement côté borne (v1 hors ligne et charte v1
 intactes).
 
 ## FAIT
 
 | Sujet | Mesure | Code / preuve |
 |---|---|---|
-| Verrou d'homologation | rien n'est activable, reçu, exporté tant que le dossier installé (`dossier_homologation = CHEMIN` dans `<registre>/quarantaine.conf`, configuration de la passerelle inchangée ; défaut `/usr/share/doc/barbacane-serveur/dossier-homologation.md`) n'a pas UNE ligne valant exactement `mesures_dr_serveur: en place` ; relu à chaque opération (remettre `non` désactive aussitôt) ; fichier absent = désactivée | `serveur/passerelle/src/quarantaine.rs` `mesures_dr` ; tests `ligne_exacte_exigee` (dont le dossier du dépôt : refusé), `activation_refusee_avec_non` |
-| Activation | demande par un administrateur, validation par un SECOND administrateur distinct (1 h) ; refus explicite et audité (`activation-refusee`, `validation-refusee`) ; désactivation par un seul (sens sûr) | `activation_acceptee_avec_en_place_et_double_validation` (fichier de TEST) |
+| Option des administrateurs | désactivée par défaut ; rien n'est reçu ni exporté tant qu'elle n'est pas activée ; activation = seul choix des administrateurs (plus de `quarantaine.conf` ni de lecture du dossier d'homologation) | `desactivee_par_defaut`, `reception_refusee_si_desactivee` |
+| Avertissement DR | page `/quarantaine` désactivée : « Les fichiers conservés en quarantaine peuvent être de niveau Diffusion Restreinte (DR) : n'activez qu'avec un stockage et des accès conformes. » (`AVERTISSEMENT_DR`) ; l'activation validée journalise aussi `avertissement-dr` avec l'identifiant `fichiers-conserves-peuvent-etre-DR:activer-seulement-avec-stockage-et-acces-conformes` | `serveur/web/tests/quarantaine.rs`, `activation_par_deux_administrateurs` |
+| Activation | demande par un administrateur, validation par un SECOND administrateur distinct (1 h) ; refus explicite et audité (`validation-refusee`) ; désactivation par un seul (sens sûr) | `activation_par_deux_administrateurs` |
 | Stockage chiffré | AES-256-GCM (`ring`, déjà audité) ; clé neuve de 32 octets par fichier, enveloppée AES-256-GCM par la clé de quarantaine (`<registre>/quarantaine/cle-quarantaine`, 0600, refusée si droits plus larges) derrière le trait `CleQuarantaine` (TPM prévu) | `chiffrement_dechiffrement_et_cle_0600` |
 | Métadonnées minimales | identifiant aléatoire, uuid de borne, dates, SHA-256, taille ; jamais de nom de fichier | `Element` |
 | Intégrité | métadonnées liées au chiffré (données associées) ; clé enveloppée liée à l'identifiant ; SHA-256 revérifié ; altération auditée (`alteration-detectee`) | `alteration_detectee` (octet du chiffré, prolongation de la date) |
@@ -27,6 +29,5 @@ intactes).
   serveur (carte à puce), déchiffrement dans une VM d'analyse isolée seulement ; restitution en
   archive protégée.
 - Envoi par la borne en ligne (agent) — aucun code côté borne dans ce chantier.
-- Fichiers > 4 Mio (dépôt en flux), purge des sauvegardes, installation du dossier
-  d'homologation par l'ISO du serveur (sans lui : désactivée).
+- Fichiers > 4 Mio (dépôt en flux), purge des sauvegardes.
 - Deux facteurs hors ligne pour les administrateurs (§3.10), comme le reste de l'interface.

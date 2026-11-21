@@ -33,4 +33,5 @@ non à l'installation. Discrétion conservée (port non standard, propre au site
 
 - **D4 (écart validé)** : le port de la passerelle est fixé à la construction de l'ISO serveur (`--port` obligatoire avec les ISO de bornes embarquées), plus tiré à l'installation.
 - **Annuaire LDAPS** : TLS 1.3 par défaut ; TLS 1.2 accepté **en option**, désactivée par défaut, suites ECDHE-AES-GCM seulement, activation auditée.
-- **Dossier d'homologation** : pas installé par l'ISO serveur (la quarantaine reste donc inactivable sur un serveur installé tant que ce choix n'est pas revu).
+- **Dossier d'homologation** : pas installé par l'ISO serveur (la quarantaine reste donc inactivable sur un serveur installé tant que ce choix n'est pas revu ; levé par la décision suivante).
+- **Quarantaine** : « La quarantaine est une option que l'administrateur choisit d'activer ou non. » Le verrou `mesures_dr_serveur` est retiré du logiciel (la ligne reste dans le dossier d'homologation, à titre d'information) ; gardés : désactivée par défaut, activation et export par double validation, désactivation par un seul, audit, AES-256-GCM, 30 jours. Avertissement DR affiché avant l'activation et journalisé avec elle (`docs/suite/quarantaine.md`).

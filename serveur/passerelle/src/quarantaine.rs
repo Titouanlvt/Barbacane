@@ -1,9 +1,10 @@
 //! Quarantaine côté serveur (étape 11, `docs/suite/quarantaine.md`) — **implémentée mais
 //! DÉSACTIVÉE par défaut** (niveau Diffusion Restreinte, `docs/suite/dossier-homologation.md`).
 //!
-//! - **Verrou d'homologation** : rien n'est activable, reçu ni exporté tant que le dossier
-//!   d'homologation installé ne contient pas exactement la ligne [`LIGNE_EN_PLACE`] (relu à
-//!   CHAQUE opération : remettre `non` désactive aussitôt). Refus explicites et audités.
+//! - **Option des administrateurs** (décision du 21/11/2026) : rien n'est reçu ni exporté tant
+//!   que la quarantaine n'a pas été activée ; l'activation est un choix des administrateurs,
+//!   précédé de l'avertissement [`AVERTISSEMENT_DR`] (journalisé avec l'activation). Le champ
+//!   `mesures_dr_serveur` du dossier d'homologation n'est plus un verrou logiciel.
 //! - **Double validation** (conception §3.10) : activation et export sont demandés par un
 //!   administrateur et validés par un SECOND administrateur distinct (demande valable 1 h).
 //! - **Stockage chiffré** : chaque fichier est chiffré en AES-256-GCM par une clé neuve qui lui
@@ -16,7 +17,7 @@
 //! - Chaque accès est audité ([`Evenement::Quarantaine`]).
 
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Write};
+use std::io::Write;
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
@@ -30,81 +31,18 @@ use serde::{Deserialize, Serialize};
 use crate::outils::{aleatoire, ecrire_atomique, sha256_hex};
 use crate::registre::{Refus, Stockage};
 
-/// Seule ligne du dossier d'homologation qui autorise la quarantaine.
-pub const LIGNE_EN_PLACE: &str = "mesures_dr_serveur: en place";
-const CHAMP: &str = "mesures_dr_serveur";
-/// Copie installée du dossier d'homologation, par défaut. Configurable sans toucher à la
-/// configuration de la passerelle : `<registre>/quarantaine.conf`, ligne
-/// `dossier_homologation = CHEMIN` (voir [`chemin_homologation`]).
-pub const DOSSIER_HOMOLOGATION_DEFAUT: &str =
-    "/usr/share/doc/barbacane-serveur/dossier-homologation.md";
+/// Avertissement affiché avant l'activation (page web) — décision du 21/11/2026 : la
+/// quarantaine est une option que les administrateurs choisissent d'activer ou non.
+pub const AVERTISSEMENT_DR: &str = "Les fichiers conservés en quarantaine peuvent être de niveau Diffusion Restreinte (DR) : n'activez qu'avec un stockage et des accès conformes.";
+/// Même avertissement, sous forme d'identifiant d'audit (ASCII, ≤ 128 caractères), journalisé
+/// avec chaque activation validée.
+pub const AVERTISSEMENT_DR_AUDIT: &str =
+    "fichiers-conserves-peuvent-etre-DR:activer-seulement-avec-stockage-et-acces-conformes";
 /// Durée de conservation (conception §3.6 : 30 jours, purge automatique).
 pub const CONSERVATION_J: u64 = 30;
 /// Validité d'une demande en attente de seconde validation.
 pub const DUREE_DEMANDE_S: u64 = 3600;
-const TAILLE_DOSSIER_MAX: u64 = 1 << 20;
 const DEMANDES_MAX: usize = 32;
-
-/// Contrôle du dossier d'homologation : `Ok` seulement si UNE ligne porte le champ et qu'elle
-/// vaut exactement [`LIGNE_EN_PLACE`]. `Err` donne la raison, affichable.
-pub fn mesures_dr(chemin: &Path) -> Result<(), String> {
-    let mut texte = String::new();
-    File::open(chemin)
-        .and_then(|f| f.take(TAILLE_DOSSIER_MAX + 1).read_to_string(&mut texte))
-        .map_err(|e| {
-            format!(
-                "dossier d'homologation {} illisible ({e})",
-                chemin.display()
-            )
-        })?;
-    if texte.len() as u64 > TAILLE_DOSSIER_MAX {
-        return Err("dossier d'homologation trop grand".into());
-    }
-    let lignes: Vec<&str> = texte
-        .lines()
-        .map(|l| l.strip_suffix('\r').unwrap_or(l))
-        .filter(|l| l.trim_start().starts_with(CHAMP))
-        .collect();
-    match lignes.as_slice() {
-        [l] if *l == LIGNE_EN_PLACE => Ok(()),
-        [l] => Err(format!(
-            "le dossier d'homologation indique « {} » : les mesures DR du serveur ne sont pas en place (il faut exactement « {LIGNE_EN_PLACE} », après décision de l'autorité d'homologation)",
-            l.chars().take(80).collect::<String>()
-        )),
-        [] => Err("le dossier d'homologation ne porte pas le champ mesures_dr_serveur".into()),
-        _ => Err("champ mesures_dr_serveur répété dans le dossier d'homologation".into()),
-    }
-}
-
-/// Chemin du dossier d'homologation : `<registre>/quarantaine.conf` s'il existe (une seule clé
-/// `dossier_homologation`, toute autre ligne refusée), sinon [`DOSSIER_HOMOLOGATION_DEFAUT`].
-pub fn chemin_homologation(stockage: &Stockage) -> Result<PathBuf> {
-    let f = stockage.dossier().join("quarantaine.conf");
-    let texte = match std::fs::read_to_string(&f) {
-        Ok(t) => t,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(PathBuf::from(DOSSIER_HOMOLOGATION_DEFAUT));
-        }
-        Err(e) => return Err(e).context("quarantaine.conf"),
-    };
-    let mut chemin = None;
-    for (n, l) in texte.lines().enumerate() {
-        let l = l.trim();
-        if l.is_empty() || l.starts_with('#') {
-            continue;
-        }
-        match l.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
-            Some(("dossier_homologation", v)) if chemin.is_none() && !v.is_empty() => {
-                chemin = Some(PathBuf::from(v));
-            }
-            _ => bail!(
-                "quarantaine.conf, ligne {} : « dossier_homologation = CHEMIN » attendu",
-                n + 1
-            ),
-        }
-    }
-    Ok(chemin.unwrap_or_else(|| PathBuf::from(DOSSIER_HOMOLOGATION_DEFAUT)))
-}
 
 // ───────────────────────────── Chiffrement ────────────────────────────────────────────────────
 
@@ -251,8 +189,6 @@ pub struct Statut {
     pub active: bool,
     /// Raison de la désactivation (`None` si active).
     pub raison: Option<String>,
-    /// Le dossier d'homologation autorise-t-il l'activation ?
-    pub autorisee: bool,
     pub demandes: Vec<Demande>,
 }
 
@@ -270,14 +206,12 @@ pub enum Validation {
 
 pub struct Quarantaine {
     dossier: PathBuf,
-    homologation: PathBuf,
     stockage: Stockage,
 }
 
 impl Quarantaine {
     /// Dossier `quarantaine/` du registre (0700), `elements/` dedans.
     pub fn ouvrir(stockage: &Stockage) -> Result<Quarantaine> {
-        let homologation = chemin_homologation(stockage)?;
         let dossier = stockage.dossier().join("quarantaine");
         std::fs::DirBuilder::new()
             .recursive(true)
@@ -286,7 +220,6 @@ impl Quarantaine {
             .context("dossier de quarantaine")?;
         Ok(Quarantaine {
             dossier,
-            homologation,
             stockage: stockage.clone(),
         })
     }
@@ -332,22 +265,16 @@ impl Quarantaine {
         CleFichier::ouvrir_ou_creer(&self.dossier.join("cle-quarantaine"))
     }
 
-    /// Active = activée par double validation ET dossier d'homologation à « en place ».
+    /// Active = activée par double validation (choix des administrateurs).
     pub fn statut(&self, t: u64) -> Result<Statut> {
         let mut etat = self.lire_etat()?;
         etat.demandes.retain(|d| d.le + DUREE_DEMANDE_S > t);
-        let m = mesures_dr(&self.homologation);
-        let raison = match (&m, etat.active) {
-            (Err(r), _) => Some(format!("Verrou d'homologation : {r}.")),
-            (Ok(()), false) => Some(
-                "Non activée : l'activation exige deux administrateurs distincts (demande puis validation).".into(),
-            ),
-            (Ok(()), true) => None,
-        };
+        let raison = (!etat.active).then(|| {
+            "Non activée : l'activation exige deux administrateurs distincts (demande puis validation).".to_owned()
+        });
         Ok(Statut {
-            active: raison.is_none(),
+            active: etat.active,
             raison,
-            autorisee: m.is_ok(),
             demandes: etat.demandes,
         })
     }
@@ -378,14 +305,9 @@ impl Quarantaine {
         Ok(id)
     }
 
-    /// Premier temps de l'activation : refusée (et auditée) si le dossier d'homologation ne
-    /// porte pas [`LIGNE_EN_PLACE`].
+    /// Premier temps de l'activation (choix d'un administrateur, à valider par un second).
     pub fn demander_activation(&self, acteur: &str, t: u64) -> Result<String> {
         let _v = self.verrou()?;
-        if let Err(r) = mesures_dr(&self.homologation) {
-            self.auditer(acteur, "activation-refusee", "-")?;
-            bail!("activation refusée : {r}");
-        }
         let mut etat = self.lire_etat()?;
         if etat.active {
             bail!("quarantaine déjà active");
@@ -434,15 +356,12 @@ impl Quarantaine {
                 "double validation : la demande doit être validée par un second administrateur, distinct du demandeur"
             );
         }
-        if let Err(r) = mesures_dr(&self.homologation) {
-            self.auditer(acteur, "validation-refusee", &d.id)?;
-            bail!("refusé : {r}");
-        }
         etat.demandes.remove(i);
         let v = match &d.action {
             Action::Activation => {
                 etat.active = true;
                 self.auditer(acteur, "activation-validee", &d.id)?;
+                self.auditer(acteur, "avertissement-dr", AVERTISSEMENT_DR_AUDIT)?;
                 Validation::Activee
             }
             Action::Export { element } => {
@@ -611,32 +530,15 @@ mod tests {
 
     struct Banc {
         _d: tempfile::TempDir,
-        dossier: PathBuf,
         q: Quarantaine,
         stockage: Stockage,
     }
 
-    fn banc(ligne: &str) -> Banc {
+    fn banc() -> Banc {
         let d = tempfile::tempdir().unwrap();
-        let dossier = d.path().join("dossier-homologation.md");
-        std::fs::write(
-            &dossier,
-            format!("# Dossier\n\n{ligne}\n\n## 9. Décision\n"),
-        )
-        .unwrap();
         let stockage = Stockage::ouvrir(&d.path().join("etat")).unwrap();
-        std::fs::write(
-            d.path().join("etat/quarantaine.conf"),
-            format!("dossier_homologation = {}\n", dossier.display()),
-        )
-        .unwrap();
         let q = Quarantaine::ouvrir(&stockage).unwrap();
-        Banc {
-            _d: d,
-            dossier,
-            q,
-            stockage,
-        }
+        Banc { _d: d, q, stockage }
     }
 
     fn depot(contenu: &[u8]) -> DepotQuarantaine {
@@ -670,51 +572,17 @@ mod tests {
     }
 
     #[test]
-    fn ligne_exacte_exigee() {
-        let d = tempfile::tempdir().unwrap();
-        let p = d.path().join("d.md");
-        for (texte, ok) in [
-            ("mesures_dr_serveur: non\n", false),
-            ("mesures_dr_serveur: en place\n", true),
-            ("mesures_dr_serveur: en place\r\n", true),
-            ("mesures_dr_serveur: en place \n", false),
-            ("mesures_dr_serveur:en place\n", false),
-            ("  mesures_dr_serveur: en place\n", false),
-            (
-                "mesures_dr_serveur: en place\nmesures_dr_serveur: non\n",
-                false,
-            ),
-            ("rien\n", false),
-        ] {
-            std::fs::write(&p, texte).unwrap();
-            assert_eq!(mesures_dr(&p).is_ok(), ok, "{texte:?}");
-        }
-        assert!(mesures_dr(&d.path().join("absent")).is_err());
-        // Le dossier du dépôt reste à « non » : la quarantaine n'est pas activable.
-        let depot =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/suite/dossier-homologation.md");
-        assert!(
-            mesures_dr(&depot)
-                .unwrap_err()
-                .contains("« mesures_dr_serveur: non »")
-        );
-    }
-
-    #[test]
-    fn activation_refusee_avec_non() {
-        let b = banc("mesures_dr_serveur: non");
+    fn desactivee_par_defaut() {
+        let b = banc();
         let s = b.q.statut(1).unwrap();
-        assert!(!s.active && !s.autorisee);
-        assert!(s.raison.unwrap().contains("mesures_dr_serveur: non"));
-        let e = b.q.demander_activation("web:alice", 1).unwrap_err();
-        assert!(format!("{e:#}").contains("activation refusée"));
-        assert_eq!(actions(&b.stockage), ["activation-refusee"]);
+        assert!(!s.active && s.raison.is_some());
         assert!(!b.q.active());
+        assert!(actions(&b.stockage).is_empty());
     }
 
     #[test]
-    fn activation_acceptee_avec_en_place_et_double_validation() {
-        let b = banc("mesures_dr_serveur: en place");
+    fn activation_par_deux_administrateurs() {
+        let b = banc();
         let id = b.q.demander_activation("web:alice", 100).unwrap();
         assert!(
             !b.q.statut(100).unwrap().active,
@@ -724,27 +592,32 @@ mod tests {
             b.q.valider(&id, "web:alice", 101).is_err(),
             "même administrateur"
         );
+        assert!(!b.q.statut(101).unwrap().active);
         assert!(matches!(
             b.q.valider(&id, "web:carole", 102).unwrap(),
             Validation::Activee
         ));
         assert!(b.q.statut(103).unwrap().active);
-        // Dossier remis à « non » : désactivée aussitôt (verrou relu à chaque opération).
-        std::fs::write(&b.dossier, "mesures_dr_serveur: non\n").unwrap();
-        assert!(!b.q.statut(104).unwrap().active);
         assert_eq!(
             actions(&b.stockage),
             [
                 "activation-demandee",
                 "validation-refusee",
-                "activation-validee"
+                "activation-validee",
+                "avertissement-dr"
             ]
+        );
+        assert!(barbacane_audit::ident_valide(AVERTISSEMENT_DR_AUDIT));
+        b.q.desactiver("web:alice").unwrap();
+        assert!(
+            !b.q.active(),
+            "un seul administrateur suffit pour désactiver"
         );
     }
 
     #[test]
     fn demande_expiree() {
-        let b = banc("mesures_dr_serveur: en place");
+        let b = banc();
         let id = b.q.demander_activation("web:alice", 100).unwrap();
         assert!(
             b.q.valider(&id, "web:carole", 100 + DUREE_DEMANDE_S)
@@ -754,7 +627,7 @@ mod tests {
 
     #[test]
     fn reception_refusee_si_desactivee() {
-        let b = banc("mesures_dr_serveur: non");
+        let b = banc();
         let e =
             b.q.recevoir("borne-1", &depot(b"X5O!P%"), "passerelle", 1)
                 .unwrap_err();
@@ -773,7 +646,7 @@ mod tests {
 
     #[test]
     fn chiffrement_dechiffrement_et_cle_0600() {
-        let b = banc("mesures_dr_serveur: en place");
+        let b = banc();
         activer(&b);
         let contenu = b"contenu malveillant de TEST".repeat(100);
         let e =
@@ -800,7 +673,7 @@ mod tests {
 
     #[test]
     fn alteration_detectee() {
-        let b = banc("mesures_dr_serveur: en place");
+        let b = banc();
         activer(&b);
         let e =
             b.q.recevoir("borne-1", &depot(b"fichier de TEST"), "passerelle", 200)
@@ -831,7 +704,7 @@ mod tests {
 
     #[test]
     fn export_double_validation() {
-        let b = banc("mesures_dr_serveur: en place");
+        let b = banc();
         activer(&b);
         let e =
             b.q.recevoir("borne-1", &depot(b"fichier de TEST"), "passerelle", 200)
@@ -861,7 +734,7 @@ mod tests {
 
     #[test]
     fn purge_a_echeance() {
-        let b = banc("mesures_dr_serveur: en place");
+        let b = banc();
         activer(&b);
         let e =
             b.q.recevoir("borne-1", &depot(b"x"), "passerelle", 1000)

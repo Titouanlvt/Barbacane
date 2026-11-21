@@ -1,6 +1,6 @@
 //! Quarantaine des fichiers bloqués (ajout compatible à la version 1,
 //! `docs/suite/quarantaine.md`). **Désactivée par défaut** : tant que le serveur ne l'a pas
-//! activée (dossier d'homologation à `mesures_dr_serveur: en place` ET double validation), la
+//! activée (choix des administrateurs, par double validation), la
 //! passerelle répond [`crate::CodeErreur::QuarantaineDesactivee`] AVANT de lire le corps.
 //! Route servie UNIQUEMENT par l'écoute mTLS. Aucun nom de fichier (D2).
 
