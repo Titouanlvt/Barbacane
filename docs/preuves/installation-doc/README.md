@@ -1,4 +1,4 @@
-# Test « depuis zéro » du guide (`docs/guide-installation-poste.md`)
+# Test « depuis zéro » du guide (`docs/archives/guide-installation-poste.md`, remplacé par le manuel `docs/Barbacane-installation.md`)
 
 15/11/2026, VM 903 (Debian 13 vierge, connectée à Internet, root) : les commandes de l'**étape 1**
 du guide ont été exécutées telles quelles (journal `zero-guide.log`, non versionné, la phrase de passe
@@ -16,5 +16,5 @@ L'ISO ainsi produite a ensuite été installée sans aucune intervention dans un
 bac à sable des archives fonctionnel, GRUB verrouillé, interface affichée ([ecran.png](ecran.png)).
 
 Étapes 2 à 5 (copie sur une vraie clé, BIOS, installation, premier PIN) : prouvées par la campagne
-du 15/11 sur VM Proxmox démarrée sur la vraie clé ([../installation/](../installation/)). Le BIOS
+du 15/11 sur VM Proxmox démarrée sur la vraie clé ([../installation/](../archives/2026-11-15-campagne/installation/)). Le BIOS
 d'un vrai poste n'a pas pu être testé (lab en VM).

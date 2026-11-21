@@ -1,7 +1,7 @@
 # Guide pas à pas : installer un poste Barbacane
 
 Ce guide s'adresse à la personne qui prépare une borne. Durée : environ 30 minutes
-(dont 10 minutes d'installation automatique). Détails techniques : [installation.md](installation.md).
+(dont 10 minutes d'installation automatique). Détails techniques : [installation.md](../installation.md).
 
 ## Ce qu'il faut
 
@@ -111,4 +111,4 @@ menace. Insérer une clé saine : les fichiers doivent pouvoir être copiés ver
 | Écran noir après installation | La borne n'a pas de pilote clavier (sécurité) : on ne peut pas s'y connecter. Démarrer le poste sur une clé Debian « live », monter le disque interne en lecture seule et lire `journalctl -D /mnt/var/log/journal -u barbacane-kiosk` ; sinon réinstaller. |
 | PIN oublié | Réinstaller le poste (étapes 4 à 6). |
 
-Pour les mises à jour et la base antivirale : [administration.md](administration.md).
+Pour les mises à jour et la base antivirale : [administration.md](../administration.md).

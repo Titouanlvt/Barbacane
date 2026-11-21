@@ -1,27 +1,20 @@
-# Avancement — Barbacane (état au 21/11/2026, après v2.0.0)
+# Avancement — Barbacane (état au 21/11/2026, après v2.0.1)
 
 ## Versions publiées
 - **v1.0.0** (19/11/2026) : borne hors ligne — [notes](docs/notes-de-version/v1.0.0.md),
   [preuves](docs/preuves/2026-11-19-v1.0.0/README.md) (39/39).
 - **v2.0.0** (21/11/2026, étiquette `v2.0.0` sur 82910cd) : serveur + borne en ligne —
   [notes](docs/notes-de-version/v2.0.0.md), [preuves](docs/preuves/2026-11-21-v2.0.0/README.md).
+- **v2.0.1** (21/11/2026, étiquette `v2.0.1` sur 455c385) : ISO serveur complète (Console,
+  registre, audit), seccomp `ppoll` d'usbsas-usbdev (test ISO intermittent), certificat de la
+  Console — [notes](docs/notes-de-version/v2.0.1.md), [labo Proxmox](docs/preuves/2026-11-21-labo-proxmox/README.md).
   Vue d'ensemble FAIT/PRÉVU : [docs/suite/README.md](docs/suite/README.md).
 
-## Chantiers clos (tous fusionnés dans `integration`, CI locale « FIN 0 »)
-| Chantier | Résultat |
-|---|---|
-| CI locale | `tests/ci-locale.sh`, `lab/ci-locale-bu.sh BRANCHE` (VM bu) |
-| Socle serveur (PKI de test, passerelle mTLS) | TLS 1.3 seul, CRL relue à chaque connexion, fail-closed |
-| Enrôlement, protocole agent, battement, heure | jeton 1 h, validation par empreinte, renouvellement à mi-vie |
-| ISO serveur | LUKS2 scellé TPM (PCR 7), nftables sans route par défaut, Podman sans root, sauvegarde ; QEMU + swtpm |
-| Borne en ligne (`--profil en-ligne`, `barbacane-agent`, page Serveur) | ISO hors ligne identique à v1.0.0 |
-| Audit chaîné et mises à jour centralisées | SHA-384 + points signés P-384, routes `/maj/*` |
-| Interface web d'administration (charte v2, sans JS) | mTLS admin, Argon2id, CSRF, CSP ; captures Jour/Nuit |
-| Utilisateurs et clés USB (serveur et borne) | modes par site, PIN, LDAPS (TLS 1.2 en option auditée) |
-| ISO des bornes depuis le serveur | remaster, enrôlement sans saisie (QEMU) |
-| Rapports de passage | sans nom de fichier, file et rejeu |
-| Quarantaine | option désactivée par défaut, double validation ; verrou `mesures_dr_serveur` retiré le 21/11 |
-| Correctifs serveur, publication v2.0.0 | `passerelle.conf` complète, deux ports, `tests/iso/serveur-config.sh` |
+## Chantiers clos
+Socle serveur et PKI de test, Liaison bornes (mTLS, enrôlement, battement), ISO serveur (LUKS2/TPM,
+nftables, Podman), Borne connectée, Journal d'audit chaîné et mises à jour centralisées, Console
+(charte v2, sans JS), utilisateurs et clés USB, ISO des bornes depuis le serveur, rapports de
+passage, Quarantaine optionnelle, CI locale (`lab/ci-locale-bu.sh BRANCHE`). Détail : notes de version.
 
 ## Chantier suspendu
 - **Charte v2 sur la borne** (`borne-charte-v2`, non fusionnée) : suspendue le 20/11 par
@@ -35,8 +28,11 @@ Une version = une seule famille de fonctions ; tests + non-régression 950 si la
 
 Sécurité d'abord ; porte de sortie de chaque version : revue de sécurité, CI, QEMU, 950, labo Proxmox, mise à jour depuis la précédente, retour arrière, doc. 2.0.1 fiabilité (USB ppoll, ISO serveur complète, banc QEMU, HTTPS, version) · 2.0.2 défauts du labo + noms · E1 étude de conformité (en parallèle, avant 2.4) · 2.1.0 grandes images ISO (Debian 13, Windows 11 : liste officielle ou analyse complète, sortie FAT32/exFAT/NTFS au choix) · 2.2.0 comptes administrateurs + D13 · 2.3.0 journal structuré + Syslog · 2.4.0 TPM serveur, AC hors passerelle, PKI de production · 2.5.0 chiffrement des bornes · 2.6.0 PIN par administrateur · 2.7.0 mises à jour signées du serveur + retour arrière · 2.8.0 installation modulaire + rôles séparés · 2.9.0 utilisateurs hybride · 2.10.0 liste blanche · 2.11.0 quarantaine par la borne · 2.12.0 dépôt vers le SI · 2.13.0 ergonomie et statistiques · 3.0.0 contrôle postes · ensuite module SOC/SIEM.
 
-## v2.1.0 à faire (reprend les [notes v2.0.0](docs/notes-de-version/v2.0.0.md))
-- **Priorité 1 — test ISO intermittent** : `installation-qemu` (`tests/iso/qemu.sh`) échoue de façon aléatoire sur GitHub (même commit 82910cd : 2 succès, 1 échec ; échecs ensuite sur des commits sans code). Cause probable : plantage intermittent de usbsas-server au démarrage (déjà noté en v1.0.0). Reproduire sur bu (boucle de N démarrages), corriger, puis CI ISO stable.
+## v2.0.2 (en cours)
+Défauts du labo du 21/11 : page 500 ponctuelle (admin-02), message de jeton, écran « Clé détectée »,
+noms de site libres, doc barbadmin, noms fonctionnels ([labo](docs/preuves/2026-11-21-labo-proxmox/README.md)).
+
+## Reporté après 2.0.2 (reprend les [notes v2.0.0](docs/notes-de-version/v2.0.0.md))
 - **PKI et passerelle** : clés dans le TPM, refus des certificats TEST en production, CRL de la
   racine et republication quotidienne, service PKI séparé, racine du lab sur VM sans réseau ;
   cérémonie de production.

@@ -1,12 +1,12 @@
-# Barbacane v2 — la suite (serveur + borne en ligne)
+# Barbacane v2 — la suite en ligne (Serveur Barbacane + Borne connectée)
 
-État au 21/11/2026, branche `integration`. Ce document est la porte d'entrée : il ne décide rien
+État au 21/11/2026 (v2.0.1 publiée, v2.0.2 en cours). Ce document est la porte d'entrée : il ne décide rien
 (les décisions sont dans [decisions.md](decisions.md)) et ne fait que reprendre les sections
 FAIT / PRÉVU des documents ci-dessous et de [AVANCEMENT.md](../../AVANCEMENT.md).
 
 ## À retenir
 
-- **Version** : la **v2.0.0** contient ce qui est FAIT ; **tous les points PRÉVU sont reportés en
+- **Version** : la **v2.0.0** (corrigée par la **v2.0.1**) contient ce qui est FAIT ; **tous les points PRÉVU sont reportés en
   v2.1.0** (décision du 21/11, [notes v2.0.0](../notes-de-version/v2.0.0.md)).
 - **La borne hors ligne v1 est inchangée** : `build-iso.sh` sans option produit la même ISO que
   la v1.0.0 (D12, [preuve](../preuves/2026-11-20-profil-en-ligne/README.md)) ; l'agent réseau
