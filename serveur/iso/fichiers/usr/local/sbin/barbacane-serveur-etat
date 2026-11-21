@@ -10,11 +10,13 @@ C=/etc/barbacane-serveur
 uid=$(id -u "$SVC" 2>/dev/null || echo 0)
 utilisateur() { runuser -u "$SVC" -- env XDG_RUNTIME_DIR="/run/user/$uid" "$@"; }
 if [ "${1:-}" = --attendre ]; then
-    for _ in $(seq 150); do
-        e=$(utilisateur systemctl --user show -p ActiveState --value barbacane-passerelle.service 2>/dev/null)
-        c=$(utilisateur systemctl --user show -p ConditionResult --value barbacane-passerelle.service 2>/dev/null)
-        case "$e:$c" in active:*|failed:*|inactive:no) break ;; esac
-        sleep 2
+    for u in barbacane-passerelle barbacane-web; do
+        for _ in $(seq 150); do
+            e=$(utilisateur systemctl --user show -p ActiveState --value "$u.service" 2>/dev/null)
+            c=$(utilisateur systemctl --user show -p ConditionResult --value "$u.service" 2>/dev/null)
+            case "$e:$c" in active:*|failed:*|inactive:no) break ;; esac
+            sleep 2
+        done
     done
 fi
 ko=0
@@ -54,7 +56,7 @@ section services
 for u in nftables chrony systemd-networkd systemd-journald auditd "user@$uid"; do
     printf '%s %s\n' "$u" "$(systemctl is-active "$u")"
 done
-for u in barbacane-images barbacane-passerelle; do
+for u in barbacane-images barbacane-passerelle barbacane-web; do
     printf 'utilisateur:%s %s condition=%s\n' "$u" \
         "$(utilisateur systemctl --user is-active "$u" 2>/dev/null)" \
         "$(utilisateur systemctl --user show -p ConditionResult --value "$u" 2>/dev/null)"
@@ -64,11 +66,20 @@ h=$(getent passwd "$SVC" | cut -d: -f6)
 find "$h/pki" -maxdepth 1 -printf '%M %u %f\n' 2>&1
 utilisateur systemctl --user status --no-pager -n 8 barbacane-passerelle.service 2>&1 | tail -n 12
 utilisateur systemctl --user list-jobs --no-pager 2>&1 | head -n 8
+section web
+find "$h/web" -maxdepth 1 -printf '%M %u %f\n' 2>&1
+utilisateur systemctl --user status --no-pager -n 8 barbacane-web.service 2>&1 | tail -n 12
+section registre
+/usr/local/sbin/barbacane-registre demandes 2>&1 | head -n 20
 section conteneurs
 utilisateur podman ps --format '{{.Names}} {{.Image}} {{.Status}}' 2>&1
-utilisateur podman inspect -f 'readonly={{.HostConfig.ReadonlyRootfs}} privileged={{.HostConfig.Privileged}} caps={{.EffectiveCaps}}' barbacane-passerelle 2>/dev/null || true
+for n in barbacane-passerelle barbacane-web; do
+    utilisateur podman inspect -f "$n readonly={{.HostConfig.ReadonlyRootfs}} privileged={{.HostConfig.Privileged}} caps={{.EffectiveCaps}}" "$n" 2>/dev/null || true
+done
 section processus-passerelle
 ps -o user=,pid=,args= -C barbacane-passerelle 2>/dev/null || true
+section processus-web
+ps -o user=,pid=,args= -C barbacane-web 2>/dev/null || true
 section paquets
 dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' | awk '$1 == "ii" { print $2 }' > /run/barbacane-paquets.txt
 echo "installés : $(wc -l < /run/barbacane-paquets.txt)"

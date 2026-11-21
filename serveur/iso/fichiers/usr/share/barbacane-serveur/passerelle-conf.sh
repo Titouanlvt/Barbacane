@@ -6,9 +6,11 @@
 #                            signe les certificats des bornes à l'enrôlement), CRL bornes ;
 #   /etat (écriture)       : registre des bornes (registre.json, journal d'audit, mises à jour).
 # La CRL est republiée par la passerelle à chaque révocation : elle vit donc dans /etat.
-#   ecrire_conf_passerelle FICHIER PORT_SERVICE PORT_ENROLEMENT
+# Les mêmes fichiers vus de l'HÔTE (registre.conf de l'outil barbacane-registre, exécuté sous
+# barbacane-svc hors conteneur) : 4e et 5e arguments = dossiers réels de /pki et /etat.
+#   ecrire_conf_passerelle FICHIER PORT_SERVICE PORT_ENROLEMENT [DOSSIER_PKI DOSSIER_ETAT]
 ecrire_conf_passerelle() {
-    local f=$1 ps=$2 pe=$3
+    local f=$1 ps=$2 pe=$3 pki=${4:-/pki} etat=${5:-/etat}
     if ! { [[ "$ps" =~ ^[1-9][0-9]{0,4}$ && "$pe" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$ps" -le 65535 ] \
         && [ "$pe" -le 65535 ] && [ "$ps" != "$pe" ]; }; then
         echo "ÉCHEC : ports de la passerelle invalides ($ps, $pe)" >&2
@@ -19,11 +21,11 @@ ecrire_conf_passerelle() {
 adresse = 0.0.0.0
 port = $ps
 port_enrolement = $pe
-chaine_serveur = /pki/chaine.pem
-cle_serveur = /pki/cle.pem
-ca_bornes = /pki/ca-bornes.pem
-cle_ca_bornes = /pki/cle-ca-bornes.pem
-crl_bornes = /etat/crl-bornes.pem
-registre = /etat/registre
+chaine_serveur = $pki/chaine.pem
+cle_serveur = $pki/cle.pem
+ca_bornes = $pki/ca-bornes.pem
+cle_ca_bornes = $pki/cle-ca-bornes.pem
+crl_bornes = $etat/crl-bornes.pem
+registre = $etat/registre
 FIN
 }

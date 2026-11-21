@@ -29,6 +29,11 @@ if [ -d $X/pki-test ]; then
     mkdir -p /target/etc/barbacane-serveur/pki-test
     cp $X/pki-test/* /target/etc/barbacane-serveur/pki-test/
 fi
+if [ -d $X/web-test ]; then
+    mkdir -p /target/etc/barbacane-serveur/web-test
+    cp $X/web-test/* /target/etc/barbacane-serveur/web-test/
+fi
+[ ! -f $X/cle-maj-bornes.pub ] || cp $X/cle-maj-bornes.pub /target/etc/barbacane-serveur/cle-maj-bornes.pub
 # Phrase de passe temporaire du disque : transmise à configurer-serveur.sh par un fichier
 # en mémoire (tmpfs monté dans la cible hors de /run, que in-target remonte), jamais écrit sur disque.
 mkdir -p /target/mnt/barbacane-temp

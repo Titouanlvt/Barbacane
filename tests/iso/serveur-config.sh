@@ -4,11 +4,19 @@
 # la passerelle refusait de démarrer). Exécute la fonction de génération (passerelle-conf.sh, celle
 # que source configurer-serveur.sh), vérifie que les chemins sont ceux montés par le quadlet,
 # puis fait passer au fichier les contrôles de démarrage (--verifier-config) avec une PKI de TEST.
-#   tests/iso/serveur-config.sh [BINAIRE_PASSERELLE]   (défaut : $CARGO_TARGET_DIR|target /debug)
+# Idem pour l'interface web (web.conf, web-conf.sh, barbacane-web --verifier-config avec la CA des
+# administrateurs de TEST, un compte produit par « barbacane-web compte » et une clé d'audit de
+# « barbacane-audit cle ») et pour registre.conf (vue hôte : « barbacane-registre … demandes »).
+#   tests/iso/serveur-config.sh [BINAIRE_PASSERELLE]   (défaut : $CARGO_TARGET_DIR|target /debug ;
+#     barbacane-web, barbacane-registre et barbacane-audit sont pris dans le même dossier)
 # Prérequis : openssl (racine-test.sh).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 BIN=$(realpath "${1:-${CARGO_TARGET_DIR:-target}/debug/barbacane-passerelle}")
+BINS=$(dirname "$BIN")
+for b in barbacane-web barbacane-registre barbacane-audit; do
+    [ -x "$BINS/$b" ] || { echo "ÉCHEC : $BINS/$b absent (cargo build -p barbacane-passerelle -p barbacane-web -p barbacane-audit)" >&2; exit 1; }
+done
 D=serveur/iso/fichiers/usr/share/barbacane-serveur
 W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
 ko=0
@@ -60,5 +68,65 @@ else
 fi
 [ -d "$W/racine/etat/registre" ] || echec "registre non créé"
 
-[ "$ko" = 0 ] && echo "OK : passerelle.conf de l'ISO serveur acceptée par la passerelle"
+# 4. Interface web : configurer-serveur.sh écrit web.conf avec la fonction de web-conf.sh ; quadlet
+#    et pare-feu cohérents (adresse d'administration, port interne, redirection du port d'administration).
+grep -q '^\. /usr/share/barbacane-serveur/web-conf\.sh$' serveur/iso/configurer-serveur.sh \
+    || echec "configurer-serveur.sh ne source pas web-conf.sh"
+# shellcheck disable=SC2016  # motif littéral
+grep -q '^ecrire_conf_web "\$H/web/web.conf" "\$PORT_WEB"$' serveur/iso/configurer-serveur.sh \
+    || echec "configurer-serveur.sh n'écrit pas web.conf"
+QW=$D/barbacane-web.container
+for l in 'Volume=%h/pki:/pki:ro' 'Volume=%h/web:/web:ro' 'Volume=%h/etat:/etat:rw' \
+    'Volume=/var/lib/barbacane-serveur/iso-bornes:/var/lib/barbacane-serveur/iso-bornes:ro' \
+    'PublishPort=@IP_ADMIN@:@PORT_WEB@:@PORT_WEB@' 'ReadOnly=true' 'DropCapability=all' 'NoNewPrivileges=true' 'Exec=/web/web.conf'; do
+    grep -qxF "$l" "$QW" || echec "quadlet web : « $l » absent"
+done
+grep -q 'tcp dport @PORT_WEB@ ct original proto-dst @PORT_ADMIN@ ct state new accept' "$D/nftables.conf.modele" \
+    || echec "nftables : interface web non ouverte"
+grep -q 'tcp dport @PORT_ADMIN@ redirect to :@PORT_WEB@' "$D/nftables.conf.modele" || echec "nftables : redirection du port d'administration absente"
+# shellcheck source=/dev/null
+. "$D/web-conf.sh"
+mkdir -p "$W/racine/web"
+ecrire_conf_web "$W/racine/web/web.conf" 8443
+if ecrire_conf_web "$W/x.conf" 443 2>/dev/null; then echec "port interne < 1024 accepté"; fi
+for k in chaine_serveur cle_serveur ca_administrateurs crl_administrateurs comptes passerelle cle_audit_publique; do
+    v=$(sed -n "s/^$k = //p" "$W/racine/web/web.conf")
+    [[ "$v" =~ ^/(pki|web)/ ]] || echec "web : $k = $v : hors des volumes du quadlet"
+done
+grep -qx 'passerelle = /pki/passerelle.conf' "$W/racine/web/web.conf" || echec "web : passerelle.conf de la passerelle non partagée"
+grep -qx 'iso_bornes = /var/lib/barbacane-serveur/iso-bornes' "$W/racine/web/web.conf" || echec "web : ISO des bornes"
+grep -qx 'outil_iso_borne = /usr/local/sbin/barbacane-iso-borne' "$W/racine/web/web.conf" || echec "web : outil de remaster"
+# Fichiers déposés comme le font build-iso-serveur.sh et configurer-serveur.sh (VRAIS binaires).
+cp "$W/pki/ca-administrateurs/cert.pem" "$W/racine/web/ca-administrateurs.pem"
+cp "$W/pki/ca-administrateurs/crl.pem" "$W/racine/web/crl-administrateurs.pem"
+( umask 077; printf 'mot-de-passe-de-test-01\n' | "$BINS/barbacane-web" compte admin-01 administrateur \
+    "$W/pki/administrateurs/admin-01.cert.pem" > "$W/racine/web/comptes" ) || echec "barbacane-web compte"
+"$BINS/barbacane-audit" cle "$W/audit" >/dev/null || echec "barbacane-audit cle"
+cp "$W/audit/cle-audit.pub" "$W/racine/web/cle-audit.pub"
+sed -e "s|^passerelle = /pki/passerelle.conf$|passerelle = $W/vue.conf|" -e "s| = /pki/| = $W/racine/pki/|" \
+    -e "s| = /web/| = $W/racine/web/|" "$W/racine/web/web.conf" > "$W/vue-web.conf"
+if sortie=$("$BINS/barbacane-web" --verifier-config "$W/vue-web.conf" 2>&1); then
+    echo "$sortie"
+else
+    echec "barbacane-web : configuration refusée : $sortie"
+fi
+# Sans compte valide (fichier lisible par tous) : refus attendu, preuve que le contrôle est réel.
+chmod 644 "$W/racine/web/comptes"
+if "$BINS/barbacane-web" --verifier-config "$W/vue-web.conf" >/dev/null 2>&1; then echec "web : comptes lisibles par tous acceptés"; fi
+chmod 600 "$W/racine/web/comptes"
+
+# 5. barbacane-registre : vue hôte (registre.conf) des mêmes fichiers.
+# shellcheck disable=SC2016  # motif littéral
+grep -q '^ecrire_conf_passerelle "\$H/registre.conf" "\$PORT" "\$PORT_ENROLEMENT" "\$H/pki" "\$H/etat"$' serveur/iso/configurer-serveur.sh \
+    || echec "configurer-serveur.sh n'écrit pas registre.conf"
+grep -q '/var/lib/barbacane-serveur/svc/registre.conf' serveur/iso/fichiers/usr/local/sbin/barbacane-registre \
+    || echec "enveloppe barbacane-registre : registre.conf"
+ecrire_conf_passerelle "$W/registre.conf" 43117 43118 "$W/racine/pki" "$W/racine/etat"
+if sortie=$("$BINS/barbacane-registre" "$W/registre.conf" demandes 2>&1) && grep -qx 'Aucune demande en attente.' <<<"$sortie"; then
+    echo "barbacane-registre : $(head -1 <<<"$sortie")"
+else
+    echec "barbacane-registre (vue hôte) : $sortie"
+fi
+
+[ "$ko" = 0 ] && echo "OK : passerelle.conf, web.conf et registre.conf de l'ISO serveur acceptés par les vrais binaires"
 exit "$ko"

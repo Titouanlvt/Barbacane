@@ -1,0 +1,40 @@
+# Serveur Barbacane : interface web d'administration (barbacane-web), conteneur Podman SANS ROOT
+# (D11) sous barbacane-svc, comme la passerelle. Écoute publiée sur l'adresse d'ADMINISTRATION
+# seulement ; un port d'administration < 1024 est redirigé par nftables vers ce port interne
+# (docs/suite/serveur-iso.md §6 : aucun droit sur les ports bas pour barbacane-svc).
+[Unit]
+Description=Interface web d'administration Barbacane (Podman sans root)
+Requires=barbacane-images.service
+After=barbacane-images.service barbacane-passerelle.service
+# Sans CA des administrateurs (déposée par la cérémonie en production) ni certificat du serveur,
+# l'interface ne démarre pas (« condition non remplie », pas un échec).
+ConditionPathExists=%h/web/ca-administrateurs.pem
+ConditionPathExists=%h/pki/cle.pem
+
+[Quadlet]
+DefaultDependencies=false
+
+[Container]
+Image=localhost/barbacane-web:@VERSION@
+ContainerName=barbacane-web
+Exec=/web/web.conf
+ReadOnly=true
+NoNewPrivileges=true
+DropCapability=all
+Volume=%h/pki:/pki:ro
+Volume=%h/web:/web:ro
+# Registre partagé avec la passerelle (jetons, validations, révocations, audit, quarantaine).
+Volume=%h/etat:/etat:rw
+# Espace de travail de l'outil de remaster (ISO de ~1 Go : sur disque, pas en mémoire).
+Volume=%h/tmp-web:/tmp:rw
+Volume=/var/lib/barbacane-serveur/iso-bornes:/var/lib/barbacane-serveur/iso-bornes:ro
+Network=pasta
+PublishPort=@IP_ADMIN@:@PORT_WEB@:@PORT_WEB@
+PodmanArgs=--pids-limit=256 --memory=1g
+
+[Service]
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

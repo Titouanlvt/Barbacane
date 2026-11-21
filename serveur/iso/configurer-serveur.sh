@@ -96,27 +96,38 @@ systemctl enable systemd-networkd.service
 # Ports de la passerelle (service mTLS et enrôlement) tirés au hasard à l'installation (D4) :
 # 20000–60000, hors ports connus, distincts. Figés à la construction si les ISO des bornes sont
 # embarquées (ils sont alors inscrits dans l'ISO générique, contrôlé par build-iso-serveur.sh).
-tirer_port() { # PORT_À_ÉVITER
-    local p
+# Port INTERNE de l'interface web (barbacane-web, sans root) : le port d'administration s'il est
+# ≥ 1024, sinon 8443, vers lequel nftables redirige le port d'administration (aucun droit sur les
+# ports bas pour barbacane-svc, ip_unprivileged_port_start inchangé).
+if [ "$PORT_ADMIN" -ge 1024 ]; then PORT_WEB=$PORT_ADMIN; else PORT_WEB=8443; fi
+tirer_port() { # PORTS_À_ÉVITER…
+    local p e
     while :; do
         p=$(shuf -i 20000-60000 -n 1)
-        [ "$p" != "$1" ] && ! grep -qE "[[:space:]]$p/(tcp|udp)" /etc/services && break
+        for e in "$@"; do [ "$p" != "$e" ] || continue 2; done
+        ! grep -qE "[[:space:]]$p/(tcp|udp)" /etc/services && break
     done
     echo "$p"
 }
-[ -n "${PORT:-}" ] || PORT=$(tirer_port "${PORT_ENROLEMENT:-}")
-[ -n "${PORT_ENROLEMENT:-}" ] || PORT_ENROLEMENT=$(tirer_port "$PORT")
+[ -n "${PORT:-}" ] || PORT=$(tirer_port "${PORT_ENROLEMENT:-}" "$PORT_WEB")
+[ -n "${PORT_ENROLEMENT:-}" ] || PORT_ENROLEMENT=$(tirer_port "$PORT" "$PORT_WEB")
 [ "$PORT" != "$PORT_ENROLEMENT" ] || { echo "ÉCHEC : ports service et enrôlement identiques" >&2; exit 1; }
+if [ "$PORT" = "$PORT_WEB" ] || [ "$PORT_ENROLEMENT" = "$PORT_WEB" ]; then
+    echo "ÉCHEC : port de la passerelle égal au port interne de l'interface web ($PORT_WEB)" >&2; exit 1
+fi
+echo "$PORT_WEB" > "$C/port-web"
 echo "$PORT" > "$C/port-passerelle"
 echo "$PORT_ENROLEMENT" > "$C/port-enrolement"
 ip_bornes=${IP_BORNES%/*}
+ip_admin=${IP_ADMIN%/*}
 if [ -n "${SOURCE_HEURE:-}" ]; then
     sortie_heure="oifname \"$IF_ADMIN\" ip daddr $SOURCE_HEURE udp dport 123 accept"
 else
     sortie_heure="# aucune source d'heure réseau (horloge locale de référence)"
 fi
 sed -e "s|@IF_BORNES@|$IF_BORNES|g" -e "s|@IF_ADMIN@|$IF_ADMIN|g" -e "s|@IP_BORNES@|$ip_bornes|g" \
-    -e "s|@PORT@|$PORT|g" -e "s|@PORT_ENROLEMENT@|$PORT_ENROLEMENT|g" -e "s|@PORT_ADMIN@|$PORT_ADMIN|g" -e "s|@SORTIE_HEURE@|$sortie_heure|" \
+    -e "s|@PORT@|$PORT|g" -e "s|@PORT_ENROLEMENT@|$PORT_ENROLEMENT|g" -e "s|@PORT_ADMIN@|$PORT_ADMIN|g" \
+    -e "s|@IP_ADMIN@|$ip_admin|g" -e "s|@PORT_WEB@|$PORT_WEB|g" -e "s|@SORTIE_HEURE@|$sortie_heure|" \
     /usr/share/barbacane-serveur/nftables.conf.modele > /etc/nftables.conf
 chmod 600 /etc/nftables.conf
 # Contrôle de syntaxe : impossible dans l'installateur si nf_tables n'y est pas chargé (Netlink) ;
@@ -199,9 +210,13 @@ mkdir -p /var/lib/systemd/linger
 touch "/var/lib/systemd/linger/$SVC"
 H="$DONNEES/svc"
 install -d -o "$SVC" -g "$SVC" -m 700 "$H/.config" "$H/.config/containers" "$H/.config/containers/systemd" \
-    "$H/.config/systemd" "$H/.config/systemd/user" "$H/pki" "$H/etat"
+    "$H/.config/systemd" "$H/.config/systemd/user" "$H/pki" "$H/etat" "$H/etat/registre" "$H/web" "$H/tmp-web"
+# ISO des bornes (lecture seule, montées dans barbacane-web) : dossier présent même vide.
+install -d -m 755 "$DONNEES/iso-bornes"
 sed -e "s|@VERSION@|$VERSION|g" -e "s|@IP_BORNES@|$ip_bornes|g" -e "s|@PORT@|$PORT|g" \
     -e "s|@PORT_ENROLEMENT@|$PORT_ENROLEMENT|g" /usr/share/barbacane-serveur/barbacane-passerelle.container > "$H/.config/containers/systemd/barbacane-passerelle.container"
+sed -e "s|@VERSION@|$VERSION|g" -e "s|@IP_ADMIN@|$ip_admin|g" -e "s|@PORT_WEB@|$PORT_WEB|g" \
+    /usr/share/barbacane-serveur/barbacane-web.container > "$H/.config/containers/systemd/barbacane-web.container"
 sed -e "s|@VERSION@|$VERSION|g" /usr/share/barbacane-serveur/barbacane-images.service \
     > "$H/.config/systemd/user/barbacane-images.service"
 # Racine en lecture seule et sans réseau sortant : storage.conf par défaut (overlay natif).
@@ -222,6 +237,36 @@ if [ -d "$C/pki-test" ]; then
 fi
 chown "$SVC:$SVC" "$H/pki/passerelle.conf"
 chmod 400 "$H/pki/passerelle.conf"
+# Vue hôte des mêmes fichiers pour l'outil barbacane-registre (sous barbacane-svc, hors conteneur).
+ecrire_conf_passerelle "$H/registre.conf" "$PORT" "$PORT_ENROLEMENT" "$H/pki" "$H/etat"
+chown "$SVC:$SVC" "$H/registre.conf"
+chmod 400 "$H/registre.conf"
+# Clé de mise à jour des bornes (minisign, PUBLIQUE) : sans elle, tout dépôt de paquet est refusé
+# (serveur-maj-audit.md §2.1). Fournie à la construction (--cle-maj-bornes) ou déposée ensuite.
+if [ -f "$C/cle-maj-bornes.pub" ]; then
+    install -d -o "$SVC" -g "$SVC" -m 700 "$H/etat/registre/maj"
+    install -o "$SVC" -g "$SVC" -m 444 "$C/cle-maj-bornes.pub" "$H/etat/registre/maj/cle-bornes.pub"
+fi
+
+# Interface web (barbacane-web, serveur-web.md) : web.conf toujours écrit ; clé d'audit P-384
+# propre à ce serveur, privée dans /etc/barbacane-serveur/audit (root seul : la passerelle et
+# l'interface n'en ont que la clé PUBLIQUE, serveur-maj-audit.md §1, séparation des rôles).
+# shellcheck source=/dev/null
+. /usr/share/barbacane-serveur/web-conf.sh
+ecrire_conf_web "$H/web/web.conf" "$PORT_WEB"
+[ -f "$C/audit/cle-audit.pem" ] || /usr/local/sbin/barbacane-audit cle "$C/audit"
+chmod 700 "$C/audit"
+install -o "$SVC" -g "$SVC" -m 444 "$C/audit/cle-audit.pub" "$H/web/cle-audit.pub"
+# CA des administrateurs : déposée par la cérémonie en production (ca-administrateurs.pem,
+# crl-administrateurs.pem, comptes) ; une ISO de TEST embarque celle de racine-test.sh et le
+# compte initial lié au certificat admin-01 (build-iso-serveur.sh --pki-test).
+if [ -d "$C/web-test" ]; then
+    install -o "$SVC" -g "$SVC" -m 444 "$C/web-test/ca-administrateurs.pem" "$C/web-test/crl-administrateurs.pem" "$H/web/"
+    install -o "$SVC" -g "$SVC" -m 600 "$C/web-test/comptes" "$H/web/comptes"
+    rm -rf "$C/web-test"
+fi
+chown "$SVC:$SVC" "$H/web/web.conf"
+chmod 400 "$H/web/web.conf"
 chown -R "$SVC:$SVC" "$H/.config"
 systemctl enable barbacane-serveur-etat.service
 # Clé de signature des sauvegardes (propre à ce serveur) ; le certificat de la clé de sauvegarde
@@ -231,4 +276,4 @@ chmod 700 "$C/sauvegarde"
 # Empreinte du mot de passe initial : inutile après création du compte.
 sed -i '/^HACHE_ADMIN=/d' "$C/serveur.conf"
 
-etape "configuration terminée (passerelle : service $PORT, enrôlement $PORT_ENROLEMENT)"
+etape "configuration terminée (passerelle : service $PORT, enrôlement $PORT_ENROLEMENT ; interface web : $ip_admin:$PORT_ADMIN → $PORT_WEB)"
