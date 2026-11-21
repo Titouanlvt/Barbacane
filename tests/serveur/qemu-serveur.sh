@@ -136,11 +136,15 @@ fi
 section() { awk -v s="--- $1" '$0 == s { p = 1; next } /^--- / { p = 0 } /^=== / { p = 0 } p' "$W/etat.txt"; }
 
 # Vu de l'extérieur : seul le port de la passerelle répond, et seulement sur l'interface « bornes ».
-PORT=$(section pare-feu | sed -n "s/.*iifname \"$IF_BORNES\" ip daddr 10.0.2.15 tcp dport \([0-9]*\) ct state new accept.*/\1/p" | head -1)
-if [ -n "$PORT" ] && [ "$PORT" -ge 20000 ] && [ "$PORT" -le 60000 ]; then ok "port de la passerelle tiré à l'installation : $PORT (D4)"
-else echec "port de la passerelle introuvable dans le pare-feu ($PORT)"; PORT=1; fi
-mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47001-10.0.2.15:$PORT"
-mon mon.sock "hostfwd_add na tcp:127.0.0.1:47002-10.0.3.15:$PORT"
+# Deux ports (service mTLS et enrôlement, D4), affichés par nft sous forme d'ensemble trié.
+read -r PA PB < <(section pare-feu | sed -n "s/.*iifname \"$IF_BORNES\" ip daddr 10.0.2.15 tcp dport { \([0-9]*\), \([0-9]*\) } ct state new accept.*/\1 \2/p" | head -1) || true
+if [ -n "${PA:-}" ] && [ -n "${PB:-}" ] && [ "$PA" -ge 20000 ] && [ "$PB" -le 60000 ] && [ "$PA" != "$PB" ]; then
+    ok "ports de la passerelle tirés à l'installation : $PA et $PB (D4)"
+else echec "ports de la passerelle introuvables dans le pare-feu (${PA:-?} ${PB:-?})"; PA=1 PB=2; fi
+mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47001-10.0.2.15:$PA"
+mon mon.sock "hostfwd_add na tcp:127.0.0.1:47002-10.0.3.15:$PA"
+mon mon.sock "hostfwd_add nb2 tcp:127.0.0.1:47005-10.0.2.15:$PB"
+mon mon.sock "hostfwd_add na2 tcp:127.0.0.1:47006-10.0.3.15:$PB"
 mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47003-10.0.2.15:443"
 mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47004-10.0.2.15:22"
 essai_tls() { # port [options openssl] → sortie du client
@@ -148,12 +152,16 @@ essai_tls() { # port [options openssl] → sortie du client
         | timeout 15 openssl s_client -connect "127.0.0.1:$1" -tls1_3 -quiet "${@:2}" 2>&1 || true
 }
 if [ -n "$PKI" ]; then
+    # Le port de service est l'un des deux (ordre de l'ensemble nft) : on essaie les deux.
     r=$(essai_tls 47001 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem")
+    if ! grep -q '"etat":"ok"' <<<"$r"; then
+        r=$(essai_tls 47005 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem")
+    fi
     if grep -q '"etat":"ok"' <<<"$r"; then ok "passerelle joignable depuis le réseau des bornes, borne mTLS acceptée : $(grep -o '{.*}' <<<"$r")"
     else echec "passerelle : borne valide non servie : $(tail -n 3 <<<"$r")"; fi
-    r=$(essai_tls 47001 -CAfile "$PKI/racine/cert.pem")
+    r=$(essai_tls 47001 -CAfile "$PKI/racine/cert.pem"; essai_tls 47005 -CAfile "$PKI/racine/cert.pem")
     if grep -q '"etat":"ok"' <<<"$r"; then echec "passerelle : client SANS certificat servi"; else ok "passerelle : client sans certificat refusé"; fi
-    r=$(essai_tls 47002 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem")
+    r=$(essai_tls 47002 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem"; essai_tls 47006 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem")
     if grep -q '"etat":"ok"' <<<"$r"; then echec "passerelle joignable depuis le réseau d'ADMINISTRATION"; else ok "passerelle injoignable depuis le réseau d'administration"; fi
 fi
 # 443 et 22 sur l'interface bornes : filtrés (aucun octet en retour, même à une requête).
@@ -184,13 +192,13 @@ done
 autorises=$(grep -E '\baccept\b' <<<"$nft" | sed 's/^[[:space:]]*//' | sort || true)
 attendu=$(printf '%s\n' 'ct state established,related accept' 'ct state established,related accept' 'iif "lo" accept' \
     "iifname \"$IF_ADMIN\" tcp dport 443 ct state new accept" \
-    "iifname \"$IF_BORNES\" ip daddr 10.0.2.15 tcp dport $PORT ct state new accept" 'oif "lo" accept' | sort)
+    "iifname \"$IF_BORNES\" ip daddr 10.0.2.15 tcp dport { $PA, $PB } ct state new accept" 'oif "lo" accept' | sort)
 [ "$autorises" = "$attendu" ] && ok "pare-feu : 6 règles d'acceptation, toutes attendues" \
     || { echec "pare-feu : règles d'acceptation inattendues"; diff <(echo "$attendu") <(echo "$autorises") || true; }
 grep -qE 'udp dport 123|dport 53' <<<"$nft" && echec "pare-feu : NTP ou DNS sortant autorisé"
 # Écoute : passerelle (relayée par pasta) seulement sur l'adresse « bornes » ; rien d'autre que la boucle locale
 ecoute=$(section ecoute)
-autres=$(grep -vE '^(127\.|\[::1\])' <<<"$ecoute" | grep -v "^10.0.2.15:$PORT$" || true)
+autres=$(grep -vE '^(127\.|\[::1\])' <<<"$ecoute" | grep -vE "^10.0.2.15:($PA|$PB)$" || true)
 [ -z "$autres" ] && ok "écoute réseau : $(tr '\n' ' ' <<<"$ecoute")" || echec "ports en écoute inattendus : $autres"
 # Heure
 h=$(section heure)

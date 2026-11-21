@@ -22,7 +22,10 @@ déjà personnalisée. Elles sont embarquées (`/barbacane/iso-bornes/`, `SHA256
 par `fin-installation-serveur.sh`, puis copiées en lecture seule dans
 `/var/lib/barbacane-serveur/iso-bornes/`. Conséquence assumée : l'adresse et les ports de la
 passerelle sont figés dans l'ISO générique, donc le serveur doit être construit avec `--port`
-fixe : port tiré à la construction et non à l'installation (écart à D4 consigné dans `decisions.md`).
+(service mTLS) **et** `--port-enrolement` fixes, égaux à `port_service` et `port_enrolement` de
+l'`agent.toml` de l'ISO générique (lu par xorriso ; refus sinon) : ports tirés à la construction
+et non à l'installation (écart à D4 consigné dans `decisions.md`). Les deux sont ouverts par le
+pare-feu et publiés par le quadlet.
 
 ## 2. Remaster sans Internet (`serveur/iso-bornes/barbacane-iso-borne`)
 

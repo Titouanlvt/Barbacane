@@ -6,7 +6,7 @@ Requires=barbacane-images.service
 After=barbacane-images.service
 # En production, la PKI est déposée après la cérémonie (politique-certification.md) ; sans elle,
 # la passerelle ne démarre pas (état « condition non remplie », pas un échec).
-ConditionPathExists=%h/pki/passerelle.conf
+ConditionPathExists=%h/pki/cle-ca-bornes.pem
 
 [Quadlet]
 # Pas d'attente de network-online.target (dépendance ajoutée par défaut par quadlet) : adresses fixes,
@@ -21,8 +21,11 @@ ReadOnly=true
 NoNewPrivileges=true
 DropCapability=all
 Volume=%h/pki:/pki:ro
+# Registre des bornes et CRL republiée à chaque révocation : seul volume en écriture.
+Volume=%h/etat:/etat:rw
 Network=pasta
 PublishPort=@IP_BORNES@:@PORT@:@PORT@
+PublishPort=@IP_BORNES@:@PORT_ENROLEMENT@:@PORT_ENROLEMENT@
 PodmanArgs=--pids-limit=512 --memory=512m
 
 [Service]
