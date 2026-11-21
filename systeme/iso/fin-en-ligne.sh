@@ -33,7 +33,7 @@ if [ -f $P ]; then
     grep -qx "adresse = \"$A\"" $X/agent.toml || { echo "parametres.conf : adresse $A différente de l'ISO" >&2; exit 1; }
     grep -qx "port_enrolement = $PE" $X/agent.toml || { echo "parametres.conf : port $PE différent de l'ISO" >&2; exit 1; }
     echo "$J" | grep -qxE "$PE-[A-Z2-7]{26}" || { echo "parametres.conf : jeton mal formé" >&2; exit 1; }
-    echo "$S" | grep -qxE 'site-[0-9]{1,6}' || { echo "parametres.conf : site invalide" >&2; exit 1; }
+    echo "$S" | grep -qxE '[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?' || { echo "parametres.conf : site invalide" >&2; exit 1; }
     install -d -m 0700 $T/var/lib/barbacane-agent
     (umask 077; echo "$J" > $T/var/lib/barbacane-agent/jeton)
     in-target chown -R barbacane-agent:barbacane-agent /var/lib/barbacane-agent

@@ -35,7 +35,7 @@ empreintes() { # ISO → liste « sha256  chemin » triée
     (cd "$W/x" && find . -type f -print0 | sort -z | xargs -0 sha256sum)
 }
 
-echo "$JETON" | "$OUTIL" personnaliser "$SRC" "$W/perso.iso" site-3 > "$W/sortie.txt" || echec "personnalisation refusée"
+echo "$JETON" | "$OUTIL" personnaliser "$SRC" "$W/perso.iso" labo > "$W/sortie.txt" || echec "personnalisation refusée"
 if [ "$(stat -c %a "$W/perso.iso")" = 600 ]; then ok "ISO personnalisée en 0600"; else echec "droits de l'ISO personnalisée"; fi
 empreintes "$SRC" > "$W/a.txt"
 empreintes "$W/perso.iso" > "$W/b.txt"
@@ -46,7 +46,7 @@ if [ "$(wc -l < "$W/diff.txt")" = 1 ] && grep -q '^> .*  \./barbacane/en-ligne/p
 else
     echec "différences inattendues :"; cat "$W/diff.txt" >&2
 fi
-if grep -qx "jeton = $JETON" "$W/p.conf" && grep -qx 'site = site-3' "$W/p.conf"; then ok "paramètres : jeton, adresse, port, site"; else echec "contenu de parametres.conf"; fi
+if grep -qx "jeton = $JETON" "$W/p.conf" && grep -qx 'site = labo' "$W/p.conf"; then ok "paramètres : jeton, adresse, port, site"; else echec "contenu de parametres.conf"; fi
 v1=$(xorriso -indev "$SRC" -pvd_info 2>/dev/null | grep '^Volume Id')
 v2=$(xorriso -indev "$W/perso.iso" -pvd_info 2>/dev/null | grep '^Volume Id')
 if [ "$v1" = "$v2" ]; then ok "volume conservé ($v1)"; else echec "volume : $v1 / $v2"; fi
@@ -56,6 +56,8 @@ refuse() { local nom=$1; shift; if "$@" >/dev/null 2>&1; then echec "accepté : 
 refuse "jeton d'un autre port" sh -c "echo 1-ABCDEFGHIJKLMNOPQRSTUVWXYZ | '$OUTIL' personnaliser '$SRC' '$W/r1.iso' site-3"
 refuse "jeton mal formé" sh -c "echo '${JETON%?}1' | '$OUTIL' personnaliser '$SRC' '$W/r2.iso' site-3"
 refuse "site invalide" sh -c "echo $JETON | '$OUTIL' personnaliser '$SRC' '$W/r3.iso' 'site-1;x'"
+refuse "site en majuscules" sh -c "echo $JETON | '$OUTIL' personnaliser '$SRC' '$W/r6.iso' 'Labo'"
+refuse "site avec deux-points" sh -c "echo $JETON | '$OUTIL' personnaliser '$SRC' '$W/r7.iso' 'labo:x'"
 refuse "ISO déjà personnalisée" sh -c "echo $JETON | '$OUTIL' personnaliser '$W/perso.iso' '$W/r4.iso' site-3"
 refuse "sortie existante" sh -c "echo $JETON | '$OUTIL' personnaliser '$SRC' '$W/perso.iso' site-3"
 [ -f "$W/hl.iso" ] && refuse "ISO hors ligne" sh -c "echo $JETON | '$OUTIL' personnaliser '$W/hl.iso' '$W/r5.iso' site-3"

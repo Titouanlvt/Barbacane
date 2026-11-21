@@ -247,8 +247,8 @@ pub fn page(
     c.b("</tbody></table></div>");
     c.b("<div class=\"b-cartes\"><div class=\"b-carte\"><h2>Préparer une ISO personnalisée</h2><form class=\"b-formulaire\" method=\"post\" action=\"/iso-bornes/preparer\">");
     pages::csrf(&mut c, ctx.csrf);
-    c.b("<div class=\"b-champ\"><label for=\"site\">Site</label><input class=\"b-saisie b-mono\" id=\"site\" name=\"site\" required maxlength=\"14\" placeholder=\"site-1\"><span class=\"b-aide\">Un jeton (1 h, usage unique) est créé et inscrit dans l'ISO, qui installe la borne sans saisie. L'ISO n'est téléchargeable qu'une fois, puis supprimée. La demande de la borne reste à valider ici par l'empreinte.</span></div><div class=\"b-formulaire__actions\"><button class=\"b-btn b-btn--principal\" type=\"submit\">Préparer l'ISO</button></div></form></div>");
-    c.b("<div class=\"b-carte\"><h2>Borne sans serveur</h2><p>L'ISO hors ligne est la borne v1 : aucun code réseau, aucun lien avec ce serveur.</p></div></div>");
+    c.b("<div class=\"b-champ\"><label for=\"site\">Site</label><input class=\"b-saisie b-mono\" id=\"site\" name=\"site\" required maxlength=\"32\" pattern=\"[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?\" placeholder=\"labo\"><span class=\"b-aide\">Un jeton (1 h, usage unique) est créé et inscrit dans l'ISO, qui installe la borne sans saisie. L'ISO n'est téléchargeable qu'une fois, puis supprimée. La demande de la borne reste à valider ici par l'empreinte.</span></div><div class=\"b-formulaire__actions\"><button class=\"b-btn b-btn--principal\" type=\"submit\">Préparer l'ISO</button></div></form></div>");
+    c.b("<div class=\"b-carte\"><h2>Borne autonome</h2><p>L'ISO de la Borne autonome (hors ligne) : aucun code réseau, aucun lien avec ce serveur.</p></div></div>");
     c.b("<h2>ISO personnalisées en attente</h2><div class=\"b-tableau-cadre\"><table class=\"b-tableau\"><thead><tr><th>Site</th><th>Expire</th><th>Action</th></tr></thead><tbody>");
     if personnalisees.is_empty() {
         c.b("<tr><td class=\"b-vide\" colspan=\"3\">Aucune.</td></tr>");
@@ -287,13 +287,9 @@ impl Web {
             (
                 "generique",
                 GENERIQUE,
-                "Borne en ligne — générique (enrôlement par jeton saisi)",
+                "Borne connectée — générique (enrôlement par jeton saisi)",
             ),
-            (
-                "hors-ligne",
-                HORS_LIGNE,
-                "Borne hors ligne v1 — borne sans serveur",
-            ),
+            ("hors-ligne", HORS_LIGNE, "Borne autonome — sans serveur"),
         ]
         .into_iter()
         .map(|(cle, fichier, nom)| (cle, nom, d.join(fichier).is_file(), e.get(fichier).cloned()))
@@ -330,7 +326,14 @@ impl Web {
     ) -> Result<Reponse> {
         let site = f.get("site").map(String::as_str).unwrap_or("").trim();
         if !barbacane_passerelle::registre::site_valide(site) {
-            return self.page_iso(u, t, Some((false, "Site invalide : forme site-<n>.")));
+            return self.page_iso(
+                u,
+                t,
+                Some((
+                    false,
+                    "Site invalide : 1 à 32 caractères parmi a-z, 0-9 et « - ».",
+                )),
+            );
         }
         let source = self.config.iso_bornes.join(GENERIQUE);
         if !source.is_file() {

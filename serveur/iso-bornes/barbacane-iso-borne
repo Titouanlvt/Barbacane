@@ -9,7 +9,7 @@
 # Le jeton est créé par le registre existant (1 h, usage unique : barbacane-registre … jeton SITE
 # ou la page web « ISO des bornes ») ; il est lu sur l'entrée standard (jamais en argument : visible
 # dans /proc). Contrôles : ISO source de profil en ligne SANS paramètres, port du jeton = port
-# d'enrôlement de l'ISO, site de forme site-<n>. Sortie 0600, créée sans écraser.
+# d'enrôlement de l'ISO, site [a-z0-9-] (1 à 32). Sortie 0600, créée sans écraser.
 set -Eeuo pipefail
 umask 077
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
@@ -36,7 +36,7 @@ case "$1" in
         SRC=$2 DST=$3 SITE=$4
         [ -f "$SRC" ] || refus "ISO source absente : $SRC"
         [ ! -e "$DST" ] || refus "$DST existe déjà (jamais écrasé)"
-        [[ "$SITE" =~ ^site-[0-9]{1,6}$ ]] || refus "site invalide (site-<n>)"
+        [[ "$SITE" =~ ^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$ ]] || refus "site invalide (a-z, 0-9, -, 1 à 32)"
         IFS= read -r -t 5 JETON || refus "jeton absent de l'entrée standard"
         JETON=$(printf '%s' "$JETON" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')
         [[ "$JETON" =~ ^([1-9][0-9]{0,4})-([A-Z2-7]{26})$ ]] || refus "jeton mal formé (PORT-SECRET)"

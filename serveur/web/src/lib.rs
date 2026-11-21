@@ -363,7 +363,9 @@ impl Web {
         ClePublique::lire(&config.cle_audit_publique).context("clé publique d'audit")?;
         let passerelle = barbacane_passerelle::Config::lire(&config.passerelle)?;
         if passerelle.port == config.port || passerelle.port_enrolement == config.port {
-            bail!("l'écoute d'administration doit être distincte de celles de la passerelle");
+            bail!(
+                "l'écoute de la Console doit être distincte de celles de la Liaison bornes (passerelle)"
+            );
         }
         let admin = Admin::ouvrir(passerelle.clone())?;
         Utilisateurs::ouvrir(&admin.stockage)?.lire()?;
@@ -955,7 +957,10 @@ impl Web {
                             &ctx,
                             &admin.demandes(t)?,
                             None,
-                            Some((site, "Site invalide : forme site-<n>.")),
+                            Some((
+                                site,
+                                "Site invalide : 1 à 32 caractères parmi a-z, 0-9 et « - ».",
+                            )),
                         ),
                     ));
                 }

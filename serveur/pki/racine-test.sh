@@ -45,7 +45,7 @@ SORTIE="$1"
 
 # Noms restreints (ils entrent dans des configurations openssl) : pas d'injection possible.
 [[ "$NOM_SERVEUR" =~ ^[a-z0-9.-]+$ ]] || { echo "nom de serveur invalide" >&2; exit 2; }
-[[ "$SITE" =~ ^site-[0-9]+$ ]] || { echo "site invalide (site-<n>)" >&2; exit 2; }
+[[ "$SITE" =~ ^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$ ]] || { echo "site invalide (a-z, 0-9, -, 1 à 32)" >&2; exit 2; }
 
 mkdir -p "$SORTIE"
 SORTIE="$(cd "$SORTIE" && pwd)"

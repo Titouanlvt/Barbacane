@@ -167,11 +167,23 @@ impl Default for Registre {
     }
 }
 
-/// Site `site-<n>` (politique §1).
+/// Nom de site choisi par l'administrateur (« labo », « paris-15 », « site-1 ») : `[a-z0-9-]`,
+/// 1 à 32 caractères, commençant et finissant par une lettre ou un chiffre. Le site entre
+/// dans le DN et le SAN `urn:barbacane:borne:<site>:<uuid>` des certificats, dans des
+/// fichiers de l'ISO et des scripts : ce jeu restreint exclut `:`, `/`, `=`, `,`, espaces,
+/// guillemets et caractères de contrôle (aucune injection, aucun échappement nécessaire).
 pub fn site_valide(site: &str) -> bool {
-    site.strip_prefix("site-")
-        .is_some_and(|n| (1..=9).contains(&n.len()) && n.bytes().all(|c| c.is_ascii_digit()))
+    let b = site.as_bytes();
+    (1..=32).contains(&b.len())
+        && b.iter()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == b'-')
+        && b[0] != b'-'
+        && b[b.len() - 1] != b'-'
 }
+
+/// Message d'erreur commun pour un site refusé.
+pub const SITE_INVALIDE: &str =
+    "site invalide : 1 à 32 caractères parmi a-z, 0-9 et « - » (pas de « - » au début ni à la fin)";
 
 /// Nom de borne donné par l'administrateur : `[a-z0-9-]`, 1 à 32.
 pub fn nom_valide(nom: &str) -> bool {
@@ -202,7 +214,7 @@ impl Registre {
 
     pub fn creer_jeton(&mut self, site: &str, secret: &str, maintenant: u64) -> Result<()> {
         if !site_valide(site) {
-            bail!("site invalide (site-<n>)");
+            bail!("{SITE_INVALIDE}");
         }
         self.purger(maintenant);
         self.jetons.push(JetonEnregistre {
@@ -669,6 +681,29 @@ mod tests {
         assert!(site_valide("site-1"));
         assert!(!site_valide("site-"));
         assert!(!site_valide("site-1;rm"));
+        // Noms libres (défaut du labo 21/11 : « labo » refusé).
+        assert!(site_valide("labo"));
+        assert!(site_valide("paris-15"));
+        assert!(site_valide("a"));
+        assert!(site_valide(&"a".repeat(32)));
+        assert!(!site_valide(&"a".repeat(33)));
+        assert!(!site_valide(""));
+        assert!(!site_valide("-labo"));
+        for mauvais in [
+            "Labo",
+            "lab o",
+            "labo:x",
+            "labo/x",
+            "labo,ou=x",
+            "labo=x",
+            "labo\"x",
+            "lab\u{e9}",
+            "labo\n",
+            "../x",
+            "labo<",
+        ] {
+            assert!(!site_valide(mauvais), "{mauvais:?}");
+        }
         assert!(nom_valide("borne-07"));
         assert!(!nom_valide("Borne 07"));
         assert!(!nom_valide(&"a".repeat(33)));

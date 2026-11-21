@@ -39,7 +39,7 @@ C
 sleep 1
 echo "== jeton (registre) et ISO personnalisée (remaster)"
 rm -f "$W/perso.iso"
-"$R" "$W/passerelle.conf" jeton site-7 | grep -E '^[0-9]+-[A-Z2-7]{26}$' | "$OUTIL" personnaliser "$ISO" "$W/perso.iso" site-7
+"$R" "$W/passerelle.conf" jeton labo-7 | grep -E '^[0-9]+-[A-Z2-7]{26}$' | "$OUTIL" personnaliser "$ISO" "$W/perso.iso" labo-7
 ko=0
 OVMF=/usr/share/ovmf/OVMF.fd
 qemu-img create -q -f qcow2 "$W/disque.qcow2" 16G
@@ -72,7 +72,7 @@ if [ -z "$ID" ]; then
     echo "ÉCHEC : aucune demande reçue de la borne en 10 min" >&2; ko=1
 else
     cat "$W/demandes.txt"
-    if grep -q 'site-7' "$W/demandes.txt"; then echo "OK : demande déposée sans saisie, site du jeton (site-7)"; else echo "ÉCHEC : site" >&2; ko=1; fi
+    if grep -q 'labo-7' "$W/demandes.txt"; then echo "OK : demande déposée sans saisie, site du jeton (labo-7)"; else echo "ÉCHEC : site" >&2; ko=1; fi
     EMPREINTE=$(sed -n 's/^  empreinte  //p' "$W/demandes.txt" | tr -d ' ')
     "$R" "$W/passerelle.conf" valider "$ID" "$EMPREINTE" borne-perso | tee "$W/validation.txt"
     vu=0

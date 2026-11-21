@@ -32,7 +32,7 @@ use barbacane_protocole::utilisateurs::{
 use serde::{Deserialize, Serialize};
 
 use crate::outils::{aleatoire, ecrire_atomique, sha256_hex};
-use crate::registre::{Identite, Stockage, site_valide};
+use crate::registre::{Identite, SITE_INVALIDE, Stockage, site_valide};
 
 /// Échecs consécutifs avant verrouillage d'un compte.
 pub const ECHECS_COMPTE_MAX: u32 = 5;
@@ -645,7 +645,7 @@ impl Utilisateurs {
         t: u64,
     ) -> Result<()> {
         if !site_valide(site) {
-            bail!("site invalide (site-<n>)");
+            bail!("{SITE_INVALIDE}");
         }
         if mode == ModeUtilisateurs::Aucun && quarantaine_active {
             bail!("mode Aucun interdit : la quarantaine est activée (D13)");
@@ -671,7 +671,7 @@ impl Utilisateurs {
         t: u64,
     ) -> Result<()> {
         if !site_valide(site) {
-            bail!("site invalide (site-<n>)");
+            bail!("{SITE_INVALIDE}");
         }
         self.transaction(t, |b| {
             b.sites.entry(site.into()).or_default().entree_non_enrolees = entree;
@@ -712,7 +712,7 @@ impl Utilisateurs {
             bail!("libellé invalide (64 caractères au plus)");
         }
         if site.is_some_and(|s| !site_valide(s)) {
-            bail!("site invalide (site-<n>)");
+            bail!("{SITE_INVALIDE}");
         }
         if !entree && !sortie {
             bail!("choisir au moins un usage (entrée ou sortie)");

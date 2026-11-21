@@ -770,13 +770,13 @@ fn retrait(b: &Banc, id: &str) -> EtatDemande {
 fn validation_d_enrolement_de_bout_en_bout() {
     let b = banc();
     let (c, csrf) = connecter(&b, &b.alice, "alice", MDP_ALICE);
-    // 1. Jeton créé par la page, affiché une fois.
+    // 1. Jeton créé par la page, affiché une fois (nom de site libre, défaut du labo 21/11).
     let r = post(
         &b,
         &b.alice,
         "/enrolement/jeton",
         &c,
-        &[("csrf", &csrf), ("site", "site-1")],
+        &[("csrf", &csrf), ("site", "labo")],
     );
     assert_eq!(r.statut, 200, "{}", r.corps);
     let debut = r.corps.find("<div class=\"b-code\">").unwrap() + 20;
@@ -852,7 +852,7 @@ fn validation_d_enrolement_de_bout_en_bout() {
         .iter()
         .find_map(|n| match n {
             x509_parser::extensions::GeneralName::URI(u) => u
-                .strip_prefix("urn:barbacane:borne:site-1:")
+                .strip_prefix("urn:barbacane:borne:labo:")
                 .map(str::to_owned),
             _ => None,
         })
@@ -906,7 +906,7 @@ fn validation_d_enrolement_de_bout_en_bout() {
             .any(|e| e.acteur == "web:alice" && ev(&e.evenement))
     };
     assert!(acteur(
-        &|e| matches!(e, Evenement::JetonCree { site, .. } if site == "site-1")
+        &|e| matches!(e, Evenement::JetonCree { site, .. } if site == "labo")
     ));
     assert!(acteur(
         &|e| matches!(e, Evenement::EnrolementValide { borne, .. } if *borne == uuid)
@@ -1368,4 +1368,47 @@ fn utilisateurs_csrf_et_echappement() {
     );
     assert_eq!(r.statut, 200, "{}", r.corps);
     assert!(base_utilisateurs(&b).lire().unwrap().cles_usb.is_empty());
+}
+
+/// Noms de site : libres mais restreints ; un nom refusé est renvoyé échappé, sans jeton créé.
+#[test]
+fn site_libre_accepte_site_malveillant_refuse_et_echappe() {
+    let b = banc();
+    let (c, csrf) = connecter(&b, &b.alice, "alice", MDP_ALICE);
+    for mauvais in ["<script>x</script>", "labo:x", "Labo", "-labo", "a\"b"] {
+        let r = post(
+            &b,
+            &b.alice,
+            "/enrolement/jeton",
+            &c,
+            &[("csrf", &csrf), ("site", mauvais)],
+        );
+        assert_eq!(r.statut, 400, "{mauvais}");
+        assert!(!r.corps.contains("<script>x"), "{mauvais}");
+        assert!(!r.corps.contains("class=\"b-code\""), "{mauvais}");
+    }
+    let reg = Admin::ouvrir(b.passerelle.clone())
+        .unwrap()
+        .stockage
+        .lire()
+        .unwrap();
+    assert!(reg.jetons.is_empty());
+    for bon in ["labo", "paris-15", "site-2"] {
+        let r = post(
+            &b,
+            &b.alice,
+            "/enrolement/jeton",
+            &c,
+            &[("csrf", &csrf), ("site", bon)],
+        );
+        assert_eq!(r.statut, 200, "{bon} : {}", r.corps);
+        assert!(r.corps.contains("class=\"b-code\""), "{bon}");
+    }
+    let reg = Admin::ouvrir(b.passerelle.clone())
+        .unwrap()
+        .stockage
+        .lire()
+        .unwrap();
+    let sites: Vec<_> = reg.jetons.iter().map(|j| j.site.as_str()).collect();
+    assert_eq!(sites, ["labo", "paris-15", "site-2"]);
 }
