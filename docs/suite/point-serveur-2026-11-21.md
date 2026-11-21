@@ -182,3 +182,11 @@ Demande de l'utilisateur : moins de thème château fort, pour ne perdre personn
 - Partout (interfaces, messages, journaux, doc) : le NOM FONCTIONNEL seul — Borne autonome, Borne connectée, Clé Barbacane, Agent Poste, Serveur Barbacane, Console, Liaison bornes, Parc, Journal, Quarantaine, Dépôt, Contrôle postes, Autorité, Atelier signature.
 - Thème château fort : réservé au nom du produit (Barbacane) et au logo. Au plus un rappel discret dans la doc de présentation (schéma d'ensemble), jamais dans l'interface ni dans les procédures.
 - Les sous-titres (Herse, Donjon, Chemin de ronde, etc.) sont abandonnés.
+
+## Borne — grandes images ISO (21/11)
+
+- Exigence : la borne doit analyser et faire passer une ISO Debian 13 et une ISO Windows 11.
+- Décisions :
+  - « Les deux selon le cas » : empreinte dans la liste officielle signée → copie intacte immédiate ; sinon analyse complète du contenu (plus de refus automatique pour cause de nombre de fichiers), une ISO modifiée est donc toujours analysée.
+  - Clé de sortie : format AU CHOIX sur la borne (FAT32, exFAT, NTFS) au moment de la sortie ; avertir si un fichier dépasse 4 Go et que FAT32 est choisi.
+- Étape 1 : mesurer le comportement actuel (temps, mémoire, disque) avec les vraies ISO sur la borne 950. Étape 2 : version dédiée, placée après 2.0.1 (fonction cœur de la borne).
