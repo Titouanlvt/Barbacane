@@ -30,8 +30,8 @@
   campagne ; OCR PPM corrigé à reporter dans `integration`.
 
 ## v2.1.0 à faire (reprend les [notes v2.0.0](docs/notes-de-version/v2.0.0.md))
-- **PKI et passerelle** : clés dans le TPM, refus des certificats TEST en production, CRL de la
 - **Priorité 1 — test ISO intermittent** : `installation-qemu` (`tests/iso/qemu.sh`) échoue de façon aléatoire sur GitHub (même commit 82910cd : 2 succès, 1 échec ; échecs ensuite sur des commits sans code). Cause probable : plantage intermittent de usbsas-server au démarrage (déjà noté en v1.0.0). Reproduire sur bu (boucle de N démarrages), corriger, puis CI ISO stable.
+- **PKI et passerelle** : clés dans le TPM, refus des certificats TEST en production, CRL de la
   racine et republication quotidienne, service PKI séparé, racine du lab sur VM sans réseau ;
   cérémonie de production.
 - **Enrôlement** : double validation des révocations massives ; PostgreSQL.
