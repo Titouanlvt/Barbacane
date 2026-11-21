@@ -148,8 +148,8 @@ if [ -n "${PA:-}" ] && [ -n "${PB:-}" ] && [ "$PA" -ge 20000 ] && [ "$PB" -le 60
 else echec "ports de la passerelle introuvables dans le pare-feu (${PA:-?} ${PB:-?})"; PA=1 PB=2; fi
 mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47001-10.0.2.15:$PA"
 mon mon.sock "hostfwd_add na tcp:127.0.0.1:47002-10.0.3.15:$PA"
-mon mon.sock "hostfwd_add nb2 tcp:127.0.0.1:47005-10.0.2.15:$PB"
-mon mon.sock "hostfwd_add na2 tcp:127.0.0.1:47006-10.0.3.15:$PB"
+mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47005-10.0.2.15:$PB"
+mon mon.sock "hostfwd_add na tcp:127.0.0.1:47006-10.0.3.15:$PB"
 mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47003-10.0.2.15:443"
 mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47004-10.0.2.15:22"
 mon mon.sock "hostfwd_add na tcp:127.0.0.1:47010-10.0.3.15:443"
@@ -194,17 +194,21 @@ if [ -n "$PKI" ]; then
         || echec "interface web : vérification contre la racine (curl --cacert) : HTTP $code $(cat "$W/curl-ca.err")"
     # Refus par le serveur (alerte TLS « certificate required »), pas un simple service absent.
     r=$(curl --silent --show-error --max-time 20 --insecure -o /dev/null -w '%{http_code}' https://127.0.0.1:47010/connexion 2>&1 || true)
-    grep -qi 'alert\|certificate required' <<<"$r" && ok "interface web : client SANS certificat refusé à la poignée de main TLS ($(grep -oi 'tlsv13 alert [a-z ]*\|certificate required' <<<"$r" | head -1))" \
+    # TLS 1.3 : l'alerte suit la poignée de main ; relayée par pasta et le réseau QEMU, le client voit
+    # souvent seulement la fermeture (« unexpected eof ») : refus aussi, jamais de réponse HTTP.
+    grep -qi 'alert\|certificate required\|unexpected eof' <<<"$r" && ! grep -q '^[1-5][0-9][0-9]$' <<<"$r" && ok "interface web : client SANS certificat refusé à la poignée de main TLS ($(grep -oi 'tlsv13 alert [a-z ]*\|certificate required\|unexpected eof' <<<"$r" | head -1))" \
         || echec "interface web sans certificat : $r"
     code=$(curl "${A[@]}" -o /dev/null -w '%{http_code}' https://127.0.0.1:47011/connexion 2>/dev/null || true)
     [ "$code" = 000 ] && ok "interface web : port interne 8443 injoignable (seul 443 est publié et ouvert)" || echec "port interne 8443 servi en direct : HTTP $code"
     code=$(curl "${A[@]}" -o /dev/null -w '%{http_code}' https://127.0.0.1:47012/connexion 2>/dev/null || true)
     [ "$code" = 000 ] && ok "interface web injoignable depuis le réseau des bornes" || echec "interface web servie sur le réseau des bornes : HTTP $code"
     if [ -n "$MDP_WEB" ]; then
+        rm -f "$W/cookies"
+        curl "${A[@]}" -c "$W/cookies" -o "$W/connexion.html" https://127.0.0.1:47010/connexion 2>/dev/null || true
         csrf=$(sed -n 's/.*name="csrf" value="\([^"]*\)".*/\1/p' "$W/connexion.html" 2>/dev/null | head -1 || true)
         code=$(curl "${A[@]}" -b "$W/cookies" -c "$W/cookies" -o /dev/null -w '%{http_code}' \
-            --data-urlencode "csrf=$csrf" --data-urlencode identifiant=admin-01 --data-urlencode "mot_de_passe@$MDP_WEB" \
-            https://127.0.0.1:47010/connexion 2>/dev/null || true)
+            --data-urlencode "csrf=$csrf" --data-urlencode identifiant=admin-01 --data-urlencode "mot_de_passe@-" \
+            https://127.0.0.1:47010/connexion 2>/dev/null < <(head -n 1 "$MDP_WEB" | tr -d '\r\n') || true)
         code2=$(curl "${A[@]}" -b "$W/cookies" -o "$W/tableau.html" -w '%{http_code}' https://127.0.0.1:47010/tableau 2>/dev/null || true)
         if [ "$code2" = 200 ] && grep -q "Bornes actives" "$W/tableau.html"; then
             ok "interface web : connexion admin-01 (certificat + mot de passe Argon2id, HTTP $code) puis tableau de bord HTTP 200"
