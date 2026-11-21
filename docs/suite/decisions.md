@@ -28,3 +28,9 @@ la passerelle (pare-feu et `agent.toml` de la borne). Le port est donc **tiré u
 construction** (`build-iso-serveur.sh --port N`, valeur aléatoire choisie par le constructeur), et
 non à l'installation. Discrétion conservée (port non standard, propre au site) ; sécurité inchangée
 (mTLS + CRL + pare-feu).
+
+## 21/11/2026 — décisions de l'utilisateur
+
+- **D4 (écart validé)** : le port de la passerelle est fixé à la construction de l'ISO serveur (`--port` obligatoire avec les ISO de bornes embarquées), plus tiré à l'installation.
+- **Annuaire LDAPS** : TLS 1.3 par défaut ; TLS 1.2 accepté **en option**, désactivée par défaut, suites ECDHE-AES-GCM seulement, activation auditée.
+- **Dossier d'homologation** : pas installé par l'ISO serveur (la quarantaine reste donc inactivable sur un serveur installé tant que ce choix n'est pas revu).
