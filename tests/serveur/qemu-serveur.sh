@@ -190,8 +190,8 @@ if [ -n "$PKI" ]; then
     code=$(curl --silent --show-error --max-time 20 --cacert "$PKI/racine/cert.pem" --cert "$PKI/administrateurs/admin-01.cert.pem" \
         --key "$PKI/administrateurs/admin-01.cle.pem" --connect-to 10.0.3.15:443:127.0.0.1:47010 -o /dev/null -w '%{http_code}' \
         https://10.0.3.15/connexion 2>"$W/curl-ca.err" || true)
-    [ "$code" = 200 ] && ok "interface web : certificat HTTPS vérifié contre la racine de TEST (chaîne complète, SAN 10.0.3.15)" \
-        || echec "interface web : vérification contre la racine (curl --cacert) : HTTP $code $(cat "$W/curl-ca.err")"
+    if [ "$code" = 200 ]; then ok "interface web : certificat HTTPS vérifié contre la racine de TEST (chaîne complète, SAN 10.0.3.15)"
+    else echec "interface web : vérification contre la racine (curl --cacert) : HTTP $code $(cat "$W/curl-ca.err")"; fi
     # Refus par le serveur (alerte TLS « certificate required »), pas un simple service absent.
     r=$(curl --silent --show-error --max-time 20 --insecure -o /dev/null -w '%{http_code}' https://127.0.0.1:47010/connexion 2>&1 || true)
     # TLS 1.3 : l'alerte suit la poignée de main ; relayée par pasta et le réseau QEMU, le client voit

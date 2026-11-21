@@ -128,8 +128,8 @@ for _ in $(seq 40); do
     [ "$code" = 000 ] || break
     sleep 0.25
 done
-[ "$code" = 200 ] && echo "Console : HTTPS vérifié contre la racine de TEST (chaîne complète, SAN IP:10.99.0.1)" \
-    || echec "Console : vérification HTTPS contre la racine (curl --cacert) : HTTP $code $(tail -n 3 "$W/web.log")"
+if [ "$code" = 200 ]; then echo "Console : HTTPS vérifié contre la racine de TEST (chaîne complète, SAN IP:10.99.0.1)"
+else echec "Console : vérification HTTPS contre la racine (curl --cacert) : HTTP $code $(tail -n 3 "$W/web.log")"; fi
 # Contre-épreuve : une autre adresse que celle du SAN est refusée par le client (vérification réelle).
 code=$(curl "${C[@]}" --connect-to "10.99.0.2:$PW:127.0.0.1:$PW" "https://10.99.0.2:$PW/connexion" 2>/dev/null || true)
 [ "$code" = 000 ] || echec "Console : adresse hors SAN acceptée (HTTP $code)"
