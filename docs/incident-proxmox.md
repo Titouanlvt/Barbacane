@@ -115,7 +115,7 @@ comme sur le nouvel hôte (`192.168.10.72/24`, passerelle `192.168.10.254`).
    - Branchement en CI : `tests/garde-fou/ci-workflows.patch` (jobs `garde-fou-proxmox` dans ci.yml,
      étape après la construction des paquets dans iso.yml). Le jeton de Claude n'a pas le droit
      GitHub `workflow` : appliquer le patch et le pousser soi-même (`git apply` puis commit).
-   - Passage vérifié le 15/11 dans la VM 902 (Debian 13) : [preuves/archives/2026-11-15-campagne/garde-fou/](preuves/garde-fou/).
+   - Passage vérifié le 15/11 dans la VM 902 (Debian 13) : [preuves/archives/2026-11-15-campagne/garde-fou/](preuves/archives/2026-11-15-campagne/garde-fou/).
    - `tests/garde-fou/scripts.sh` : avec `/etc/pve`, chaque
      script sort en erreur avec le message « REFUS : hôte Proxmox VE détecté » et **aucune** des
      commandes témoins (`apt-get`, `dpkg`, `systemctl`, `install`, `sed`, `passwd`,
