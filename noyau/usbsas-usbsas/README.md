@@ -3,12 +3,12 @@
 The usbsas server: the parent process that orchestrates every other usbsas
 process.
 
-Applications (the [GUI](../usbsas-client), the [Python module](../python), the
+Applications (the [GUI](https://github.com/cea-sec/usbsas/tree/main/usbsas-client), the [Python module](https://github.com/cea-sec/usbsas/tree/main/python), the
 integration tests...) never talk to USB devices or file systems directly. They
 send requests (defined in `usbsas-proto/proto/usbsas.proto`) to `usbsas-usbsas`,
 which spawns sandboxed child processes and drives them to list devices, read
 files, analyze them, write them to a destination, wipe or image a device. See
-the [architecture documentation](../doc/architecture.md) for an overview.
+the [architecture documentation](../../docs/noyau/architecture.md) for an overview.
 
 ## Usage
 
@@ -43,7 +43,7 @@ session's output files and is used as the transfer id in reports.
 
 On startup, the server:
 
-1. reads the [configuration](../doc/configuration.md),
+1. reads the [configuration](https://github.com/cea-sec/usbsas/blob/main/doc/configuration.md),
 2. creates the session's working files in `out_directory`:
    - `usbsas_<id>.tar`: files read from the source
    - `usbsas_<id>_clean.tar`: files that passed analysis, for network /

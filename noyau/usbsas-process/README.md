@@ -3,7 +3,7 @@
 Helpers to spawn and manage usbsas child processes.
 
 usbsas is split in many sandboxed processes (see the [architecture
-documentation](../doc/architecture.md#communication)). A parent process
+documentation](../../docs/noyau/architecture.md#communication)). A parent process
 (`usbsas-usbsas`, `scsi2files` spawning `dev2scsi`, the analyzer spawning
 `jsonparser`, the tools...) uses this crate to start a child and get a typed
 `usbsas-comm` channel to send it requests.

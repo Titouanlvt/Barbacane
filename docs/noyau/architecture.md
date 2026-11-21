@@ -13,7 +13,7 @@ for interacting with the framework and building applications.
 
 For example, here are the various processes running in a USB to USB file
 transfer:
-<p align="center"><img src="./res/architecture.svg" style="background-color:white" width="100%"/></p>
+<p align="center"><img src="architecture.svg" style="background-color:white" width="100%"/></p>
 
 Processes communicate with each other via `protobuf` serialized data (see
 [Communication](#communication)). Processes are tightly sandboxed with `seccomp`

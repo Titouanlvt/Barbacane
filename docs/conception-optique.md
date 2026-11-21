@@ -1,6 +1,6 @@
 # Conception : disques optiques réinscriptibles (CD-RW, DVD±RW, BD-RE)
 
-Statut : conception du 15/11/2026, implémentation en cours (voir l'état à la fin).
+Statut : conception du 15/11/2026, implémentée et prouvée (v1.0.0, `docs/preuves/2026-11-18-optique/`).
 
 ## Objectif
 Le lecteur optique de la borne devient une source et une destination comme les clés USB :

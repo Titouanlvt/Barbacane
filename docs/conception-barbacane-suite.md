@@ -1,6 +1,7 @@
 # Barbacane suite — gestion centralisée des bornes (conception)
 
-Statut : **conception, aucun code**. Document de départ pour l'implémentation.
+Statut : conception du 19/11/2026, **implémentée en v2.0.0** pour ce qui est FAIT
+(état par composant : `docs/suite/README.md` ; reste : v2.1.0).
 Barbacane v1 (borne hors ligne) reste inchangé : la « suite » est un **produit
 distinct** (ISO borne en ligne + ISO serveur).
 Révision du 19/11/2026 : intègre la revue de sécurité et de conformité

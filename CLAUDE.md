@@ -1,6 +1,7 @@
 # Notes pour Claude Code — projet BARBACANE
 
-Borne de décontamination USB hors ligne (Debian 13). Dépôt **autonome**
+Borne de décontamination USB hors ligne (Debian 13) et suite en ligne (serveur + borne en ligne).
+Versions publiées : v1.0.0 (19/11/2026), v2.0.0 (21/11/2026) ; suite : v2.1.0 (`AVANCEMENT.md`). Dépôt **autonome**
 `Titouanlvt/Barbacane` (plus de dépôt amont ni de dépendance externe au projet), géré
 par Claude. Le noyau de lecture USB provient d'usbsas (CEA) et vit dans `noyau/`.
 
@@ -25,7 +26,7 @@ par Claude. Le noyau de lecture USB provient d'usbsas (CEA) et vit dans `noyau/`
 
 ## Organisation
 `noyau/` (crates usbsas, chemins relatifs entre elles) · `borne/` (client, analyzer, admind,
-parcours, update) · `systeme/` (ISO, deb, systemd, durcissement) · `tests/` · `docs/`.
+parcours, update, optique, agent) · `serveur/` (PKI, passerelle, audit, web, ISO serveur) · `systeme/` (ISO, deb, systemd, durcissement) · `tests/` · `docs/`.
 Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` sur
 `target/release` (binaires mock des tests). Clippy strict sur les crates de la borne seulement.
 
@@ -84,7 +85,7 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - Parcours unique : « Analyser » puis Copier vers une clé connue / Graver / Blanchir / Arrêter ici.
 - Clés Ventoy : écart n° 9 (fs2dev `WriteRaw`, `RequestInitTransfer.bootable`, `ventoy = ` dans la
   config usbsas) ; Ventoy 1.1.18 embarqué (`systeme/ventoy/`, empreinte épinglée). Rufus/Etcher :
-  détectées, avertissement (liste blanche d'images : conçue, pas encore faite).
+  détectées, avertissement (liste blanche d'images : prouvée ensuite, voir plus bas).
   `docs/conception-demarrable.md`.
 - Corrigés : délai global reqwest 30 s (écart n° 8, vraie cause du « Remote server error »),
   reconnexion usbsas après effacement, ClamAV MaxScanTime 30 min, rapports > 10 Mo, ISO prise pour
@@ -114,7 +115,7 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - Suivi : `/root/BARBACANE/AVANCEMENT.md` ; commit + push au moins toutes les heures.
 - Choix faits sans l'utilisateur : preuve de la liste blanche avec une clé de signature de TEST du lab
   (la phrase de passe de production n'est connue que de l'utilisateur).
-- Réécriture d'image Etcher vérifiée : REPORTÉE après la fusion dans main. Plan retenu : requête usbsas
+- Réécriture d'image Etcher vérifiée : faite depuis (écart n° 11, `docs/preuves/etcher/`). Plan retenu : requête usbsas
   `RewriteImage{id, taille, sha256}` (lecture scsi2files → files2fs en mode brut avec empreinte calculée
   au vol par usbsas ; comparaison AVANT toute écriture ; puis effacement fs2dev et écriture avec un
   bitvec construit par usbsas) ; liste blanche étendue à « sha256  taille  nom ». En attendant :
@@ -149,7 +150,7 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - **RTX 4000 non passée** aux VM : seule carte d'affichage de l'hôte (`docs/lab/gpu-passthrough.md`).
 - **Charte v2** : branche `charte-v2` publiée par l'utilisateur (`docs/charte/`, identique au Design
   System). Adaptation VISUELLE seulement : la logique v1 (écrans, boutons, parcours) ne change pas ;
-  écarts dans `docs/charte/adaptation.md`.
+  adaptation de la borne suspendue le 20/11 (voir ci-dessous).
 
 ## Priorité au 20/11/2026 (utilisateur)
 - **Serveur d'abord** (`docs/conception-barbacane-suite.md` §8), en parallèle (worktrees `../wt-<chantier>`,
@@ -160,7 +161,7 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 
 ## Reste à faire
 1. Rejouer le blanchiment sur clé lente (Phison 13fe:4200) avec les délais de 30 s.
-2. Test de la borne à 8 Go de RAM ; reprendre les correctifs amont usbsas un par un (tests + preuve).
+2. Test de la borne à 8 Go de RAM ; correctifs d'usbsas d'origine à reprendre au cas par cas seulement (dépôt autonome, écarts dans `docs/noyau/ecarts.md`).
 5. « Tout Rust » : ntfs-3g et FatFs (C, `noyau/usbsas-fsrw`, isolés par seccomp) restent ; les remplacer
    (crates `fatfs`, `ntfs`) ferait perdre l'exFAT et l'écriture NTFS (sortie FAT32 seule, 4 Go/fichier).
    Décision du 15/11 : fiabilité d'abord, chantier à part avec sa propre campagne de preuves.

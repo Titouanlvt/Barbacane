@@ -10,7 +10,7 @@ scénarios de mise à jour, `cargo audit`.
 |---|---|---|
 | Environnement de développement, mode mock d'usbsas | clés simulées par fichiers image (MBR + FAT/NTFS/exFAT) | `parcours/tests/e2e.rs`, `tests/phase1-mock.sh` |
 | EICAR seul / dans zip / zip dans 7z / dans iso | `eicar.com`, `mixte.zip`, `zip_dans_7z.7z`, `eicar.iso` (+ tar.gz, cab, vmdk, msi) | `analyzer/tests/archives.rs` |
-| Archives chiffrées : bon / mauvais / sans mot de passe / abandon | `chiffre-bon.zip`, `chiffre-faux.zip` (3 essais), `chiffre-sans.zip` (délai), `chiffre-abandon.zip`, `chiffre-entetes.7z` (en-têtes chiffrés) | `analyzer/tests/archives.rs` ; saisie à la souris : captures `02`, `03` |
+| Archives chiffrées : bon / mauvais / sans mot de passe / abandon | `chiffre-bon.zip`, `chiffre-faux.zip` (3 essais), `chiffre-sans.zip` (délai), `chiffre-abandon.zip`, `chiffre-entetes.7z` (en-têtes chiffrés) | `analyzer/tests/archives.rs` ; saisie à la souris : capture `v1/jour/04-mot-de-passe.png` |
 | Zip bombs récursive et à fort ratio | `bombe-recursive.zip` (profondeur 7), `bombe-ratio.zip` (~1000:1) | `analyzer/tests/archives.rs` |
 | Dépassement de chaque limite | profondeur, nombre de fichiers (`trop-de-fichiers.zip`), taille (`trop-gros.zip`), ratio ; conteneur racine refusé en entier | `analyzer/tests/archives.rs` |
 | Noms piégés (traversée, absolu, unicode, très longs, casse) | `noms-pieges.zip` ; aucune sortie ne remonte, collisions de casse renommées | `analyzer/tests/archives.rs`, `analyzer/src/stage.rs` |
@@ -18,7 +18,7 @@ scénarios de mise à jour, `cargo audit`.
 | Conteneur Zed | abandonné (décision 6) : traité comme un fichier quelconque | — |
 | vmdk / msi / cab | `disque.vmdk` (FAT dans VMDK), `paquet.msi`, `mixte.cab` | `analyzer/tests/archives.rs` |
 | Systèmes de fichiers source FAT / exFAT / NTFS | parcours complet sur chaque type | `parcours/tests/e2e.rs` |
-| Copie vers clé connue | sortie relue (exFAT) : fichiers sains, `mixte.zip.extrait/`, rapport | `parcours/tests/e2e.rs` ; captures `01`→`05` |
+| Copie vers clé connue | sortie relue (exFAT) : fichiers sains, `mixte.zip.extrait/`, rapport | `parcours/tests/e2e.rs` ; captures `v1/jour/01`→`10` |
 | Archive mixte seule (rien de sain à la racine) | contenu sain extrait quand même copié | `parcours/tests/e2e.rs` |
 | Blanchiment | même périphérique effacé puis réécrit, EICAR absent du périphérique brut | `parcours/tests/e2e.rs` ; capture `06` |
 | Mode clés enrôlées | enrôlement, doublons, clé sans série, activation | `admind/src/tests.rs` ; capture `08` |
@@ -33,7 +33,7 @@ scénarios de mise à jour, `cargo audit`.
 Réalisés sous Xvfb avec `xdotool` (clics aux coordonnées, aucun clavier) et
 usbsas mock : Copier (avec mot de passe saisi au clavier virtuel), Blanchir
 (avec « Ignorer cette archive »), connexion admin au pavé numérique, enrôlement,
-export des journaux, mise à jour signée. Captures dans [`captures/`](captures/).
+export des journaux, mise à jour signée. Captures actuelles dans [`captures/v1/`](captures/v1/) (`tests/ui/captures.sh`) ; celles du 12/11 sont dans [`archives/`](archives/README.md).
 
 ## Paquets
 

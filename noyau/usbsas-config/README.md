@@ -4,7 +4,7 @@ Parser of the usbsas configuration file (TOML, `/etc/usbsas/config.toml` by
 default).
 
 The format and every option are described in the [configuration
-documentation](../doc/configuration.md), and
+documentation](https://github.com/cea-sec/usbsas/blob/main/doc/configuration.md), and
 [config.example.toml](../config.example.toml) is a commented example.
 
 ## Usage

@@ -4,7 +4,7 @@ Seul processus réseau de la borne en ligne : connexion **sortante** unique vers
 (TLS 1.3 mutuel, CA serveur épinglée). N'existe que dans `build-iso.sh --profil en-ligne` ;
 jamais dans la borne hors ligne (décision D12, garde-fou `tests/iso/hors-ligne.sh`).
 
-Jalon du 20/11/2026 : **enrôlement + battement** du protocole v1 (`docs/suite/protocole-agent.md`).
+Livré en v2.0.0 : enrôlement, battement, mises à jour relayées, rapports de passage, utilisateurs et politique USB (protocole v1, `docs/suite/protocole-agent.md`).
 Aucune donnée ni aucun nom de fichier n'est envoyé (D2) : le battement ne porte que des compteurs
 (heure, version, état, âge des signatures, espace libre, taille de la file locale).
 
@@ -42,10 +42,10 @@ rien** : admind vérifie (clé de la borne) et applique sur décision de l'admin
 `/maj/rapport` avant de vider `maj/`. Jeton : déposé par admind (op `serveur_jeton`).
 Détails : `docs/suite/borne-en-ligne.md`.
 
-## Clé de la borne : fichier au lab, TPM ensuite (D9)
+## Clé de la borne : fichier en v2.0.0, TPM en v2.1.0 (D9)
 
 La clé privée est générée **sur la borne** (aléa du noyau, `ring`) et ne la quitte jamais ; seul le
-PKCS#10 voyage. À ce jalon elle est stockée dans un **fichier PKCS#8 0600** du dossier d'état (0700,
+PKCS#10 voyage. En v2.0.0 elle est stockée dans un **fichier PKCS#8 0600** du dossier d'état (0700,
 compte dédié) ; une clé lisible par d'autres est refusée. Limite assumée : un vol du disque donne la
 clé (parade : révocation, CRL relue à chaque connexion). L'accès à la clé passe uniquement par le trait
 `Coffre` (`src/coffre.rs`) : l'implémentation TPM 2.0 (clé non exportable, signature dans le TPM)
@@ -60,15 +60,15 @@ service et le battement annonce `hors_service`. L'agent revalide chaque élémen
 l'envoie sur `/rapport/passage` après le battement et ne le retire qu'après `200` ; un élément
 refusé définitivement est renommé `rejet-…` (jamais effacé).
 
-## Limites de ce jalon (suite)
+## Limites (v2.0.0)
 
-- Saisie du jeton et affichage de l'empreinte **à l'écran** : par admind (écran Administration) à
-  venir ; d'ici là, fichier `jeton` et `etat.json`.
-- Réglage de l'horloge sur `heure_serveur` : nécessite un service privilégié (admind) ; l'agent, sans
+- Saisie du jeton et affichage de l'empreinte : écran Administration → Serveur (admind, op
+  `serveur_jeton`) ; le fichier `jeton` et `etat.json` restent l'interface de l'agent.
+- Réglage de l'horloge sur `heure_serveur` : nécessite un service privilégié ; l'agent, sans
   aucune capacité, ne fait que mesurer et signaler.
-- Blocage de la borne après le délai de grâce (conception §3.1) : demande l'intégration au parcours ;
-  à ce jalon la borne continue de fonctionner comme la v1 quand le serveur est absent.
-- Politique, rapports, journaux, mises à jour : versions suivantes du protocole.
+- Blocage de la borne après le délai de grâce (conception §3.1) : non fait ; la borne continue de
+  fonctionner comme la v1 quand le serveur est absent.
+- Clé de la borne dans le TPM, session jointe aux rapports : v2.1.0.
 
 ## Utilisateurs et politique USB (21/11/2026)
 

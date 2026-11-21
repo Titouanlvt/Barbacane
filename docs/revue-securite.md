@@ -66,7 +66,7 @@ ramené à moyen après essai (voir ci-dessous), est corrigé aussi.
 - Où : `borne/analyzer/src/scan.rs:424` (`{archive}.extrait/{chemin interne}`).
 - Attaque : archive contenant un fichier sain dont le nom a des caractères de contrôle ou dépasse
   255 caractères ; l'écriture exFAT peut échouer et faire échouer toute la copie (déni de service),
-  sans fuite de fichier dangereux. Démonstration prévue sur la borne (étape 4, `preuves/hostile/`).
+  sans fuite de fichier dangereux. Démontré sur la borne : clés vide, pleine, illisible, retirée (`docs/preuves/2026-11-18-rapide/`).
 
 ### S-05 — faible — Enrôlement par numéro de série
 - Où : `borne/client/src/app.rs:245` ; le noyau écrit sur toute destination demandée par l'interface.
@@ -80,7 +80,7 @@ ramené à moyen après essai (voir ci-dessous), est corrigé aussi.
   d'administration sans PIN). Mesure : renseigner `ports_hid` avec le port de la souris.
 - Clavier : aucune frappe possible. `hid-user` ne transmet que mouvements et boutons (`uinput`
   n'active aucune touche), les pilotes HID et PS/2 du noyau sont bloqués (`noyau/usbsas-hid/assets/hid.conf`).
-  Preuve sur la borne : [docs/preuves/hostile](preuves/hostile/).
+  Preuve sur la borne : [docs/preuves/2026-11-18-rapide](preuves/2026-11-18-rapide/README.md).
 
 ### S-07 — faible — API locale de l'analyseur
 - `127.0.0.1:8042` sans authentification (préparation, armement de l'import). Atteignable seulement
