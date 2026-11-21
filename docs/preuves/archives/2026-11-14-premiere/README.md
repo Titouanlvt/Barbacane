@@ -1,7 +1,7 @@
 # Preuves sur vraies clés USB
 
 Preuves de bout en bout du 14/11/2026, produites par
-[`tests/proxmox/preuve.sh`](../../../tests/proxmox/preuve.sh) sur l'ISO de la borne, avec de vraies clés USB.
+[`tests/proxmox/preuve.sh`](../../../../tests/proxmox/preuve.sh) sur l'ISO de la borne, avec de vraies clés USB.
 Verdict du script : **OK**.
 
 | Élément | Valeur |
