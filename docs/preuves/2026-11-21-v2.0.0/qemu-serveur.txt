@@ -1,0 +1,44 @@
+1ad8678 ISO serveur : passerelle.conf complète, deux ports (service, enrôlement), clé CA bornes de TEST
+ISO_BANC=0
+QEMU_SERVEUR=0
+/var/log/journal/85842a6f5a0844d287c5d16dc6fc9e21/
+--- cle-de-secours
+À FAIRE : clé de secours du disque encore dans /root/cle-de-secours-luks.txt : la transcrire (coffre) puis « shred -u » ce fichier
+=== BARBACANE-ETAT FIN alertes=0
+OK : racine sur volume ouvert aes-xts-plain64, 512 bits
+OK : volume LUKS2
+OK : aucune route par défaut : 10.0.2.0/24 dev ens8 proto kernel scope link src 10.0.2.15;10.0.3.0/24 dev ens9 proto kernel scope link src 10.0.3.15;
+OK : pare-feu : chaîne entree, politique drop
+OK : pare-feu : chaîne transit, politique drop
+OK : pare-feu : chaîne sortie, politique drop
+OK : pare-feu : 6 règles d'acceptation, toutes attendues
+OK : écoute réseau : 10.0.2.15:43117 10.0.2.15:43118 
+OK : chrony : aucune source externe configurée
+OK : chrony : aucune source active (MS Name/IP address Stratum Poll Reach LastRx Last sample)
+OK : service nftables actif
+OK : service chrony actif
+OK : service systemd-networkd actif
+OK : service systemd-journald actif
+OK : service auditd actif
+OK : gestionnaire systemd de barbacane-svc actif (linger)
+OK : images chargées depuis l'ISO
+OK : passerelle active (Podman sans root)
+OK : conteneur : racine en lecture seule, non privilégié, aucune capacité
+OK : processus de la passerelle exécuté par « barbaca+ » (pas root)
+OK : aucun paquet interdit installé (installés : 289)
+OK : journal persistant (/var/log/journal)
+OK : état : aucune alerte
+== démarrage SANS TPM (doit s'arrêter sur la demande de clé)
+OK : sans TPM : démarrage bloqué à la demande de clé
+qemu-system-x86_64: terminating on signal 15 from pid 1525244 (bash)
+== en-tête LUKS du disque (sans clé)
+OK : en-tête LUKS2
+OK : AES-XTS, clé de 512 bits
+OK : jeton systemd-tpm2 lié au PCR 7 ("tpm2-pcrs":[7])
+OK : jeton de clé de secours
+OK : 2 emplacements de clé (TPM + secours)
+OK : phrase de passe d'installation effacée du disque
+OK : une seule partition en clair (/boot)
+TPM : logiciel (swtpm Corp.), banc de test uniquement
+SERVEUR QEMU : OK
+FIN
