@@ -6,6 +6,8 @@ FAIT / PRÉVU des documents ci-dessous et de [AVANCEMENT.md](../../AVANCEMENT.md
 
 ## À retenir
 
+- **Version** : la **v2.0.0** contient ce qui est FAIT ; **tous les points PRÉVU sont reportés en
+  v2.1.0** (décision du 21/11, [notes v2.0.0](../notes-de-version/v2.0.0.md)).
 - **La borne hors ligne v1 est inchangée** : `build-iso.sh` sans option produit la même ISO que
   la v1.0.0 (D12, [preuve](../preuves/2026-11-20-profil-en-ligne/README.md)) ; l'agent réseau
   n'existe que dans `--profil en-ligne`. Non-régression sur la borne 950 sans agent : 43 OK
@@ -76,10 +78,10 @@ jour restent des `.bcu` signés hors ligne et revérifiés par la borne.
 
 ## FAIT / PRÉVU par composant
 
-« FAIT » = fusionné dans `integration` avec CI locale verte ; la colonne preuve renvoie à
-`docs/preuves/` quand une preuve de lab existe (sinon : tests automatiques du dépôt).
+« FAIT » = livré en v2.0.0, fusionné dans `integration` avec CI locale verte ; la colonne preuve renvoie à
+`docs/preuves/` quand une preuve de lab existe (sinon : tests automatiques du dépôt). « PRÉVU » = reporté en **v2.1.0**.
 
-| Composant | FAIT | Preuve | PRÉVU |
+| Composant | FAIT (v2.0.0) | Preuve | PRÉVU (v2.1.0) |
 |---|---|---|---|
 | PKI et passerelle mTLS ([serveur-socle.md](serveur-socle.md)) | PKI de TEST (racine/CA P-384, feuilles P-256), TLS 1.3 seul, certificat client obligatoire, CRL relue à chaque connexion, fail-closed ; CA administrateurs de test | tests `mtls.rs`, `enrolement.rs` | clés dans le TPM, refus des certificats TEST en production, CRL de la racine et republication quotidienne automatique, service PKI séparé, racine du lab sur VM sans réseau |
 | Enrôlement, battement, heure ([protocole-agent.md](protocole-agent.md)) | jeton 1 h à usage unique, validation par empreinte, certificat 90 jours, renouvellement à mi-vie, mode dégradé | [QEMU en ligne](../preuves/2026-11-21-qemu-en-ligne/README.md) | double validation des révocations massives, PostgreSQL |
