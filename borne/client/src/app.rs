@@ -151,8 +151,20 @@ pub struct App {
     msg_u: Option<String>,
     /// Vérification en cours auprès du serveur
     attente_u: bool,
-    /// Clé refusée par la politique du site : ignorée jusqu'à son retrait
+    /// Clé ignorée jusqu'à son retrait : refusée par la politique du site, ou passage
+    /// terminé (« Arrêter ici », « Nouveau transfert », « Annuler ») alors qu'elle est branchée
     cle_ecartee: Option<UsbDevice>,
+}
+
+/// Clé à écarter au retour à l'accueil : la clé source USB du passage terminé si elle est
+/// encore branchée (sinon l'accueil la redétecte aussitôt et l'écran repart sur « Clé
+/// détectée », défaut du labo 21/11). Un disque optique a son propre suivi.
+fn cle_a_ecarter(src: Option<&UsbDevice>, devices: &Devices) -> Option<UsbDevice> {
+    let s = src.filter(|s| !est_optique(s))?;
+    devices
+        .sources()
+        .any(|(_, u)| App::same(u, s))
+        .then(|| s.clone())
 }
 
 pub fn run(cfg: Config) -> iced::Result {
@@ -694,6 +706,9 @@ impl App {
         {
             self.disque_ecarte = true;
         }
+        if let Some(c) = cle_a_ecarter(self.src.as_ref(), &self.devices) {
+            self.cle_ecartee = Some(c);
+        }
         self.screen = Screen::Accueil;
         self.src = None;
         self.dst = None;
@@ -844,6 +859,7 @@ impl App {
                         style::set_animations_reduites(
                             p["animations_reduites"].as_bool() == Some(true),
                         );
+                        self.admin.apres_etat(&v);
                         self.etat = Some(v)
                     }
                     Err(e) => log::warn!("état admin : {e}"),
@@ -1076,9 +1092,11 @@ impl App {
                     "sur le port d'entrée de la borne."
                 }),
                 Space::new().height(30),
-                petit(
+                petit(if self.cle_ecartee.is_some() {
+                    "Passage terminé : retirez la clé. Pour un nouveau passage, rebranchez-la."
+                } else {
                     "Tous les fichiers seront analysés, y compris le contenu des archives.\nSeuls les fichiers sains seront copiés."
-                ),
+                }),
             ]),
             Screen::Choix => self.view_choix(),
             Screen::Analyse => self.view_progress("Analyse en cours", "Ne retirez pas la clé."),
@@ -2273,6 +2291,36 @@ const VEILLE: std::time::Duration = std::time::Duration::from_secs(600);
 /// Décalage du logo de veille (-0,8‥0,8 en largeur et en hauteur), lent et sans saut.
 fn position_veille(t: f32) -> (f32, f32) {
     (0.8 * (t / 37.0).sin(), 0.8 * (t / 53.0).cos())
+}
+
+#[cfg(test)]
+mod tests_retour_accueil {
+    use super::*;
+
+    fn cle(busnum: u32, devnum: u32, src: bool) -> UsbDevice {
+        UsbDevice {
+            busnum,
+            devnum,
+            is_src: src,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn arreter_ici_ecarte_la_cle_encore_branchee() {
+        let c = cle(1, 4, true);
+        let mut d = Devices::default();
+        d.usb.push((1, c.clone()));
+        assert!(App::same(&cle_a_ecarter(Some(&c), &d).unwrap(), &c));
+        // Clé déjà retirée : rien à écarter, la prochaine clé est détectée normalement.
+        assert!(cle_a_ecarter(Some(&c), &Devices::default()).is_none());
+        assert!(cle_a_ecarter(None, &d).is_none());
+        // Une autre clé branchée n'est pas écartée.
+        assert!(cle_a_ecarter(Some(&cle(2, 9, true)), &d).is_none());
+        // Disque optique : suivi par disque_ecarte, pas par cle_ecartee.
+        let o = barbacane_parcours::optique("CD");
+        assert!(cle_a_ecarter(Some(&o), &d).is_none());
+    }
 }
 
 #[cfg(test)]
