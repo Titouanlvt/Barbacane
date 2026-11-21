@@ -66,8 +66,9 @@ serveur/iso/build-iso-serveur.sh --port 43117 --port-enrolement 43118 \
     --sha256-bornes SHA256SUMS --sortie barbacane-serveur.iso
 ```
 
-Options complètes : `--help` de chaque script. Pas à pas de la borne :
-[guide d'installation](docs/guide-installation-poste.md) ([PDF](docs/Barbacane-installation.pdf)) ;
+Options complètes : `--help` de chaque script. **[Manuel Barbacane (PDF)](docs/Barbacane-installation.pdf)**
+(borne hors ligne, serveur, bornes en ligne ; source [Markdown](docs/Barbacane-installation.md)) ;
+pas à pas de la borne : [guide d'installation](docs/guide-installation-poste.md) ;
 borne en ligne : [borne-en-ligne.md](docs/suite/borne-en-ligne.md) ; serveur :
 [serveur-iso.md](docs/suite/serveur-iso.md). La PKI de production n'est pas encore outillée :
 `serveur/pki/racine-test.sh` ne produit qu'une PKI de **TEST**.
@@ -89,6 +90,7 @@ borne en ligne : [borne-en-ligne.md](docs/suite/borne-en-ligne.md) ; serveur :
 
 | | |
 |---|---|
+| Manuel | [**Manuel Barbacane** (PDF)](docs/Barbacane-installation.pdf) · [source](docs/Barbacane-installation.md) |
 | Borne | [utilisation](docs/exploitation.md) · [administration](docs/administration.md) · [installation](docs/installation.md) · [guide poste](docs/guide-installation-poste.md) |
 | Conception | [borne](docs/conception.md) · [disques optiques](docs/conception-optique.md) · [supports démarrables](docs/conception-demarrable.md) · [espace de travail](docs/conception-espace-travail.md) · [suite](docs/conception-barbacane-suite.md) |
 | Suite v2 | [vue d'ensemble, FAIT/PRÉVU](docs/suite/README.md) · [décisions](docs/suite/decisions.md) |
@@ -116,7 +118,7 @@ tests/phase1-mock.sh                                   # noyau en mode mock + EI
 cargo test                                             # tout le workspace
 cargo build -p barbacane-admind && tests/maj/maj.sh    # mises à jour signées
 tests/ci-locale.sh                                     # mêmes vérifications que la CI GitHub
-docs/pdf/generer.sh                                    # guide PDF (pandoc + weasyprint)
+docs/pdf/generer.sh                                    # Manuel Barbacane en PDF (pandoc + weasyprint)
 ```
 
 Dépendances (Debian 13) : `pkgconf clang cmake libssl-dev libkrb5-dev libseccomp-dev libudev-dev
