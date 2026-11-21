@@ -96,10 +96,17 @@ systemctl enable systemd-networkd.service
 # Ports de la passerelle (service mTLS et enrôlement) tirés au hasard à l'installation (D4) :
 # 20000–60000, hors ports connus, distincts. Figés à la construction si les ISO des bornes sont
 # embarquées (ils sont alors inscrits dans l'ISO générique, contrôlé par build-iso-serveur.sh).
-# Port INTERNE de l'interface web (barbacane-web, sans root) : le port d'administration s'il est
-# ≥ 1024, sinon 8443, vers lequel nftables redirige le port d'administration (aucun droit sur les
-# ports bas pour barbacane-svc, ip_unprivileged_port_start inchangé).
+# Port de l'interface web DANS son conteneur : le port d'administration s'il est ≥ 1024, sinon
+# 8443. Sur l'hôte, pasta (sous barbacane-svc, sans root) écoute IP_ADMIN:PORT_ADMIN ; pour un port
+# < 1024, net.ipv4.ip_unprivileged_port_start est abaissé à CE port seulement (PORT_ADMIN–1023
+# deviennent ouvrables sans privilège ; aucun autre service, et le pare-feu n'accepte que
+# PORT_ADMIN sur l'interface d'administration). Une redirection nftables vers un port haut a été
+# essayée : pasta ne relaie pas les connexions redirigées (banc QEMU du 21/11/2026).
 if [ "$PORT_ADMIN" -ge 1024 ]; then PORT_WEB=$PORT_ADMIN; else PORT_WEB=8443; fi
+if [ "$PORT_ADMIN" -lt 1024 ]; then
+    printf '# Barbacane : interface web (pasta sans root) sur le port d%sadministration %s\nnet.ipv4.ip_unprivileged_port_start = %s\n' "'" "$PORT_ADMIN" "$PORT_ADMIN" \
+        > /etc/sysctl.d/91-barbacane-port-admin.conf
+fi
 tirer_port() { # PORTS_À_ÉVITER…
     local p e
     while :; do
@@ -127,7 +134,7 @@ else
 fi
 sed -e "s|@IF_BORNES@|$IF_BORNES|g" -e "s|@IF_ADMIN@|$IF_ADMIN|g" -e "s|@IP_BORNES@|$ip_bornes|g" \
     -e "s|@PORT@|$PORT|g" -e "s|@PORT_ENROLEMENT@|$PORT_ENROLEMENT|g" -e "s|@PORT_ADMIN@|$PORT_ADMIN|g" \
-    -e "s|@IP_ADMIN@|$ip_admin|g" -e "s|@PORT_WEB@|$PORT_WEB|g" -e "s|@SORTIE_HEURE@|$sortie_heure|" \
+    -e "s|@IP_ADMIN@|$ip_admin|g" -e "s|@SORTIE_HEURE@|$sortie_heure|" \
     /usr/share/barbacane-serveur/nftables.conf.modele > /etc/nftables.conf
 chmod 600 /etc/nftables.conf
 # Contrôle de syntaxe : impossible dans l'installateur si nf_tables n'y est pas chargé (Netlink) ;
@@ -215,7 +222,8 @@ install -d -o "$SVC" -g "$SVC" -m 700 "$H/.config" "$H/.config/containers" "$H/.
 install -d -m 755 "$DONNEES/iso-bornes"
 sed -e "s|@VERSION@|$VERSION|g" -e "s|@IP_BORNES@|$ip_bornes|g" -e "s|@PORT@|$PORT|g" \
     -e "s|@PORT_ENROLEMENT@|$PORT_ENROLEMENT|g" /usr/share/barbacane-serveur/barbacane-passerelle.container > "$H/.config/containers/systemd/barbacane-passerelle.container"
-sed -e "s|@VERSION@|$VERSION|g" -e "s|@IP_ADMIN@|$ip_admin|g" -e "s|@PORT_WEB@|$PORT_WEB|g" \
+sed -e "s|@VERSION@|$VERSION|g" -e "s|@IP_ADMIN@|$ip_admin|g" -e "s|@PORT_WEB@|$PORT_WEB|g" -e "s|@IF_ADMIN@|$IF_ADMIN|g" \
+    -e "s|@PORT_ADMIN@|$PORT_ADMIN|g" \
     /usr/share/barbacane-serveur/barbacane-web.container > "$H/.config/containers/systemd/barbacane-web.container"
 sed -e "s|@VERSION@|$VERSION|g" /usr/share/barbacane-serveur/barbacane-images.service \
     > "$H/.config/systemd/user/barbacane-images.service"
@@ -276,4 +284,4 @@ chmod 700 "$C/sauvegarde"
 # Empreinte du mot de passe initial : inutile après création du compte.
 sed -i '/^HACHE_ADMIN=/d' "$C/serveur.conf"
 
-etape "configuration terminée (passerelle : service $PORT, enrôlement $PORT_ENROLEMENT ; interface web : $ip_admin:$PORT_ADMIN → $PORT_WEB)"
+etape "configuration terminée (passerelle : service $PORT, enrôlement $PORT_ENROLEMENT ; interface web : $ip_admin:$PORT_ADMIN, conteneur $PORT_WEB)"

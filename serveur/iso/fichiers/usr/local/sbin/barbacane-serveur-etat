@@ -10,6 +10,14 @@ C=/etc/barbacane-serveur
 uid=$(id -u "$SVC" 2>/dev/null || echo 0)
 utilisateur() { runuser -u "$SVC" -- env XDG_RUNTIME_DIR="/run/user/$uid" "$@"; }
 if [ "${1:-}" = --attendre ]; then
+    # ConditionResult vaut « no » tant que l'unité n'a pas été évaluée : attendre d'abord les
+    # images (leur import précède les conteneurs), puis chaque conteneur.
+    for _ in $(seq 150); do
+        e=$(utilisateur systemctl --user show -p ActiveState --value barbacane-images.service 2>/dev/null)
+        case "$e" in active|failed) break ;; esac
+        sleep 2
+    done
+    sleep 5
     for u in barbacane-passerelle barbacane-web; do
         for _ in $(seq 150); do
             e=$(utilisateur systemctl --user show -p ActiveState --value "$u.service" 2>/dev/null)
@@ -69,6 +77,13 @@ utilisateur systemctl --user list-jobs --no-pager 2>&1 | head -n 8
 section web
 find "$h/web" -maxdepth 1 -printf '%M %u %f\n' 2>&1
 utilisateur systemctl --user status --no-pager -n 8 barbacane-web.service 2>&1 | tail -n 12
+# Sonde locale de l'écoute web (TLS, sans certificat : un refus « certificate required » prouve
+# que l'interface répond), puis ses dernières lignes de journal.
+if timeout 10 bash -c 'exec 3<>"/dev/tcp/$1/$2" && printf "GET / HTTP/1.0\r\n\r\n" >&3 && timeout 3 cat <&3 >/dev/null' _ "${IP_ADMIN%/*}" "$PORT_ADMIN" 2>/dev/null; then
+    echo "sonde ${IP_ADMIN%/*}:$PORT_ADMIN : connexion TCP acceptée"
+else echo "sonde ${IP_ADMIN%/*}:$PORT_ADMIN : connexion TCP refusée ou sans réponse"; fi
+sleep 1
+journalctl --no-pager -q -n 15 "_UID=$uid" 2>/dev/null | grep -a 'barbacane-web\|web :\|pasta' | tail -n 8 || true
 section registre
 /usr/local/sbin/barbacane-registre demandes 2>&1 | head -n 20
 section conteneurs

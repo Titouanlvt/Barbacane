@@ -174,12 +174,14 @@ correspondante). La mise à l'heure initiale de l'horloge matérielle se fait à
   `web-conf.sh`, contrôlé par la vraie interface (`barbacane-web --verifier-config`,
   `tests/iso/serveur-config.sh`). `ConditionPathExists` sur la CA des administrateurs et la clé du
   serveur : sans elles, « condition non remplie », pas un échec.
-- **Port d'administration < 1024** (443 par défaut) sans root : `barbacane-svc` n'a aucun droit sur
-  les ports bas (`net.ipv4.ip_unprivileged_port_start` **inchangé** : l'abaisser l'ouvrirait à tous
-  les comptes) ; l'interface écoute sur un port interne (8443, ou le port d'administration s'il est
-  ≥ 1024) et nftables **redirige** `IP_ADMIN:PORT_ADMIN` vers lui (chaîne `redirection`, hook
-  `prerouting`, interface d'administration seulement). L'entrée n'accepte le port interne que si la
-  connexion a été redirigée (`ct original proto-dst PORT_ADMIN`) : 8443 en direct reste fermé.
+- **Port d'administration < 1024** (443 par défaut) sans root : pasta, lancé sous `barbacane-svc`,
+  écoute `IP_ADMIN:PORT_ADMIN` et relaie vers le port interne du conteneur (8443, ou le port
+  d'administration s'il est ≥ 1024). Pour un port < 1024, `configurer-serveur.sh` écrit
+  `/etc/sysctl.d/91-barbacane-port-admin.conf` : `net.ipv4.ip_unprivileged_port_start = PORT_ADMIN`
+  (443 → seuls 443–1023 deviennent ouvrables sans privilège ; aucun autre service n'existe, et le
+  pare-feu n'accepte que `PORT_ADMIN` sur l'interface d'administration). Écartée : une redirection
+  nftables 443 → 8443 (`prerouting`), essayée au banc du 21/11/2026 : les connexions redirigées
+  n'étaient pas relayées par pasta (poignée de main TLS jamais servie).
 - **Comptes de l'interface** : fichier `~/web/comptes` (0600), une ligne par compte produite par
   `barbacane-web compte IDENTIFIANT RÔLE CERT.pem` (mot de passe sur l'entrée standard, Argon2id, lié
   à l'empreinte du certificat ; binaire hors conteneur dans `/usr/local/lib/barbacane-serveur/`).
@@ -303,7 +305,7 @@ LOGICIEL, banc seulement**), ISO de test `suite-20261120` (219 paquets embarqué
 | Re-scellement TPM au premier démarrage et après mise à jour du shim | PRÉVU |
 | Politique PCR renforcée (pcrlock / UKI signé), TPM + PIN | PRÉVU |
 | Clés serveur et CA dans le TPM (politique §6) | PRÉVU (jalon PKI) |
-| Interface web déployée (Podman sans root, mTLS + Argon2id, 443 redirigé), `barbacane-registre`, `barbacane-audit`, clé d'audit, clé des mises à jour des bornes | FAIT (v2.0.1, banc QEMU) |
+| Interface web déployée (Podman sans root, mTLS + Argon2id, 443 sur l’interface d’administration), `barbacane-registre`, `barbacane-audit`, clé d'audit, clé des mises à jour des bornes | FAIT (v2.0.1, banc QEMU) |
 | Minuteries de scellement/export de l'audit, compte d'audit dédié, synchronisation LDAPS périodique | PRÉVU (v2.1.0) |
 | Sauvegarde quotidienne planifiée, vidage PostgreSQL | PRÉVU |
 | Récepteur GNSS/radio comme source d'heure | PRÉVU |

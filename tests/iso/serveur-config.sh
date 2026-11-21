@@ -69,7 +69,7 @@ fi
 [ -d "$W/racine/etat/registre" ] || echec "registre non créé"
 
 # 4. Interface web : configurer-serveur.sh écrit web.conf avec la fonction de web-conf.sh ; quadlet
-#    et pare-feu cohérents (adresse d'administration, port interne, redirection du port d'administration).
+#    et pare-feu cohérents (adresse et port d'administration, port interne du conteneur).
 grep -q '^\. /usr/share/barbacane-serveur/web-conf\.sh$' serveur/iso/configurer-serveur.sh \
     || echec "configurer-serveur.sh ne source pas web-conf.sh"
 # shellcheck disable=SC2016  # motif littéral
@@ -78,12 +78,11 @@ grep -q '^ecrire_conf_web "\$H/web/web.conf" "\$PORT_WEB"$' serveur/iso/configur
 QW=$D/barbacane-web.container
 for l in 'Volume=%h/pki:/pki:ro' 'Volume=%h/web:/web:ro' 'Volume=%h/etat:/etat:rw' \
     'Volume=/var/lib/barbacane-serveur/iso-bornes:/var/lib/barbacane-serveur/iso-bornes:ro' \
-    'PublishPort=@IP_ADMIN@:@PORT_WEB@:@PORT_WEB@' 'ReadOnly=true' 'DropCapability=all' 'NoNewPrivileges=true' 'Exec=/web/web.conf'; do
+    'PublishPort=@IP_ADMIN@:@PORT_ADMIN@:@PORT_WEB@' 'ReadOnly=true' 'DropCapability=all' 'NoNewPrivileges=true' 'Exec=/web/web.conf'; do
     grep -qxF "$l" "$QW" || echec "quadlet web : « $l » absent"
 done
-grep -q 'tcp dport @PORT_WEB@ ct original proto-dst @PORT_ADMIN@ ct state new accept' "$D/nftables.conf.modele" \
+grep -q 'iifname "@IF_ADMIN@" ip daddr @IP_ADMIN@ tcp dport @PORT_ADMIN@ ct state new accept' "$D/nftables.conf.modele" \
     || echec "nftables : interface web non ouverte"
-grep -q 'tcp dport @PORT_ADMIN@ redirect to :@PORT_WEB@' "$D/nftables.conf.modele" || echec "nftables : redirection du port d'administration absente"
 # shellcheck source=/dev/null
 . "$D/web-conf.sh"
 mkdir -p "$W/racine/web"

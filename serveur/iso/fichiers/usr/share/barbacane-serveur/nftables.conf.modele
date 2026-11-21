@@ -1,9 +1,7 @@
 #!/usr/sbin/nft -f
 # Serveur Barbacane : pare-feu en LISTE BLANCHE (docs/suite/serveur-iso.md §4).
 #   entrée : la passerelle (ports service et enrôlement tirés à l'installation, D4) sur l'interface « bornes » seulement,
-#            l'interface web (administration) sur l'interface « administration » seulement : le port
-#            d'administration est redirigé vers le port interne de barbacane-web (sans root, il ne
-#            peut pas écouter sous 1024) et seul le trafic ainsi redirigé est accepté ;
+#            l'interface web (administration) sur l'interface « administration » seulement ;
 #   sortie : réponses aux connexions établies seulement (le serveur n'initie rien) ;
 #   transit : jamais (aucun routage entre les deux réseaux).
 # Généré à l'installation par configurer-serveur.sh ; tout refus est journalisé (débit limité).
@@ -16,13 +14,8 @@ table inet barbacane {
         ct state invalid drop
         ct state established,related accept
         iifname "@IF_BORNES@" ip daddr @IP_BORNES@ tcp dport { @PORT@, @PORT_ENROLEMENT@ } ct state new accept
-        iifname "@IF_ADMIN@" ip daddr @IP_ADMIN@ tcp dport @PORT_WEB@ ct original proto-dst @PORT_ADMIN@ ct state new accept
+        iifname "@IF_ADMIN@" ip daddr @IP_ADMIN@ tcp dport @PORT_ADMIN@ ct state new accept
         limit rate 6/minute log prefix "barbacane-refus-entree " level warn
-    }
-
-    chain redirection {
-        type nat hook prerouting priority dstnat; policy accept;
-        iifname "@IF_ADMIN@" ip daddr @IP_ADMIN@ tcp dport @PORT_ADMIN@ redirect to :@PORT_WEB@
     }
 
     chain transit {

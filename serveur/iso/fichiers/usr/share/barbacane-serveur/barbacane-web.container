@@ -1,7 +1,7 @@
 # Serveur Barbacane : interface web d'administration (barbacane-web), conteneur Podman SANS ROOT
 # (D11) sous barbacane-svc, comme la passerelle. Écoute publiée sur l'adresse d'ADMINISTRATION
-# seulement ; un port d'administration < 1024 est redirigé par nftables vers ce port interne
-# (docs/suite/serveur-iso.md §6 : aucun droit sur les ports bas pour barbacane-svc).
+# seulement (pasta, sous barbacane-svc) ; port d'administration < 1024 : rendu accessible aux comptes
+# non privilégiés à partir de ce port seulement (sysctl, docs/suite/serveur-iso.md §6).
 [Unit]
 Description=Interface web d'administration Barbacane (Podman sans root)
 Requires=barbacane-images.service
@@ -28,8 +28,11 @@ Volume=%h/etat:/etat:rw
 # Espace de travail de l'outil de remaster (ISO de ~1 Go : sur disque, pas en mémoire).
 Volume=%h/tmp-web:/tmp:rw
 Volume=/var/lib/barbacane-serveur/iso-bornes:/var/lib/barbacane-serveur/iso-bornes:ro
-Network=pasta
-PublishPort=@IP_ADMIN@:@PORT_WEB@:@PORT_WEB@
+# pasta recopie dans le conteneur les adresses d'UNE interface de l'hôte (sans route par défaut,
+# il prendrait l'interface des bornes et les réponses aux administrateurs seraient perdues) :
+# interface d'administration imposée.
+Network=pasta:-i,@IF_ADMIN@
+PublishPort=@IP_ADMIN@:@PORT_ADMIN@:@PORT_WEB@
 PodmanArgs=--pids-limit=256 --memory=1g
 
 [Service]
