@@ -141,7 +141,7 @@ produire les captures : `apt install chromium-headless-shell` sur bu, puis `test
 | Utilisateurs et PIN (étape 4), clés USB (étape 5) : pages et synchronisation LDAPS | FAIT (`serveur-utilisateurs.md`) |
 | Double validation (§3.10), rapports, politique | PRÉVU |
 | Comparaison aux exports d'empreintes d'audit depuis la page | PRÉVU (`barbacane-audit verifier` en ligne de commande) |
-| Captures PNG Jour/Nuit | PRÉVU : script prêt (`tests/web/captures.sh`), navigateur absent de bu |
+| Captures PNG Jour/Nuit | FAIT : `tests/web/captures.sh`, captures dans `docs/preuves/serveur-web/captures/` (refaites le 21/11) |
 | Journal d'audit très long : la page et la vérification lisent tout le fichier | PRÉVU (lecture de la fin seulement pour la consultation) |
 
 ## 9. Dépendances
