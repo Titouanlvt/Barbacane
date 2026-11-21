@@ -219,7 +219,7 @@ avec la base : sans le poivre, aucun PIN ne se vérifie plus (réinitialisation 
 | Pseudonymisation dans l'audit, rôles (auditeur en clair), purge à 1 an | FAIT |
 | Synchronisation LDAPS (ldap3, CA épinglée, compte de service, lecture seule) | FAIT, prouvée contre un faux annuaire local ; **jamais contre un vrai AD** (aucun au lab) |
 | Pages web : utilisateurs, sites et modes, clés USB | FAIT |
-| Côté borne : écrans d'identifiant et de PIN, application de la politique USB | PRÉVU (chantier `borne/`, §4) |
+| Côté borne : écrans d'identifiant et de PIN, application de la politique USB | FAIT (branche `borne-utilisateurs`, `docs/suite/borne-en-ligne.md` « Utilisateurs et clés USB ») ; QEMU en ligne et captures : PRÉVU |
 | Rattachement des rapports à la session utilisateur | PRÉVU (étape 3, rapports) |
 | Synchronisation périodique (minuteur systemd) | PRÉVU (ISO serveur) |
 | Poivre, clé de pseudonymisation et mot de passe du compte de service dans le TPM | PRÉVU (conception §3.4) |

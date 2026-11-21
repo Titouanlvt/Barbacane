@@ -28,6 +28,7 @@ pub mod config;
 pub mod file;
 pub mod maj;
 pub mod transport;
+pub mod utilisateurs;
 
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -571,6 +572,10 @@ impl<C: Coffre> Agent<C> {
                     eprintln!("agent : mise à jour : {e:#}");
                     self.etat.message = format!("liaison établie ; mise à jour : {e:#}");
                 }
+                if let Err(e) = self.suivre_politique() {
+                    eprintln!("agent : politique du site : {e:#}");
+                    self.etat.message = format!("liaison établie ; politique du site : {e:#}");
+                }
                 if let Err(e) = self.transmettre_passages() {
                     eprintln!("agent : rapports de passage : {e:#}");
                     self.etat.message = format!("liaison établie ; rapports de passage : {e:#}");
@@ -727,6 +732,35 @@ impl<C: Coffre> Agent<C> {
                     m.version_maj
                 )
             }
+        }
+    }
+
+    /// Politique du site (mode utilisateur, clés USB) : téléchargée, validée, gardée si elle
+    /// n'est pas plus ancienne que l'enregistrée (`utilisateurs`).
+    fn suivre_politique(&mut self) -> Result<()> {
+        let (statut, reponse) = self
+            .client
+            .requete(
+                self.adresse_service(),
+                Some(self.identite()?),
+                "POST",
+                barbacane_protocole::utilisateurs::route::POLITIQUE,
+                &utilisateurs::demande_politique()?,
+            )
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        match interpreter::<barbacane_protocole::utilisateurs::PolitiqueSite>(
+            statut, 200, &reponse,
+        )? {
+            Reponse::Ok(p) => {
+                if utilisateurs::enregistrer_politique(&self.config.etat, &p)? {
+                    eprintln!(
+                        "agent : politique du site {} version {} appliquée",
+                        p.site, p.version_politique
+                    );
+                }
+                Ok(())
+            }
+            Reponse::Erreur(code) => bail!("politique refusée : {code}"),
         }
     }
 

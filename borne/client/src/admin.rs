@@ -11,7 +11,8 @@ pub fn request(socket: &str, req: Value) -> Result<Value, String> {
     let mut s = UnixStream::connect(socket)
         .map_err(|e| format!("service d'administration injoignable ({e})"))?;
     s.set_read_timeout(Some(Duration::from_secs(900))).ok();
-    let mut line = serde_json::to_vec(&req).map_err(|e| e.to_string())?;
+    // La requête peut porter un PIN d'utilisateur : tampon effacé après l'envoi.
+    let mut line = zeroize::Zeroizing::new(serde_json::to_vec(&req).map_err(|e| e.to_string())?);
     line.push(b'\n');
     s.write_all(&line).map_err(|e| e.to_string())?;
     let mut rep = String::new();

@@ -70,9 +70,16 @@ refusé définitivement est renommé `rejet-…` (jamais effacé).
   à ce jalon la borne continue de fonctionner comme la v1 quand le serveur est absent.
 - Politique, rapports, journaux, mises à jour : versions suivantes du protocole.
 
+## Utilisateurs et politique USB (21/11/2026)
+
+Après chaque battement : `/utilisateurs/politique` → `politique.json` (0600, version jamais
+décroissante). Fil séparé : socket `relais.sock` (0600) dans le dossier d'exécution ; admind y
+envoie une ligne JSON (`verification` ou `pin`), l'agent fait l'appel mTLS et rend la réponse
+revalidée. Le PIN n'est jamais écrit ni journalisé ; les tampons sont effacés après l'envoi.
+
 ## Tests
 
 `cargo test -p barbacane-agent` : unitaires + `tests/passerelle.rs` (vraie passerelle en cours de
 processus, PKI de TEST de `serveur/pki/racine-test.sh`) : enrôlement, validation, battement visible
 dans la supervision, renouvellement à mi-vie, mode dégradé puis reprise, révocation, CA non épinglée,
-jeton d'un autre port. Bout en bout avec les vrais binaires : `tests/suite/agent-bout-en-bout.sh`.
+jeton d'un autre port, politique du site, PIN faux → refus, verrouillage et borne bloquée, mode Aucun, clé non enrôlée refusée, PIN absent de tout fichier. Bout en bout avec les vrais binaires : `tests/suite/agent-bout-en-bout.sh`.

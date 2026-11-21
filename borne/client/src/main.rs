@@ -12,6 +12,7 @@ mod keyboard;
 mod mesure;
 mod optique;
 mod style;
+mod utilisateur;
 mod worker;
 
 fn main() -> iced::Result {

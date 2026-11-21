@@ -752,6 +752,7 @@ dependencies = [
  "tempfile",
  "toml",
  "ureq",
+ "zeroize",
  "zstd",
 ]
 
@@ -772,6 +773,7 @@ dependencies = [
  "tempfile",
  "toml",
  "x509-parser",
+ "zeroize",
 ]
 
 [[package]]
@@ -823,6 +825,7 @@ name = "barbacane-client"
 version = "0.1.0"
 dependencies = [
  "barbacane-parcours",
+ "barbacane-protocole",
  "env_logger",
  "iced",
  "log",

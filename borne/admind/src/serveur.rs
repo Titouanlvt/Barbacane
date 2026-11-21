@@ -36,6 +36,10 @@ use barbacane_protocole::maj::{ResultatMaj, TAILLE_BCU_MAX, TAILLE_SIGNATURE_MAX
 use barbacane_protocole::passage::{
     FICHIERS_PAR_PARTIE, FichierPassage, RapportPassage, Verdict, uuid_valide, verdict_global,
 };
+use barbacane_protocole::utilisateurs::{
+    DecisionUtilisateur, ModeUtilisateurs, PolitiqueSite, ReponseVerification,
+    normaliser_identifiant, pin_acceptable, pin_valide,
+};
 use barbacane_protocole::{VERSION, encoder, hex_valide};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -228,6 +232,7 @@ impl Liaison {
             "agent": etat,
             "rapports_en_file": self.en_file().ok(),
             "file_pleine": self.file_pleine(),
+            "politique": self.politique().and_then(|p| serde_json::to_value(p).ok()),
         })
     }
 
@@ -558,5 +563,76 @@ impl Liaison {
             Err(e) => log::warn!("mise à jour {version} (serveur) refusée : {e:#}"),
         }
         r
+    }
+
+    /// Politique du site enregistrée par l'agent (None : jamais reçue ; la borne fonctionne
+    /// alors comme la v1). Revalidée par le schéma strict.
+    pub fn politique(&self) -> Option<PolitiqueSite> {
+        let o = lire_borne(&self.etat.join("politique.json"), PETIT_MAX).ok()??;
+        barbacane_protocole::decoder::<PolitiqueSite>(&o).ok()
+    }
+
+    /// Vérification d'un utilisateur (`pin` en mode Authentification) ou changement de PIN
+    /// (`nouveau` présent), relayée par l'agent. Les PIN ne sont ni écrits ni journalisés ; le
+    /// tampon de la requête est effacé après l'envoi.
+    pub fn utilisateur(
+        &self,
+        saisie: &str,
+        pin: Option<&str>,
+        nouveau: Option<&str>,
+    ) -> Result<Value> {
+        let p = self
+            .politique()
+            .context("politique du site pas encore reçue du serveur")?;
+        if p.mode == ModeUtilisateurs::Aucun {
+            bail!("aucune identification sur ce site (mode Aucun)");
+        }
+        let identifiant = normaliser_identifiant(saisie).context("identifiant invalide")?;
+        let authentification = p.mode == ModeUtilisateurs::Authentification;
+        if authentification && !pin.is_some_and(pin_valide) {
+            bail!("PIN invalide : 6 à 12 chiffres");
+        }
+        if nouveau.is_some_and(|n| !pin_acceptable(n)) {
+            bail!("nouveau PIN refusé : 6 à 12 chiffres, ni suite ni chiffre répété");
+        }
+        let mut req = json!({"op": "verification", "identifiant": identifiant});
+        if authentification {
+            req["pin"] = json!(pin);
+        }
+        if let Some(n) = nouveau {
+            req["op"] = json!("pin");
+            req["nouveau_pin"] = json!(n);
+        }
+        let mut ligne = zeroize::Zeroizing::new(serde_json::to_vec(&req)?);
+        // La valeur JSON portait les PIN : effacée aussi.
+        for k in ["pin", "nouveau_pin"] {
+            if let Some(Value::String(s)) = req.get_mut(k) {
+                zeroize::Zeroize::zeroize(s);
+            }
+        }
+        ligne.push(b'\n');
+        let sock = self.execution.join("relais.sock");
+        let mut s = std::os::unix::net::UnixStream::connect(&sock)
+            .context("agent injoignable (relais des utilisateurs)")?;
+        s.set_read_timeout(Some(std::time::Duration::from_secs(30)))?;
+        s.set_write_timeout(Some(std::time::Duration::from_secs(10)))?;
+        s.write_all(&ligne)?;
+        drop(ligne);
+        let mut rep = Vec::new();
+        s.take(2048).read_to_end(&mut rep)?;
+        let v: Value = serde_json::from_slice(&rep).context("réponse de l'agent illisible")?;
+        if let Some(e) = v["erreur"].as_str() {
+            bail!("{e}");
+        }
+        let r: ReponseVerification =
+            serde_json::from_value(v).context("réponse de l'agent illisible")?;
+        let decision = match r.decision {
+            DecisionUtilisateur::Acceptee => "acceptee",
+            DecisionUtilisateur::Refusee => "refusee",
+            DecisionUtilisateur::PinAChanger => "pin_a_changer",
+        };
+        // Ni identifiant ni PIN dans le journal : la décision seule.
+        log::info!("vérification d'utilisateur : {decision}");
+        Ok(json!({"decision": decision, "attente_s": r.attente_s}))
     }
 }

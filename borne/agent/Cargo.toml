@@ -20,6 +20,8 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 toml = "1.2.0"
 x509-parser = "0.18.1"
+# Effacement des PIN relayés (déjà dans Cargo.lock : client).
+zeroize = "1.9.1"
 
 [dev-dependencies]
 # Passerelle de TEST en cours de processus (PKI générée par serveur/pki/racine-test.sh).
