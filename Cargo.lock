@@ -733,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-admind"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "argon2",
@@ -758,7 +758,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-agent"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "barbacane-passerelle",
@@ -778,7 +778,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-analyzer"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "axum",
@@ -809,7 +809,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-audit"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "data-encoding",
@@ -822,7 +822,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-client"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "barbacane-parcours",
  "barbacane-protocole",
@@ -839,7 +839,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-optique"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "env_logger",
@@ -855,7 +855,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-parcours"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "libc",
  "log",
@@ -872,7 +872,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-passerelle"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "argon2",
@@ -893,7 +893,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-protocole"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "data-encoding",
  "serde",
@@ -902,7 +902,7 @@ dependencies = [
 
 [[package]]
 name = "barbacane-web"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "argon2",
