@@ -118,3 +118,26 @@ Règle : une version = une seule famille de fonctions, dans l'ordre des dépenda
 - Politiques signées (clé du rôle dans TPM/HSM), vérifiées par l'agent avant application ; récupérées en mTLS (certificat machine) ; cache avec date d'expiration.
 - Paquets des agents signés hors ligne (Authenticode pour le .msi, dépôt APT signé GPG pour le .deb) ; déploiement par les outils du SI (GPO, Intune/SCCM, Ansible, dépôt APT interne).
 - Protection de l'agent : service non arrêtable par un utilisateur, alerte au serveur si l'agent disparaît ou ne remonte plus ; limite connue : un administrateur local du poste peut le contourner → droits d'administration locale encadrés par le SI.
+
+## Noms des services et systèmes (21/11, choix « mixte »)
+
+Règle : dans l'interface, les messages, les journaux et les commandes → toujours le NOM FONCTIONNEL. Dans la doc et les présentations → nom fonctionnel suivi d'un sous-titre thématique (château fort).
+
+| Nom fonctionnel | Sous-titre (doc) | Ce que c'est | Nom technique actuel |
+|---|---|---|---|
+| Borne autonome | — | borne hors ligne (v1) | profil hors ligne |
+| Borne connectée | — | borne en ligne, rattachée au serveur | profil en ligne + barbacane-agent |
+| Clé Barbacane | « Sauf-conduit » | clé de sortie (chiffrée en 3.0) | clé enrôlée |
+| Agent Poste | « Sentinelle » | agent .msi / .deb des postes (3.0) | — |
+| Serveur Barbacane | — | l'ensemble des services ci-dessous | serveur |
+| Console | « Chemin de ronde » | interface web d'administration | barbacane-web |
+| Liaison bornes | « Herse » | point d'entrée mTLS des bornes | barbacane-passerelle |
+| Parc | « Donjon » | registre des bornes, supervision, politiques, utilisateurs | registre, barbacane-registre |
+| Journal | « Chronique » | journal d'audit chaîné et signé | barbacane-audit |
+| Quarantaine | « Oubliette » | fichiers bloqués, chiffrés | quarantaine |
+| Dépôt | « Poterne » | envoi des fichiers sains vers le SI ou lien web (2.11) | — |
+| Contrôle postes | « Guet » | politiques des Agents Poste (3.0) | — |
+| Autorité | « Trésor » | racine PKI hors ligne et AC émettrice | PKI |
+| Atelier signature | « Sceau » | poste hors ligne qui signe mises à jour, modules et agents | clé de signature des mises à jour |
+
+À appliquer progressivement : libellés de l'interface et du manuel en 2.0.2 (sans renommer les binaires ni les chemins, pour ne rien casser) ; renommage technique éventuel des paquets/services à décider en 2.2.0 (installation modulaire).
