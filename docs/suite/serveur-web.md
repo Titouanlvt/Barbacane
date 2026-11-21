@@ -136,7 +136,7 @@ produire les captures : `apt install chromium-headless-shell` sur bu, puis `test
 |---|---|
 | Écoute d'administration TLS 1.3 mTLS + CRL, comptes Argon2id liés au certificat, rôles, sessions, CSRF, en-têtes | FAIT |
 | Tableau de bord, enrôlement (jeton, validation par empreinte retapée, refus), révocation, mises à jour (plancher, dépôt, diffusion, état), journal d'audit (consultation, vérification) | FAIT |
-| CA « administrateurs » dans `serveur/pki/racine-test.sh` et la cérémonie | PRÉVU (générée par les tests en attendant) |
+| CA « administrateurs » de TEST dans `serveur/pki/racine-test.sh` (`ca-administrateurs/cert.pem`, `crl.pem`, `administrateurs/admin-01.*`, `admin-revoque` avec `--cas-de-test`) | FAIT (test `pki_de_test_administrateurs`) ; cérémonie de production PRÉVUE |
 | Clé de l'interface et de la CA administrateurs dans le TPM, service systemd durci, pare-feu de l'interface d'administration | PRÉVU (ISO serveur) |
 | Utilisateurs et PIN (étape 4), clés USB (étape 5) : pages et synchronisation LDAPS | FAIT (`serveur-utilisateurs.md`) |
 | Double validation (§3.10), rapports, politique | PRÉVU |
