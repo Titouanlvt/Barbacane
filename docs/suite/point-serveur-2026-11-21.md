@@ -151,3 +151,27 @@ Barbacane pourra évoluer vers un SOC/SIEM : tout ce qui est construit doit le p
 - Données utiles à la détection déjà collectées : passages (empreintes, verdicts), enrôlements, révocations, connexions admin, refus mTLS, écarts d'horloge, file d'envoi pleine.
 - Sans fuite : jamais de nom de fichier, de PIN ni de contenu dans les événements (D2, RGPD) ; pseudonymes pour les utilisateurs.
 - À intégrer : contraintes dans E1 (conformité) et dans 2.6 (Syslog) ; un éventuel module « SOC » viendrait après 3.0.
+
+## Découpage refait — sécurité d'abord, fonctionnement fiable à chaque version (21/11, remplace les découpages précédents)
+
+Porte de sortie OBLIGATOIRE de chaque version : revue de sécurité (modèle de menaces mis à jour), CI locale et GitHub vertes, banc QEMU, non-régression borne 950, preuve labo Proxmox (serveur + borne), mise à jour depuis la version précédente sans perte de données, retour arrière testé, documentation et notes de version à jour. La version suivante ne commence qu'après publication.
+
+| Version | Nature | Contenu | Dépend de |
+|---|---|---|---|
+| 2.0.1 | Correctif | Fiabilité : détection USB (ppoll), ISO serveur complète, banc QEMU, chaîne du certificat HTTPS, numéro de version | — |
+| 2.0.2 | Correctif | Défauts du labo + noms fonctionnels/sous-titres dans la Console et le manuel | 2.0.1 |
+| E1 | Étude | Conformité ANSSI / RGPD-CNIL / II 901 / IGI 1300, découpage des rôles par niveau, schéma d'événements SOC ; en parallèle, terminée avant 2.3 | — |
+| 2.1.0 | Sécurité | Comptes administrateurs dans la Console, double validation généralisée, D13 | 2.0.x |
+| 2.2.0 | Sécurité | Journal : événements structurés + export Syslog (TLS ou clair) | 2.1.0 |
+| 2.3.0 | Sécurité | Autorité : secrets serveur dans le TPM, AC émettrice hors Liaison bornes, racine hors ligne, PKI de production + cérémonie | 2.1.0, E1 |
+| 2.4.0 | Sécurité | Chiffrement des bornes + clé de secours chiffrée, auditée, double validation | 2.3.0 |
+| 2.5.0 | Sécurité | PIN par administrateur sur la borne | 2.1.0 |
+| 2.6.0 | Fiabilité | Mises à jour signées du serveur et des services, sauvegarde avant, retour arrière | 2.3.0 |
+| 2.7.0 | Fondation | Installation modulaire + rôles sur machines séparées | 2.6.0 |
+| 2.8.0 | Fonction | Utilisateurs hybride (local + LDAP) | 2.1.0 |
+| 2.9.0 | Fonction | Liste blanche SHA-256 | 2.2.0 |
+| 2.10.0 | Fonction | Quarantaine envoyée par la borne | 2.4.0 |
+| 2.11.0 | Fonction | Dépôt vers le SI (relais sur sa propre machine) | 2.7.0, 2.8.0 |
+| 2.12.0 | Ergonomie | Listes déroulantes, statistiques, export CSV | 2.8.0 |
+| 3.0.0 | Étude puis produit | Contrôle postes (Agent Poste, Clés Barbacane chiffrées) | 2.3.0, 2.7.0 |
+| après 3.0 | Évolution | Module SOC / SIEM | 2.2.0 |
