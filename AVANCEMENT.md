@@ -29,6 +29,12 @@
   l'interface web du serveur. Reste sur la branche : captures Nuit, creusé, pastilles, herse,
   campagne ; OCR PPM corrigé à reporter dans `integration`.
 
+## Feuille de route (décidée le 21/11/2026)
+
+Une version = une seule famille de fonctions ; tests + non-régression 950 si la borne change + preuve labo Proxmox, publication, puis la suivante. Détail, décisions et architecture cible : [docs/suite/point-serveur-2026-11-21.md](docs/suite/point-serveur-2026-11-21.md).
+
+2.0.1 correctifs (USB ppoll, ISO serveur complète, banc QEMU, version, chaîne HTTPS) · 2.0.2 défauts du labo · E1 étude de conformité ANSSI/RGPD-CNIL/II 901/IGI 1300 · 2.1.0 comptes administrateurs + D13 · 2.2.0 PIN par administrateur sur la borne · 2.3.0 chiffrement des bornes · 2.4.0 utilisateurs hybride (local + LDAP) · 2.5.0 Syslog · 2.6.0 liste blanche SHA-256 · 2.7.0 quarantaine envoyée par la borne · 2.8.0 TPM serveur + PKI de production · 2.9.0 ergonomie et statistiques · 2.10.0 dépôt vers le SI · 3.0.0 device control (après étude).
+
 ## v2.1.0 à faire (reprend les [notes v2.0.0](docs/notes-de-version/v2.0.0.md))
 - **Priorité 1 — test ISO intermittent** : `installation-qemu` (`tests/iso/qemu.sh`) échoue de façon aléatoire sur GitHub (même commit 82910cd : 2 succès, 1 échec ; échecs ensuite sur des commits sans code). Cause probable : plantage intermittent de usbsas-server au démarrage (déjà noté en v1.0.0). Reproduire sur bu (boucle de N démarrages), corriger, puis CI ISO stable.
 - **PKI et passerelle** : clés dans le TPM, refus des certificats TEST en production, CRL de la
