@@ -132,6 +132,8 @@ impl Client {
         )
         .into_bytes();
         brut.extend_from_slice(corps);
+        // Le corps peut porter un PIN (relais utilisateurs) : tampon effacé après l'envoi.
+        let brut = zeroize::Zeroizing::new(brut);
         tls.write_all(&brut).map_err(classer)?;
         tls.flush().map_err(classer)?;
         let mut reponse = Vec::new();

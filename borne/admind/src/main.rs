@@ -443,10 +443,30 @@ impl Ctx {
         Ok(())
     }
 
-    fn handle(&self, req: Value) -> Result<Value> {
+    fn handle(&self, mut req: Value) -> Result<Value> {
         let op = req["op"].as_str().unwrap_or_default().to_string();
         if op == "status" {
             return Ok(self.status());
+        }
+        // Borne en ligne seulement : identification de l'utilisateur (sans PIN administrateur ;
+        // relayée par l'agent au serveur). Refusée sur une borne hors ligne. Les PIN sont
+        // retirés de la requête et effacés de la mémoire après usage.
+        if op == "utilisateur_verifier" || op == "utilisateur_pin" {
+            let secret = |r: &mut Value, k: &str| match r.get_mut(k).map(Value::take) {
+                Some(Value::String(s)) => Some(zeroize::Zeroizing::new(s)),
+                _ => None,
+            };
+            let pin = secret(&mut req, "pin");
+            let nouveau = secret(&mut req, "nouveau_pin");
+            let l = serveur::Liaison::exiger(self)?;
+            if op == "utilisateur_pin" && (pin.is_none() || nouveau.is_none()) {
+                bail!("PIN actuel et nouveau PIN exigés");
+            }
+            return l.utilisateur(
+                req["identifiant"].as_str().unwrap_or_default(),
+                pin.as_deref().map(String::as_str),
+                nouveau.as_deref().map(String::as_str),
+            );
         }
         // Fin de session utilisateur (interface revenue à l'accueil) : l'espace de travail chiffré
         // est recréé avec une clé neuve. Sans PIN : ne fait que jeter des données de session.
@@ -599,7 +619,10 @@ fn serve_conn(ctx: &Ctx, s: UnixStream) -> Result<()> {
     let mut line = String::new();
     // Requêtes bornées à 64 Kio.
     BufReader::new(std::io::Read::take(&s, 64 * 1024)).read_line(&mut line)?;
-    let rep = match serde_json::from_str::<Value>(&line) {
+    let parse = serde_json::from_str::<Value>(&line);
+    // La ligne peut porter un PIN : effacée dès l'analyse.
+    zeroize::Zeroize::zeroize(&mut line);
+    let rep = match parse {
         Ok(req) => ctx
             .handle(req)
             .unwrap_or_else(|e| json!({"error": format!("{e:#}")})),

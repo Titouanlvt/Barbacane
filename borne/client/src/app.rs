@@ -11,12 +11,14 @@ use crate::dessin;
 use crate::keyboard::{Input, Key};
 use crate::mesure::{self, Mesure};
 use crate::style;
+use crate::utilisateur::{self, Etape};
 use crate::worker::{self, Cmd, Ev};
 use barbacane_parcours::est_optique;
 use barbacane_parcours::{
     Analysis, Analyzer, Devices, Event, PasswordRequest,
     proto::common::{Status, UsbDevice},
 };
+use barbacane_protocole::utilisateurs as protocole_u;
 use iced::widget::{Column, Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Element, Length, Subscription, Task};
 use std::sync::Arc;
@@ -42,8 +44,14 @@ pub enum Screen {
     ConfirmBlanchir,
     Ecriture,
     Fin(u64),
-    Erreur { message: String, retry: bool },
+    Erreur {
+        message: String,
+        retry: bool,
+    },
     Admin,
+    /// Borne en ligne, site en mode Identification ou Authentification : saisie de
+    /// l'identifiant (et du PIN). Jamais atteint sans politique (borne hors ligne v1).
+    Utilisateur(Etape),
 }
 
 #[derive(Debug, Clone)]
@@ -79,6 +87,10 @@ pub enum Msg {
     Maintien(bool),
     /// Borne en ligne : rapport minimal de passage déposé par admind pour l'agent
     Passage(Result<serde_json::Value, String>),
+    /// Écran d'identification : valider l'étape, abandonner, réponse du serveur
+    UValider,
+    UAnnuler,
+    UReponse(Result<serde_json::Value, String>),
 }
 
 pub struct App {
@@ -128,6 +140,19 @@ pub struct App {
     /// Barre de progression : dernière valeur affichée (jamais en recul) et son heure
     barre_val: f32,
     barre_maj: std::time::Instant,
+    /// Borne en ligne : utilisateur reconnu pour ce passage (oublié au retour à l'accueil)
+    utilisateur_ok: bool,
+    /// Identifiant normalisé en cours de saisie
+    identifiant: String,
+    /// PIN saisi (gardé en mémoire seulement pour un changement de PIN ; effacé ensuite)
+    pin_saisi: Option<zeroize::Zeroizing<String>>,
+    nouveau_pin: Option<zeroize::Zeroizing<String>>,
+    /// Message de l'écran d'identification
+    msg_u: Option<String>,
+    /// Vérification en cours auprès du serveur
+    attente_u: bool,
+    /// Clé refusée par la politique du site : ignorée jusqu'à son retrait
+    cle_ecartee: Option<UsbDevice>,
 }
 
 pub fn run(cfg: Config) -> iced::Result {
@@ -194,6 +219,13 @@ impl App {
             maintien: None,
             barre_val: 0.0,
             barre_maj: std::time::Instant::now(),
+            utilisateur_ok: false,
+            identifiant: String::new(),
+            pin_saisi: None,
+            nouveau_pin: None,
+            msg_u: None,
+            attente_u: false,
+            cle_ecartee: None,
         };
         let t = app.refresh_etat();
         (app, t)
@@ -284,6 +316,11 @@ impl App {
     }
 
     fn is_enrolled(&self, d: &UsbDevice) -> bool {
+        // Borne en ligne : la politique du site s'ajoute (sortie vers une clé enrôlée
+        // seulement) ; sans politique (v1) elle accepte tout.
+        if !utilisateur::sortie_autorisee(self.etat.as_ref(), d) {
+            return false;
+        }
         match self.enrolled() {
             None => true,
             Some(list) => list.iter().any(|k| {
@@ -300,16 +337,27 @@ impl App {
 
     fn on_devices(&mut self, d: Devices) {
         self.devices = d;
-        let first_src = self.devices.sources().next().map(|(_, u)| u.clone());
+        // Clé refusée par la politique : oubliée dès qu'elle est retirée.
+        if let Some(c) = &self.cle_ecartee
+            && !self.devices.sources().any(|(_, u)| Self::same(u, c))
+        {
+            self.cle_ecartee = None;
+        }
+        let ecartee = self.cle_ecartee.clone();
+        let first_src = self
+            .devices
+            .sources()
+            .map(|(_, u)| u.clone())
+            .find(|u| ecartee.as_ref().is_none_or(|c| !Self::same(u, c)));
         match &self.screen {
             Screen::Connexion => self.screen = Screen::Accueil,
             Screen::Accueil => {
                 if let Some(s) = first_src {
                     self.src = Some(s);
-                    self.screen = Screen::Choix;
+                    self.entrer_source();
                 }
             }
-            Screen::Choix | Screen::Resume => {
+            Screen::Choix | Screen::Resume | Screen::Utilisateur(_) => {
                 // Disque optique : sa présence est suivie par on_optique (pas une clé USB).
                 let still = self.src.as_ref().is_some_and(|s| {
                     est_optique(s) || self.devices.sources().any(|(_, u)| Self::same(u, s))
@@ -369,10 +417,12 @@ impl App {
             // Un disque de données inséré est une source inconnue, comme une clé.
             Screen::Accueil if e.present && e.donnees && !occupe && !self.disque_ecarte => {
                 self.src = Some(barbacane_parcours::optique(&e.libelle));
-                self.screen = Screen::Choix;
+                self.entrer_source();
             }
             // Disque retiré avant le choix : retour à l'accueil
-            Screen::Choix if self.src.as_ref().is_some_and(est_optique) && retire => {
+            Screen::Choix | Screen::Utilisateur(_)
+                if self.src.as_ref().is_some_and(est_optique) && retire =>
+            {
                 self.optique = Some(e);
                 self.reset();
                 return;
@@ -401,6 +451,14 @@ impl App {
         }
         self.dst = None;
         self.dst_refused = None;
+        if utilisateur::sortie_restreinte(self.etat.as_ref()) {
+            self.dst_refused = Some(
+                "La politique du site n'autorise la sortie que vers une clé enrôlée : \
+                 la gravure sur disque n'est pas autorisée."
+                    .into(),
+            );
+            return;
+        }
         if self.enrolled().is_some() {
             self.dst_refused = Some(
                 "Le mode « clés enrôlées » est actif : seules les clés enrôlées sont acceptées en sortie, \
@@ -454,7 +512,181 @@ impl App {
         )
     }
 
+    /// Source détectée à l'accueil. Borne hors ligne (v1) : directement l'écran de choix.
+    /// Borne en ligne avec politique : clé refusée selon la politique, ou identification
+    /// demandée si le site l'exige.
+    fn entrer_source(&mut self) {
+        let Some(src) = self.src.clone() else { return };
+        if !utilisateur::entree_autorisee(self.etat.as_ref(), &src) {
+            log::warn!(
+                "support refusé en entrée par la politique du site (fabricant {:04x})",
+                src.vendorid
+            );
+            if est_optique(&src) {
+                self.disque_ecarte = true;
+            } else {
+                self.cle_ecartee = Some(src);
+            }
+            self.src = None;
+            self.screen = Screen::Erreur {
+                message: "Ce support n'est pas autorisé sur cette borne par la politique du site (clé non enrôlée). Retirez-le ; si besoin, prévenez votre administrateur.".into(),
+                retry: false,
+            };
+            return;
+        }
+        if utilisateur::identification(self.etat.as_ref()).is_some() && !self.utilisateur_ok {
+            self.aller_u(Etape::Identifiant, None);
+        } else {
+            self.screen = Screen::Choix;
+        }
+    }
+
+    /// Étape de l'écran d'identification (saisie vidée, message éventuel).
+    fn aller_u(&mut self, e: Etape, msg: Option<String>) {
+        self.input = match e {
+            Etape::Identifiant => Input {
+                visible: true,
+                ..Input::text(protocole_u::IDENTIFIANT_MAX)
+            },
+            _ => Input::digits(protocole_u::PIN_MAX),
+        };
+        self.msg_u = msg;
+        self.screen = Screen::Utilisateur(e);
+    }
+
+    fn oublier_pins(&mut self) {
+        self.pin_saisi = None;
+        self.nouveau_pin = None;
+    }
+
+    /// Envoi à admind (qui relaie à l'agent) ; le PIN ne quitte jamais la mémoire.
+    fn demander_u(&mut self, req: serde_json::Value) -> Task<Msg> {
+        self.attente_u = true;
+        self.msg_u = Some("Vérification auprès du serveur…".into());
+        Task::perform(
+            crate::admin::call(self.cfg.admin_socket.clone(), req),
+            Msg::UReponse,
+        )
+    }
+
+    fn valider_u(&mut self) -> Task<Msg> {
+        let Screen::Utilisateur(e) = self.screen else {
+            return Task::none();
+        };
+        let Some(mode) = utilisateur::identification(self.etat.as_ref()) else {
+            self.screen = Screen::Choix;
+            return Task::none();
+        };
+        if self.attente_u {
+            return Task::none();
+        }
+        let saisie = std::mem::take(&mut self.input.value);
+        match e {
+            Etape::Identifiant => match protocole_u::normaliser_identifiant(&saisie) {
+                None => self.aller_u(
+                    Etape::Identifiant,
+                    Some(
+                        "Identifiant invalide : lettres, chiffres, point, tiret ou souligné."
+                            .into(),
+                    ),
+                ),
+                Some(id) => {
+                    self.identifiant = id;
+                    if mode == protocole_u::ModeUtilisateurs::Authentification {
+                        self.aller_u(Etape::Pin, None);
+                    } else {
+                        let req = serde_json::json!({"op": "utilisateur_verifier", "identifiant": self.identifiant});
+                        return self.demander_u(req);
+                    }
+                }
+            },
+            Etape::Pin => {
+                if !protocole_u::pin_valide(&saisie) {
+                    self.aller_u(Etape::Pin, Some("Le PIN comporte 6 à 12 chiffres.".into()));
+                } else {
+                    let req = serde_json::json!({"op": "utilisateur_verifier", "identifiant": self.identifiant, "pin": saisie.as_str()});
+                    self.pin_saisi = Some(saisie);
+                    return self.demander_u(req);
+                }
+            }
+            Etape::NouveauPin => {
+                if !protocole_u::pin_acceptable(&saisie) {
+                    self.aller_u(
+                        Etape::NouveauPin,
+                        Some(
+                            "PIN refusé : 6 à 12 chiffres, ni suite (123456) ni chiffre répété."
+                                .into(),
+                        ),
+                    );
+                } else {
+                    self.nouveau_pin = Some(saisie);
+                    self.aller_u(Etape::Confirmation, None);
+                }
+            }
+            Etape::Confirmation => {
+                if self.nouveau_pin.as_deref().map(String::as_str) != Some(saisie.as_str()) {
+                    self.nouveau_pin = None;
+                    self.aller_u(
+                        Etape::NouveauPin,
+                        Some("Les deux saisies diffèrent : choisissez à nouveau votre PIN.".into()),
+                    );
+                } else if let (Some(a), Some(n)) = (&self.pin_saisi, &self.nouveau_pin) {
+                    let req = serde_json::json!({"op": "utilisateur_pin", "identifiant": self.identifiant, "pin": a.as_str(), "nouveau_pin": n.as_str()});
+                    return self.demander_u(req);
+                } else {
+                    self.aller_u(Etape::Identifiant, None);
+                }
+            }
+        }
+        Task::none()
+    }
+
+    fn reponse_u(&mut self, r: Result<serde_json::Value, String>) {
+        self.attente_u = false;
+        if !matches!(self.screen, Screen::Utilisateur(_)) {
+            self.oublier_pins();
+            return;
+        }
+        let mode = utilisateur::identification(self.etat.as_ref())
+            .unwrap_or(protocole_u::ModeUtilisateurs::Identification);
+        match r {
+            Err(e) => {
+                log::warn!("identification : {e}");
+                self.oublier_pins();
+                self.aller_u(
+                    Etape::Identifiant,
+                    Some(format!("Identification impossible ({e}). Réessayez ou prévenez votre administrateur.")),
+                );
+            }
+            Ok(v) => match v["decision"].as_str() {
+                Some("acceptee") => {
+                    self.oublier_pins();
+                    self.utilisateur_ok = true;
+                    self.msg_u = None;
+                    self.input = Input::text(128);
+                    self.screen = Screen::Choix;
+                }
+                Some("pin_a_changer") if self.pin_saisi.is_some() => {
+                    self.nouveau_pin = None;
+                    self.aller_u(
+                        Etape::NouveauPin,
+                        Some("PIN initial accepté : choisissez votre propre PIN.".into()),
+                    );
+                }
+                _ => {
+                    self.oublier_pins();
+                    let m = utilisateur::message_refus(mode, v["attente_s"].as_u64());
+                    self.aller_u(Etape::Identifiant, Some(m));
+                }
+            },
+        }
+    }
+
     fn reset(&mut self) {
+        self.utilisateur_ok = false;
+        self.oublier_pins();
+        self.identifiant.clear();
+        self.msg_u = None;
         // Seul le disque qui vient d'être traité est écarté : un disque déjà présent au
         // démarrage (ou inséré pendant une session clé) doit être proposé.
         if self.src.as_ref().is_some_and(est_optique)
@@ -590,6 +822,8 @@ impl App {
             }
             Msg::Ecrire => self.start_write(false),
             Msg::Blanchir => match self.screen {
+                // Blanchiment autorisé sur toute clé, même non enrôlée (décision du 21/11) :
+                // il n'écrit sur la clé source que ses propres fichiers sains.
                 Screen::Resume => {
                     self.screen = Screen::ConfirmBlanchir;
                     Task::none()
@@ -673,6 +907,15 @@ impl App {
                 self.refresh_etat()
             }
             Msg::Admin(am) => admin_ui::update(self, am),
+            Msg::UValider => self.valider_u(),
+            Msg::UAnnuler => {
+                self.reset();
+                Task::none()
+            }
+            Msg::UReponse(r) => {
+                self.reponse_u(r);
+                Task::none()
+            }
         }
     }
 
@@ -933,6 +1176,7 @@ impl App {
                 ])
             }
             Screen::Admin => admin_ui::view(self),
+            Screen::Utilisateur(e) => self.view_utilisateur(*e),
         };
         let page = column![
             self.view_header(),
@@ -1441,6 +1685,58 @@ impl App {
                 ..Default::default()
             })
             .into()
+    }
+
+    /// Identification (borne en ligne seulement) : mêmes composants que la saisie du PIN
+    /// administrateur (titre, champ en carte, clavier virtuel, message, Annuler / Valider).
+    fn view_utilisateur(&self, e: Etape) -> Element<'_, Msg> {
+        let auth = utilisateur::identification(self.etat.as_ref())
+            == Some(protocole_u::ModeUtilisateurs::Authentification);
+        let consigne = match e {
+            Etape::Identifiant if auth => "Saisissez votre identifiant, puis votre PIN.",
+            Etape::Identifiant => "Saisissez votre identifiant pour utiliser la borne.",
+            Etape::Pin => "Saisissez votre PIN (6 à 12 chiffres).",
+            Etape::NouveauPin => "Nouveau PIN : 6 à 12 chiffres, ni suite ni chiffre répété.",
+            Etape::Confirmation => "Confirmez votre nouveau PIN.",
+        };
+        let msg: Element<Msg> = match &self.msg_u {
+            Some(m) if self.attente_u => container(texte(m)).padding(12).style(style::carte).into(),
+            Some(m) => container(texte_c(m, style::c().menace))
+                .padding(12)
+                .style(style::alerte)
+                .into(),
+            None => Space::new().height(0).into(),
+        };
+        let mut c = column![titre("Identification"), texte(consigne)];
+        if e != Etape::Identifiant {
+            c = c.push(petit(&format!("Identifiant : {}", self.identifiant)));
+        }
+        c.push(
+            container(
+                text(self.input.shown())
+                    .size(30)
+                    .shaping(text::Shaping::Advanced),
+            )
+            .padding(8)
+            .width(Length::Fixed(if e == Etape::Identifiant {
+                700.0
+            } else {
+                360.0
+            }))
+            .style(style::carte),
+        )
+        .push(self.input.view(Msg::Key))
+        .push(msg)
+        .push(
+            row![
+                bouton("Annuler", Msg::UAnnuler, style::secondaire),
+                bouton("Valider", Msg::UValider, style::primaire),
+            ]
+            .spacing(30),
+        )
+        .spacing(12) // tient en 1280×768
+        .align_x(Alignment::Center)
+        .into()
     }
 
     fn view_password(&self, req: &PasswordRequest) -> Element<'_, Msg> {

@@ -579,6 +579,18 @@ fn hors_ligne_aucune_fonction_serveur() {
         .to_string();
         assert!(e.contains("hors ligne"), "{op} : {e}");
     }
+    // Identification des utilisateurs : refusée hors ligne, aucun fichier créé.
+    for op in ["utilisateur_verifier", "utilisateur_pin"] {
+        let e = req(
+            &c,
+            json!({"op": op, "identifiant": "j.dupont", "pin": "48291637", "nouveau_pin": "73928164"}),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(e.contains("hors ligne"), "{op} : {e}");
+    }
+    let st2 = req(&c, json!({"op": "status"})).unwrap();
+    assert!(st2.get("serveur").is_none() && st2.get("utilisateurs").is_none());
 }
 
 #[test]
@@ -891,4 +903,113 @@ fn passage_file_pleine_hors_service() {
     let e = req(&c, passage_op(autre)).unwrap_err().to_string();
     assert!(e.contains("hors service"), "{e}");
     assert_eq!(elements(&etat).len(), 1, "rien d'écrasé");
+}
+
+/// Faux relais de l'agent : renvoie `reponse` et garde la requête reçue.
+fn faux_relais(run: &Path, reponse: &'static str) -> std::thread::JoinHandle<String> {
+    let l = std::os::unix::net::UnixListener::bind(run.join("relais.sock")).unwrap();
+    std::thread::spawn(move || {
+        let (s, _) = l.accept().unwrap();
+        let mut ligne = String::new();
+        std::io::BufReader::new(&s).read_line(&mut ligne).unwrap();
+        (&s).write_all(reponse.as_bytes()).unwrap();
+        ligne
+    })
+}
+
+fn politique(etat: &Path, mode: &str) {
+    std::fs::write(
+        etat.join("politique.json"),
+        format!(
+            r#"{{"version":1,"site":"site-1","mode":"{mode}","version_politique":4,"entree_non_enrolees":"interdite","cles":[{{"fabricant":"0781","serie":"4C530001","entree":true,"sortie":true}}],"heure_serveur":1}}"#
+        ),
+    )
+    .unwrap();
+}
+
+#[test]
+fn utilisateurs_relayes_pin_jamais_ecrit() {
+    let t = tempfile::tempdir().unwrap();
+    let c = ctx(t.path());
+    let (etat, run) = en_ligne(&c, t.path());
+    let v = |r: Value| req(&c, r);
+    // Pas encore de politique : refus, statut sans politique.
+    assert!(v(json!({"op": "utilisateur_verifier", "identifiant": "a"})).is_err());
+    assert!(v(json!({"op": "status"})).unwrap()["serveur"]["politique"].is_null());
+    politique(&etat, "aucun");
+    let e = v(json!({"op": "utilisateur_verifier", "identifiant": "a"})).unwrap_err();
+    assert!(e.to_string().contains("mode Aucun"), "{e}");
+    politique(&etat, "authentification");
+    let st = v(json!({"op": "status"})).unwrap();
+    assert_eq!(st["serveur"]["politique"]["mode"], "authentification");
+    assert_eq!(st["serveur"]["politique"]["cles"][0]["serie"], "4C530001");
+    // Contrôles locaux avant tout envoi.
+    for (r, motif) in [
+        (
+            json!({"op": "utilisateur_verifier", "identifiant": "a b"}),
+            "identifiant",
+        ),
+        (
+            json!({"op": "utilisateur_verifier", "identifiant": "a"}),
+            "PIN invalide",
+        ),
+        (
+            json!({"op": "utilisateur_verifier", "identifiant": "a", "pin": "12"}),
+            "PIN invalide",
+        ),
+        (
+            json!({"op": "utilisateur_pin", "identifiant": "a", "pin": "48291637", "nouveau_pin": "123456"}),
+            "nouveau PIN",
+        ),
+    ] {
+        let e = v(r).unwrap_err().to_string();
+        assert!(e.contains(motif), "{e}");
+    }
+    // Agent arrêté : refus clair.
+    let e = v(json!({"op": "utilisateur_verifier", "identifiant": "a", "pin": "48291637"}));
+    assert!(e.unwrap_err().to_string().contains("agent injoignable"));
+    // Relais : identifiant normalisé, PIN transmis, réponse minimale relayée.
+    let h = faux_relais(
+        &run,
+        "{\"version\":1,\"decision\":\"refusee\",\"attente_s\":900,\"heure_serveur\":1}\n",
+    );
+    let r =
+        v(json!({"op": "utilisateur_verifier", "identifiant": " J.Dupont ", "pin": "48291637"}))
+            .unwrap();
+    assert_eq!(r, json!({"decision": "refusee", "attente_s": 900}));
+    let recu: Value = serde_json::from_str(&h.join().unwrap()).unwrap();
+    assert_eq!(
+        recu,
+        json!({"op": "verification", "identifiant": "j.dupont", "pin": "48291637"})
+    );
+    std::fs::remove_file(run.join("relais.sock")).unwrap();
+    let h = faux_relais(
+        &run,
+        "{\"version\":1,\"decision\":\"acceptee\",\"session\":\"00112233445566778899aabbccddeeff\",\"duree_session_s\":1800,\"heure_serveur\":1}\n",
+    );
+    let r = v(json!({"op": "utilisateur_pin", "identifiant": "j.dupont", "pin": "48291637", "nouveau_pin": "73928164"}))
+        .unwrap();
+    assert_eq!(r["decision"], "acceptee");
+    assert_eq!(
+        serde_json::from_str::<Value>(&h.join().unwrap()).unwrap()["op"],
+        "pin"
+    );
+    // Aucun PIN dans les fichiers d'admind ni de l'agent.
+    fn parcourir(d: &Path, motifs: &[&str]) {
+        for e in std::fs::read_dir(d).unwrap().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                parcourir(&p, motifs);
+            } else if let Ok(o) = std::fs::read(&p) {
+                for m in motifs {
+                    assert!(
+                        !String::from_utf8_lossy(&o).contains(m),
+                        "{m} dans {}",
+                        p.display()
+                    );
+                }
+            }
+        }
+    }
+    parcourir(t.path(), &["48291637", "73928164"]);
 }

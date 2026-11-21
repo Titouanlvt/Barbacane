@@ -23,6 +23,18 @@ fn main() -> Result<()> {
         "agent : serveur {} (enrôlement {}, service {}), CA serveur épinglée {}",
         config.adresse, config.port_enrolement, config.port_service, config.empreinte_ca_serveur
     );
+    // Relais des vérifications d'utilisateurs (admind → serveur), sur son propre fil : un
+    // échec de la socket n'arrête pas l'agent (la borne fonctionne alors comme la v1).
+    let relais = barbacane_agent::utilisateurs::Relais::nouveau(
+        &config,
+        CoffreFichier::nouveau(&config.etat),
+    )?;
+    let execution = config.execution.clone();
+    std::thread::spawn(move || {
+        if let Err(e) = relais.servir(&execution) {
+            eprintln!("agent : relais utilisateurs indisponible : {e:#}");
+        }
+    });
     let mut agent = Agent::nouveau(config, coffre)?;
     loop {
         let attente = agent.cycle();

@@ -106,6 +106,24 @@ ne le retire qu'après `200`. File pleine (`file_max`) → la borne refuse toute
 (« Borne hors service », écran d'erreur existant de la charte v1). Rien de tout cela sans
 `/etc/barbacane/agent.toml`.
 
+## Utilisateurs et clés USB (21/11/2026, `serveur-utilisateurs.md` §4)
+
+| Élément | Où | État |
+|---|---|---|
+| Politique du site téléchargée après chaque battement, version jamais décroissante, gardée dans `<etat agent>/politique.json` (0600, survit au redémarrage) | agent `utilisateurs.rs` | FAIT |
+| Relais admind → agent → serveur sur `/run/barbacane-agent/relais.sock` (0600 : agent et root seulement) pour `/utilisateurs/verification` et `/utilisateurs/pin` | agent, admind ops `utilisateur_verifier`, `utilisateur_pin` (sans PIN administrateur) | FAIT |
+| PIN : en mémoire seulement (tampons effacés par `zeroize` dans client, admind, agent), jamais écrit ni journalisé ; journal d'admind : la décision seule | — | FAIT (tests : aucun fichier ne contient le PIN) |
+| Écran « Identification » (charte v1 : mêmes titre, champ en carte, clavier virtuel, message d'alerte, boutons Annuler / Valider que le PIN administrateur) : identifiant, PIN, PIN initial → nouveau PIN saisi deux fois (`pin_acceptable`) ; « Identifiant ou PIN refusé. » ; « Borne bloquée … réessayez dans N min. » ; serveur injoignable → identification impossible | client `utilisateur.rs`, `app.rs` | FAIT |
+| Mode Aucun : aucun écran, aucun appel | client, admind | FAIT |
+| Clé source refusée par la politique (non enrôlée, entrée interdite) : écran d'erreur existant, journalisé, clé ignorée jusqu'à son retrait ; sortie de fichiers (copie) seulement vers une clé enrôlée `sortie` dès qu'une politique existe ; gravure alors refusée ; blanchiment autorisé sur toute clé (n'écrit aucune donnée sortante, décision du 21/11) | client | FAIT |
+| Session utilisateur jointe aux rapports de passage | — | PRÉVU (étape 3) |
+| Rejeu QEMU en ligne, captures des nouveaux écrans | — | PRÉVU |
+
+**Hors ligne (sans `agent.toml`) : rien ne change** — admind refuse les ops `utilisateur_*`, l'état
+n'a pas de bloc `serveur`, le client ne voit aucune politique et suit exactement le parcours v1
+(tests `hors_ligne_aucune_fonction_serveur`, `hors_ligne_comportement_v1`). En ligne sans politique
+reçue : comportement v1 aussi.
+
 ## Reste à faire
 
 - Clé de la borne dans le **TPM** (D9) : trait `Coffre` prêt, implémentation fichier au lab.

@@ -7,6 +7,8 @@ description = "Barbacane : interface, analyseur et administration de la borne"
 
 [dependencies]
 barbacane-parcours = { path = "../parcours" }
+# Borne en ligne : politique du site et contrôles de forme (même code que le serveur).
+barbacane-protocole = { path = "../../serveur/protocole" }
 usbsas-comm = { path = "../../noyau/usbsas-comm" }
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "thread-pool", "advanced", "svg", "smol", "wayland"] }
 serde = { version = "1.0.229", features = ["derive"] }

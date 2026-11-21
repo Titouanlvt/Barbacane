@@ -510,3 +510,164 @@ fn file_pleine_borne_hors_service() {
             .unwrap()
     );
 }
+
+// ───────────────────── Utilisateurs et clés USB (serveur-utilisateurs.md §4) ─────────────────
+
+use barbacane_agent::utilisateurs::{POLITIQUE, Relais, politique_enregistree};
+use barbacane_passerelle::utilisateurs::Utilisateurs;
+use barbacane_protocole::utilisateurs::{
+    DecisionUtilisateur, EntreeNonEnrolees, ModeUtilisateurs, ReponseVerification, Sens,
+};
+
+fn relais(a: &Agent<CoffreFichier>) -> Relais<CoffreFichier> {
+    Relais::nouveau(&a.config, CoffreFichier::nouveau(&a.config.etat)).unwrap()
+}
+
+fn relayer(r: &Relais<CoffreFichier>, req: serde_json::Value) -> ReponseVerification {
+    let o = r.traiter(&serde_json::to_vec(&req).unwrap());
+    serde_json::from_slice(&o).unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&o)))
+}
+
+/// Aucun fichier sous `dossier` ne contient `motif`.
+fn absent_partout(dossier: &Path, motif: &str) {
+    for e in std::fs::read_dir(dossier).unwrap().flatten() {
+        let p = e.path();
+        let m = std::fs::symlink_metadata(&p).unwrap();
+        if m.is_dir() {
+            absent_partout(&p, motif);
+        } else if m.is_file() {
+            let o = std::fs::read(&p).unwrap();
+            assert!(
+                !o.windows(motif.len()).any(|w| w == motif.as_bytes()),
+                "{motif} trouvé dans {}",
+                p.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn politique_et_mode_aucun() {
+    let b = banc();
+    let mut a = agent(&b);
+    enroler(&b, &mut a, maintenant());
+    a.cycle();
+    assert_eq!(a.etat.mode, Mode::Connectee, "{}", a.etat.message);
+    let p = politique_enregistree(&a.config.etat).expect("politique téléchargée");
+    assert_eq!(p.mode, ModeUtilisateurs::Aucun, "défaut D13");
+    // Mode Aucun : toute vérification est refusée par le serveur.
+    let r = relayer(
+        &relais(&a),
+        serde_json::json!({"op":"verification","identifiant":"x"}),
+    );
+    assert_eq!(r.decision, DecisionUtilisateur::Refusee);
+
+    // Clé non enrôlée refusée selon la politique ; sortie vers la clé enrôlée seulement.
+    let u = Utilisateurs::ouvrir(&b.admin.stockage).unwrap();
+    let t = maintenant();
+    u.definir_entree("site-1", EntreeNonEnrolees::Interdite, "web:alice", t)
+        .unwrap();
+    u.enroler_cle(
+        "0781",
+        "4C530001",
+        "SOC",
+        Some("site-1"),
+        true,
+        true,
+        "web:alice",
+        t,
+    )
+    .unwrap();
+    a.cycle();
+    let p2 = politique_enregistree(&a.config.etat).unwrap();
+    assert!(p2.version_politique > p.version_politique);
+    assert!(!p2.autorise("1234", "INCONNUE", Sens::Entree));
+    assert!(!p2.autorise("1234", "INCONNUE", Sens::Sortie));
+    assert!(p2.autorise("0781", "4c530001", Sens::Entree));
+    assert!(p2.autorise("0781", "4c530001", Sens::Sortie));
+    // Serveur injoignable ensuite : la dernière politique reste.
+    assert!(a.config.etat.join(POLITIQUE).exists());
+}
+
+#[test]
+fn pin_faux_refuse_verrouillage_pin_jamais_ecrit() {
+    let b = banc();
+    let mut a = agent(&b);
+    enroler(&b, &mut a, maintenant());
+    a.cycle();
+    let u = Utilisateurs::ouvrir(&b.admin.stockage).unwrap();
+    let t = maintenant();
+    u.importer(&["j.dupont".into()], "annuaire", "web:alice", t)
+        .unwrap();
+    u.definir_mode(
+        "site-1",
+        ModeUtilisateurs::Authentification,
+        false,
+        "web:alice",
+        t,
+    )
+    .unwrap();
+    a.cycle();
+    assert_eq!(
+        politique_enregistree(&a.config.etat).unwrap().mode,
+        ModeUtilisateurs::Authentification
+    );
+    let pin = u.reinitialiser_pin("j.dupont", "web:alice", t).unwrap();
+    let r = relais(&a);
+    let v = |pin: &str| {
+        relayer(
+            &r,
+            serde_json::json!({"op":"verification","identifiant":"j.dupont","pin":pin}),
+        )
+    };
+    assert_eq!(v(&pin).decision, DecisionUtilisateur::PinAChanger);
+    let nouveau = "48291637";
+    let c = relayer(
+        &r,
+        serde_json::json!({"op":"pin","identifiant":"j.dupont","pin":pin,"nouveau_pin":nouveau}),
+    );
+    assert_eq!(c.decision, DecisionUtilisateur::Acceptee);
+    let ok = v(nouveau);
+    assert_eq!(ok.decision, DecisionUtilisateur::Acceptee);
+    assert!(ok.session.is_some());
+    // PIN faux → refus ; 5 échecs → compte verrouillé (bon PIN refusé), borne bloquée.
+    for _ in 0..5 {
+        assert_eq!(v("11223344").decision, DecisionUtilisateur::Refusee);
+    }
+    let bloque = v(nouveau);
+    assert_eq!(bloque.decision, DecisionUtilisateur::Refusee);
+    assert!(
+        bloque.attente_s.is_some_and(|s| s > 0),
+        "borne bloquée annoncée"
+    );
+    // Requête mal formée : refus local, rien n'est envoyé.
+    let o = r.traiter(br#"{"op":"verification","identifiant":"j.dupont","pin":"12"}"#);
+    assert!(String::from_utf8_lossy(&o).contains("erreur"));
+    // Par la vraie socket aussi.
+    let exec = a.config.execution.clone();
+    let r2 = relais(&a);
+    std::thread::spawn(move || r2.servir(&exec));
+    let sock = a
+        .config
+        .execution
+        .join(barbacane_agent::utilisateurs::RELAIS);
+    for _ in 0..50 {
+        if sock.exists() {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    use std::io::{BufRead, Write};
+    let mut s = std::os::unix::net::UnixStream::connect(&sock).unwrap();
+    s.write_all(b"{\"op\":\"verification\",\"identifiant\":\"j.dupont\",\"pin\":\"11223344\"}\n")
+        .unwrap();
+    let mut l = String::new();
+    std::io::BufReader::new(s).read_line(&mut l).unwrap();
+    assert!(l.contains("\"refusee\""), "{l}");
+    let m = std::fs::metadata(&sock).unwrap().permissions().mode();
+    assert_eq!(m & 0o777, 0o600, "socket réservée à l'agent et à root");
+    // Aucun PIN dans aucun fichier (agent, registre, audit).
+    for p in [pin.as_str(), nouveau, "11223344"] {
+        absent_partout(b.dossier.path(), p);
+    }
+}
