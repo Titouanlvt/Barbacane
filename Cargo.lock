@@ -4651,9 +4651,21 @@ dependencies = [
 
 [[package]]
 name = "nix"
-version = "0.31.3"
+version = "0.31.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
+checksum = "2bc81ce8148d3b4f3274da811f11cdd824ae661ee4ef732cdb229825cf5be7f7"
+dependencies = [
+ "bitflags 2.13.2",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
+]
+
+[[package]]
+name = "nix"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77730ed34f01f4990cb2ea67fec715ecebc6fab9a6396cf83c5529b13f581bdc"
 dependencies = [
  "bitflags 2.13.2",
  "cfg-if",
@@ -7851,7 +7863,7 @@ version = "0.2.0"
 dependencies = [
  "libc",
  "log",
- "nix 0.31.3",
+ "nix 0.32.0",
  "thiserror 2.0.21",
  "usbsas-comm",
  "usbsas-utils",
@@ -7933,7 +7945,7 @@ dependencies = [
  "libc",
  "log",
  "mio",
- "nix 0.31.3",
+ "nix 0.32.0",
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
@@ -7976,7 +7988,7 @@ dependencies = [
  "flate2",
  "hex-literal",
  "log",
- "nix 0.31.3",
+ "nix 0.32.0",
  "reqwest",
  "serde",
  "serde_json",
@@ -9563,7 +9575,7 @@ dependencies = [
  "getrandom 0.4.3",
  "indexmap",
  "memchr",
- "nix 0.31.3",
+ "nix 0.31.4",
  "typed-path",
  "windows-sys 0.61.2",
  "zopfli",
