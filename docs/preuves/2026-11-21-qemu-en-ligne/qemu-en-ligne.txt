@@ -1,0 +1,86 @@
+ISO CODE 0
+BUILD CODE 0
+paquets installés par Barbacane : 273
+OK : ISO en ligne avec l'agent durci ; rien en entrée ; sortie vers 10.0.2.2:{43118,43117} seulement (agent)
+== installation (sans carte réseau)
+== passerelle de test, jeton déposé sur le disque, sonde (test uniquement)
+== premier démarrage (réseau QEMU user, DHCP)
+demande  55f64d06455abfbcfac2f205cc2e7188
+  site       site-1
+  déposée    2026-11-21 04:58:10 UTC
+  logiciel   0.1.0
+  empreinte  104f ccd8 504c 19dd 09f6 c6ca d738 76c8 16df 51fd ea56 1171 3064 5458 3fcd a796
+Comparer l'empreinte à celle affichée par la borne AVANT de valider.
+Demande validée : borne 1b4d7c86-1307-46c5-b62c-7bf855317e98 (certificat de 90 jours émis).
+Heure du serveur : 2026-11-21 04:58:42 UTC
+1b4d7c86-1307-46c5-b62c-7bf855317e98  borne-qemu   site-1   active    version=0.1.0 état=EnService vue=2026-11-21 04:58:40 UTC écart=-1s expire=2027-02-19 04:58:12 UTC
+OK : battement de la borne visible dans la supervision
+{"borne":"1b4d7c86-1307-46c5-b62c-7bf855317e98","id":"2ea4a885-208e-48f0-ba01-d10e55de51a9","partie":1,"parties":1,"verdict":"menace","support":"2a3581fc80faff932fca8d2b83370c9c1023e102483b3eb425c29613199c59d8","horodatage":1795237129,"recu_le":1795237180,"fichiers":2,"menaces":1,"refuses":0}
+OK : rapport de passage 2ea4a885-208e-48f0-ba01-d10e55de51a9 reçu par le serveur
+OK : aucun nom de fichier ni nom de menace côté serveur
+== inspection du disque installé
+Sat Nov 21 05:00:10 AM UTC 2026
+active
+active
+active
+lo               UNKNOWN        127.0.0.1/8 
+ens3             UP             10.0.2.15/24 metric 1024 
+table inet barbacane {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ip saddr 10.0.2.2 tcp sport { 43117, 43118 } ct state established accept
+		udp sport 67 udp dport 68 ct state established accept
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+	}
+
+	chain output {
+		type filter hook output priority filter; policy drop;
+		oif "lo" accept
+		ip daddr 10.0.2.2 tcp dport { 43117, 43118 } meta skuid 106 ct state { established, new } accept
+		udp sport 68 udp dport 67 meta skuid 998 accept
+	}
+}
+State Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
+{
+  "mode": "connectee",
+  "empreinte": null,
+  "derniere_liaison": 1795237179,
+  "ecart_horloge_s": -1,
+  "horloge_derivee": false,
+  "certificat_expire_le": 1803013092,
+  "rapports_en_attente": 0,
+  "file_pleine": false,
+  "message": "liaison avec le serveur établie",
+  "mise_a_jour": null
+}total 8
+-rw------- 1 barbacane-agent barbacane-agent 2010 Nov 21 05:58 chaine.pem
+-rw------- 1 barbacane-agent barbacane-agent  241 Nov 21 05:58 cle.pem
+IPAddressAllow=10.0.2.2/32
+IPAddressDeny=0.0.0.0/0 ::/0
+CapabilityBoundingSet=
+User=barbacane-agent
+SORTIE root vers 10.0.2.2/22 : bloquée
+SORTIE root vers 10.0.2.2/43117 : bloquée
+SORTIE root vers 10.0.2.3/53 : bloquée
+Nov 21 05:58:09 barbacane systemd[1]: Started barbacane-agent.service - Barbacane : agent de la borne en ligne (seul accès réseau, vers le seul serveur).
+Nov 21 05:58:09 barbacane barbacane-agent[671]: agent : serveur 10.0.2.2 (enrôlement 43118, service 43117), CA serveur épinglée 2a20598a04fc3b0f932b928383f727f82aa35be70875911c83818a30980ad4f3
+Nov 21 05:58:09 barbacane barbacane-agent[671]: agent : demande déposée ; empreinte à comparer par l'administrateur : 104fccd8504c19dd09f6c6cad73876c816df51fdea561171306454583fcda796
+Nov 21 05:58:39 barbacane barbacane-agent[671]: agent : certificat de la borne installé
+Nov 21 05:59:39 barbacane barbacane-agent[671]: agent : 1 rapport(s) de passage transmis
+{"ok":true,"parties":1}
+total 12
+-rw------- 1 barbacane-agent barbacane-agent 2010 Nov 21 05:58 chaine.pem
+-rw------- 1 barbacane-agent barbacane-agent  241 Nov 21 05:58 cle.pem
+-rw------- 1 barbacane-agent root             428 Nov 21 05:58 passage-00000000001795237129-2ea4a885-208e-48f0-ba01-d10e55de51a9-0001.json
+OK : agent connecté (etat.json)
+OK : sortie root vers 10.0.2.2/22 bloquée
+OK : sortie root vers 10.0.2.2/43117 bloquée
+OK : sortie root vers 10.0.2.3/53 bloquée
+OK : service restreint à 10.0.2.2/32
+OK : clé de la borne 0600
+OK : interface démarrée (1)
+QEMU FIN 0
