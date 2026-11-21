@@ -57,7 +57,8 @@ pub fn entree_autorisee(etat: Option<&Value>, d: &UsbDevice) -> bool {
     autorise(etat, d, Sens::Entree)
 }
 
-/// Écriture (copie, gravure, blanchiment) autorisée sur ce support (toujours vrai en v1).
+/// Sortie de fichiers (copie, gravure) autorisée vers ce support (toujours vrai en v1).
+/// Le blanchiment n'est pas concerné (décision du 21/11).
 pub fn sortie_autorisee(etat: Option<&Value>, d: &UsbDevice) -> bool {
     autorise(etat, d, Sens::Sortie)
 }

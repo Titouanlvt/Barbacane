@@ -115,7 +115,7 @@ ne le retire qu'après `200`. File pleine (`file_max`) → la borne refuse toute
 | PIN : en mémoire seulement (tampons effacés par `zeroize` dans client, admind, agent), jamais écrit ni journalisé ; journal d'admind : la décision seule | — | FAIT (tests : aucun fichier ne contient le PIN) |
 | Écran « Identification » (charte v1 : mêmes titre, champ en carte, clavier virtuel, message d'alerte, boutons Annuler / Valider que le PIN administrateur) : identifiant, PIN, PIN initial → nouveau PIN saisi deux fois (`pin_acceptable`) ; « Identifiant ou PIN refusé. » ; « Borne bloquée … réessayez dans N min. » ; serveur injoignable → identification impossible | client `utilisateur.rs`, `app.rs` | FAIT |
 | Mode Aucun : aucun écran, aucun appel | client, admind | FAIT |
-| Clé source refusée par la politique (non enrôlée, entrée interdite) : écran d'erreur existant, journalisé, clé ignorée jusqu'à son retrait ; sortie (copie, blanchiment) seulement vers une clé enrôlée `sortie` dès qu'une politique existe ; gravure alors refusée | client | FAIT |
+| Clé source refusée par la politique (non enrôlée, entrée interdite) : écran d'erreur existant, journalisé, clé ignorée jusqu'à son retrait ; sortie de fichiers (copie) seulement vers une clé enrôlée `sortie` dès qu'une politique existe ; gravure alors refusée ; blanchiment autorisé sur toute clé (n'écrit aucune donnée sortante, décision du 21/11) | client | FAIT |
 | Session utilisateur jointe aux rapports de passage | — | PRÉVU (étape 3) |
 | Rejeu QEMU en ligne, captures des nouveaux écrans | — | PRÉVU |
 

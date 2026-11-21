@@ -33,4 +33,5 @@ non à l'installation. Discrétion conservée (port non standard, propre au site
 
 - **D4 (écart validé)** : le port de la passerelle est fixé à la construction de l'ISO serveur (`--port` obligatoire avec les ISO de bornes embarquées), plus tiré à l'installation.
 - **Annuaire LDAPS** : TLS 1.3 par défaut ; TLS 1.2 accepté **en option**, désactivée par défaut, suites ECDHE-AES-GCM seulement, activation auditée.
+- **Blanchiment et politique USB** : le blanchiment reste autorisé sur toute clé, même non enrôlée et même avec une politique de site (il n'écrit aucune donnée sortante) ; seule la sortie de fichiers (copie, gravure) exige une clé enrôlée pour la sortie.
 - **Dossier d'homologation** : pas installé par l'ISO serveur (la quarantaine reste donc inactivable sur un serveur installé tant que ce choix n'est pas revu).

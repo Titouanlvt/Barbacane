@@ -822,20 +822,8 @@ impl App {
             }
             Msg::Ecrire => self.start_write(false),
             Msg::Blanchir => match self.screen {
-                // Borne en ligne avec politique : écrire sur la clé source exige qu'elle soit
-                // enrôlée pour la sortie (toujours vrai en v1).
-                Screen::Resume | Screen::ConfirmBlanchir
-                    if self
-                        .src
-                        .as_ref()
-                        .is_some_and(|s| !utilisateur::sortie_autorisee(self.etat.as_ref(), s)) =>
-                {
-                    self.screen = Screen::Erreur {
-                        message: "La politique du site n'autorise l'écriture que sur une clé enrôlée pour la sortie : ce support ne peut pas être blanchi ici.".into(),
-                        retry: false,
-                    };
-                    Task::none()
-                }
+                // Blanchiment autorisé sur toute clé, même non enrôlée (décision du 21/11) :
+                // il n'écrit sur la clé source que ses propres fichiers sains.
                 Screen::Resume => {
                     self.screen = Screen::ConfirmBlanchir;
                     Task::none()
