@@ -66,6 +66,9 @@ pub struct AdminUi {
     input: Input,
     first_pin: Option<zeroize::Zeroizing<String>>,
     message: Option<(bool, String)>,
+    /// Texte de l'accusé « Jeton enregistré… » : retiré dès que l'agent a quitté l'état
+    /// « non enrôlée » (défaut du labo 21/11 : il restait affiché sur la borne connectée).
+    message_jeton: Option<String>,
     limits: Value,
     busy: bool,
 }
@@ -79,8 +82,20 @@ impl AdminUi {
             input: Input::digits(12),
             first_pin: None,
             message: None,
+            message_jeton: None,
             limits: json!({}),
             busy: false,
+        }
+    }
+
+    /// Nouvel état d'admind : l'accusé du jeton devient périmé dès que l'enrôlement avance.
+    pub fn apres_etat(&mut self, etat: &Value) {
+        let mode = etat["serveur"]["agent"]["mode"].as_str();
+        if self.message_jeton.is_some() && mode.is_some_and(|m| m != "non_enrolee") {
+            let j = self.message_jeton.take();
+            if self.message.as_ref().map(|(_, t)| t) == j.as_ref() {
+                self.message = None;
+            }
         }
     }
 
@@ -200,6 +215,8 @@ pub fn update(app: &mut App, m: AdminMsg) -> Task<Msg> {
                         app.admin.page = Page::Menu;
                     }
                     if tag == "serveur_jeton" {
+                        app.admin.message_jeton =
+                            app.admin.message.as_ref().map(|(_, t)| t.clone());
                         app.admin.input = Input::digits(12);
                         app.admin.page = Page::Serveur;
                     }
@@ -820,6 +837,28 @@ mod tests {
             mention_station(&json!({"serveur": {"agent": {"mode": "connectee"}}})),
             "station blanche en ligne"
         );
+    }
+
+    #[test]
+    fn accuse_du_jeton_retire_apres_enrolement() {
+        let mut a = AdminUi::new(String::new());
+        let accuse = "Jeton enregistré : la demande d'enrôlement va être envoyée au serveur.";
+        a.message = Some((true, accuse.into()));
+        a.message_jeton = Some(accuse.into());
+        let etat = |m: &str| json!({"serveur": {"agent": {"mode": m}}});
+        a.apres_etat(&etat("non_enrolee"));
+        assert!(
+            a.message.is_some(),
+            "demande pas encore déposée : l'accusé reste"
+        );
+        a.apres_etat(&etat("connectee"));
+        assert!(a.message.is_none(), "borne connectée : l'accusé disparaît");
+        assert!(a.message_jeton.is_none());
+        // Un autre message (affiché après l'accusé) n'est jamais effacé.
+        a.message = Some((false, "autre".into()));
+        a.message_jeton = Some(accuse.into());
+        a.apres_etat(&etat("attente_validation"));
+        assert_eq!(a.message.as_ref().map(|(_, t)| t.as_str()), Some("autre"));
     }
 
     #[test]
