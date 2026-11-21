@@ -1,3 +1,5 @@
+> **Historique** : copie du README du dépôt d'origine usbsas (CEA, en anglais), gardée pour référence. Barbacane ne suit plus ce dépôt ; le noyau est maintenu dans `noyau/` (écarts : [ecarts.md](ecarts.md)). Les liens « doc/ » pointent vers le dépôt d'origine.
+
 <div align="center">
   
   <p>
@@ -45,11 +47,11 @@ written in Rust.
 
 ## Documentation
 
-- [Architecture](doc/architecture.md)
-- [Features & usage](doc/usage.md)
-- [Build](doc/build.md)
-- [Configuration](doc/configuration.md)
-- [Kiosk deployment](doc/kiosk.md)
+- [Architecture](https://github.com/cea-sec/usbsas/blob/main/doc/architecture.md)
+- [Features & usage](https://github.com/cea-sec/usbsas/blob/main/doc/usage.md)
+- [Build](https://github.com/cea-sec/usbsas/blob/main/doc/build.md)
+- [Configuration](https://github.com/cea-sec/usbsas/blob/main/doc/configuration.md)
+- [Kiosk deployment](https://github.com/cea-sec/usbsas/blob/main/doc/kiosk.md)
 
 ## Contributing
 
@@ -60,8 +62,8 @@ translation.
 
 Dependencies included in this project:
 
-- `ntfs3g` is  GPLv2 (see usbsas-fsrw/ntfs3g/src/ntfs-3g/COPYING).
-- `FatFs` has a custom BSD-style license (see usbsas-fsrw/ff/src/ff/LICENSE.txt)
+- `ntfs3g` is  GPLv2 (see noyau/usbsas-fsrw/ntfs3g/src/ntfs-3g/COPYING).
+- `FatFs` has a custom BSD-style license (see noyau/usbsas-fsrw/ff/src/ff/LICENSE.txt)
 
 usbsas is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
@@ -73,5 +75,5 @@ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License [along with
-usbsas](LICENSE). If not, see [the gnu.org web
+usbsas](../../LICENSE). If not, see [the gnu.org web
 site](http://www.gnu.org/licenses/).

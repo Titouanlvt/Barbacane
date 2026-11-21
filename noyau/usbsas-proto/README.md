@@ -6,7 +6,7 @@ Messages are defined in `proto/*.proto3` and compiled to Rust by
 [prost](https://github.com/tokio-rs/prost) in `build.rs`. Comments in the proto
 files become the documentation of the generated types (`cargo doc -p
 usbsas-proto`). The Python module compiles the same files with `protoc` (see
-[python/README.md](../python/README.md)).
+[python/README.md](https://github.com/cea-sec/usbsas/blob/main/python/README.md), dépôt d'origine, non repris ici).
 
 The messages are framed and sent by `usbsas-comm`.
 
