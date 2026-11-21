@@ -1,0 +1,11 @@
+#!/bin/sh
+# Administration du registre des bornes en ligne de commande (docs/suite/serveur-iso.md §6) :
+# le binaire tourne sous barbacane-svc (propriétaire du registre), HORS conteneur, avec la vue
+# hôte de passerelle.conf (registre.conf). Jamais en root : seul le lancement l'exige (sudo).
+# Un fichier à déposer (maj-plancher, maj-deposer) doit être lisible par barbacane-svc.
+#   sudo barbacane-registre (jeton SITE | demandes | valider … | refuser … | revoquer … | crl | supervision | maj-…)
+set -eu
+[ "$(id -u)" -eq 0 ] || { echo "barbacane-registre : à lancer avec sudo" >&2; exit 1; }
+cd /
+exec runuser -u barbacane-svc -- /usr/local/lib/barbacane-serveur/barbacane-registre \
+    /var/lib/barbacane-serveur/svc/registre.conf "$@"

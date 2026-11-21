@@ -104,7 +104,8 @@ passerelle), `chaine_serveur`, `cle_serveur` (certificat TLS de l'interface), `c
 bornes, CRL bornes), `cle_audit_publique` (vérification de la chaîne) ; facultative : `annuaire` (LDAPS,
 `serveur-utilisateurs.md` §8).
 
-`barbacane-web CONFIG` sert l'interface ; `barbacane-web compte …` produit une ligne de compte ;
+`barbacane-web CONFIG` sert l'interface ; `barbacane-web --verifier-config CONFIG` fait les
+contrôles de démarrage sans écouter (code 0 si l'interface démarrerait) ; `barbacane-web compte …` produit une ligne de compte ;
 `barbacane-web annuaire CONFIG` synchronise les identifiants (minuteur systemd : PRÉVU).
 
 ## 7. Charte v2 (adaptation simple)
@@ -137,7 +138,8 @@ produire les captures : `apt install chromium-headless-shell` sur bu, puis `test
 | Écoute d'administration TLS 1.3 mTLS + CRL, comptes Argon2id liés au certificat, rôles, sessions, CSRF, en-têtes | FAIT |
 | Tableau de bord, enrôlement (jeton, validation par empreinte retapée, refus), révocation, mises à jour (plancher, dépôt, diffusion, état), journal d'audit (consultation, vérification) | FAIT |
 | CA « administrateurs » de TEST dans `serveur/pki/racine-test.sh` (`ca-administrateurs/cert.pem`, `crl.pem`, `administrateurs/admin-01.*`, `admin-revoque` avec `--cas-de-test`) | FAIT (test `pki_de_test_administrateurs`) ; cérémonie de production PRÉVUE |
-| Clé de l'interface et de la CA administrateurs dans le TPM, service systemd durci, pare-feu de l'interface d'administration | PRÉVU (ISO serveur) |
+| Déploiement par l'ISO serveur : conteneur Podman sans root (racine en lecture seule, aucune capacité), publié sur l'interface d'administration seulement (443 par pasta sans root, `ip_unprivileged_port_start` abaissé à ce port) ; `--verifier-config` | FAIT (v2.0.1, `serveur-iso.md` §6) |
+| Clé de l'interface et de la CA administrateurs dans le TPM | PRÉVU |
 | Utilisateurs et PIN (étape 4), clés USB (étape 5) : pages et synchronisation LDAPS | FAIT (`serveur-utilisateurs.md`) |
 | Double validation (§3.10), rapports, politique | PRÉVU |
 | Comparaison aux exports d'empreintes d'audit depuis la page | PRÉVU (`barbacane-audit verifier` en ligne de commande) |

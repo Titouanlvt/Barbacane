@@ -14,7 +14,7 @@ sauvegarde chiffrée et restauration testée. Références : `docs/conception-ba
 
 | Fichier | Rôle |
 |---|---|
-| `serveur/iso/build-iso-serveur.sh` | construit l'ISO : netinst Debian 13 (empreinte vérifiée) + paquets du serveur et dépendances (résolus dans un Debian 13 minimal) + image de la passerelle + fichiers du serveur |
+| `serveur/iso/build-iso-serveur.sh` | construit l'ISO : netinst Debian 13 (empreinte vérifiée) + paquets du serveur et dépendances (résolus dans un Debian 13 minimal) + binaires du serveur (`barbacane-passerelle`, `barbacane-registre`, `barbacane-web`, `barbacane-audit`) + images de la passerelle et de l'interface web + fichiers du serveur |
 | `serveur/iso/paquets-serveur.txt` | paquets ajoutés au système de base (aucun ne vient d'Internet à l'installation) |
 | `serveur/iso/preseed-serveur.cfg` | installation sans question : réseau coupé, partitionnement chiffré, aucun tasksel |
 | `serveur/iso/fin-installation-serveur.sh` | `late_command` : paquets **sans source apt** (technique de la borne v1), fichiers, puis `configurer-serveur.sh` |
@@ -161,6 +161,48 @@ correspondante). La mise à l'heure initiale de l'horloge matérielle se fait à
   (`--pki-test`) embarque la PKI de `racine-test.sh` : certificat serveur et sa clé, CA bornes
   **et sa clé de TEST** (refus si le sujet de la CA ne porte pas « TEST »), CRL ; jamais la racine
   ni une autre CA ; nom de volume `BARBACANE_SERVEUR_TEST`.
+- **Interface web** (`barbacane-web`, `serveur-web.md`) : même modèle que la passerelle. Image
+  `localhost/barbacane-web:<version>` : le binaire et ses bibliothèques, plus ce qu'exige l'outil de
+  remaster des ISO des bornes (`/usr/local/sbin/barbacane-iso-borne` : bash, xorriso, coreutils,
+  sed, grep ; aucun gestionnaire de paquets). Quadlet `barbacane-web.container` : racine en lecture
+  seule, `NoNewPrivileges`, aucune capacité, `~/pki` (certificat TLS du serveur, `passerelle.conf`)
+  et `~/web` (CA et CRL des administrateurs, `comptes`, clé **publique** d'audit, `web.conf`) en
+  lecture seule, `~/etat` en écriture (registre **partagé** avec la passerelle, verrous `flock` :
+  jetons, validations, révocations, audit, quarantaine, ISO personnalisées), `~/tmp-web` sur `/tmp`
+  (remaster d'une ISO de 1 Go sur disque, pas en mémoire), ISO des bornes en lecture seule ; réseau
+  `pasta`, port publié **sur l'adresse d'administration seulement**. `web.conf` écrit par
+  `web-conf.sh`, contrôlé par la vraie interface (`barbacane-web --verifier-config`,
+  `tests/iso/serveur-config.sh`). `ConditionPathExists` sur la CA des administrateurs et la clé du
+  serveur : sans elles, « condition non remplie », pas un échec.
+- **Port d'administration < 1024** (443 par défaut) sans root : pasta, lancé sous `barbacane-svc`,
+  écoute `IP_ADMIN:PORT_ADMIN` et relaie vers le port interne du conteneur (8443, ou le port
+  d'administration s'il est ≥ 1024). Pour un port < 1024, `configurer-serveur.sh` écrit
+  `/etc/sysctl.d/91-barbacane-port-admin.conf` : `net.ipv4.ip_unprivileged_port_start = PORT_ADMIN`
+  (443 → seuls 443–1023 deviennent ouvrables sans privilège ; aucun autre service n'existe, et le
+  pare-feu n'accepte que `PORT_ADMIN` sur l'interface d'administration). Écartée : une redirection
+  nftables 443 → 8443 (`prerouting`), essayée au banc du 21/11/2026 : les connexions redirigées
+  n'étaient pas relayées par pasta (poignée de main TLS jamais servie).
+- **Comptes de l'interface** : fichier `~/web/comptes` (0600), une ligne par compte produite par
+  `barbacane-web compte IDENTIFIANT RÔLE CERT.pem` (mot de passe sur l'entrée standard, Argon2id, lié
+  à l'empreinte du certificat ; binaire hors conteneur dans `/usr/local/lib/barbacane-serveur/`).
+  ISO de **TEST** (`--pki-test`) : CA des administrateurs de `racine-test.sh` (refus si son sujet ne
+  porte pas « TEST »), sa CRL, et le compte initial `admin-01 administrateur` lié à
+  `administrateurs/admin-01.cert.pem`, mot de passe `--mdp-web FICHIER` ou aléatoire affiché une
+  fois. **Production** : CA, CRL et premier compte déposés après la cérémonie (§8) ; aucun compte
+  par défaut.
+- **Clé d'audit** P-384 propre au serveur créée à l'installation (`barbacane-audit cle`) dans
+  `/etc/barbacane-serveur/audit/` (root, 0700) ; seule la clé **publique** est donnée à l'interface
+  (vérification de la chaîne). Scellement et export : `sudo barbacane-audit sceller|exporter …` ;
+  minuteries et compte d'audit dédié : PRÉVU (v2.1.0, `serveur-maj-audit.md` §3).
+- **`barbacane-registre`** (jetons, demandes, validation, révocation, CRL, supervision, `maj-*`) :
+  `sudo barbacane-registre …` ; l'enveloppe lance le binaire **sous `barbacane-svc`** (propriétaire
+  du registre), hors conteneur, avec `~/registre.conf` (vue hôte de `passerelle.conf`, même
+  fonction `passerelle-conf.sh`). Un fichier déposé (`maj-plancher`, `maj-deposer`) doit être
+  lisible par `barbacane-svc`.
+- **Mises à jour centralisées** (côté serveur dans la passerelle, `serveur-maj-audit.md` §2) :
+  `--cle-maj-bornes PUB` pose la clé publique des bornes dans `<registre>/maj/cle-bornes.pub` ;
+  sans elle, tout dépôt est refusé (à déposer ensuite). **Sauvegarde** : `barbacane-sauvegarde` et
+  sa clé de signature (§7), inchangés.
 - Journal : `journald` **persistant** (`/var/log/journal`, volume chiffré séparé), compressé,
   2 Go au plus, **1 an** de conservation, jamais transmis.
 - `barbacane-serveur-etat` (service au démarrage, sortie sur la console et dans le journal) :
@@ -198,7 +240,12 @@ de signature consigné), métadonnées, puis extraction **en zone de transit** e
    détruire, régler l'heure (`date -s`, `hwclock -w`) si aucune source interne. 4. Déposer
    `destinataire.pem` (clé de sauvegarde) dans `/etc/barbacane-serveur/sauvegarde/`, consigner
    l'empreinte du certificat de signature. 5. Déposer la PKI issue de la cérémonie dans
-   `~barbacane-svc/pki/` et démarrer la passerelle.
+   `~barbacane-svc/pki/` et démarrer la passerelle. 6. Interface web : déposer
+   `ca-administrateurs.pem` et `crl-administrateurs.pem` dans `~barbacane-svc/web/` (0444), créer
+   le premier compte (`/usr/local/lib/barbacane-serveur/barbacane-web compte IDENTIFIANT
+   administrateur CERT.pem > ~barbacane-svc/web/comptes`, 0600, propriétaire `barbacane-svc`), puis
+   `systemctl --user -M barbacane-svc@ start barbacane-web`. La CRL des administrateurs est à
+   republier avant son échéance (refus de toute connexion sinon, fail-closed).
 
 ## 9. Vérification (banc QEMU, `tests/serveur/qemu-serveur.sh`)
 
@@ -258,7 +305,8 @@ LOGICIEL, banc seulement**), ISO de test `suite-20261120` (219 paquets embarqué
 | Re-scellement TPM au premier démarrage et après mise à jour du shim | PRÉVU |
 | Politique PCR renforcée (pcrlock / UKI signé), TPM + PIN | PRÉVU |
 | Clés serveur et CA dans le TPM (politique §6) | PRÉVU (jalon PKI) |
-| Interface web (port d'administration ouvert, aucun service encore) | PRÉVU (étape 5, suite) |
+| Interface web déployée (Podman sans root, mTLS + Argon2id, 443 sur l’interface d’administration), `barbacane-registre`, `barbacane-audit`, clé d'audit, clé des mises à jour des bornes | FAIT (v2.0.1, banc QEMU) |
+| Minuteries de scellement/export de l'audit, compte d'audit dédié, synchronisation LDAPS périodique | PRÉVU (v2.1.0) |
 | Sauvegarde quotidienne planifiée, vidage PostgreSQL | PRÉVU |
 | Récepteur GNSS/radio comme source d'heure | PRÉVU |
 | `pam_faillock`, bannière légale, AIDE (intégrité des fichiers) | PRÉVU |

@@ -19,8 +19,13 @@
 #                          1re connexion) ; défaut : mot de passe aléatoire affiché UNE fois ici
 #     --pki-test DOSSIER   ISO de TEST : embarque la PKI de test (serveur/pki/racine-test.sh) ;
 #                          copiés : certificat serveur, sa clé, la CA bornes, SA CLÉ (TEST seulement : la
-#                          passerelle signe à l'enrôlement) et sa CRL
-#     --passerelle BIN     binaire barbacane-passerelle (défaut : cargo build --release)
+#                          passerelle signe à l'enrôlement) et sa CRL ; CA des administrateurs de TEST,
+#                          sa CRL et le compte web initial « admin-01 » lié à administrateurs/admin-01.cert.pem
+#     --mdp-web FICHIER    ISO de TEST : mot de passe (1re ligne, 12 caractères au moins) du compte web
+#                          admin-01 ; défaut : aléatoire, affiché UNE fois ici
+#     --cle-maj-bornes PUB clé PUBLIQUE minisign des mises à jour des bornes (dépôt des .bcu, facultatif)
+#     --passerelle BIN     binaire barbacane-passerelle (défaut : cargo build --release) ; barbacane-registre,
+#                          barbacane-web et barbacane-audit sont pris dans le même dossier
 #     --paquets DOSSIER    paquets .deb déjà résolus (défaut : résolus dans un Debian 13 minimal)
 #     --netinst ISO        ISO netinst Debian 13 amd64 (défaut : téléchargée, empreinte vérifiée)
 #     --sortie FICHIER     ISO produite (défaut : ./barbacane-serveur.iso)
@@ -38,7 +43,7 @@ REPO="$(cd "$ICI/../.." && pwd)"
 IF_BORNES=enp0s8 IP_BORNES=10.20.0.1/24 IF_ADMIN=enp0s9 IP_ADMIN=10.99.0.1/24 PORT_ADMIN=443 PORT='' PORT_ENROLEMENT=''
 SOURCE_HEURE='' COMPTE_ADMIN=barbadmin HACHE_ADMIN_F='' PKI_TEST='' PASSERELLE='' PAQUETS='' NETINST=''
 SORTIE="$PWD/barbacane-serveur.iso" VERBEUX=0 CONSOLE_SERIE=0
-ISO_EL='' ISO_HL='' SHA_BORNES=''
+ISO_EL='' ISO_HL='' SHA_BORNES='' MDP_WEB_F='' CLE_MAJ=''
 while [ $# -gt 0 ]; do
     case "$1" in
         --if-bornes) IF_BORNES="$2"; shift 2 ;;
@@ -61,7 +66,9 @@ while [ $# -gt 0 ]; do
         --iso-borne-en-ligne) ISO_EL="$(realpath "$2")"; shift 2 ;;
         --iso-borne-hors-ligne) ISO_HL="$(realpath "$2")"; shift 2 ;;
         --sha256-bornes) SHA_BORNES="$(realpath "$2")"; shift 2 ;;
-        -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
+        --mdp-web) MDP_WEB_F="$(realpath "$2")"; shift 2 ;;
+        --cle-maj-bornes) CLE_MAJ="$(realpath "$2")"; shift 2 ;;
+        -h|--help) sed -n '2,37p' "$0"; exit 0 ;;
         *) echo "option inconnue : $1 (voir --help)" >&2; exit 1 ;;
     esac
 done
@@ -85,6 +92,11 @@ port_ok "$PORT_ADMIN" || refus "--port-admin $PORT_ADMIN"
 [ -z "$PORT" ] || { port_ok "$PORT" && [ "$PORT" -ge 1024 ]; } || refus "--port $PORT (1024–65535)"
 [ -z "$PORT_ENROLEMENT" ] || { port_ok "$PORT_ENROLEMENT" && [ "$PORT_ENROLEMENT" -ge 1024 ]; } || refus "--port-enrolement $PORT_ENROLEMENT (1024–65535)"
 [ -z "$PORT" ] || [ "$PORT" != "$PORT_ENROLEMENT" ] || refus "--port et --port-enrolement doivent être distincts"
+# Port interne de l'interface web (configurer-serveur.sh) : distinct de ceux de la passerelle.
+if [ "$PORT_ADMIN" -ge 1024 ]; then PORT_WEB=$PORT_ADMIN; else PORT_WEB=8443; fi
+for p in "$PORT" "$PORT_ENROLEMENT"; do [ "$p" != "$PORT_WEB" ] || refus "port $p : réservé à l'interface web ($PORT_WEB)"; done
+[ -z "$MDP_WEB_F" ] || [ -n "$PKI_TEST" ] || refus "--mdp-web : ISO de TEST seulement (avec --pki-test)"
+[ -z "$CLE_MAJ" ] || grep -q '^untrusted comment: minisign public key' "$CLE_MAJ" || refus "--cle-maj-bornes : clé publique minisign attendue"
 [ -z "$SOURCE_HEURE" ] || ip_ok "$SOURCE_HEURE" || refus "--source-heure $SOURCE_HEURE (adresse IPv4 attendue)"
 if [ -n "$ISO_EL$ISO_HL" ]; then
     command -v xorriso >/dev/null || refus "xorriso requis pour contrôler les ISO des bornes (apt install xorriso)"
@@ -178,27 +190,47 @@ etape "Outils de construction"
 journal apt-get update -qq
 journal apt-get install -y -qq --no-install-recommends xorriso debootstrap wget ca-certificates openssl
 
-# ------------------------------------------------------------------ 2. image de la passerelle
-etape "Image de conteneur de la passerelle (compilation si nécessaire)"
+# ------------------------------------------------------------------ 2. images des services
+etape "Binaires du serveur et images de conteneurs (compilation si nécessaire)"
 if [ -z "$PASSERELLE" ]; then
     # shellcheck disable=SC1091
     [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
     command -v cargo >/dev/null || { echo "cargo absent : fournir --passerelle BINAIRE" >> "$JOURNAL"; false; }
-    (cd "$REPO" && journal cargo build --release --locked -p barbacane-passerelle)
+    (cd "$REPO" && journal cargo build --release --locked -p barbacane-passerelle -p barbacane-web -p barbacane-audit)
     PASSERELLE="${CARGO_TARGET_DIR:-$REPO/target}/release/barbacane-passerelle"
 fi
-[ -x "$PASSERELLE" ] || { echo "binaire introuvable : $PASSERELLE" >> "$JOURNAL"; false; }
-# Racine minimale : le binaire et ses seules bibliothèques (ni shell ni gestionnaire de paquets).
-R="$T/rootfs"
-mkdir -p "$R"
-install -m 755 "$PASSERELLE" "$R/barbacane-passerelle"
-ldd "$PASSERELLE" | awk '/=> \// { print $3 } /^\t\/.*ld-linux/ { print $1 }' | while read -r lib; do
-    mkdir -p "$R$(dirname "$lib")"
-    cp -L "$lib" "$R$lib"
+BINS="$(dirname "$PASSERELLE")"
+for b in barbacane-passerelle barbacane-registre barbacane-web barbacane-audit; do
+    [ -x "$BINS/$b" ] || { echo "binaire introuvable : $BINS/$b" >> "$JOURNAL"; false; }
 done
-mkdir -p "$R/pki" "$R/tmp"
-tar --sort=name --owner=0 --group=0 --numeric-owner -cf "$T/passerelle.tar" -C "$R" .
-note "passerelle : $(sha256sum "$PASSERELLE" | cut -c1-16)…, image $(du -h "$T/passerelle.tar" | cut -f1)"
+# Racine minimale : les binaires et leurs seules bibliothèques (ni gestionnaire de paquets ni
+# compilateur). Celle de la passerelle n'a pas de shell ; celle de l'interface web a, en plus, ce
+# qu'exige l'outil de remaster des ISO des bornes (bash, xorriso, coreutils, sed, grep).
+image() { # NOM FICHIER… (fichiers copiés à leur chemin ; le premier = /barbacane-NOM)
+    local nom=$1 r="$T/rootfs-$1" f lib
+    shift
+    mkdir -p "$r/pki" "$r/tmp"
+    install -m 755 "$1" "$r/barbacane-$nom"
+    for f in "${@:2}"; do install -D -m 755 "$f" "$r$f"; done
+    for f in "$@"; do
+        ldd "$f" 2>/dev/null | awk '/=> \// { print $3 } /^\t\/.*ld-linux/ { print $1 }'
+    done | sort -u | while read -r lib; do
+        mkdir -p "$r$(dirname "$lib")"
+        cp -L "$lib" "$r$lib"
+    done
+    tar --sort=name --owner=0 --group=0 --numeric-owner -cf "$T/$nom.tar" -C "$r" .
+    note "$nom : $(sha256sum "$1" | cut -c1-16)…, image $(du -h "$T/$nom.tar" | cut -f1)"
+}
+image passerelle "$BINS/barbacane-passerelle"
+OUTILS_WEB=()
+for o in bash xorriso sed grep head tr mktemp rm mv shred sha256sum cut; do
+    c=$(command -v "$o") || { echo "outil absent (image web) : $o" >> "$JOURNAL"; false; }
+    OUTILS_WEB+=("$(realpath "$c")")
+done
+install -D -m 755 "$REPO/serveur/iso-bornes/barbacane-iso-borne" "$T/rootfs-web/usr/local/sbin/barbacane-iso-borne"
+# Chemins de Debian à /usr fusionné (#!/bin/bash, PATH=/usr/sbin:/usr/bin:/sbin:/bin de l'outil).
+ln -s usr/bin "$T/rootfs-web/bin"
+image web "$BINS/barbacane-web" "${OUTILS_WEB[@]}"
 
 # ------------------------------------------------------------------ 3. ISO Debian
 etape "ISO netinst Debian 13 (téléchargement et empreinte)"
@@ -237,6 +269,13 @@ F="$T/fichiers"
 cp -a "$ICI/fichiers" "$F"
 install -D -m 755 "$REPO/serveur/sauvegarde/barbacane-sauvegarde" "$F/usr/local/sbin/barbacane-sauvegarde"
 install -D -m 644 "$T/passerelle.tar" "$F/usr/share/barbacane-serveur/images/passerelle.tar"
+install -D -m 644 "$T/web.tar" "$F/usr/share/barbacane-serveur/images/web.tar"
+# Outils en ligne de commande (hors conteneur) : barbacane-registre sous barbacane-svc (enveloppe
+# /usr/local/sbin/barbacane-registre), barbacane-audit (root : clé d'audit), barbacane-web pour
+# « barbacane-web compte » (ligne du fichier des comptes).
+install -D -m 755 "$BINS/barbacane-registre" "$F/usr/local/lib/barbacane-serveur/barbacane-registre"
+install -D -m 755 "$BINS/barbacane-web" "$F/usr/local/lib/barbacane-serveur/barbacane-web"
+install -D -m 755 "$BINS/barbacane-audit" "$F/usr/local/sbin/barbacane-audit"
 install -D -m 755 "$REPO/serveur/iso-bornes/barbacane-iso-borne" "$F/usr/local/sbin/barbacane-iso-borne"
 tar --sort=name --owner=0 --group=0 --numeric-owner -cf "$B/fichiers.tar" -C "$F" .
 if [ -n "$ISO_EL" ]; then
@@ -280,8 +319,22 @@ if [ -n "$PKI_TEST" ]; then
         || refus "--pki-test : la CA bornes n'est pas une CA de TEST (racine-test.sh) ; clé de production refusée"
     cp "$PKI_TEST/ca-bornes/cle.pem" "$B/pki-test/cle-ca-bornes.pem"
     cp "$PKI_TEST/ca-bornes/crl.pem" "$B/pki-test/crl-bornes.pem"
+    # Interface web : CA des administrateurs de TEST (refus sinon) et compte initial admin-01 lié à
+    # SON certificat (barbacane-web compte : Argon2id, serveur-web.md §3).
+    grep -q "TEST" <(openssl x509 -in "$PKI_TEST/ca-administrateurs/cert.pem" -noout -subject) \
+        || refus "--pki-test : la CA administrateurs n'est pas une CA de TEST (racine-test.sh)"
+    mkdir -p "$B/web-test"
+    cp "$PKI_TEST/ca-administrateurs/cert.pem" "$B/web-test/ca-administrateurs.pem"
+    cp "$PKI_TEST/ca-administrateurs/crl.pem" "$B/web-test/crl-administrateurs.pem"
+    if [ -n "$MDP_WEB_F" ]; then MDP_WEB=$(head -n1 "$MDP_WEB_F"); MDP_WEB_AFFICHE=''
+    else MDP_WEB=$(head -c 15 /dev/urandom | base64 | tr '+/' '-_'); MDP_WEB_AFFICHE=$MDP_WEB; fi
+    [ "${#MDP_WEB}" -ge 12 ] || refus "--mdp-web : 12 caractères au moins"
+    printf '%s\n' "$MDP_WEB" | "$BINS/barbacane-web" compte admin-01 administrateur \
+        "$PKI_TEST/administrateurs/admin-01.cert.pem" > "$B/web-test/comptes"
+    unset MDP_WEB
     attention "ISO de TEST : PKI de test embarquée (jamais en production)"
 fi
+[ -z "$CLE_MAJ" ] || cp "$CLE_MAJ" "$B/cle-maj-bornes.pub"
 # Mot de passe root de l'installateur et phrase de passe TEMPORAIRE du disque : aléatoires,
 # jamais conservés ; la phrase est effacée du disque en fin d'installation (TPM + clé de secours).
 PHRASE=$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')
@@ -332,4 +385,7 @@ echo "  journal  : $JOURNAL"
 if [ -n "$MDP_AFFICHE" ]; then
     # Affiché une seule fois, jamais écrit dans le journal ; à changer à la première connexion.
     echo "  compte   : $COMPTE_ADMIN, mot de passe initial : $MDP_AFFICHE   (à noter maintenant)"
+fi
+if [ -n "${MDP_WEB_AFFICHE:-}" ]; then
+    echo "  web TEST : admin-01 (certificat administrateurs/admin-01), mot de passe : $MDP_WEB_AFFICHE   (à noter maintenant)"
 fi

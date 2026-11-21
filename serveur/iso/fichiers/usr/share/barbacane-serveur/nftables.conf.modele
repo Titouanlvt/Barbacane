@@ -14,7 +14,7 @@ table inet barbacane {
         ct state invalid drop
         ct state established,related accept
         iifname "@IF_BORNES@" ip daddr @IP_BORNES@ tcp dport { @PORT@, @PORT_ENROLEMENT@ } ct state new accept
-        iifname "@IF_ADMIN@" tcp dport @PORT_ADMIN@ ct state new accept
+        iifname "@IF_ADMIN@" ip daddr @IP_ADMIN@ tcp dport @PORT_ADMIN@ ct state new accept
         limit rate 6/minute log prefix "barbacane-refus-entree " level warn
     }
 

@@ -7,22 +7,27 @@
 #   ET de l'extérieur), aucune route par défaut, services démarrés (dont la passerelle dans Podman
 #   sans root), aucun paquet interdit, chrony sans source externe, journal persistant.
 #
-#   tests/serveur/qemu-serveur.sh ISO DOSSIER [PKI]
+#   tests/serveur/qemu-serveur.sh ISO DOSSIER [PKI [MDP_WEB]]
 #     ISO    construite pour ce banc :
 #            serveur/iso/build-iso-serveur.sh --if-bornes ens8 --ip-bornes 10.0.2.15/24 --if-admin ens9 --ip-admin 10.0.3.15/24 \
 #              --pki-test PKI --hache-admin FICHIER --console-serie
 #     PKI    dossier de serveur/pki/racine-test.sh (certificat de borne pour l'essai mTLS) ; sans lui,
 #            la passerelle doit être « en attente de PKI » (condition non remplie, pas d'échec).
+#     MDP_WEB fichier du mot de passe du compte web admin-01 (--mdp-web à la construction) : connexion
+#            complète à l'interface web (sinon : page de connexion seulement).
+# Interface web : servie sur 10.0.3.15:443 (administration) avec le certificat admin-01 de TEST,
+# refusée sans certificat, injoignable depuis le réseau des bornes et sur son port interne (8443).
 # Prérequis (root) : qemu-system-x86, ovmf, qemu-utils, swtpm, cryptsetup, socat, openssl, xorriso, KVM.
 set -euo pipefail
 ISO="$(realpath "$1")"
 W="$(realpath -m "$2")"
 PKI="${3:+$(realpath "$3")}"
+MDP_WEB="${4:+$(realpath "$4")}"
 mkdir -p "$W"
 ko=0
 ok() { echo "OK : $*"; }
 echec() { echo "ÉCHEC : $*" >&2; ko=1; }
-for o in qemu-system-x86_64 qemu-img qemu-nbd swtpm cryptsetup socat openssl xorriso; do
+for o in qemu-system-x86_64 qemu-img qemu-nbd swtpm cryptsetup socat openssl xorriso curl; do
     command -v "$o" >/dev/null || { echo "prérequis absent : $o" >&2; exit 2; }
 done
 OVMF=/usr/share/ovmf/OVMF.fd
@@ -147,6 +152,9 @@ mon mon.sock "hostfwd_add nb2 tcp:127.0.0.1:47005-10.0.2.15:$PB"
 mon mon.sock "hostfwd_add na2 tcp:127.0.0.1:47006-10.0.3.15:$PB"
 mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47003-10.0.2.15:443"
 mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47004-10.0.2.15:22"
+mon mon.sock "hostfwd_add na tcp:127.0.0.1:47010-10.0.3.15:443"
+mon mon.sock "hostfwd_add na tcp:127.0.0.1:47011-10.0.3.15:8443"
+mon mon.sock "hostfwd_add nb tcp:127.0.0.1:47012-10.0.2.15:8443"
 essai_tls() { # port [options openssl] → sortie du client
     { printf 'GET /sante HTTP/1.1\r\nHost: serveur\r\nConnection: close\r\n\r\n'; sleep 3; } \
         | timeout 15 openssl s_client -connect "127.0.0.1:$1" -tls1_3 -quiet "${@:2}" 2>&1 || true
@@ -163,6 +171,36 @@ if [ -n "$PKI" ]; then
     if grep -q '"etat":"ok"' <<<"$r"; then echec "passerelle : client SANS certificat servi"; else ok "passerelle : client sans certificat refusé"; fi
     r=$(essai_tls 47002 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem"; essai_tls 47006 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem")
     if grep -q '"etat":"ok"' <<<"$r"; then echec "passerelle joignable depuis le réseau d'ADMINISTRATION"; else ok "passerelle injoignable depuis le réseau d'administration"; fi
+fi
+if [ -n "$PKI" ]; then
+    A=(--silent --show-error --max-time 20 --insecure --cert "$PKI/administrateurs/admin-01.cert.pem" --key "$PKI/administrateurs/admin-01.cle.pem")
+    : > "$W/connexion.html"
+    for _ in $(seq 24); do # l'interface peut finir de démarrer après l'affichage de l'état
+        code=$(curl "${A[@]}" -o "$W/connexion.html" -c "$W/cookies" -w '%{http_code}' https://127.0.0.1:47010/connexion 2>"$W/curl.err" || true)
+        [ "$code" = 000 ] || break
+        sleep 5
+    done
+    if [ "$code" = 200 ] && grep -q 'name="mot_de_passe"' "$W/connexion.html"; then
+        ok "interface web servie sur 10.0.3.15:443 (administration) au certificat admin-01 de TEST : page de connexion, HTTP 200"
+    else echec "interface web avec certificat admin-01 : HTTP ${code:-?} $(cat "$W/curl.err")"; fi
+    # Refus par le serveur (alerte TLS « certificate required »), pas un simple service absent.
+    r=$(curl --silent --show-error --max-time 20 --insecure -o /dev/null -w '%{http_code}' https://127.0.0.1:47010/connexion 2>&1 || true)
+    grep -qi 'alert\|certificate required' <<<"$r" && ok "interface web : client SANS certificat refusé à la poignée de main TLS ($(grep -oi 'tlsv13 alert [a-z ]*\|certificate required' <<<"$r" | head -1))" \
+        || echec "interface web sans certificat : $r"
+    code=$(curl "${A[@]}" -o /dev/null -w '%{http_code}' https://127.0.0.1:47011/connexion 2>/dev/null || true)
+    [ "$code" = 000 ] && ok "interface web : port interne 8443 injoignable (seul 443 est publié et ouvert)" || echec "port interne 8443 servi en direct : HTTP $code"
+    code=$(curl "${A[@]}" -o /dev/null -w '%{http_code}' https://127.0.0.1:47012/connexion 2>/dev/null || true)
+    [ "$code" = 000 ] && ok "interface web injoignable depuis le réseau des bornes" || echec "interface web servie sur le réseau des bornes : HTTP $code"
+    if [ -n "$MDP_WEB" ]; then
+        csrf=$(sed -n 's/.*name="csrf" value="\([^"]*\)".*/\1/p' "$W/connexion.html" 2>/dev/null | head -1 || true)
+        code=$(curl "${A[@]}" -b "$W/cookies" -c "$W/cookies" -o /dev/null -w '%{http_code}' \
+            --data-urlencode "csrf=$csrf" --data-urlencode identifiant=admin-01 --data-urlencode "mot_de_passe@$MDP_WEB" \
+            https://127.0.0.1:47010/connexion 2>/dev/null || true)
+        code2=$(curl "${A[@]}" -b "$W/cookies" -o "$W/tableau.html" -w '%{http_code}' https://127.0.0.1:47010/tableau 2>/dev/null || true)
+        if [ "$code2" = 200 ] && grep -q "Bornes actives" "$W/tableau.html"; then
+            ok "interface web : connexion admin-01 (certificat + mot de passe Argon2id, HTTP $code) puis tableau de bord HTTP 200"
+        else echec "interface web : connexion admin-01 (POST $code, tableau $code2)"; fi
+    fi
 fi
 # 443 et 22 sur l'interface bornes : filtrés (aucun octet en retour, même à une requête).
 for p in 47003 47004; do
@@ -189,16 +227,16 @@ for ch in entree transit sortie; do
     awk -v c="chain $ch" '$0 ~ c { p = 1 } p && /policy/ { print; exit }' <<<"$nft" | grep -q 'policy drop' \
         && ok "pare-feu : chaîne $ch, politique drop" || echec "pare-feu : chaîne $ch sans politique drop"
 done
-autorises=$(grep -E '\baccept\b' <<<"$nft" | sed 's/^[[:space:]]*//' | sort || true)
+autorises=$(grep -E '\baccept\b' <<<"$nft" | grep -v 'type nat hook' | sed 's/^[[:space:]]*//' | sort || true)
 attendu=$(printf '%s\n' 'ct state established,related accept' 'ct state established,related accept' 'iif "lo" accept' \
-    "iifname \"$IF_ADMIN\" tcp dport 443 ct state new accept" \
+    "iifname \"$IF_ADMIN\" ip daddr 10.0.3.15 tcp dport 443 ct state new accept" \
     "iifname \"$IF_BORNES\" ip daddr 10.0.2.15 tcp dport { $PA, $PB } ct state new accept" 'oif "lo" accept' | sort)
 [ "$autorises" = "$attendu" ] && ok "pare-feu : 6 règles d'acceptation, toutes attendues" \
     || { echec "pare-feu : règles d'acceptation inattendues"; diff <(echo "$attendu") <(echo "$autorises") || true; }
 grep -qE 'udp dport 123|dport 53' <<<"$nft" && echec "pare-feu : NTP ou DNS sortant autorisé"
 # Écoute : passerelle (relayée par pasta) seulement sur l'adresse « bornes » ; rien d'autre que la boucle locale
 ecoute=$(section ecoute)
-autres=$(grep -vE '^(127\.|\[::1\])' <<<"$ecoute" | grep -vE "^10.0.2.15:($PA|$PB)$" || true)
+autres=$(grep -vE '^(127\.|\[::1\])' <<<"$ecoute" | grep -vE "^10.0.2.15:($PA|$PB)$" | grep -vx '10.0.3.15:443' || true)
 [ -z "$autres" ] && ok "écoute réseau : $(tr '\n' ' ' <<<"$ecoute")" || echec "ports en écoute inattendus : $autres"
 # Heure
 h=$(section heure)
@@ -216,14 +254,25 @@ grep -q '^user@[0-9]* active$' <<<"$s" && ok "gestionnaire systemd de barbacane-
 grep -q '^utilisateur:barbacane-images active' <<<"$s" && ok "images chargées depuis l'ISO" || echec "images non chargées : $(grep images <<<"$s")"
 if [ -n "$PKI" ]; then
     grep -q '^utilisateur:barbacane-passerelle active' <<<"$s" && ok "passerelle active (Podman sans root)" || echec "passerelle : $(grep passerelle <<<"$s")"
+    grep -q '^utilisateur:barbacane-web active' <<<"$s" && ok "interface web active (Podman sans root)" || echec "interface web : $(grep 'barbacane-web' <<<"$s")"
+    grep -qx '10.0.3.15:443' <<<"$ecoute" && ok "interface web en écoute sur l'adresse d'administration seulement (10.0.3.15:443, publié par pasta sans root)" \
+        || echec "interface web : écoute 10.0.3.15:443 absente"
     c=$(section conteneurs)
-    grep -q 'readonly=true privileged=false caps=\[\]' <<<"$c" && ok "conteneur : racine en lecture seule, non privilégié, aucune capacité" \
-        || echec "conteneur : options de confinement inattendues : $c"
-    u=$(section processus-passerelle | awk 'NR == 1 { print $1 }')
-    [ -n "$u" ] && [ "$u" != root ] && ok "processus de la passerelle exécuté par « $u » (pas root)" || echec "processus de la passerelle : « $u »"
+    for n in barbacane-passerelle barbacane-web; do
+        grep -q "^$n readonly=true privileged=false caps=\[\]" <<<"$c" && ok "conteneur $n : racine en lecture seule, non privilégié, aucune capacité" \
+            || echec "conteneur $n : options de confinement inattendues : $c"
+    done
+    for n in passerelle web; do
+        u=$(section "processus-$n" | awk 'NR == 1 { print $1 }')
+        [ -n "$u" ] && [ "$u" != root ] && ok "processus barbacane-$n exécuté par « $u » (pas root)" || echec "processus barbacane-$n : « $u »"
+    done
+    section registre | grep -q '^Aucune demande en attente\.$' && ok "barbacane-registre utilisable (sudo, sous barbacane-svc) : aucune demande en attente" \
+        || echec "barbacane-registre : $(section registre | head -3)"
 else
     grep -q '^utilisateur:barbacane-passerelle inactive condition=no' <<<"$s" && ok "passerelle en attente de PKI (sans échec)" \
         || echec "passerelle sans PKI : $(grep passerelle <<<"$s")"
+    grep -q '^utilisateur:barbacane-web inactive condition=no' <<<"$s" && ok "interface web en attente de la CA des administrateurs (sans échec)" \
+        || echec "interface web sans PKI : $(grep 'barbacane-web' <<<"$s")"
 fi
 grep -q '^ALERTE : paquet interdit' "$W/etat.txt" && echec "paquet interdit installé" || ok "aucun paquet interdit installé ($(section paquets | head -1))"
 section journal | grep -q '/var/log/journal/' && ok "journal persistant (/var/log/journal)" || echec "journal non persistant"

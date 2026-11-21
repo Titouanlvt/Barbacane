@@ -5,6 +5,10 @@
 //! barbacane-web compte IDENTIFIANT RÔLE CERT.pem    ligne du fichier des comptes ; mot de passe
 //!                                                   lu sur l'entrée standard (première ligne)
 //! barbacane-web annuaire CONFIG                     synchronise les identifiants (LDAPS)
+//! barbacane-web --verifier-config CONFIG            contrôles de démarrage (TLS, CA et CRL des
+//!                                                   administrateurs, comptes, clé d'audit,
+//!                                                   passerelle, registre) sans écouter ; code 0
+//!                                                   si l'interface démarrerait
 //! ```
 //! RÔLE : `administrateur` ou `auditeur`. Voir `docs/suite/serveur-web.md`.
 #![forbid(unsafe_code)]
@@ -20,7 +24,7 @@ use barbacane_web::{Config, Web, servir};
 use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
 
-const USAGE: &str = "usage : barbacane-web CONFIG | barbacane-web compte IDENTIFIANT (administrateur|auditeur) CERT.pem < mot-de-passe | barbacane-web annuaire CONFIG";
+const USAGE: &str = "usage : barbacane-web CONFIG | barbacane-web compte IDENTIFIANT (administrateur|auditeur) CERT.pem < mot-de-passe | barbacane-web annuaire CONFIG | barbacane-web --verifier-config CONFIG";
 
 fn executer(args: &[String]) -> Result<()> {
     match args {
@@ -52,6 +56,13 @@ fn executer(args: &[String]) -> Result<()> {
                 "annuaire : {} actifs, {} ajoutés, {} retirés, {} ignorés",
                 b.actifs, b.ajoutes, b.retires, b.ignores
             );
+            Ok(())
+        }
+        [v, config] if v == "--verifier-config" => {
+            let config = Config::lire(&PathBuf::from(config))?;
+            let adresse = config.adresse_ecoute();
+            Web::nouveau(config)?;
+            println!("configuration valide : interface d'administration sur {adresse}");
             Ok(())
         }
         [config] => {

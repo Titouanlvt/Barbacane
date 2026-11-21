@@ -4,6 +4,7 @@
 #   barbacane-serveur-images VERSION
 set -eu
 v=$1
-i=/usr/share/barbacane-serveur/images/passerelle.tar
-podman image exists "localhost/barbacane-passerelle:$v" && exit 0
-podman import --change 'ENTRYPOINT=["/barbacane-passerelle"]' "$i" "localhost/barbacane-passerelle:$v"
+for n in passerelle web; do
+    podman image exists "localhost/barbacane-$n:$v" && continue
+    podman import --change "ENTRYPOINT=[\"/barbacane-$n\"]" "/usr/share/barbacane-serveur/images/$n.tar" "localhost/barbacane-$n:$v"
+done

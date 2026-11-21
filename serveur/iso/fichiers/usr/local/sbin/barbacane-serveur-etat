@@ -10,11 +10,21 @@ C=/etc/barbacane-serveur
 uid=$(id -u "$SVC" 2>/dev/null || echo 0)
 utilisateur() { runuser -u "$SVC" -- env XDG_RUNTIME_DIR="/run/user/$uid" "$@"; }
 if [ "${1:-}" = --attendre ]; then
+    # ConditionResult vaut « no » tant que l'unité n'a pas été évaluée : attendre d'abord les
+    # images (leur import précède les conteneurs), puis chaque conteneur.
     for _ in $(seq 150); do
-        e=$(utilisateur systemctl --user show -p ActiveState --value barbacane-passerelle.service 2>/dev/null)
-        c=$(utilisateur systemctl --user show -p ConditionResult --value barbacane-passerelle.service 2>/dev/null)
-        case "$e:$c" in active:*|failed:*|inactive:no) break ;; esac
+        e=$(utilisateur systemctl --user show -p ActiveState --value barbacane-images.service 2>/dev/null)
+        case "$e" in active|failed) break ;; esac
         sleep 2
+    done
+    sleep 5
+    for u in barbacane-passerelle barbacane-web; do
+        for _ in $(seq 150); do
+            e=$(utilisateur systemctl --user show -p ActiveState --value "$u.service" 2>/dev/null)
+            c=$(utilisateur systemctl --user show -p ConditionResult --value "$u.service" 2>/dev/null)
+            case "$e:$c" in active:*|failed:*|inactive:no) break ;; esac
+            sleep 2
+        done
     done
 fi
 ko=0
@@ -54,7 +64,7 @@ section services
 for u in nftables chrony systemd-networkd systemd-journald auditd "user@$uid"; do
     printf '%s %s\n' "$u" "$(systemctl is-active "$u")"
 done
-for u in barbacane-images barbacane-passerelle; do
+for u in barbacane-images barbacane-passerelle barbacane-web; do
     printf 'utilisateur:%s %s condition=%s\n' "$u" \
         "$(utilisateur systemctl --user is-active "$u" 2>/dev/null)" \
         "$(utilisateur systemctl --user show -p ConditionResult --value "$u" 2>/dev/null)"
@@ -64,11 +74,27 @@ h=$(getent passwd "$SVC" | cut -d: -f6)
 find "$h/pki" -maxdepth 1 -printf '%M %u %f\n' 2>&1
 utilisateur systemctl --user status --no-pager -n 8 barbacane-passerelle.service 2>&1 | tail -n 12
 utilisateur systemctl --user list-jobs --no-pager 2>&1 | head -n 8
+section web
+find "$h/web" -maxdepth 1 -printf '%M %u %f\n' 2>&1
+utilisateur systemctl --user status --no-pager -n 8 barbacane-web.service 2>&1 | tail -n 12
+# Sonde locale de l'écoute web (TLS, sans certificat : un refus « certificate required » prouve
+# que l'interface répond), puis ses dernières lignes de journal.
+if timeout 10 bash -c 'exec 3<>"/dev/tcp/$1/$2" && printf "GET / HTTP/1.0\r\n\r\n" >&3 && timeout 3 cat <&3 >/dev/null' _ "${IP_ADMIN%/*}" "$PORT_ADMIN" 2>/dev/null; then
+    echo "sonde ${IP_ADMIN%/*}:$PORT_ADMIN : connexion TCP acceptée"
+else echo "sonde ${IP_ADMIN%/*}:$PORT_ADMIN : connexion TCP refusée ou sans réponse"; fi
+sleep 1
+journalctl --no-pager -q -n 15 "_UID=$uid" 2>/dev/null | grep -a 'barbacane-web\|web :\|pasta' | tail -n 8 || true
+section registre
+/usr/local/sbin/barbacane-registre demandes 2>&1 | head -n 20
 section conteneurs
 utilisateur podman ps --format '{{.Names}} {{.Image}} {{.Status}}' 2>&1
-utilisateur podman inspect -f 'readonly={{.HostConfig.ReadonlyRootfs}} privileged={{.HostConfig.Privileged}} caps={{.EffectiveCaps}}' barbacane-passerelle 2>/dev/null || true
+for n in barbacane-passerelle barbacane-web; do
+    utilisateur podman inspect -f "$n readonly={{.HostConfig.ReadonlyRootfs}} privileged={{.HostConfig.Privileged}} caps={{.EffectiveCaps}}" "$n" 2>/dev/null || true
+done
 section processus-passerelle
 ps -o user=,pid=,args= -C barbacane-passerelle 2>/dev/null || true
+section processus-web
+ps -o user=,pid=,args= -C barbacane-web 2>/dev/null || true
 section paquets
 dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' | awk '$1 == "ii" { print $2 }' > /run/barbacane-paquets.txt
 echo "installés : $(wc -l < /run/barbacane-paquets.txt)"
