@@ -95,3 +95,12 @@ Règle : une version = une seule famille de fonctions, dans l'ordre des dépenda
 - Garde-fous retenus (tous) : utilisateur authentifié (PIN), quota par jour, sous-dossier dédié « Barbacane/<date> » sans écrasement, fichiers sains seulement (douteux → refus ou quarantaine).
 - Lien web : à concevoir — accès authentifié (même compte que la borne), lien à usage limité et durée courte, téléchargement journalisé, purge automatique.
 - Place dans la feuille de route : après 2.4.0 (utilisateurs hybride, nécessaire) → proposer 2.10.0 « Dépôt vers le SI ».
+
+## Installation modulaire et mises à jour (21/11, ajouté au point)
+
+- Demande : un administrateur qui installe Barbacane doit pouvoir déployer du MINIMUM au MAXIMUM selon son infrastructure, mettre à jour le serveur, ses services et les bornes, et AJOUTER plus tard les fonctions qu'il n'avait pas installées.
+- Proposition :
+  - Modules : socle obligatoire (passerelle, registre, audit, interface web) + modules optionnels (utilisateurs/LDAP, Syslog, quarantaine, liste blanche, dépôt vers le SI, statistiques, device control). Choix à l'installation, puis ajout ou retrait depuis l'interface web (double validation, audité), sans réinstaller.
+  - Profils d'installation : « minimal » (borne hors ligne seule, sans serveur), « socle » (serveur + bornes en ligne), « complet », ou sur mesure.
+  - Mises à jour signées : serveur (système + services), modules et bornes, sur la même chaîne de signature que les mises à jour des bornes ; support hors ligne (clé ou ISO de mise à jour), vérification de l'empreinte, sauvegarde avant mise à jour et retour arrière.
+- Version : nouvelle 2.2.0 « Installation modulaire et mises à jour » juste après les comptes administrateurs (2.1.0) ; les versions suivantes sont décalées d'un cran (PIN 2.3, chiffrement des bornes 2.4, utilisateurs 2.5, Syslog 2.6, liste blanche 2.7, quarantaine par la borne 2.8, TPM + PKI 2.9, ergonomie 2.10, dépôt vers le SI 2.11, device control 3.0).
