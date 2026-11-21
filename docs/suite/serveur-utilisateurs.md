@@ -33,11 +33,14 @@ la borne), `serveur/passerelle/src/utilisateurs.rs` (base, PIN, anti force brute
 - Identifiant normalisé `[a-z0-9._-]`, 1 à 64 (minuscules ; AD compare sans casse), même fonction
   côté borne et côté import (`normaliser_identifiant`). Non conformes : ignorés et comptés.
 - **Synchronisation LDAPS** (`barbacane-web annuaire CONFIG` ou bouton de la page Utilisateurs) :
-  - `ldaps://` seulement (ni `ldap://`, ni StartTLS) ; **TLS 1.3 seul** (D6, mêmes suites et
-    groupes que la passerelle) — **seule ancre de confiance : la CA de l'annuaire épinglée**
-    (fichier PEM de la configuration), nom du serveur vérifié ; aucun magasin du système.
-    Limite : un contrôleur de domaine sans TLS 1.3 (Windows Server antérieur à 2022) est refusé ;
-    l'ouverture à TLS 1.2 demanderait la fonction `tls12` de rustls (décision à prendre) ;
+  - `ldaps://` seulement (ni `ldap://`, ni StartTLS) ; **TLS 1.3 par défaut** (D6, mêmes suites
+    et groupes que la passerelle) — **seule ancre de confiance : la CA de l'annuaire épinglée**
+    (fichier PEM de la configuration), nom du serveur vérifié ; aucun magasin du système ;
+  - option **`tls12 = oui`** (décision du 21/11/2026, **désactivée par défaut**) pour un contrôleur
+    de domaine sans TLS 1.3 (Windows Server antérieur à 2022) : TLS 1.2 accepté en plus, suites
+    **ECDHE-(ECDSA|RSA)-AES-(128|256)-GCM seulement** (groupes P-384/P-256) ; activation
+    **auditée** (`administration` / `annuaire-tls12-actif`) au démarrage de `barbacane-web` et à
+    chaque synchronisation (pas de synchronisation si l'audit échoue) ;
   - compte de service en **lecture seule** (droits minimaux : lire l'attribut d'identifiant des
     comptes du groupe Barbacane), mot de passe dans un fichier 0600 lisible du seul service
     (TPM : PRÉVU avec les autres secrets du serveur, conception §3.4) ;
@@ -186,6 +189,7 @@ mot_de_passe_fichier = /etc/barbacane/annuaire.mdp
 base = OU=Agents,DC=exemple,DC=fr
 filtre = (&(objectClass=user)(memberOf=CN=Barbacane,OU=Groupes,DC=exemple,DC=fr))
 attribut = sAMAccountName
+# tls12 = oui   (seulement si l'annuaire ne parle pas TLS 1.3 ; audité)
 ```
 
 Base : `<registre>/utilisateurs/` (0700) : `base.json` + `base.verrou` (même approche que le
@@ -207,6 +211,7 @@ avec la base : sans le poivre, aucun PIN ne se vérifie plus (réinitialisation 
 | Import, retrait, purge à 1 an ; liste vide refusée | `import_retrait_et_purge` |
 | Routes absentes de l'écoute d'enrôlement | `politique_telechargee_par_la_borne` |
 | LDAPS : CA épinglée, mauvaise CA refusée, import paginé | `annuaire_ldaps_de_test` (faux annuaire local en TLS) |
+| TLS 1.2 refusé sans `tls12 = oui`, accepté avec (AES-GCM), suite ChaCha20 refusée, activation auditée | `annuaire_tls12_optionnel` |
 | Auditeur ne peut rien modifier ; CSRF ; échappement | `utilisateurs_auditeur_lecture_seule`, `utilisateurs_csrf_et_echappement` |
 | PIN affiché une seule fois | `reinitialisation_pin_affiche_une_fois` |
 

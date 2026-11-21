@@ -394,6 +394,11 @@ impl Utilisateurs {
         &self.dossier
     }
 
+    /// Stockage (journal d'audit) de la base.
+    pub fn stockage(&self) -> &Stockage {
+        &self.stockage
+    }
+
     /// Pseudonyme d'un identifiant : `u-` + 64 bits de HMAC-SHA256.
     pub fn pseudonyme(&self, identifiant: &str) -> String {
         let cle = ring::hmac::Key::new(ring::hmac::HMAC_SHA256, &self.cle_pseudonyme);

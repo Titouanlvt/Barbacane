@@ -102,9 +102,19 @@ struct Recu {
 
 /// Faux annuaire : une connexion TLS, liaison simple, une recherche, déconnexion.
 fn faux_annuaire(cert: CertificateDer<'static>, cle: Vec<u8>) -> (u16, Arc<Mutex<Recu>>) {
+    faux_annuaire_avec(cert, cle, fournisseur(), &rustls::version::TLS13)
+}
+
+/// Faux annuaire limité à une version de TLS et aux suites du fournisseur donné.
+fn faux_annuaire_avec(
+    cert: CertificateDer<'static>,
+    cle: Vec<u8>,
+    f: rustls::crypto::CryptoProvider,
+    version: &'static rustls::SupportedProtocolVersion,
+) -> (u16, Arc<Mutex<Recu>>) {
     let tls = Arc::new(
-        ServerConfig::builder_with_provider(Arc::new(fournisseur()))
-            .with_protocol_versions(&[&rustls::version::TLS13])
+        ServerConfig::builder_with_provider(Arc::new(f))
+            .with_protocol_versions(&[version])
             .unwrap()
             .with_no_client_auth()
             .with_single_cert(
@@ -208,12 +218,16 @@ fn pki() -> (String, CertificateDer<'static>, Vec<u8>) {
 }
 
 fn config(d: &Path, port: u16, ca_pem: &str, mdp: &str) -> ConfigAnnuaire {
+    config_avec(d, port, ca_pem, mdp, "")
+}
+
+fn config_avec(d: &Path, port: u16, ca_pem: &str, mdp: &str, plus: &str) -> ConfigAnnuaire {
     std::fs::write(d.join("ca.pem"), ca_pem).unwrap();
     let f = d.join("mdp");
     std::fs::write(&f, format!("{mdp}\n")).unwrap();
     std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o600)).unwrap();
     let texte = format!(
-        "url = ldaps://localhost:{port}\nca = {d}/ca.pem\ncompte = {COMPTE}\nmot_de_passe_fichier = {d}/mdp\nbase = DC=exemple,DC=invalid\nfiltre = (&(objectClass=user)(memberOf=CN=Barbacane,DC=exemple,DC=invalid))\nattribut = sAMAccountName\n",
+        "url = ldaps://localhost:{port}\nca = {d}/ca.pem\ncompte = {COMPTE}\nmot_de_passe_fichier = {d}/mdp\nbase = DC=exemple,DC=invalid\nfiltre = (&(objectClass=user)(memberOf=CN=Barbacane,DC=exemple,DC=invalid))\nattribut = sAMAccountName\n{plus}",
         d = d.display()
     );
     std::fs::write(d.join("annuaire.conf"), &texte).unwrap();
@@ -272,4 +286,53 @@ fn annuaire_ldaps_de_test() {
         n,
         "aucune liaison sans TLS vérifié : {e:#}"
     );
+}
+
+/// Faux annuaire TLS 1.2 seulement, avec une suite donnée.
+fn annuaire_tls12(suite: rustls::SupportedCipherSuite) -> (u16, String) {
+    let (ca_pem, cert, cle) = pki();
+    let mut f = fournisseur();
+    f.cipher_suites = vec![suite];
+    let (port, _) = faux_annuaire_avec(cert, cle, f, &rustls::version::TLS12);
+    (port, ca_pem)
+}
+
+/// Décision du 21/11/2026 : TLS 1.2 refusé par défaut, accepté avec `tls12 = oui` (ECDHE-AES-GCM
+/// seulement), et l'activation est auditée à chaque synchronisation.
+#[test]
+fn annuaire_tls12_optionnel() {
+    use rustls::crypto::ring::cipher_suite as s;
+    let d = tempfile::tempdir().unwrap();
+    let (port, ca) = annuaire_tls12(s::TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384);
+
+    // Sans l'option : TLS 1.3 seul, l'annuaire TLS 1.2 est refusé.
+    let c = config(d.path(), port, &ca, MDP);
+    assert!(!c.tls12);
+    assert!(
+        lire_identifiants(&c, 100).is_err(),
+        "TLS 1.2 refusé par défaut"
+    );
+
+    // Avec l'option : accepté, et la synchronisation est tracée dans l'audit.
+    let c = config_avec(d.path(), port, &ca, MDP, "tls12 = oui\n");
+    assert_eq!(lire_identifiants(&c, 100).unwrap(), IDENTIFIANTS);
+    let stockage = Stockage::ouvrir(&d.path().join("etat")).unwrap();
+    let u = Utilisateurs::ouvrir(&stockage).unwrap();
+    synchroniser(
+        &d.path().join("annuaire.conf"),
+        &u,
+        "web:alice",
+        1_800_000_000,
+    )
+    .unwrap();
+    let audit = String::from_utf8(stockage.journal_audit().lire().unwrap()).unwrap();
+    assert!(
+        audit.contains(barbacane_web::annuaire::AUDIT_TLS12),
+        "{audit}"
+    );
+
+    // Option active mais suite non GCM (ChaCha20-Poly1305) côté annuaire : refus.
+    let (port, ca) = annuaire_tls12(s::TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256);
+    let c = config_avec(d.path(), port, &ca, MDP, "tls12 = oui\n");
+    assert!(lire_identifiants(&c, 100).is_err(), "suite non GCM refusée");
 }
