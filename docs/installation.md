@@ -29,7 +29,7 @@ de préférence) qui génère les clés de signature et les paquets de mise à j
 
 ## 3. Méthode recommandée : ISO d'installation hors ligne
 
-Guide pas à pas pour l'opérateur : [guide-installation-poste.md](guide-installation-poste.md).
+Guide pas à pas pour l'opérateur : [guide-installation-poste.md](guide-installation-poste.md). Manuel complet (borne, serveur, bornes en ligne) : [Barbacane-installation.pdf](Barbacane-installation.pdf).
 
 Une seule ISO installe n'importe quel poste x86_64 (UEFI ou BIOS), **sans réseau
 ni question**.

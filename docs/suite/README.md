@@ -66,7 +66,7 @@ jour restent des `.bcu` signés hors ligne et revérifiés par la borne.
 
 ## Ordre de lecture
 
-- **Exploitant** : ce README → [borne-en-ligne.md](borne-en-ligne.md) → [serveur-iso.md](serveur-iso.md)
+- **Exploitant** : [Manuel Barbacane](../Barbacane-installation.pdf) ([source](../Barbacane-installation.md)), puis ce README → [borne-en-ligne.md](borne-en-ligne.md) → [serveur-iso.md](serveur-iso.md)
   (installation, sauvegarde) → [serveur-web.md](serveur-web.md) → [serveur-utilisateurs.md](serveur-utilisateurs.md)
   → [serveur-iso-bornes.md](serveur-iso-bornes.md) → [quarantaine.md](quarantaine.md).
 - **Homologation** : [decisions.md](decisions.md) → [dossier-homologation.md](dossier-homologation.md)

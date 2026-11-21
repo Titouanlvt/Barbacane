@@ -1,86 +1,118 @@
-/* Charte Barbacane (docs/charte/tokens.json), thème Pierre, pour l'impression A4 (WeasyPrint) */
-@font-face { font-family: "Atkinson Hyperlegible"; src: url("@POLICES@/AtkinsonHyperlegible-Regular.ttf"); }
-@font-face { font-family: "Atkinson Hyperlegible"; font-weight: bold; src: url("@POLICES@/AtkinsonHyperlegible-Bold.ttf"); }
+/* Manuel Barbacane : charte v2 (docs/charte/tokens.json, thème Pierre), impression A4 (WeasyPrint).
+   Polices de la charte embarquées depuis docs/charte/fonts (OFL), aucun téléchargement. */
+@font-face { font-family: "Atkinson Hyperlegible"; font-weight: 400; src: url("@POLICES@/AtkinsonHyperlegible-Regular.ttf"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-weight: 700; src: url("@POLICES@/AtkinsonHyperlegible-Bold.ttf"); }
 @font-face { font-family: "Barlow Condensed"; font-weight: 600; src: url("@POLICES@/BarlowCondensed-SemiBold.ttf"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700; src: url("@POLICES@/BarlowCondensed-Bold.ttf"); }
 @font-face { font-family: "JetBrains Mono"; src: url("@POLICES@/JetBrainsMono.ttf"); }
 
-/* --- Pages : en-tête (chapitre courant) et pied (numéro) ------------------------------- */
+/* Jetons de la charte (Pierre) :
+   surface #EEEBE4 · surface-haute #F8F6F2 · surface-creuse #E3DFD5 · trait #CFC9BD · trait-fort #7D7566
+   encre #1C1F22 · encre-douce #53585C · laiton #8A6420 · laiton-clair #D6AD5A · laiton-pale #E9DCC0
+   alerte #8F5300 / #F7E6C8 · analyse #285A86 / #DCE7F2 · menace #A8231B / #F6D9D5 */
+
 @page {
   size: A4; margin: 22mm 18mm 20mm 18mm;
-  @top-left { content: "BARBACANE"; font: 600 9pt "Barlow Condensed"; letter-spacing: .12em; color: #8A6420; }
-  @top-right { content: string(chapitre); font: 9pt "Atkinson Hyperlegible"; color: #565B5F; }
-  @bottom-left { content: "Guide du technicien"; font: 8.5pt "Atkinson Hyperlegible"; color: #8A8F93; }
-  @bottom-right { content: counter(page) " / " counter(pages); font: 8.5pt "Atkinson Hyperlegible"; color: #565B5F; }
+  @top-left { content: "BARBACANE"; font: 700 9pt "Barlow Condensed"; letter-spacing: .14em; color: #8A6420;
+              border-bottom: .3mm solid #CFC9BD; vertical-align: bottom; padding-bottom: 2mm; }
+  @top-right { content: string(chapitre); font: 600 10pt "Barlow Condensed"; color: #53585C;
+               border-bottom: .3mm solid #CFC9BD; vertical-align: bottom; padding-bottom: 2mm; }
+  @bottom-left { content: "Manuel Barbacane v2.0"; font: 8.5pt "Atkinson Hyperlegible"; color: #53585C; }
+  @bottom-right { content: counter(page) " / " counter(pages); font: 700 8.5pt "Atkinson Hyperlegible"; color: #1C1F22; }
 }
 @page couverture { margin: 0; @top-left { content: none } @top-right { content: none }
                    @bottom-left { content: none } @bottom-right { content: none } }
+@page partie { @top-left { content: none } @top-right { content: none } }
 @page sommaire { @top-right { content: "Sommaire" } }
 
-html { font: 10.5pt/1.5 "Atkinson Hyperlegible", sans-serif; color: #1C1F22; }
+html { font: 10.5pt/1.5 "Atkinson Hyperlegible", "DejaVu Sans", sans-serif; color: #1C1F22; }
 body { margin: 0; }
 p { margin: 0 0 2.5mm; orphans: 3; widows: 3; }
 
-/* --- Couverture (docs/pdf/couverture.html) ------------------------------------------- */
+/* --- Couverture : pierre claire, logo en relief, filet laiton --------------------------- */
 header#title-block-header { display: none; }
 section.couverture {
   page: couverture; break-after: page;
-  width: 210mm; height: 297mm; box-sizing: border-box; padding: 38mm 24mm 22mm;
-  background: #1C1F22; color: #F8F6F2; position: relative;
+  width: 210mm; height: 297mm; box-sizing: border-box; padding: 0 24mm 22mm;
+  background: #EEEBE4; color: #1C1F22; position: relative;
 }
-.couverture .logo { width: 34mm; height: auto; border: 0; display: block; margin-bottom: 10mm; }
-.couverture .marque { font: 600 40pt/1 "Barlow Condensed"; letter-spacing: .14em; }
-.couverture .devise { font-size: 12pt; color: #D4A64A; margin-top: 3mm; }
-.couverture .filet { width: 30mm; height: 1.2mm; background: #D4A64A; margin: 26mm 0 9mm; }
-.couverture h1.titre-couverture { font: 600 30pt/1.1 "Barlow Condensed"; color: #F8F6F2;
+.couverture .bandeau-couverture { margin: 0 -24mm 34mm; padding: 6mm 24mm; background: #1C1F22; }
+.couverture .symbole { width: 9mm; height: 9mm; vertical-align: middle; margin-right: 3mm; }
+.couverture .marque-petite { font: 700 13pt "Barlow Condensed"; letter-spacing: .16em; color: #F8F6F2; vertical-align: middle; }
+.couverture .logo { width: 46mm; height: auto; display: block; margin-bottom: 8mm; }
+.couverture .marque { font: 700 44pt/1 "Barlow Condensed"; letter-spacing: .14em; }
+.couverture .devise { font-size: 12.5pt; color: #8A6420; margin-top: 3mm; font-weight: 700; }
+.couverture .filet { width: 32mm; height: 1.4mm; background: #8A6420; margin: 22mm 0 8mm; }
+.couverture h1.titre-couverture { font: 700 34pt/1.05 "Barlow Condensed"; color: #1C1F22;
   border: 0; margin: 0; padding: 0; break-before: auto; string-set: none; }
-.couverture .sous-titre { font-size: 15pt; color: #CFC9BD; margin-top: 5mm; }
-.couverture .pied-couverture { position: absolute; left: 24mm; right: 24mm; bottom: 22mm;
-  font-size: 9pt; color: #8A8F93; border-top: 1px solid #3A3F43; padding-top: 4mm; }
+.couverture .sous-titre { font-size: 14pt; line-height: 1.4; color: #53585C; margin-top: 5mm; }
+.couverture .pied-couverture { position: absolute; left: 24mm; right: 24mm; bottom: 20mm;
+  font-size: 9.5pt; color: #53585C; border-top: .4mm solid #CFC9BD; padding-top: 4mm; }
 
-/* --- Sommaire avec numéros de page ---------------------------------------------------- */
+/* --- Sommaire --------------------------------------------------------------------------- */
 nav#TOC { page: sommaire; break-after: page; }
-nav#TOC > h2, #toc-title { font: 600 26pt "Barlow Condensed"; margin: 0 0 8mm; border: 0; }
+nav#TOC > h2, #toc-title { font: 700 28pt "Barlow Condensed"; margin: 0 0 6mm; padding-bottom: 2mm;
+  border-bottom: 1.2mm solid #8A6420; }
 nav#TOC ul { list-style: none; padding-left: 0; margin: 0; }
-nav#TOC > ul > li { margin-top: 3.5mm; font-weight: bold; }
-nav#TOC ul ul { padding-left: 7mm; font-weight: normal; }
-nav#TOC ul ul li { margin-top: 1mm; }
+nav#TOC > ul > li { margin-top: 2.6mm; font-weight: 700; }
+nav#TOC ul ul { padding-left: 7mm; font-weight: 400; font-size: 9.6pt; }
+nav#TOC ul ul li { margin: .6mm 0 0; }
 nav#TOC a { color: #1C1F22; text-decoration: none; }
-nav#TOC a::after { content: leader(".") target-counter(attr(href), page); color: #565B5F; font-weight: normal; }
+nav#TOC a::after { content: leader(".") target-counter(attr(href), page); color: #53585C; font-weight: 400; }
 
 /* --- Titres ----------------------------------------------------------------------------- */
-h1 { font: 600 25pt/1.1 "Barlow Condensed"; color: #1C1F22; break-before: page; string-set: chapitre content();
-  margin: 0 0 6mm; padding-bottom: 2mm; border-bottom: 2px solid #D4A64A; }
-h2 { font: 600 15.5pt "Barlow Condensed"; color: #1C1F22; margin: 7mm 0 2.5mm; break-after: avoid; }
-h3 { font: bold 11pt "Atkinson Hyperlegible"; margin: 5mm 0 2mm; break-after: avoid; }
+h1 { font: 700 26pt/1.1 "Barlow Condensed"; color: #1C1F22; break-before: page; string-set: chapitre content();
+  margin: 0 0 6mm; padding-bottom: 2.5mm; border-bottom: 1.2mm solid #8A6420; }
+h1.partie { page: partie; border: 0; margin-top: 70mm; font-size: 38pt; color: #1C1F22; }
+h1.partie::before { content: ""; display: block; width: 32mm; height: 1.4mm; background: #8A6420; margin-bottom: 8mm; }
+h1.partie + p { font-size: 12pt; color: #53585C; max-width: 140mm; }
+h2 { font: 700 16pt "Barlow Condensed"; color: #1C1F22; margin: 7mm 0 2.5mm; break-after: avoid;
+  padding-left: 3mm; border-left: 1.2mm solid #D6AD5A; }
+h3 { font: 700 11pt "Atkinson Hyperlegible"; margin: 5mm 0 2mm; break-after: avoid; }
 h2 + p, h3 + p { break-before: avoid; }
 
 /* --- Listes, code, tableaux ------------------------------------------------------------- */
 ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
 li { margin-bottom: 1.2mm; }
-li::marker { color: #8A6420; font-weight: bold; }
-code { font-family: "JetBrains Mono", monospace; font-size: 8.6pt; background: #F1ECE2; padding: .2mm 1mm; border-radius: 2px; }
-pre { font-family: "JetBrains Mono", monospace; font-size: 8.4pt; line-height: 1.45;
-  background: #1C1F22; color: #F1ECE2; border-radius: 4px; padding: 3.5mm 4mm; margin: 2mm 0 4mm;
-  white-space: pre-wrap; break-inside: avoid; }
+li::marker { color: #8A6420; font-weight: 700; }
+code { font-family: "JetBrains Mono", monospace; font-variant-ligatures: none; font-feature-settings: "calt" 0, "liga" 0; font-size: 8.5pt; background: #E3DFD5; padding: .2mm 1mm; border-radius: 1mm; }
+pre { font-family: "JetBrains Mono", monospace; font-variant-ligatures: none; font-feature-settings: "calt" 0, "liga" 0; font-size: 8.2pt; line-height: 1.45;
+  background: #F8F6F2; color: #1C1F22; border: .3mm solid #CFC9BD; border-left: 1.2mm solid #1C1F22;
+  border-radius: 1.5mm; padding: 3mm 4mm; margin: 2mm 0 4mm; white-space: pre-wrap; break-inside: avoid; }
 pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
-pre .co { color: #9AA0A4; } pre .st { color: #E3C27A; } pre .kw, pre .fu { color: #F8F6F2; font-weight: bold; }
-table { border-collapse: collapse; width: 100%; margin: 3mm 0 5mm; font-size: 9.4pt; break-inside: auto; }
+pre .co { color: #53585C; } pre .st { color: #8A6420; } pre .kw, pre .fu { font-weight: 700; }
+table { border-collapse: collapse; width: 100%; margin: 3mm 0 5mm; font-size: 9.2pt; break-inside: auto;
+  border: .3mm solid #CFC9BD; }
 thead { display: table-header-group; }
 tr { break-inside: avoid; }
-th { background: #1C1F22; color: #F8F6F2; text-align: left; font-weight: bold; }
-th, td { padding: 2mm 2.5mm; vertical-align: top; border-bottom: 1px solid #DCD5C8; }
-tbody tr:nth-child(even) td { background: #F7F3EC; }
+th { background: #1C1F22; color: #F8F6F2; text-align: left; font: 700 10.5pt "Barlow Condensed"; letter-spacing: .02em; }
+th, td { padding: 1.8mm 2.5mm; vertical-align: top; border-bottom: .3mm solid #CFC9BD; }
+td { background: #F8F6F2; }
+tbody tr:nth-child(even) td { background: #EEEBE4; }
+td code { font-size: 8pt; }
 
-/* --- Encadrés (citations Markdown « > ») ------------------------------------------------- */
-blockquote { margin: 4mm 0; padding: 3mm 4mm; background: #F7EFDD; border-left: 1.2mm solid #D4A64A;
-  border-radius: 0 3px 3px 0; break-inside: avoid; }
+/* --- Encadrés (« > » en Markdown) ; « Nécessite v2.0.1 » en couleur d'alerte ------------- */
+blockquote { margin: 4mm 0; padding: 3mm 4mm; background: #E9DCC0; border-left: 1.4mm solid #8A6420;
+  border-radius: 0 1.5mm 1.5mm 0; break-inside: avoid; }
 blockquote p:last-child { margin-bottom: 0; }
+div.v201 { margin: 4mm 0; padding: 3mm 4mm; border-radius: 0 1.5mm 1.5mm 0; break-inside: avoid;
+  border-left: 1.4mm solid #8F5300; background: #F7E6C8; }
+div.v201 p:last-child { margin-bottom: 0; }
+div.v201-ancien { background: #F7E6C8; border-left-color: #8F5300; }
 
-/* --- Captures d'écran ----------------------------------------------------------------- */
+/* --- Captures d'écran ------------------------------------------------------------------- */
 figure { margin: 4mm auto 5mm; break-inside: avoid; text-align: center; }
-figure img { width: 80%; height: auto; max-height: 92mm; object-fit: contain;
-  border: 1px solid #CFC9BD; border-radius: 3px; box-shadow: 0 1mm 2.5mm rgba(28, 31, 34, .18); }
-figcaption { font-size: 8.8pt; color: #565B5F; margin-top: 2mm; font-style: italic; }
+figure img { width: 80%; height: auto; max-height: 95mm; object-fit: contain;
+  border: .3mm solid #CFC9BD; border-radius: 1.5mm; }
+figcaption { font-size: 8.8pt; color: #53585C; margin-top: 2mm; }
+figcaption::before { content: "▸ "; color: #8A6420; }
 img { max-width: 100%; }
-strong { color: #1C1F22; }
 a { color: #8A6420; }
+ol[start="2"] { counter-reset: list-item 1; }
+ol[start="3"] { counter-reset: list-item 2; }
+ol[start="4"] { counter-reset: list-item 3; }
+ol[start="5"] { counter-reset: list-item 4; }
+ol[start="6"] { counter-reset: list-item 5; }
+ol[start="7"] { counter-reset: list-item 6; }
+ol[start="8"] { counter-reset: list-item 7; }
+ol[start="9"] { counter-reset: list-item 8; }
