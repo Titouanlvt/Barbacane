@@ -535,8 +535,8 @@ fn anomalies_de_battement_auditees_au_changement() {
 }
 
 /// Quarantaine (étape 11) : désactivée par défaut, le dépôt d'une borne authentifiée est refusé
-/// AVANT la lecture du corps et audité ; accepté seulement une fois le verrou d'homologation levé
-/// (fichier de TEST) et l'activation validée par deux administrateurs.
+/// AVANT la lecture du corps et audité ; accepté une fois l'activation validée par deux
+/// administrateurs (option choisie par les administrateurs, décision du 21/11/2026).
 #[test]
 fn quarantaine_refusee_par_la_passerelle_si_desactivee() {
     use barbacane_passerelle::quarantaine::{Quarantaine, Validation};
@@ -559,14 +559,7 @@ fn quarantaine_refusee_par_la_passerelle_si_desactivee() {
         journal.contains(&format!("\"reception-refusee\",\"element\":\"{uuid}\"")),
         "{journal}"
     );
-    // Verrou levé (fichier de TEST) + double validation : dépôt accepté.
-    let dossier = b.dossier.path().join("dossier-homologation.md");
-    std::fs::write(&dossier, "mesures_dr_serveur: en place\n").unwrap();
-    std::fs::write(
-        b.config.registre.join("quarantaine.conf"),
-        format!("dossier_homologation = {}\n", dossier.display()),
-    )
-    .unwrap();
+    // Double validation : dépôt accepté.
     let q = Quarantaine::ouvrir(&b.admin.stockage).unwrap();
     let d = q.demander_activation("web:alice", maintenant()).unwrap();
     assert!(matches!(

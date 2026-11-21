@@ -104,11 +104,13 @@ liste blanche, TLS 1.3 mutuel, journalisation centralisée et chaînée, adminis
 | Poste d'administration | poste durci de l'organisme (éventuellement solution agréée) | — |
 | Supports de la racine PKI | supports chiffrés agréés + coffre | cérémonie (`politique-certification.md` §8) |
 
-## 8. État des mesures DR du serveur (lu par le logiciel)
+## 8. État des mesures DR du serveur (information)
 
-La quarantaine (étape 11) ne peut être activée que si la ligne ci-dessous vaut exactement
-`mesures_dr_serveur: en place`. Ce champ ne doit être changé qu'après réalisation et preuve de
-toutes les mesures du §5 marquées serveur, et décision de l'AH (§6).
+La ligne ci-dessous indique si toutes les mesures du §5 marquées serveur sont réalisées et
+prouvées, avec décision de l'AH (§6). Depuis la décision du 21/11/2026, elle **n'est plus un verrou
+logiciel** : l'activation de la quarantaine (étape 11) est un choix des administrateurs (double
+validation, avertissement DR affiché et journalisé), qu'ils doivent justifier devant l'autorité
+d'homologation tant que cette ligne vaut `non`.
 
 mesures_dr_serveur: non
 

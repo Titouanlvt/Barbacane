@@ -1,6 +1,6 @@
 //! Preuves de la page « Quarantaine » (`docs/suite/quarantaine.md`) : vraie écoute TLS, vrai
-//! registre. Désactivée par défaut ; verrou d'homologation levé par un fichier de TEST
-//! seulement ; double validation ; auditeur refusé.
+//! registre. Désactivée par défaut (option des administrateurs), avertissement DR affiché ;
+//! double validation ; auditeur refusé.
 
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -36,7 +36,6 @@ struct Ident {
 
 struct Banc {
     _dossier: tempfile::TempDir,
-    d: PathBuf,
     pki: PathBuf,
     web: SocketAddr,
     passerelle: barbacane_passerelle::Config,
@@ -153,25 +152,10 @@ fn banc() -> Banc {
         d = d.display(),
     ))
     .unwrap();
-    std::fs::write(
-        d.join("dossier-homologation.md"),
-        "# TEST\n\nmesures_dr_serveur: non\n",
-    )
-    .unwrap();
-    std::fs::create_dir_all(d.join("etat")).unwrap();
-    std::fs::write(
-        d.join("etat/quarantaine.conf"),
-        format!(
-            "dossier_homologation = {}\n",
-            d.join("dossier-homologation.md").display()
-        ),
-    )
-    .unwrap();
     let w = Web::nouveau(config).unwrap();
     std::thread::spawn(move || servir(ecoute, w));
     Banc {
         _dossier: dossier,
-        d,
         pki,
         web,
         passerelle,
@@ -329,26 +313,19 @@ fn quarantaine_desactivee_double_validation_auditeur_refuse() {
             403
         );
     }
-    // Désactivée, raison affichée ; activation refusée avec « non » (auditée).
+    // Désactivée par défaut, avertissement DR affiché avant l'activation.
     let p = get(&b, &b.alice, "/quarantaine", Some(&ca));
     assert_eq!(p.statut, 200);
-    assert!(p.texte().contains("Désactivée") && p.texte().contains("mesures_dr_serveur: non"));
-    let r = post(
-        &b,
-        &b.alice,
-        "/quarantaine/activer",
-        &ca,
-        &[("csrf", &csrf_a)],
+    assert!(p.texte().contains("Désactivée"));
+    assert!(
+        p.texte()
+            .contains("n&#39;activez qu&#39;avec un stockage et des accès conformes")
+            || p.texte()
+                .contains("n'activez qu'avec un stockage et des accès conformes"),
+        "{}",
+        p.texte()
     );
-    assert_eq!(r.statut, 400);
-    assert!(r.texte().contains("activation refusée"), "{}", r.texte());
-    assert!(quarantaine(&b).contains(&"activation-refusee".to_owned()));
-    // Fichier de TEST à « en place » : demande par alice, refus si alice valide, OK par carole.
-    std::fs::write(
-        b.d.join("dossier-homologation.md"),
-        "mesures_dr_serveur: en place\n",
-    )
-    .unwrap();
+    // Demande par alice, refus si alice valide, OK par carole.
     let r = post(
         &b,
         &b.alice,
