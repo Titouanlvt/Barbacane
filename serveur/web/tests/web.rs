@@ -1,6 +1,6 @@
 //! Preuves de l'interface web d'administration (`docs/suite/serveur-web.md` §5) : vraie écoute
 //! TLS 1.3 sur un port local, PKI des bornes de TEST (`serveur/pki/racine-test.sh`, openssl
-//! requis), CA « administrateurs » de TEST générée ici (rcgen), vraie passerelle pour
+//! requis), CA « administrateurs » de TEST générée ici (rcgen) et celle du script, vraie passerelle pour
 //! l'enrôlement de bout en bout, `.bcu` préparé par le vrai script (minisign, zstd, python3).
 
 use std::io::{Read, Write};
@@ -115,7 +115,9 @@ fn banc() -> Banc {
     p.not_before = temps(-3600);
     p.not_after = temps(365 * 86400);
     let ca = p.self_signed(&ca_cle).unwrap();
-    std::fs::write(d.join("ca-admin.pem"), ca.pem()).unwrap();
+    // Deux ancres : la CA rcgen ci-dessus et la CA administrateurs de racine-test.sh.
+    let ca_script = std::fs::read_to_string(pki.join("ca-administrateurs/cert.pem")).unwrap();
+    std::fs::write(d.join("ca-admin.pem"), ca.pem() + &ca_script).unwrap();
     let issuer = Issuer::from_ca_cert_der(ca.der(), ca_cle).unwrap();
     let alice = administrateur(&issuer, "alice", 1);
     let bob = administrateur(&issuer, "bob", 2);
@@ -136,7 +138,8 @@ fn banc() -> Banc {
     }
     .signed_by(&issuer)
     .unwrap();
-    std::fs::write(d.join("crl-admin.pem"), crl.pem().unwrap()).unwrap();
+    let crl_script = std::fs::read_to_string(pki.join("ca-administrateurs/crl.pem")).unwrap();
+    std::fs::write(d.join("crl-admin.pem"), crl.pem().unwrap() + &crl_script).unwrap();
     // Comptes (mots de passe de TEST) ; carol a un certificat valide mais aucun compte.
     let comptes = [
         ligne_compte("alice", Role::Administrateur, &alice.chaine[0], MDP_ALICE).unwrap(),
@@ -417,6 +420,31 @@ fn certificat_revoque_refus_tls() {
         .is_err()
     );
     assert_eq!(get(&b, &b.alice, "/connexion", None).statut, 200);
+}
+
+/// La CA administrateurs produite par `racine-test.sh` ouvre l'écoute ; son administrateur
+/// révoqué (CRL du script) est refusé.
+#[test]
+fn pki_de_test_administrateurs() {
+    let b = banc();
+    let ident = |nom: &str| Ident {
+        chaine: vec![
+            CertificateDer::from_pem_file(b.pki.join(format!("administrateurs/{nom}.cert.pem")))
+                .unwrap(),
+        ],
+        cle: PrivateKeyDer::from_pem_file(b.pki.join(format!("administrateurs/{nom}.cle.pem")))
+            .unwrap(),
+    };
+    assert_eq!(get(&b, &ident("admin-01"), "/connexion", None).statut, 200);
+    assert!(
+        envoyer(
+            b.web,
+            &b.pki,
+            Some(&ident("admin-revoque")),
+            b"GET /connexion HTTP/1.1\r\n\r\n"
+        )
+        .is_err()
+    );
 }
 
 #[test]

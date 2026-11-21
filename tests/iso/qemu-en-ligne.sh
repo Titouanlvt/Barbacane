@@ -3,7 +3,8 @@
 #   installation SANS carte réseau → jeton déposé sur le disque → premier démarrage avec réseau
 #   QEMU « user » (la machine hôte est 10.0.2.2 vue de la borne, DHCP) → l'agent dépose sa
 #   demande → validation par barbacane-registre → battement visible dans la supervision ;
-#   depuis la borne, root lui-même ne peut joindre ni un autre port, ni le serveur hors agent.
+#   depuis la borne, root lui-même ne peut joindre ni un autre port, ni le serveur hors agent ;
+#   un rapport de passage (analyse factice, op « serveur_passage » d'admind) arrive au serveur.
 # Usage : qemu-en-ligne.sh ISO_EN_LIGNE DOSSIER PKI PASSERELLE REGISTRE
 #   ISO construite avec --serveur 10.0.2.2 --port-enrolement 43118 --port-service 43117 et la
 #   CA serveur de PKI (serveur/pki/racine-test.sh). Root, KVM, qemu, ovmf, qemu-utils, socat.
@@ -73,6 +74,30 @@ ExecStart=/bin/bash -c 'while :; do { date -u; systemctl is-active barbacane-age
 WantedBy=multi-user.target
 FIN
 ln -sf ../diag-en-ligne.service "$W/rw/etc/systemd/system/multi-user.target.wants/diag-en-ligne.service"
+# Rapport de passage (test uniquement) : une fois l'agent connecté, un rapport d'analyse
+# factice (1 EICAR, 1 sain) est placé là où l'analyseur écrit, puis l'op « serveur_passage »
+# est envoyée à admind comme le ferait l'interface (perl-base : pas de socat sur la borne).
+PASSAGE=$(cat /proc/sys/kernel/random/uuid)
+cat > "$W/rw/usr/local/sbin/diag-passage.sh" <<FIN
+#!/bin/bash
+id=$PASSAGE
+until grep -q '"mode": "connectee"' /run/barbacane-agent/etat.json 2>/dev/null; do sleep 10; done
+install -d -m 0750 /var/lib/barbacane/rapports
+r=/var/lib/barbacane/rapports/20261121-\$id.json
+printf '%s' '{"id":"'\$id'","status":"scanned","files":[{"size":68,"sha256":"275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f","verdict":"INFECTED","signature":"Eicar-Test-Signature"},{"size":6,"sha256":"e1f6f3b4a1f1e0b7a2d3b9f4a6b9b5f1a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5","verdict":"CLEAN","signature":null}]}' > "\$r"
+req='{"op":"serveur_passage","id":"'\$id'","vendorid":1921,"productid":21889,"serial":"4C530001"}'
+perl -MIO::Socket::UNIX -e '\$s = IO::Socket::UNIX->new(Peer => "/run/barbacane/admin.sock") or die "socket : \$!"; print \$s \$ARGV[0], "\\n"; print scalar <\$s>' "\$req" > /var/log/diag-passage.txt 2>&1
+ls -l /var/lib/barbacane-agent >> /var/log/diag-passage.txt 2>&1
+FIN
+chmod 755 "$W/rw/usr/local/sbin/diag-passage.sh"
+cat > "$W/rw/etc/systemd/system/diag-passage.service" <<'FIN'
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/diag-passage.sh
+[Install]
+WantedBy=multi-user.target
+FIN
+ln -sf ../diag-passage.service "$W/rw/etc/systemd/system/multi-user.target.wants/diag-passage.service"
 umount "$W/rw"; qemu-nbd -d "$NBD" >/dev/null; sleep 1
 
 echo "== premier démarrage (réseau QEMU user, DHCP)"
@@ -103,6 +128,18 @@ else
     cat "$W/supervision.txt"
     if [ "$vu" = 1 ]; then echo "OK : battement de la borne visible dans la supervision"
     else echo "ÉCHEC : aucun battement de la borne" >&2; ko=1; fi
+    recu=0
+    for _ in $(seq 30); do
+        if grep -qs "$PASSAGE" "$W/registre/passages/index.jsonl"; then recu=1; break; fi
+        sleep 10
+    done
+    if [ "$recu" = 1 ]; then
+        grep "$PASSAGE" "$W/registre/passages/index.jsonl"
+        echo "OK : rapport de passage $PASSAGE reçu par le serveur"
+        if grep -rqs 'Eicar\|20261121-' "$W/registre/passages/"; then
+            echo "ÉCHEC : nom de fichier ou signature transmis au serveur" >&2; ko=1
+        else echo "OK : aucun nom de fichier ni nom de menace côté serveur"; fi
+    else echo "ÉCHEC : aucun rapport de passage reçu" >&2; ko=1; fi
 fi
 sleep 30
 echo "screendump $W/ecran.png -f png" | socat - "UNIX-CONNECT:$W/mon.sock" >/dev/null || true
@@ -116,6 +153,8 @@ qemu-nbd -r -c "$NBD" "$W/disque.qcow2"; sleep 2
 mount -o ro,noload "$(lsblk -lnpo NAME,FSTYPE "$NBD" | awk '$2 == "ext4" { print $1; exit }')" "$W/rw"
 cp "$W/rw/var/log/diag-en-ligne.txt" "$W/diag-en-ligne.txt" || true
 cat "$W/diag-en-ligne.txt" || true
+cp "$W/rw/var/log/diag-passage.txt" "$W/diag-passage.txt" || true
+cat "$W/diag-passage.txt" || true
 d="$W/diag-en-ligne.txt"
 if grep -q '"mode": "connectee"' "$d"; then echo "OK : agent connecté (etat.json)"; else echo "ÉCHEC : agent non connecté" >&2; ko=1; fi
 for c in "10.0.2.2/22" "10.0.2.2/43117" "10.0.2.3/53"; do

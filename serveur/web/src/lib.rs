@@ -367,8 +367,13 @@ impl Web {
         }
         let admin = Admin::ouvrir(passerelle.clone())?;
         Utilisateurs::ouvrir(&admin.stockage)?.lire()?;
-        if let Some(a) = &config.annuaire {
-            annuaire::ConfigAnnuaire::lire(a)?;
+        if let Some(a) = &config.annuaire
+            && annuaire::ConfigAnnuaire::lire(a)?.tls12
+        {
+            annuaire::auditer_tls12(
+                &admin.stockage,
+                &barbacane_passerelle::admin::acteur_local(),
+            )?;
         }
         Ok(Arc::new(Web {
             config,

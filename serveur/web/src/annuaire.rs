@@ -3,6 +3,9 @@
 //!
 //! - `ldaps://` seulement (ni `ldap://` ni StartTLS) ; TLS 1.3 (D6) ; **seule ancre : la CA de
 //!   l'annuaire épinglée** (fichier PEM), nom du serveur vérifié par rustls ;
+//! - option `tls12 = oui` (décision du 21/11/2026, désactivée par défaut) pour un annuaire qui
+//!   ne parle pas TLS 1.3 : TLS 1.2 avec ECDHE + AES-GCM seulement ; activation auditée
+//!   (`annuaire-tls12-actif`) au démarrage de l'interface et à chaque synchronisation ;
 //! - liaison simple avec un **compte de service en lecture seule** (mot de passe dans un fichier
 //!   0600) ; recherche paginée d'UN attribut ; aucune écriture dans l'annuaire ;
 //! - seuls des identifiants sortent d'ici (jamais de mot de passe d'utilisateur).
@@ -17,6 +20,7 @@ use anyhow::{Context, Result, bail};
 use barbacane_passerelle::fournisseur;
 use ldap3::adapters::{Adapter, EntriesOnly, PagedResults};
 use ldap3::{LdapConn, LdapConnSettings, Scope, SearchEntry};
+use rustls::crypto::ring::cipher_suite;
 use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
 use rustls::{ClientConfig, RootCertStore};
@@ -41,7 +45,12 @@ pub struct ConfigAnnuaire {
     pub filtre: String,
     /// Attribut d'identifiant (`sAMAccountName`, `uid`).
     pub attribut: String,
+    /// `tls12 = oui` : TLS 1.2 accepté en plus de 1.3 (ECDHE-AES-GCM seulement). Défaut : non.
+    pub tls12: bool,
 }
+
+/// Action d'audit enregistrée quand l'option TLS 1.2 est active.
+pub const AUDIT_TLS12: &str = "annuaire-tls12-actif";
 
 fn texte_sur(s: &str, max: usize) -> bool {
     !s.is_empty() && s.len() <= max && !s.chars().any(char::is_control)
@@ -63,6 +72,7 @@ impl ConfigAnnuaire {
             "base",
             "filtre",
             "attribut",
+            "tls12",
         ];
         let mut v: BTreeMap<&str, &str> = BTreeMap::new();
         for (n, ligne) in texte.lines().enumerate() {
@@ -115,6 +125,11 @@ impl ConfigAnnuaire {
         {
             bail!("annuaire : attribut invalide");
         }
+        let tls12 = match v.get("tls12").copied() {
+            None | Some("non") => false,
+            Some("oui") => true,
+            Some(_) => bail!("annuaire : tls12 = oui ou non"),
+        };
         Ok(ConfigAnnuaire {
             url: url.into(),
             ca: obtenir("ca")?.into(),
@@ -123,6 +138,7 @@ impl ConfigAnnuaire {
             base: base.into(),
             filtre: filtre.into(),
             attribut: attribut.into(),
+            tls12,
         })
     }
 
@@ -155,9 +171,21 @@ impl ConfigAnnuaire {
         if ancres.is_empty() {
             bail!("aucune CA de l'annuaire dans {}", self.ca.display());
         }
+        let mut f = fournisseur();
+        let mut versions = vec![&rustls::version::TLS13];
+        if self.tls12 {
+            // ECDHE (groupes P-384/P-256 de `fournisseur`) + AES-GCM, rien d'autre.
+            f.cipher_suites.extend([
+                cipher_suite::TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+                cipher_suite::TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+                cipher_suite::TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+                cipher_suite::TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+            ]);
+            versions.push(&rustls::version::TLS12);
+        }
         Ok(Arc::new(
-            ClientConfig::builder_with_provider(Arc::new(fournisseur()))
-                .with_protocol_versions(&[&rustls::version::TLS13])?
+            ClientConfig::builder_with_provider(Arc::new(f))
+                .with_protocol_versions(&versions)?
                 .with_root_certificates(ancres)
                 .with_no_client_auth(),
         ))
@@ -215,6 +243,19 @@ pub fn lire_identifiants(c: &ConfigAnnuaire, max: usize) -> Result<Vec<String>> 
     Ok(ids)
 }
 
+/// Trace l'option TLS 1.2 dans le journal d'audit (refus de continuer si l'audit échoue).
+pub fn auditer_tls12(
+    stockage: &barbacane_passerelle::registre::Stockage,
+    acteur: &str,
+) -> Result<()> {
+    stockage.auditer(
+        acteur,
+        barbacane_audit::Evenement::Administration {
+            action: AUDIT_TLS12.into(),
+        },
+    )
+}
+
 /// Synchronise la base des utilisateurs avec l'annuaire (page web ou
 /// `barbacane-web annuaire CONFIG`).
 pub fn synchroniser(
@@ -224,6 +265,9 @@ pub fn synchroniser(
     t: u64,
 ) -> Result<barbacane_passerelle::utilisateurs::BilanImport> {
     let c = ConfigAnnuaire::lire(config)?;
+    if c.tls12 {
+        auditer_tls12(utilisateurs.stockage(), acteur)?;
+    }
     let ids = lire_identifiants(&c, barbacane_passerelle::utilisateurs::UTILISATEURS_MAX)?;
     utilisateurs.importer(&ids, "annuaire", acteur, t)
 }
@@ -238,6 +282,17 @@ mod tests {
     fn configuration() {
         let c = ConfigAnnuaire::analyser(CONF).unwrap();
         assert_eq!(c.attribut, "sAMAccountName");
+        assert!(!c.tls12, "TLS 1.2 désactivé par défaut");
+        assert!(
+            !ConfigAnnuaire::analyser(&format!("{CONF}tls12 = non\n"))
+                .unwrap()
+                .tls12
+        );
+        assert!(
+            ConfigAnnuaire::analyser(&format!("{CONF}tls12 = oui\n"))
+                .unwrap()
+                .tls12
+        );
         for mauvais in [
             CONF.replace("ldaps://", "ldap://"),
             CONF.replace("ldaps://annuaire.exemple.invalid:636", "ldaps://a/b"),
@@ -246,6 +301,8 @@ mod tests {
             format!("{CONF}url = ldaps://b\n"),
             format!("{CONF}inconnue = 1\n"),
             CONF.replace("base = DC=x\n", ""),
+            format!("{CONF}tls12 = 1\n"),
+            format!("{CONF}tls12 = oui\ntls12 = oui\n"),
         ] {
             assert!(ConfigAnnuaire::analyser(&mauvais).is_err(), "{mauvais}");
         }

@@ -3,10 +3,16 @@
 #
 #   racine-test.sh [--cas-de-test] [--nom-serveur NOM] [--site SITE] DOSSIER_DE_SORTIE
 #
-# Produit : racine TEST (P-384) → CA « bornes » et CA « serveur » (P-384, signées SHA-384)
-#           → certificat serveur (P-256) et certificat de borne (P-256) ; CRL de la CA bornes
-#           (7 jours). Tous les noms portent « TEST — NE PAS UTILISER EN PRODUCTION ».
-# --cas-de-test : ajoute une borne révoquée et une CRL déjà expirée (tests de la passerelle).
+# Produit : racine TEST (P-384) → CA « bornes », CA « serveur » et CA « administrateurs »
+#           (P-384, signées SHA-384) → certificat serveur, certificat de borne et certificat
+#           d'administrateur (P-256) ; CRL de chaque CA (7 jours). Tous les noms portent
+#           « TEST — NE PAS UTILISER EN PRODUCTION ».
+# La CA administrateurs est l'ancre de l'interface web (barbacane-web : ca_administrateurs =
+# ca-administrateurs/cert.pem, crl_administrateurs = ca-administrateurs/crl.pem) ; le compte
+# se lie au certificat par « barbacane-web compte admin-01 administrateur
+# administrateurs/admin-01.cert.pem » (docs/suite/serveur-web.md §3).
+# --cas-de-test : ajoute une borne et un administrateur révoqués, et une CRL bornes déjà
+#                 expirée (tests de la passerelle et de l'interface web).
 #
 # À lancer sur une VM barbacane-9xx SANS carte réseau (D7). La sortie n'est JAMAIS dans un
 # dépôt git : le script refuse. Clés privées en clair (TEST uniquement), droits 0600.
@@ -98,6 +104,19 @@ nameConstraints = critical, permitted;DNS:${NOM_SERVEUR}
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid:always
 
+[ v3_ca_administrateurs ]
+basicConstraints = critical, CA:TRUE, pathlen:0
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always
+
+[ v3_administrateur ]
+basicConstraints = critical, CA:FALSE
+keyUsage = critical, digitalSignature
+extendedKeyUsage = clientAuth
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always
+
 [ v3_serveur ]
 basicConstraints = critical, CA:FALSE
 keyUsage = critical, digitalSignature
@@ -140,7 +159,7 @@ openssl req -new -x509 -sha384 -days 3650 -key racine/cle.pem -extensions v3_rac
 	-subj "/CN=Racine Barbacane TEST/O=${O_TEST}" -out racine/cert.pem
 
 # 2. CA intermédiaires (3 ans).
-for ca in bornes serveur; do
+for ca in bornes serveur administrateurs; do
 	nouvelle_ca "ca-$ca"
 	cle "ca-$ca/cle.pem" P-384
 	openssl req -new -sha384 -key "ca-$ca/cle.pem" -subj "/CN=CA ${ca} Barbacane TEST/O=${O_TEST}" -out "ca-$ca/demande.pem"
@@ -166,25 +185,40 @@ borne() { # identifiant
 }
 borne borne-01
 
-# 5. Cas de test : une borne révoquée, puis la CRL (7 jours) et une CRL expirée.
+# 5. Certificats d'administrateur (1 an), pour l'écoute mTLS de barbacane-web.
+mkdir -p administrateurs
+administrateur() { # identifiant
+	cle "administrateurs/$1.cle.pem" P-256
+	openssl req -new -sha256 -key "administrateurs/$1.cle.pem" -subj "/CN=administrateur $1/OU=${SITE}/O=${O_TEST}" -out "administrateurs/$1.demande.pem"
+	signer ca-administrateurs v3_administrateur 365 "administrateurs/$1.demande.pem" "administrateurs/$1.cert.pem"
+}
+administrateur admin-01
+
+# 6. Cas de test : une borne révoquée, puis la CRL (7 jours) et une CRL expirée.
 if [ "$CAS_DE_TEST" = 1 ]; then
 	borne borne-revoquee
 	CA_DIR="$SORTIE/ca-bornes" openssl ca -revoke bornes/borne-revoquee.cert.pem -crl_reason keyCompromise
+	administrateur admin-revoque
+	CA_DIR="$SORTIE/ca-administrateurs" openssl ca -revoke administrateurs/admin-revoque.cert.pem -crl_reason keyCompromise
 fi
 CA_DIR="$SORTIE/ca-bornes" openssl ca -gencrl -crldays 7 -crlexts crl_ext -out ca-bornes/crl.pem
 CA_DIR="$SORTIE/ca-serveur" openssl ca -gencrl -crldays 7 -crlexts crl_ext -out ca-serveur/crl.pem
+CA_DIR="$SORTIE/ca-administrateurs" openssl ca -gencrl -crldays 7 -crlexts crl_ext -out ca-administrateurs/crl.pem
 if [ "$CAS_DE_TEST" = 1 ]; then
 	CA_DIR="$SORTIE/ca-bornes" openssl ca -gencrl -crlexts crl_ext \
 		-crl_lastupdate "$(date -u -d '-10 days' +%Y%m%d%H%M%SZ)" \
 		-crl_nextupdate "$(date -u -d '-3 days' +%Y%m%d%H%M%SZ)" -out ca-bornes/crl-expiree.pem
 fi
 
-# Contrôles : chaque chaîne se vérifie, la CRL est signée par la CA bornes.
+# Contrôles : chaque chaîne se vérifie, les CRL bornes et administrateurs sont valides.
 openssl verify -CAfile racine/cert.pem -untrusted ca-serveur/cert.pem serveur/cert.pem >/dev/null
 openssl verify -CAfile racine/cert.pem -untrusted ca-bornes/cert.pem bornes/borne-01.cert.pem >/dev/null
 cat racine/cert.pem ca-bornes/cert.pem ca-bornes/crl.pem >controle.pem
 openssl verify -crl_check -CAfile controle.pem bornes/borne-01.cert.pem >/dev/null
-rm -f controle.pem ./*/demande.pem bornes/*.demande.pem
+openssl verify -CAfile racine/cert.pem -untrusted ca-administrateurs/cert.pem administrateurs/admin-01.cert.pem >/dev/null
+cat racine/cert.pem ca-administrateurs/cert.pem ca-administrateurs/crl.pem >controle.pem
+openssl verify -crl_check -CAfile controle.pem administrateurs/admin-01.cert.pem >/dev/null
+rm -f controle.pem ./*/demande.pem bornes/*.demande.pem administrateurs/*.demande.pem
 
 echo "PKI de TEST créée dans $SORTIE"
 echo "Empreinte SHA-256 de la racine TEST :"

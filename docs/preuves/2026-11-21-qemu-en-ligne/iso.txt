@@ -1,0 +1,4 @@
+ISO prête en 13 min 51 s
+  fichier  : /travail/qemu-sc/el/barbacane-el.iso (1.1G)
+  sha256   : d5a90fbfc79ea9b8d1e7cf30d1c3e7113202deb11ca268152337a96cc33f182f   (à noter avec la date)
+  journal  : /travail/qemu-sc/el/barbacane-el.log
