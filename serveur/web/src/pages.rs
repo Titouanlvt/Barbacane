@@ -47,7 +47,7 @@ const NAV: &[(Rubrique, &str, &str, &str)] = &[
     (
         Rubrique::Supervision,
         "/tableau",
-        "Supervision",
+        "Parc",
         "<rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\"/>",
     ),
     (
@@ -77,7 +77,7 @@ const NAV: &[(Rubrique, &str, &str, &str)] = &[
     (
         Rubrique::ClesUsb,
         "/cles-usb",
-        "Clés USB",
+        "Clés Barbacane",
         "<rect x=\"8\" y=\"2\" width=\"8\" height=\"7\" rx=\"1\"/><path d=\"M6 9h12v7a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z\"/>",
     ),
     (
@@ -89,7 +89,7 @@ const NAV: &[(Rubrique, &str, &str, &str)] = &[
     (
         Rubrique::Audit,
         "/audit",
-        "Journal d'audit",
+        "Journal",
         "<path d=\"M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01\"/>",
     ),
     (
@@ -109,7 +109,7 @@ const NAV: &[(Rubrique, &str, &str, &str)] = &[
 fn tete(h: &mut Html, titre: &str) {
     h.b("<!doctype html><html lang=\"fr\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>")
         .t(titre)
-        .b(" — Barbacane</title><link rel=\"stylesheet\" href=\"/statique/barbacane.css\"><link rel=\"icon\" href=\"/statique/symbole.svg\" type=\"image/svg+xml\"></head>");
+        .b(" — Console Barbacane</title><link rel=\"stylesheet\" href=\"/statique/barbacane.css\"><link rel=\"icon\" href=\"/statique/symbole.svg\" type=\"image/svg+xml\"></head>");
 }
 
 /// Champ caché du jeton anti-CSRF (toujours le premier champ du formulaire).
@@ -132,7 +132,7 @@ pub(crate) fn coque(
     tete(&mut h, titre);
     h.b("<body class=\"b-page\"><a class=\"b-lien-masque\" href=\"#contenu\">Aller au contenu</a><div class=\"b-coque\"><nav class=\"b-nav\" aria-label=\"Navigation\"><div class=\"b-nav__marque\">")
         .b(SYMBOLE)
-        .b(" Barbacane</div>");
+        .b(" Barbacane <span class=\"b-douce\">Console</span></div>");
     for (r, lien, nom, icone) in NAV {
         h.b("<a href=\"").b(lien).b("\"");
         if *r == rubrique {
@@ -246,7 +246,7 @@ pub fn connexion(jeton: &str, erreur: Option<&str>) -> String {
     tete(&mut h, "Connexion");
     h.b("<body class=\"b-page\"><main class=\"b-seul\"><div class=\"b-carte\"><div class=\"b-seul__marque\">")
         .b(SYMBOLE)
-        .b(" Barbacane</div><h1 class=\"b-carte__titre\">Administration du serveur</h1><p class=\"b-douce\">Votre certificat d'administrateur a été présenté. Saisissez votre identifiant et votre mot de passe.</p>");
+        .b(" Barbacane</div><h1 class=\"b-carte__titre\">Console</h1><p class=\"b-douce\">Administration du Serveur Barbacane.</p><p class=\"b-douce\">Votre certificat d'administrateur a été présenté. Saisissez votre identifiant et votre mot de passe.</p>");
     if let Some(e) = erreur {
         avis(&mut h, "b-avis--bloque", e);
     }
@@ -409,11 +409,11 @@ pub fn tableau(ctx: &Contexte, lignes: &[LigneSupervision], demandes: usize) -> 
     }
     c.b("</tbody></table></div><p class=\"b-aide\">Heure du serveur : ")
         .t(&date_utc(ctx.maintenant))
-        .b(". Chaque consultation est inscrite au journal d'audit.</p>");
+        .b(". Chaque consultation est inscrite au Journal.</p>");
     coque(
         ctx,
         Rubrique::Supervision,
-        "Supervision",
+        "Parc · registre et supervision des bornes",
         "Bornes · tous les sites",
         actions,
         c,
@@ -461,11 +461,11 @@ pub fn enrolement(
         if !err.is_empty() {
             c.b(" b-champ--erreur");
         }
-        c.b("\"><label for=\"site\">Site</label><input class=\"b-saisie b-mono\" id=\"site\" name=\"site\" required maxlength=\"14\" placeholder=\"site-1\" value=\"")
+        c.b("\"><label for=\"site\">Site</label><input class=\"b-saisie b-mono\" id=\"site\" name=\"site\" required maxlength=\"32\" pattern=\"[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?\" placeholder=\"labo\" value=\"")
             .t(saisie)
             .b("\"><span class=\"b-aide\">");
         if err.is_empty() {
-            c.b("Forme site-&lt;n&gt;. Le jeton vaut 1 h et ne sert qu'une fois.");
+            c.b("Nom libre : lettres minuscules, chiffres et « - » (ex. labo, paris-15). Le jeton vaut 1 h et ne sert qu'une fois.");
         } else {
             c.t(err);
         }
@@ -612,7 +612,7 @@ pub fn revocation(ctx: &Contexte, b: &Borne, erreur: Option<&str>) -> String {
     coque(
         ctx,
         Rubrique::Supervision,
-        "Supervision › Révocation",
+        "Parc › Révocation",
         &format!("Révoquer la borne {}", b.nom),
         Html::new(),
         c,
@@ -796,7 +796,7 @@ fn libelle_evenement(cle: &str) -> &'static str {
         "utilisateurs_purges" => "Utilisateurs purgés",
         "mode_site" => "Mode du site",
         "politique_usb_site" => "Politique USB du site",
-        "cle_usb_enrolee" => "Clé USB enrôlée",
+        "cle_usb_enrolee" => "Clé Barbacane enrôlée",
         "cle_usb_retiree" => "Clé USB retirée",
         "politique_servie" => "Politique servie",
         "administration" => "Administration",
@@ -888,8 +888,8 @@ pub fn audit(
     coque(
         ctx,
         Rubrique::Audit,
-        "Journal d'audit",
-        "Journal d'audit chaîné",
+        "Journal · chaîné et signé",
+        "Journal",
         actions,
         c,
     )
@@ -944,7 +944,7 @@ pub fn verification(ctx: &Contexte, resultat: Result<Bilan, String>) -> String {
     coque(
         ctx,
         Rubrique::Audit,
-        "Journal d'audit › Vérification",
+        "Journal › Vérification",
         "Vérification de la chaîne",
         Html::new(),
         c,

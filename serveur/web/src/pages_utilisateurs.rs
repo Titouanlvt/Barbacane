@@ -245,7 +245,7 @@ pub fn utilisateurs(ctx: &Contexte, v: &VueUtilisateurs) -> String {
     }
     c.b("<p class=\"b-aide\">");
     if auditeur {
-        c.b("Rôle auditeur : identifiants en clair. Le journal d'audit ne contient que les pseudonymes ; chaque consultation est journalisée.");
+        c.b("Rôle auditeur : identifiants en clair. Le Journal ne contient que les pseudonymes ; chaque consultation est journalisée.");
     } else {
         c.b("Identifiants pseudonymisés (HMAC) : saisissez un identifiant pour agir sur un compte. 5 échecs verrouillent un compte ; 5 refus en 1 h bloquent une borne 15 min (doublé à chaque fois).");
     }
@@ -337,7 +337,7 @@ pub fn sites(ctx: &Contexte, lignes: &[LigneSite], m: Option<(bool, &str)>) -> S
     if ctx.admin() {
         c.b("<div class=\"b-carte\"><h2>Régler un autre site</h2><form class=\"b-formulaire\" method=\"post\" action=\"/sites/mode\">");
         csrf(&mut c, ctx.csrf);
-        c.b("<div class=\"b-champ\"><label for=\"site\">Site</label><input class=\"b-saisie b-mono\" id=\"site\" name=\"site\" required maxlength=\"14\" placeholder=\"site-1\"></div><div class=\"b-champ\"><label for=\"mode\">Mode</label><select class=\"b-saisie\" id=\"mode\" name=\"mode\"><option value=\"aucun\">Aucun</option><option value=\"identification\">Identification</option><option value=\"authentification\">Authentification</option></select></div><div class=\"b-formulaire__actions\"><button class=\"b-btn b-btn--principal\" type=\"submit\">Appliquer</button></div></form></div>");
+        c.b("<div class=\"b-champ\"><label for=\"site\">Site</label><input class=\"b-saisie b-mono\" id=\"site\" name=\"site\" required maxlength=\"32\" pattern=\"[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?\" placeholder=\"labo\"></div><div class=\"b-champ\"><label for=\"mode\">Mode</label><select class=\"b-saisie\" id=\"mode\" name=\"mode\"><option value=\"aucun\">Aucun</option><option value=\"identification\">Identification</option><option value=\"authentification\">Authentification</option></select></div><div class=\"b-formulaire__actions\"><button class=\"b-btn b-btn--principal\" type=\"submit\">Appliquer</button></div></form></div>");
     }
     c.b("<p class=\"b-aide\">Défaut : mode Aucun et clés non enrôlées admises en entrée (comportement de la v1). La sortie (copie, blanchiment) ne se fait que vers une clé enrôlée avec l'usage « sortie ». Le mode Aucun est interdit si la quarantaine est activée. Les bornes appliquent la politique à leur prochain contact (60 s).</p>");
     coque(
@@ -356,7 +356,7 @@ pub fn cles_usb(ctx: &Contexte, b: &BaseUtilisateurs, m: Option<(bool, &str)>) -
     if ctx.admin() {
         c.b("<div class=\"b-carte\"><h2>Enrôler une clé</h2><form class=\"b-formulaire\" method=\"post\" action=\"/cles-usb/enroler\">");
         csrf(&mut c, ctx.csrf);
-        c.b("<div class=\"b-champ\"><label for=\"fabricant\">Fabricant (identifiant USB)</label><input class=\"b-saisie b-mono\" id=\"fabricant\" name=\"fabricant\" required maxlength=\"6\" placeholder=\"0781\"></div><div class=\"b-champ\"><label for=\"serie\">Numéro de série</label><input class=\"b-saisie b-mono\" id=\"serie\" name=\"serie\" required maxlength=\"64\" autocapitalize=\"characters\" spellcheck=\"false\"></div><div class=\"b-champ\"><label for=\"libelle\">Libellé</label><input class=\"b-saisie\" id=\"libelle\" name=\"libelle\" maxlength=\"64\"></div><div class=\"b-champ\"><label for=\"site\">Site (vide : tous les sites)</label><input class=\"b-saisie b-mono\" id=\"site\" name=\"site\" maxlength=\"14\" placeholder=\"site-1\"></div><div class=\"b-champ\"><label><input type=\"checkbox\" name=\"entree\" value=\"1\" checked> Entrée (clé source analysée)</label><label><input type=\"checkbox\" name=\"sortie\" value=\"1\" checked> Sortie (copie, blanchiment)</label></div><div class=\"b-formulaire__actions\"><button class=\"b-btn b-btn--principal\" type=\"submit\">Enrôler</button></div></form>");
+        c.b("<div class=\"b-champ\"><label for=\"fabricant\">Fabricant (identifiant USB)</label><input class=\"b-saisie b-mono\" id=\"fabricant\" name=\"fabricant\" required maxlength=\"6\" placeholder=\"0781\"></div><div class=\"b-champ\"><label for=\"serie\">Numéro de série</label><input class=\"b-saisie b-mono\" id=\"serie\" name=\"serie\" required maxlength=\"64\" autocapitalize=\"characters\" spellcheck=\"false\"></div><div class=\"b-champ\"><label for=\"libelle\">Libellé</label><input class=\"b-saisie\" id=\"libelle\" name=\"libelle\" maxlength=\"64\"></div><div class=\"b-champ\"><label for=\"site\">Site (vide : tous les sites)</label><input class=\"b-saisie b-mono\" id=\"site\" name=\"site\" maxlength=\"32\" pattern=\"[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?\" placeholder=\"labo\"></div><div class=\"b-champ\"><label><input type=\"checkbox\" name=\"entree\" value=\"1\" checked> Entrée (clé source analysée)</label><label><input type=\"checkbox\" name=\"sortie\" value=\"1\" checked> Sortie (copie, blanchiment)</label></div><div class=\"b-formulaire__actions\"><button class=\"b-btn b-btn--principal\" type=\"submit\">Enrôler</button></div></form>");
         avis(
             &mut c,
             "b-avis--alerte",
@@ -364,7 +364,7 @@ pub fn cles_usb(ctx: &Contexte, b: &BaseUtilisateurs, m: Option<(bool, &str)>) -
         );
         c.b("</div>");
     }
-    c.b("<h2>Clés enrôlées</h2><div class=\"b-tableau-cadre\"><table class=\"b-tableau\"><thead><tr><th>Clé</th><th>Libellé</th><th>Fabricant</th><th>Numéro de série</th><th>Site</th><th>Usages</th><th>Enrôlée</th>");
+    c.b("<h2>Clés Barbacane (clés USB enrôlées)</h2><div class=\"b-tableau-cadre\"><table class=\"b-tableau\"><thead><tr><th>Clé</th><th>Libellé</th><th>Fabricant</th><th>Numéro de série</th><th>Site</th><th>Usages</th><th>Enrôlée</th>");
     if ctx.admin() {
         c.b("<th>Action</th>");
     }
@@ -412,7 +412,7 @@ pub fn cles_usb(ctx: &Contexte, b: &BaseUtilisateurs, m: Option<(bool, &str)>) -
         ctx,
         Rubrique::ClesUsb,
         "Clés USB",
-        "Clés USB enrôlées",
+        "Clés Barbacane · clés USB enrôlées",
         Html::new(),
         c,
     )

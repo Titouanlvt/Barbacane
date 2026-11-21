@@ -1,6 +1,6 @@
 ---
 title: "Manuel Barbacane"
-subtitle: "Installation et exploitation — borne hors ligne, serveur et bornes en ligne"
+subtitle: "Installation et exploitation — Borne autonome, Serveur Barbacane et Bornes connectées"
 lang: fr
 ---
 
@@ -16,31 +16,50 @@ archives) puis :
 - **copie** les seuls fichiers sains vers une clé de destination ;
 - ou **blanchit** le support : effacement complet, puis réécriture des seuls fichiers sains.
 
-Aucune connaissance du projet n'est nécessaire. Ce manuel correspond à **Barbacane v2.0**.
+Aucune connaissance du projet n'est nécessaire. Ce manuel correspond à **Barbacane v2.0.2**.
+
+## Les noms utilisés
+
+Chaque élément porte un nom qui dit ce qu'il fait ; ce sont ceux de la Console et de ce manuel.
+Les noms techniques (paquets, services, commandes, chemins) ne changent pas : ils restent entre
+`accents graves` dans les commandes.
+
+| Nom | Ce que c'est | Nom technique |
+|---|---|---|
+| **Borne autonome** | borne hors ligne, sans aucun réseau (v1) | profil hors ligne |
+| **Borne connectée** | borne rattachée au Serveur Barbacane | profil en ligne, `barbacane-agent` |
+| **Clé Barbacane** | clé USB enrôlée (entrée, sortie) | clé enrôlée |
+| **Serveur Barbacane** | le serveur et l'ensemble de ses services | `barbacane-serveur` |
+| **Console** | interface web d'administration | `barbacane-web` |
+| **Liaison bornes** | point d'entrée des bornes (TLS 1.3 mutuel, enrôlement) | `barbacane-passerelle` |
+| **Parc** | registre et supervision des bornes, sites, politiques | `barbacane-registre` |
+| **Journal** | journal d'audit chaîné et signé | `barbacane-audit` |
+| **Quarantaine** | fichiers bloqués, chiffrés (option) | quarantaine |
+| **Autorité** | racine PKI hors ligne et autorités de certification | PKI |
 
 ## Deux façons d'utiliser Barbacane
 
-| | Borne hors ligne seule (v1) | Suite : serveur + bornes en ligne (v2) |
+| | Borne autonome seule (v1) | Suite : serveur + Bornes connectées (v2) |
 |---|---|---|
 | Réseau | **aucun**, jamais | réseau dédié borne → serveur seulement (TLS 1.3 mutuel) |
 | ISO de la borne | `build-iso.sh` sans option (identique à la v1.0.0) | `build-iso.sh --profil en-ligne`, ou ISO personnalisée téléchargée depuis le serveur |
 | Mises à jour | clé USB, paquet signé | clé USB **ou** diffusées par le serveur (toujours signées hors ligne, revérifiées par la borne) |
-| Administration | PIN sur chaque borne | PIN sur chaque borne + interface web du serveur (supervision, enrôlement, utilisateurs, clés USB…) |
+| Administration | PIN sur chaque borne | PIN sur chaque borne + Console du Serveur Barbacane (Parc, enrôlement, utilisateurs, Clés Barbacane…) |
 | Chapitres | 2 à 9 | 10 à 14 (et 2 à 9 pour l'usage de la borne, qui ne change pas) |
 
-**La borne hors ligne est inchangée** en v2 : son ISO, son parcours et ses écrans sont ceux de la
-v1. La borne en ligne garde la même interface ; elle ajoute une page **Serveur** dans
+**La Borne autonome est inchangée** en v2 : son ISO, son parcours et ses écrans sont ceux de la
+v1. La Borne connectée garde la même interface ; elle ajoute une page **Serveur** dans
 l'administration et, selon le site, un écran d'identification.
 
 ```
  site A                                     réseau d'administration
  ┌──────────────┐  TLS 1.3 mutuel           ┌──────────────────────────────┐
- │ borne en     │ ────────────────────────► │ serveur Barbacane            │
- │ ligne        │  enrôlement, battement,   │ disque chiffré (TPM)         │
- └──────────────┘  mises à jour, rapports   │ passerelle · registre        │
- ┌──────────────┐                           │ journal d'audit · web        │
- │ borne hors   │  aucun réseau             └──────────────────────────────┘
- │ ligne (v1)   │                                    ▲ navigateur + certificat
+ │ Borne        │ ────────────────────────► │ Serveur Barbacane            │
+ │ connectée    │  enrôlement, battement,   │ disque chiffré (TPM)         │
+ └──────────────┘  mises à jour, rapports   │ Liaison bornes · Parc        │
+ ┌──────────────┐                           │ Journal · Console            │
+ │ Borne        │  aucun réseau             └──────────────────────────────┘
+ │ autonome (v1)│                                    ▲ navigateur + certificat
  └──────────────┘                                    │ administrateur
 ```
 
@@ -52,11 +71,11 @@ SHA-256, l'extension, la taille et le verdict.
 > **PKI de TEST** : elles servent à l'essai, pas à un site réel (chapitre 14).
 
 Les captures d'écran de ce manuel viennent d'une vraie borne testée avec de vraies clés USB, et du
-vrai code de rendu de l'interface web (dossier `docs/preuves` du dépôt).
+vrai code de rendu de la Console (dossier `docs/preuves` du dépôt).
 
-# Partie A — Borne hors ligne {.partie}
+# Partie A — Borne autonome {.partie}
 
-Les chapitres 2 à 9 décrivent la borne **hors ligne**. Ils valent aussi pour la borne en ligne
+Les chapitres 2 à 9 décrivent la **Borne autonome**. Ils valent aussi pour la Borne connectée
 (même installation, même utilisation), sauf les différences signalées au chapitre 12.
 
 # 2. Matériel nécessaire et réglages BIOS
@@ -406,12 +425,12 @@ paquets (`dpkg-status`), utile pour préparer une mise à jour Debian.
 | Écran noir | La borne n'accepte aucun clavier. Démarrer sur une clé Debian « live », monter le disque en lecture seule et lire `journalctl -D /mnt/var/log/journal -u barbacane-kiosk`, ou réinstaller. |
 | PIN oublié | Réinstaller la borne (§4 et §6). |
 
-# Partie B — Serveur et bornes en ligne {.partie}
+# Partie B — Serveur et Bornes connectées {.partie}
 
-Les chapitres 10 à 13 décrivent la **suite v2** : le serveur, son interface web et les bornes
+Les chapitres 10 à 13 décrivent la **suite v2** : le Serveur Barbacane, sa Console et les bornes
 en ligne. Le chapitre 14 résume la sécurité et les limites.
 
-# 10. Le serveur
+# 10. Le Serveur Barbacane
 
 ## 10.1 Matériel et réseau
 
@@ -424,8 +443,8 @@ en ligne. Le chapitre 14 résume la sécurité et les limites.
 | Clé d'installation | clé USB (taille de l'ISO + marge) ; copie comme au §3.4. |
 | Support de sauvegarde | support amovible (clé, disque USB). |
 
-Le pare-feu du serveur n'accepte que : les deux ports de la passerelle (service et enrôlement)
-sur l'interface **bornes** ; le port de l'interface web (443 par défaut) sur l'interface
+Le pare-feu du serveur n'accepte que : les deux ports de la Liaison bornes (service et enrôlement)
+sur l'interface **bornes** ; le port de la Console (443 par défaut) sur l'interface
 **administration**. Tout le reste est refusé et journalisé. Aucun accès SSH : l'administration
 système se fait **à la console**.
 
@@ -476,8 +495,8 @@ sha256sum barbacane-serveur.iso
 |---|---|
 | `--if-bornes NOM`, `--ip-bornes CIDR` | interface et adresse du réseau des bornes (`enp0s8`, `10.20.0.1/24`) |
 | `--if-admin NOM`, `--ip-admin CIDR` | interface et adresse d'administration (`enp0s9`, `10.99.0.1/24`) |
-| `--port-admin N` | port de l'interface web, côté administration seulement (443) |
-| `--port N`, `--port-enrolement N` | ports **fixes** de la passerelle (service, enrôlement). Sans ISO de bornes : tirés au hasard à l'installation. Avec ISO de bornes : **obligatoires** et égaux à ceux de l'ISO en ligne (contrôlé, refus sinon) |
+| `--port-admin N` | port de la Console, côté administration seulement (443) |
+| `--port N`, `--port-enrolement N` | ports **fixes** de la Liaison bornes (service, enrôlement). Sans ISO de bornes : tirés au hasard à l'installation. Avec ISO de bornes : **obligatoires** et égaux à ceux de l'ISO en ligne (contrôlé, refus sinon) |
 | `--source-heure IP` | serveur NTP **interne** du réseau d'administration (aucun par défaut) |
 | `--compte-admin NOM` | compte d'administration système (`barbadmin`) |
 | `--hache-admin FICHIER` | empreinte crypt(3) de son mot de passe initial ; sinon mot de passe aléatoire **affiché une seule fois** à la construction |
@@ -491,9 +510,9 @@ Les noms d'interfaces sont ceux du **système installé** (`ip link` depuis une 
 le serveur). Une interface mal nommée est signalée à chaque démarrage par l'état du serveur.
 
 ::: v201
-**Nécessite v2.0.1.** L'ISO serveur v2.0.0 n'installe que la passerelle : ni l'interface web, ni
+**Nécessite v2.0.1.** L'ISO serveur v2.0.0 n'installe que la Liaison bornes : ni la Console, ni
 les outils `barbacane-registre` et `barbacane-audit`. Les §10.3 à 13 décrivent le comportement
-corrigé de la v2.0.1 (interface web déployée par l'ISO, options `--cle-maj-bornes` et
+corrigé de la v2.0.1 (Console déployée par l'ISO, options `--cle-maj-bornes` et
 `--mdp-web`). Construisez le serveur depuis une version 2.0.1 ou ultérieure.
 :::
 
@@ -510,8 +529,11 @@ corrigé de la v2.0.1 (interface web déployée par l'ISO, options `--cle-maj-bo
 - **Déverrouillage** : le disque s'ouvre seul grâce au TPM, sans rien saisir. S'il demande une
   clé (TPM effacé, carte mère changée, démarrage sécurisé modifié), seule la **clé de secours**
   l'ouvre.
-- À la console, se connecter avec le compte d'administration (`barbadmin`) : le mot de passe
-  initial est **expiré**, il faut en choisir un nouveau.
+- À la console, se connecter avec le compte d'administration (`barbadmin`). Son mot de passe
+  initial (celui donné à la construction, `--hache-admin`) est **expiré exprès** : à la première
+  connexion, le système demande le mot de passe actuel, puis deux fois le nouveau, et ouvre la
+  session seulement ensuite. C'est voulu : personne ne garde le mot de passe connu à la
+  construction.
 - Lire l'état du serveur (`barbacane-serveur-etat`, aussi affiché à chaque démarrage) : disque,
   routes, pare-feu, ports, heure, services.
 - **Clé de secours** : elle est écrite dans `/root/cle-de-secours-luks.txt`. La transcrire et la
@@ -527,14 +549,14 @@ sudo shred -u /root/cle-de-secours-luks.txt
   (`--source-heure`), la régler à la main : `sudo date -s "AAAA-MM-JJ HH:MM:SS"` puis
   `sudo hwclock -w`.
 
-## 10.5 PKI et premier administrateur web
+## 10.5 Autorité (PKI) et premier administrateur de la Console
 
-La passerelle et l'interface web ne démarrent qu'une fois la PKI en place (sans elle, c'est une
+La Liaison bornes et la Console ne démarrent qu'une fois la PKI (Autorité) en place (sans elle, c'est une
 « condition non remplie », pas une panne). En **production**, la PKI vient de la **cérémonie**
 (racine hors ligne, chapitre 14) ; aucun compte web n'existe par défaut.
 
-1. Déposer la PKI issue de la cérémonie dans `~barbacane-svc/pki/`, puis démarrer la passerelle.
-2. Interface web (**v2.0.1**) : déposer `ca-administrateurs.pem` et `crl-administrateurs.pem`
+1. Déposer la PKI issue de la cérémonie dans `~barbacane-svc/pki/`, puis démarrer la Liaison bornes (`barbacane-passerelle`).
+2. Console (**v2.0.1**) : déposer `ca-administrateurs.pem` et `crl-administrateurs.pem`
    dans `~barbacane-svc/web/` (lecture seule, 0444), puis créer le premier compte, lié au
    certificat de cet administrateur (le mot de passe, 12 caractères au moins, est lu au clavier) :
 
@@ -550,10 +572,10 @@ systemctl --user -M barbacane-svc@ start barbacane-web
 > La **CRL des administrateurs** doit être republiée avant son échéance : sinon plus aucune
 > connexion n'est acceptée (sécurité par défaut).
 
-## 10.6 Se connecter à l'interface web
+## 10.6 Se connecter à la Console
 
 ::: v201
-**Nécessite v2.0.1.** Avec l'ISO serveur v2.0.0, l'interface web n'est pas installée sur le serveur.
+**Nécessite v2.0.1.** Avec l'ISO serveur v2.0.0, la Console n'est pas installée sur le serveur.
 :::
 
 1. Installer le **certificat d'administrateur** (et sa clé) dans le navigateur du poste
@@ -574,18 +596,18 @@ systemctl --user -M barbacane-svc@ start barbacane-web
 | Rôle | Droits |
 |---|---|
 | `administrateur` | tout : jetons, enrôlement, révocation, mises à jour, utilisateurs, sites, clés USB, ISO des bornes, quarantaine |
-| `auditeur` | **lecture seule** : supervision, demandes, mises à jour, journal d'audit et sa vérification, utilisateurs (identifiants en clair). Toute action est refusée. |
+| `auditeur` | **lecture seule** : supervision, demandes, mises à jour, Journal et sa vérification, utilisateurs (identifiants en clair). Toute action est refusée. |
 
 Un autre compte se crée avec la même commande `barbacane-web compte` (rôle `administrateur` ou
 `auditeur`), ligne ajoutée au fichier `comptes`. Retirer la ligne ferme aussitôt ses sessions.
 
-## 10.7 Journal d'audit
+## 10.7 Journal
 
 Chaque action (connexion, jeton, validation, révocation, dépôt, consultation…) est écrite dans un
 **journal chaîné** (SHA-384) : une ligne modifiée, supprimée ou déplacée est détectée. Page
-**Journal d'audit** → **Vérifier** : contrôle de toute la chaîne.
+**Journal** → **Vérifier** : contrôle de toute la chaîne.
 
-![Journal d'audit](preuves/serveur-web/captures/audit-jour.png)
+![Journal](preuves/serveur-web/captures/audit-jour.png)
 
 En ligne de commande (console, **v2.0.1**) : `sudo barbacane-audit sceller …` ajoute un point de
 contrôle signé, `sudo barbacane-audit exporter …` produit le fichier d'empreintes à **sortir du
@@ -623,19 +645,19 @@ barbacane-sauvegarde restaurer --archive FICHIER --cle-privee CLE --signataire C
 La restauration contrôle tout (empreinte, déchiffrement, signature, manifeste) **avant** d'écrire.
 La sauvegarde planifiée est prévue en v2.1.0 : lancez-la à la main.
 
-# 11. Interface web au quotidien
+# 11. Console au quotidien
 
 ::: v201
-**Nécessite v2.0.1.** Toutes les pages de ce chapitre sont servies par l'interface web, déployée par l'ISO serveur à partir de la v2.0.1.
+**Nécessite v2.0.1.** Toutes les pages de ce chapitre sont servies par la Console, déployée par l'ISO serveur à partir de la v2.0.1.
 :::
 
-## 11.1 Supervision
+## 11.1 Parc : supervision des bornes
 
 Page d'accueil après connexion : tuiles (bornes actives, en service, injoignables, horloge
 dérivée, demandes en attente), liste **« À traiter »**, puis une ligne par borne : état, site,
 version, dernier contact, écart d'horloge, échéance du certificat, alertes.
 
-![Supervision des bornes](preuves/serveur-web/captures/tableau-jour.png)
+![Parc : supervision des bornes](preuves/serveur-web/captures/tableau-jour.png)
 
 Une borne « injoignable » n'a pas battu depuis plus de 5 minutes ; « horloge dérivée » : écart de
 plus de 5 minutes avec le serveur. Le certificat d'une borne vaut **90 jours** et se renouvelle
@@ -671,7 +693,7 @@ sinon tout dépôt est refusé.
 
 ## 11.4 Rapports de passage
 
-Après chaque analyse, une borne en ligne envoie un **rapport minimal** : tailles, empreintes
+Après chaque analyse, une Borne connectée envoie un **rapport minimal** : tailles, empreintes
 SHA-256, verdicts, identifiant du support, **jamais de nom de fichier**. Page **Passages** : liste
 par borne et détail. Si le serveur est injoignable, la borne garde ses rapports et les renvoie ;
 si sa file est pleine, elle refuse toute nouvelle analyse (« Borne hors service ») jusqu'au retour
@@ -700,21 +722,21 @@ Chaque **site** a un mode (page **Sites et modes**) :
 
 ![Utilisateurs (vue administrateur)](preuves/serveur-web/captures/utilisateurs-jour.png)
 
-## 11.6 Clés USB enrôlées
+## 11.6 Clés Barbacane (clés USB enrôlées)
 
 Page **Clés USB** : enrôler une clé par **fabricant + numéro de série**, pour un site, avec ses
 usages (entrée, sortie). Page **Sites et modes** : autoriser ou interdire en entrée les clés non
 enrôlées.
 
-![Clés USB enrôlées](preuves/serveur-web/captures/cles-usb-jour.png)
+![Clés Barbacane (clés USB enrôlées)](preuves/serveur-web/captures/cles-usb-jour.png)
 
-Dès qu'une politique est reçue, la borne en ligne :
+Dès qu'une politique est reçue, la Borne connectée :
 
 - refuse une clé à analyser non autorisée (message, la clé est ignorée jusqu'à son retrait) ;
 - ne **copie** des fichiers que vers une clé enrôlée en **sortie** (la gravure est alors refusée) ;
 - autorise le **blanchiment** sur toute clé (il ne fait sortir aucune donnée).
 
-Comme sur la borne hors ligne, un numéro de série peut être copié : c'est une mesure
+Comme sur la Borne autonome, un numéro de série peut être copié : c'est une mesure
 d'organisation, pas un contrôle d'accès.
 
 ## 11.7 Quarantaine (option, désactivée par défaut)
@@ -732,11 +754,11 @@ Elle est **désactivée par défaut** ; rien n'est reçu tant qu'elle n'est pas 
   demande aussi une double validation et donne un fichier neutralisé (`quarantaine-<id>.bin`).
 - L'envoi des fichiers par les bornes n'est pas encore livré (v2.1.0).
 
-# 12. Bornes en ligne
+# 12. Bornes connectées
 
-## 12.1 Installer une borne en ligne
+## 12.1 Installer une Borne connectée
 
-Même poste, même BIOS et même installation que la borne hors ligne (chapitres 2 à 5), avec un
+Même poste, même BIOS et même installation que la Borne autonome (chapitres 2 à 5), avec un
 câble réseau vers le réseau des bornes. L'installation se fait **toujours sans réseau** ; ensuite
 la borne ne peut joindre **que** le serveur (pare-feu, et seul l'agent `barbacane-agent` a le droit
 de sortir). Elle n'accepte aucune connexion entrante.
@@ -751,7 +773,7 @@ Deux ISO possibles :
 ## 12.2 Télécharger une ISO depuis le serveur
 
 ::: v201
-**Nécessite v2.0.1.** La page « ISO des bornes » fait partie de l'interface web (v2.0.1). Avec la v2.0.0, utilisez l'ISO en ligne générique construite au §10.2.
+**Nécessite v2.0.1.** La page « ISO des bornes » fait partie de la Console (v2.0.1). Avec la v2.0.0, utilisez l'ISO en ligne générique construite au §10.2.
 :::
 
 Page **ISO des bornes** (administrateur seulement) :
@@ -766,7 +788,7 @@ Chaque préparation et chaque téléchargement sont audités.
 
 ## 12.3 Enrôler la borne
 
-1. **Jeton** (ISO générique) : interface web, page **Enrôlement** → créer un jeton pour le site.
+1. **Jeton** (ISO générique) : Console, page **Enrôlement** → créer un jeton pour le site.
    Il est affiché **une seule fois**, vaut **1 heure** et sert **une seule fois**.
 
 ![Jeton d'enrôlement (affiché une seule fois)](preuves/serveur-web/captures/enrolement-jour.png)
@@ -775,14 +797,14 @@ Chaque préparation et chaque téléchargement sont audités.
    **Saisir un jeton** (clavier virtuel ; minuscules acceptées). Avec l'ISO personnalisée, cette
    étape est faite toute seule au premier démarrage.
 3. La page Serveur de la borne affiche une **empreinte** en groupes de 4 caractères.
-4. Interface web, page **Enrôlement** → la demande en attente → **retaper l'empreinte lue sur la
+4. Console, page **Enrôlement** → la demande en attente → **retaper l'empreinte lue sur la
    borne** (le serveur ne l'affiche pas, exprès) → **Valider et émettre le certificat**. Une empreinte différente est
    refusée et la demande reste en attente : en cas de doute, **Refuser la demande**.
 
 ![Examen d'une demande : empreinte à retaper](preuves/serveur-web/captures/demande-jour.png)
 
 5. La borne reçoit son certificat (90 jours) et commence ses battements (toutes les 60 s) ; elle
-   apparaît en service dans la supervision.
+   apparaît en service dans le Parc.
 
 En console, la même chose : `sudo barbacane-registre jeton site-1`, `… demandes`,
 `… valider ID EMPREINTE NOM` (**v2.0.1**).
@@ -806,34 +828,34 @@ Messages : « Identifiant ou PIN refusé. » ; « Borne bloquée … réessayez 
 serveur est injoignable, l'identification est impossible. Le PIN n'est jamais enregistré sur la
 borne.
 
-## 12.6 Ce qui change par rapport à la borne hors ligne
+## 12.6 Ce qui change par rapport à la Borne autonome
 
 - bouton **Serveur** dans le menu d'administration, pied de page « station blanche en ligne » ;
 - rapports de passage envoyés au serveur (§11.4) ;
 - politique de site : identification (§11.5) et clés USB (§11.6), qui **remplacent** la liste
   locale du §6 dès qu'une politique est reçue ;
-- sans politique reçue, la borne en ligne se comporte comme la borne hors ligne.
+- sans politique reçue, la Borne connectée se comporte comme la Borne autonome.
 
-# 13. Dépannage du serveur et des bornes en ligne
+# 13. Dépannage du serveur et des Bornes connectées
 
 | Symptôme | Cause probable / action |
 |---|---|
 | Le serveur demande une clé au démarrage | TPM effacé, carte mère ou démarrage sécurisé modifiés : saisir la **clé de secours** (coffre). |
 | L'installation du serveur s'arrête aussitôt | Pas de TPM 2.0 actif : l'activer dans le micrologiciel. |
 | Construction refusée : ports | Avec les ISO de bornes embarquées, `--port` et `--port-enrolement` doivent être ceux de l'ISO en ligne. |
-| Interface web : connexion refusée sans page | Certificat d'administrateur absent, révoqué, ou **CRL des administrateurs expirée** : la republier. |
+| Console : connexion refusée sans page | Certificat d'administrateur absent, révoqué, ou **CRL des administrateurs expirée** : la republier. |
 | « Identifiant ou mot de passe refusé » répété | Compte verrouillé après 5 échecs : attendre, ou vérifier que le certificat est bien celui du compte. |
-| Passerelle ou interface web arrêtées, « condition non remplie » | PKI (ou CA des administrateurs) pas encore déposée : §10.5. |
+| Liaison bornes ou Console arrêtées, « condition non remplie » | PKI (ou CA des administrateurs) pas encore déposée : §10.5. |
 | Borne « injoignable » | Câble, réseau des bornes, adresse ou ports du serveur ; la borne réessaie seule. |
 | Borne « horloge dérivée » | Régler l'heure du serveur (§10.4) ; la borne prend l'heure du serveur. |
 | Jeton refusé sur la borne | Jeton expiré (1 h), déjà utilisé, ou d'un autre port d'enrôlement : en créer un nouveau. |
 | Validation d'enrôlement refusée | Empreinte mal retapée : relire la page Serveur de la borne. |
-| Dépôt de mise à jour refusé | Lire le motif (journal d'audit) : pas de plancher, pas de clé des bornes, signature, version. |
-| « Borne hors service » sur une borne en ligne | File des rapports pleine : rétablir la liaison avec le serveur. |
+| Dépôt de mise à jour refusé | Lire le motif (Journal) : pas de plancher, pas de clé des bornes, signature, version. |
+| « Borne hors service » sur une Borne connectée | File des rapports pleine : rétablir la liaison avec le serveur. |
 
 # 14. Sécurité et limites
 
-## 14.1 PKI de TEST et production
+## 14.1 Autorité : PKI de TEST et production
 
 Les ISO v2.0.0 publiées (`barbacane-2.0.0-en-ligne.iso`, `barbacane-serveur-2.0.0.iso`)
 embarquent la **PKI de TEST** du dépôt (serveur 10.0.2.2, ports 43117/43118 du banc). Elles
@@ -844,13 +866,13 @@ du serveur et des administrateurs (politique de certification, `docs/suite/polit
 Les clés ne sont **jamais** dans une ISO de production : elles sont déposées sur le serveur après
 la cérémonie (§10.5). La procédure de cérémonie de production est prévue en **v2.1.0**.
 
-## 14.2 Mesures en place (v2.0)
+## 14.2 Mesures en place (v2.0.2)
 
 - Serveur : disque chiffré LUKS2 scellé au TPM, pare-feu en liste blanche, aucune route par
   défaut, aucun accès distant, services en conteneurs sans root, journal persistant 1 an.
 - Liaisons : TLS 1.3 mutuel seulement, liste de révocation relue à chaque connexion ; cryptographie
   conforme au RGS (P-384/P-256, AES-256-GCM, Argon2id).
-- Interface web : certificat + mot de passe, rôles, protection CSRF, aucun JavaScript.
+- Console : certificat + mot de passe, rôles, protection CSRF, aucun JavaScript.
 - Aucun nom de fichier transmis ; mises à jour toujours signées hors ligne et revérifiées.
 
 ## 14.3 Limites connues
@@ -865,19 +887,19 @@ la cérémonie (§10.5). La procédure de cérémonie de production est prévue 
 
 ## 14.4 Prévu pour la v2.1.0
 
-- **PKI et passerelle** : clés dans le TPM, refus des certificats TEST en production, CRL de la
+- **Autorité et Liaison bornes** : clés dans le TPM, refus des certificats TEST en production, CRL de la
   racine et republication quotidienne automatique, service PKI séparé ; cérémonie de production.
 - **Enrôlement** : double validation des révocations massives ; PostgreSQL.
 - **ISO serveur** : machine physique avec TPM matériel et démarrage sécurisé, re-scellement (shim,
   `systemd-pcrlock`), faillock, AIDE, GNSS/radio, sauvegarde planifiée.
 - **Audit et mises à jour** : minuteries de scellement/export, clé d'audit dans le TPM, `chattr +a`,
   clé distincte pour le `.bcu` serveur, plancher étendu, diffusion par lot avec double validation.
-- **Interface web** : TPM, service systemd durci, pare-feu d'administration, double validation
+- **Console** : TPM, service systemd durci, pare-feu d'administration, double validation
   générale, deux facteurs des administrateurs, comparaison aux exports d'audit, lecture de la fin
   du journal.
 - **Utilisateurs et clés USB** : rattachement aux rapports, synchronisation périodique de
   l'annuaire, secrets dans le TPM, mode par borne, rôles de site ; LDAPS sur un vrai annuaire.
-- **Borne en ligne** : clés dans le TPM, session jointe aux rapports, captures des nouveaux écrans.
+- **Borne connectée** : clés dans le TPM, session jointe aux rapports, captures des nouveaux écrans.
 - **Rapports de passage** : rapport d'analyse en échec, signature par la borne, rétention/purge,
   analyse réelle de bout en bout.
 - **Quarantaine** : clé dans le TPM, chiffrement sur la borne pour une clé d'analyste hors

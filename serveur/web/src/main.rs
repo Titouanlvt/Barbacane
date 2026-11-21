@@ -62,7 +62,7 @@ fn executer(args: &[String]) -> Result<()> {
             let config = Config::lire(&PathBuf::from(config))?;
             let adresse = config.adresse_ecoute();
             Web::nouveau(config)?;
-            println!("configuration valide : interface d'administration sur {adresse}");
+            println!("configuration valide : Console sur {adresse}");
             Ok(())
         }
         [config] => {
@@ -70,7 +70,7 @@ fn executer(args: &[String]) -> Result<()> {
             let ecoute = TcpListener::bind(config.adresse_ecoute())
                 .with_context(|| format!("écoute {}", config.adresse_ecoute()))?;
             eprintln!(
-                "barbacane-web : interface d'administration sur {} (TLS 1.3, certificat d'administrateur exigé)",
+                "barbacane-web : Console sur {} (TLS 1.3, certificat d'administrateur exigé)",
                 config.adresse_ecoute()
             );
             servir(ecoute, Web::nouveau(config)?)

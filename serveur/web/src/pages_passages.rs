@@ -40,7 +40,7 @@ pub fn liste(ctx: &Contexte, lignes: &[Resume], noms: &BTreeMap<String, String>)
         "alerte",
         "Erreurs d'analyse",
     );
-    c.b("</div><p class=\"b-douce\">Rapports minimaux envoyés par les bornes en ligne : aucun nom de fichier ni chemin, seulement la taille, l'empreinte SHA-256 et le verdict de chaque fichier. Support : SHA-256 de fabricant, produit et numéro de série.</p>");
+    c.b("</div><p class=\"b-douce\">Rapports minimaux envoyés par les Bornes connectées : aucun nom de fichier ni chemin, seulement la taille, l'empreinte SHA-256 et le verdict de chaque fichier. Support : SHA-256 de fabricant, produit et numéro de série.</p>");
     c.b("<div class=\"b-tableau-cadre\"><table class=\"b-tableau\"><thead><tr><th>Reçu le</th><th>Borne</th><th>Passage</th><th>Support</th><th>Verdict</th><th class=\"num\">Fichiers</th><th class=\"num\">Menaces</th><th class=\"num\">Refus</th></tr></thead><tbody>");
     if lignes.is_empty() {
         c.b("<tr><td class=\"b-vide\" colspan=\"8\">Aucun rapport de passage reçu.</td></tr>");
