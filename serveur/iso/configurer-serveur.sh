@@ -93,14 +93,22 @@ FIN
 ecrire_reseau /etc/systemd/network/10-bornes.network "$IF_BORNES" "$IP_BORNES" bornes
 ecrire_reseau /etc/systemd/network/20-admin.network "$IF_ADMIN" "$IP_ADMIN" administration
 systemctl enable systemd-networkd.service
-# Port de la passerelle tiré au hasard à l'installation (D4) : 20000–60000, hors ports connus.
-if [ -z "${PORT:-}" ]; then
+# Ports de la passerelle (service mTLS et enrôlement) tirés au hasard à l'installation (D4) :
+# 20000–60000, hors ports connus, distincts. Figés à la construction si les ISO des bornes sont
+# embarquées (ils sont alors inscrits dans l'ISO générique, contrôlé par build-iso-serveur.sh).
+tirer_port() { # PORT_À_ÉVITER
+    local p
     while :; do
-        PORT=$(shuf -i 20000-60000 -n 1)
-        grep -qE "[[:space:]]$PORT/(tcp|udp)" /etc/services || break
+        p=$(shuf -i 20000-60000 -n 1)
+        [ "$p" != "$1" ] && ! grep -qE "[[:space:]]$p/(tcp|udp)" /etc/services && break
     done
-fi
+    echo "$p"
+}
+[ -n "${PORT:-}" ] || PORT=$(tirer_port "${PORT_ENROLEMENT:-}")
+[ -n "${PORT_ENROLEMENT:-}" ] || PORT_ENROLEMENT=$(tirer_port "$PORT")
+[ "$PORT" != "$PORT_ENROLEMENT" ] || { echo "ÉCHEC : ports service et enrôlement identiques" >&2; exit 1; }
 echo "$PORT" > "$C/port-passerelle"
+echo "$PORT_ENROLEMENT" > "$C/port-enrolement"
 ip_bornes=${IP_BORNES%/*}
 if [ -n "${SOURCE_HEURE:-}" ]; then
     sortie_heure="oifname \"$IF_ADMIN\" ip daddr $SOURCE_HEURE udp dport 123 accept"
@@ -108,7 +116,7 @@ else
     sortie_heure="# aucune source d'heure réseau (horloge locale de référence)"
 fi
 sed -e "s|@IF_BORNES@|$IF_BORNES|g" -e "s|@IF_ADMIN@|$IF_ADMIN|g" -e "s|@IP_BORNES@|$ip_bornes|g" \
-    -e "s|@PORT@|$PORT|g" -e "s|@PORT_ADMIN@|$PORT_ADMIN|g" -e "s|@SORTIE_HEURE@|$sortie_heure|" \
+    -e "s|@PORT@|$PORT|g" -e "s|@PORT_ENROLEMENT@|$PORT_ENROLEMENT|g" -e "s|@PORT_ADMIN@|$PORT_ADMIN|g" -e "s|@SORTIE_HEURE@|$sortie_heure|" \
     /usr/share/barbacane-serveur/nftables.conf.modele > /etc/nftables.conf
 chmod 600 /etc/nftables.conf
 # Contrôle de syntaxe : impossible dans l'installateur si nf_tables n'y est pas chargé (Netlink) ;
@@ -191,22 +199,29 @@ mkdir -p /var/lib/systemd/linger
 touch "/var/lib/systemd/linger/$SVC"
 H="$DONNEES/svc"
 install -d -o "$SVC" -g "$SVC" -m 700 "$H/.config" "$H/.config/containers" "$H/.config/containers/systemd" \
-    "$H/.config/systemd" "$H/.config/systemd/user" "$H/pki"
+    "$H/.config/systemd" "$H/.config/systemd/user" "$H/pki" "$H/etat"
 sed -e "s|@VERSION@|$VERSION|g" -e "s|@IP_BORNES@|$ip_bornes|g" -e "s|@PORT@|$PORT|g" \
-    /usr/share/barbacane-serveur/barbacane-passerelle.container > "$H/.config/containers/systemd/barbacane-passerelle.container"
+    -e "s|@PORT_ENROLEMENT@|$PORT_ENROLEMENT|g" /usr/share/barbacane-serveur/barbacane-passerelle.container > "$H/.config/containers/systemd/barbacane-passerelle.container"
 sed -e "s|@VERSION@|$VERSION|g" /usr/share/barbacane-serveur/barbacane-images.service \
     > "$H/.config/systemd/user/barbacane-images.service"
 # Racine en lecture seule et sans réseau sortant : storage.conf par défaut (overlay natif).
-# PKI : en production, déposée par la cérémonie (politique-certification.md) ; une ISO de TEST
-# embarque une PKI de test (certificat serveur, CA bornes, CRL ; aucune clé de CA).
+# PKI : en production, déposée par la cérémonie (politique-certification.md §5) : chaine.pem,
+# cle.pem, ca-bornes.pem, cle-ca-bornes.pem (la passerelle SIGNE les certificats des bornes à
+# l'enrôlement), crl-bornes.pem initiale dans etat/. Une ISO de TEST embarque la PKI de test
+# (serveur/pki/racine-test.sh, y compris la clé de la CA bornes de TEST) ; jamais de clé de
+# production dans une ISO. passerelle.conf est écrit dans tous les cas (sans PKI, le quadlet
+# reste en « condition non remplie » : ConditionPathExists sur la clé de la CA bornes).
+# shellcheck source=/dev/null
+. /usr/share/barbacane-serveur/passerelle-conf.sh
+ecrire_conf_passerelle "$H/pki/passerelle.conf" "$PORT" "$PORT_ENROLEMENT"
 if [ -d "$C/pki-test" ]; then
-    install -o "$SVC" -g "$SVC" -m 400 "$C"/pki-test/* "$H/pki/"
-    printf 'adresse = 0.0.0.0\nport = %s\nchaine_serveur = /pki/chaine.pem\ncle_serveur = /pki/cle.pem\nca_bornes = /pki/ca-bornes.pem\ncrl_bornes = /pki/crl-bornes.pem\n' \
-        "$PORT" > "$H/pki/passerelle.conf"
-    chown "$SVC:$SVC" "$H/pki/passerelle.conf"
-    chmod 400 "$H/pki/passerelle.conf"
+    install -o "$SVC" -g "$SVC" -m 400 "$C"/pki-test/chaine.pem "$C"/pki-test/cle.pem \
+        "$C"/pki-test/ca-bornes.pem "$C"/pki-test/cle-ca-bornes.pem "$H/pki/"
+    install -o "$SVC" -g "$SVC" -m 600 "$C"/pki-test/crl-bornes.pem "$H/etat/"
     rm -rf "$C/pki-test"
 fi
+chown "$SVC:$SVC" "$H/pki/passerelle.conf"
+chmod 400 "$H/pki/passerelle.conf"
 chown -R "$SVC:$SVC" "$H/.config"
 systemctl enable barbacane-serveur-etat.service
 # Clé de signature des sauvegardes (propre à ce serveur) ; le certificat de la clé de sauvegarde
@@ -216,4 +231,4 @@ chmod 700 "$C/sauvegarde"
 # Empreinte du mot de passe initial : inutile après création du compte.
 sed -i '/^HACHE_ADMIN=/d' "$C/serveur.conf"
 
-etape "configuration terminée (port de la passerelle : $PORT)"
+etape "configuration terminée (passerelle : service $PORT, enrôlement $PORT_ENROLEMENT)"

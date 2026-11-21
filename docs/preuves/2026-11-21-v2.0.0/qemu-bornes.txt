@@ -1,0 +1,39 @@
+7cd3e40 Publication v2.0.0 : points PRÉVU reportés en v2.1.0 (décision du 21/11)
+BINAIRES=0
+barbacane-2.0.0-en-ligne.iso: OK
+== qemu-en-ligne 2026-11-21T09:16:49+00:00
+QEMU_EN_LIGNE=0
+Nov 21 10:20:52 barbacane barbacane-agent[677]: agent : politique du site site-1 version 1 appliquée
+Nov 21 10:21:52 barbacane barbacane-agent[677]: agent : 1 rapport(s) de passage transmis
+{"ok":true,"parties":1}
+total 16
+-rw------- 1 barbacane-agent barbacane-agent 2014 Nov 21 10:20 chaine.pem
+-rw------- 1 barbacane-agent barbacane-agent  241 Nov 21 10:20 cle.pem
+-rw------- 1 barbacane-agent root             428 Nov 21 10:21 passage-00000000001795252862-a7f4080a-4e6d-4aa9-92cb-56492c4dc3b0-0001.json
+-rw------- 1 barbacane-agent barbacane-agent  137 Nov 21 10:20 politique.json
+OK : agent connecté (etat.json)
+OK : sortie root vers 10.0.2.2/22 bloquée
+OK : sortie root vers 10.0.2.2/43117 bloquée
+OK : sortie root vers 10.0.2.3/53 bloquée
+OK : service restreint à 10.0.2.2/32
+OK : clé de la borne 0600
+OK : interface démarrée (1)
+== qemu-personnalisee 2026-11-21T09:22:37+00:00
+QEMU_PERSONNALISEE=0
+demande  d89523f3b9a49fd4e4b5a831820065dd
+  site       site-7
+  déposée    2026-11-21 09:26:05 UTC
+  logiciel   0.1.0
+  empreinte  d4c2 4fc4 8afd 9a90 f861 de37 5fad 72eb 4397 8961 565a 0093 4333 6964 4be6 e8ac
+Comparer l'empreinte à celle affichée par la borne AVANT de valider.
+OK : demande déposée sans saisie, site du jeton (site-7)
+Demande validée : borne 9e961e6d-7e95-426d-944b-e0727b99e4ed (certificat de 90 jours émis).
+Heure du serveur : 2026-11-21 09:26:36 UTC
+9e961e6d-7e95-426d-944b-e0727b99e4ed  borne-perso  site-7   active    version=0.1.0 état=EnService vue=2026-11-21 09:26:35 UTC écart=-2s expire=2027-02-19 09:26:06 UTC
+OK : battement de la borne visible dans la supervision
+== inspection du disque installé (lecture seule)
+OK : jeton supprimé du disque après la réponse du serveur
+OK : certificat installé
+QEMU PERSONNALISÉE FIN 0
+== fin 2026-11-21T09:26:41+00:00
+FIN

@@ -115,13 +115,17 @@ route par défaut** (D1 : aucune interconnexion) ; ni DHCP, ni RA IPv6, ni LLMNR
 
 | Chaîne | Accepté | Tout le reste |
 |---|---|---|
-| entrée | boucle locale ; connexions établies ; **port de la passerelle** sur l'interface **bornes** et l'adresse bornes seulement ; **port de l'interface web** sur l'interface **administration** seulement | refusé, journalisé (6/min) |
+| entrée | boucle locale ; connexions établies ; **ports de la passerelle** (service mTLS et enrôlement) sur l'interface **bornes** et l'adresse bornes seulement ; **port de l'interface web** sur l'interface **administration** seulement | refusé, journalisé (6/min) |
 | transit | rien (aucun routage entre les deux réseaux) | refusé, journalisé |
 | sortie | boucle locale ; réponses aux connexions établies ; NTP vers la source **interne** si elle est configurée (interface administration) | refusé, journalisé |
 
-Port de la passerelle : **tiré au hasard à l'installation** entre 20000 et 60000, hors ports
-connus (`/etc/services`) (D4) ; consigné dans `/etc/barbacane-serveur/port-passerelle` (il entre
-dans le jeton d'enrôlement). `--port N` fixe un port documenté si l'AH le préfère.
+Ports de la passerelle : deux écoutes distinctes, le **service mTLS** (`port`) et
+l'**enrôlement** sans certificat client (`port_enrolement`, protocole-agent.md). Sans ISO de
+bornes embarquées, tous deux **tirés au hasard à l'installation** entre 20000 et 60000, hors ports
+connus (`/etc/services`), distincts (D4) ; consignés dans `/etc/barbacane-serveur/port-passerelle`
+et `port-enrolement` (le port d'enrôlement entre dans le jeton). `--port N` et
+`--port-enrolement N` les fixent ; **exigés** avec les ISO de bornes embarquées et contrôlés contre
+`port_service`/`port_enrolement` de l'`agent.toml` de l'ISO générique (refus sinon).
 
 ## 5. Heure (§3.11)
 
@@ -141,11 +145,22 @@ correspondante). La mise à l'heure initiale de l'horloge matérielle se fait à
   construite avec l'ISO, chargée au démarrage par `barbacane-images.service` (`podman import`,
   aucun registre).
 - Conteneur décrit par un **quadlet** (`~/.config/containers/systemd/barbacane-passerelle.container`) :
-  racine en **lecture seule**, `NoNewPrivileges`, **aucune capacité**, PKI montée en lecture seule,
-  réseau `pasta`, port publié **sur l'adresse bornes seulement**, limites de processus et de mémoire.
-  `ConditionPathExists` : sans PKI (production avant la cérémonie), la passerelle ne démarre pas
-  et ce n'est pas un échec. Une ISO de **TEST** (`--pki-test`) embarque une PKI de test (certificat
-  serveur et sa clé, CA bornes, CRL ; **aucune clé de CA**), nom de volume `BARBACANE_SERVEUR_TEST`.
+  racine en **lecture seule**, `NoNewPrivileges`, **aucune capacité**, `~/pki` monté en lecture
+  seule sur `/pki`, `~/etat` en écriture sur `/etat` (registre, CRL republiée), réseau `pasta`,
+  **deux** ports publiés **sur l'adresse bornes seulement**, limites de processus et de mémoire.
+  `passerelle.conf` (écrit par `passerelle-conf.sh`, toujours complet) : `adresse`, `port`,
+  `port_enrolement`, `chaine_serveur`, `cle_serveur`, `ca_bornes`, `cle_ca_bornes` dans `/pki` ;
+  `crl_bornes`, `registre` dans `/etat`. Contrôlé par `tests/iso/serveur-config.sh` (la vraie
+  passerelle, `--verifier-config`, CI locale).
+- **Clé de la CA bornes** : la passerelle **signe** les certificats des bornes à l'enrôlement
+  (et la CRL à chaque révocation) : la clé privée de la CA bornes (CA intermédiaire en ligne,
+  politique-certification.md) est donc sur le serveur. **Production** : déposée par la cérémonie
+  dans `~barbacane-svc/pki/cle-ca-bornes.pem` (0400) avec `chaine.pem`, `cle.pem`, `ca-bornes.pem`
+  et la CRL initiale `~/etat/crl-bornes.pem` ; **jamais** dans une ISO. `ConditionPathExists` sur
+  cette clé : sans PKI, la passerelle ne démarre pas et ce n'est pas un échec. Une ISO de **TEST**
+  (`--pki-test`) embarque la PKI de `racine-test.sh` : certificat serveur et sa clé, CA bornes
+  **et sa clé de TEST** (refus si le sujet de la CA ne porte pas « TEST »), CRL ; jamais la racine
+  ni une autre CA ; nom de volume `BARBACANE_SERVEUR_TEST`.
 - Journal : `journald` **persistant** (`/var/log/journal`, volume chiffré séparé), compressé,
   2 Go au plus, **1 an** de conservation, jamais transmis.
 - `barbacane-serveur-etat` (service au démarrage, sortie sur la console et dans le journal) :

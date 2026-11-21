@@ -11,13 +11,15 @@
 #     --if-admin NOM       interface d'administration          (défaut : enp0s9)
 #     --ip-admin CIDR      son adresse                          (défaut : 10.99.0.1/24)
 #     --port-admin N       port de l'interface web (administration seulement, défaut : 443)
-#     --port N             port FIXE de la passerelle (défaut : tiré au hasard à l'installation, D4)
+#     --port N             port FIXE du service mTLS de la passerelle (défaut : tiré à l'installation, D4)
+#     --port-enrolement N  port FIXE de l'enrôlement (sans certificat client ; défaut : tiré, distinct)
 #     --source-heure IP    serveur NTP INTERNE (réseau d'administration) ; défaut : aucun
 #     --compte-admin NOM   compte d'administration système (défaut : barbadmin)
 #     --hache-admin FICH   empreinte crypt(3) du mot de passe initial de ce compte (à changer à la
 #                          1re connexion) ; défaut : mot de passe aléatoire affiché UNE fois ici
 #     --pki-test DOSSIER   ISO de TEST : embarque la PKI de test (serveur/pki/racine-test.sh) ;
-#                          seuls le certificat serveur, sa clé, la CA bornes et sa CRL sont copiés
+#                          copiés : certificat serveur, sa clé, la CA bornes, SA CLÉ (TEST seulement : la
+#                          passerelle signe à l'enrôlement) et sa CRL
 #     --passerelle BIN     binaire barbacane-passerelle (défaut : cargo build --release)
 #     --paquets DOSSIER    paquets .deb déjà résolus (défaut : résolus dans un Debian 13 minimal)
 #     --netinst ISO        ISO netinst Debian 13 amd64 (défaut : téléchargée, empreinte vérifiée)
@@ -33,7 +35,7 @@ set -Eeuo pipefail
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ICI="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$ICI/../.." && pwd)"
-IF_BORNES=enp0s8 IP_BORNES=10.20.0.1/24 IF_ADMIN=enp0s9 IP_ADMIN=10.99.0.1/24 PORT_ADMIN=443 PORT=''
+IF_BORNES=enp0s8 IP_BORNES=10.20.0.1/24 IF_ADMIN=enp0s9 IP_ADMIN=10.99.0.1/24 PORT_ADMIN=443 PORT='' PORT_ENROLEMENT=''
 SOURCE_HEURE='' COMPTE_ADMIN=barbadmin HACHE_ADMIN_F='' PKI_TEST='' PASSERELLE='' PAQUETS='' NETINST=''
 SORTIE="$PWD/barbacane-serveur.iso" VERBEUX=0 CONSOLE_SERIE=0
 ISO_EL='' ISO_HL='' SHA_BORNES=''
@@ -45,6 +47,7 @@ while [ $# -gt 0 ]; do
         --ip-admin) IP_ADMIN="$2"; shift 2 ;;
         --port-admin) PORT_ADMIN="$2"; shift 2 ;;
         --port) PORT="$2"; shift 2 ;;
+        --port-enrolement) PORT_ENROLEMENT="$2"; shift 2 ;;
         --source-heure) SOURCE_HEURE="$2"; shift 2 ;;
         --compte-admin) COMPTE_ADMIN="$2"; shift 2 ;;
         --hache-admin) HACHE_ADMIN_F="$(realpath "$2")"; shift 2 ;;
@@ -58,7 +61,7 @@ while [ $# -gt 0 ]; do
         --iso-borne-en-ligne) ISO_EL="$(realpath "$2")"; shift 2 ;;
         --iso-borne-hors-ligne) ISO_HL="$(realpath "$2")"; shift 2 ;;
         --sha256-bornes) SHA_BORNES="$(realpath "$2")"; shift 2 ;;
-        -h|--help) sed -n '2,31p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
         *) echo "option inconnue : $1 (voir --help)" >&2; exit 1 ;;
     esac
 done
@@ -80,18 +83,30 @@ cidr_ok "$IP_BORNES" || refus "--ip-bornes $IP_BORNES (a.b.c.d/n attendu)"
 cidr_ok "$IP_ADMIN" || refus "--ip-admin $IP_ADMIN (a.b.c.d/n attendu)"
 port_ok "$PORT_ADMIN" || refus "--port-admin $PORT_ADMIN"
 [ -z "$PORT" ] || { port_ok "$PORT" && [ "$PORT" -ge 1024 ]; } || refus "--port $PORT (1024–65535)"
+[ -z "$PORT_ENROLEMENT" ] || { port_ok "$PORT_ENROLEMENT" && [ "$PORT_ENROLEMENT" -ge 1024 ]; } || refus "--port-enrolement $PORT_ENROLEMENT (1024–65535)"
+[ -z "$PORT" ] || [ "$PORT" != "$PORT_ENROLEMENT" ] || refus "--port et --port-enrolement doivent être distincts"
 [ -z "$SOURCE_HEURE" ] || ip_ok "$SOURCE_HEURE" || refus "--source-heure $SOURCE_HEURE (adresse IPv4 attendue)"
 if [ -n "$ISO_EL$ISO_HL" ]; then
     command -v xorriso >/dev/null || refus "xorriso requis pour contrôler les ISO des bornes (apt install xorriso)"
     [ -f "$ISO_EL" ] && [ -f "$ISO_HL" ] || refus "--iso-borne-en-ligne et --iso-borne-hors-ligne : les deux ISO"
     [ -f "$SHA_BORNES" ] || refus "--sha256-bornes FICHIER exigé avec les ISO des bornes"
-    [ -n "$PORT" ] || refus "--port N exigé avec les ISO des bornes (port figé dans l'ISO générique ; écart à D4, decisions.md)"
+    [ -n "$PORT" ] && [ -n "$PORT_ENROLEMENT" ] \
+        || refus "--port N et --port-enrolement N exigés avec les ISO des bornes (ports figés dans l'ISO générique ; écart à D4, decisions.md)"
     for i in "$ISO_EL" "$ISO_HL"; do
         e=$(sha256sum "$i" | cut -d' ' -f1)
         grep -Eq "^${e}[[:space:]]+\\*?(.*/)?$(basename "$i")\$" "$SHA_BORNES" || refus "$i : empreinte $e absente de $SHA_BORNES"
     done
     "$ICI/../iso-bornes/barbacane-iso-borne" parametres "$ISO_EL" >/dev/null || refus "$ISO_EL : pas une ISO de borne en ligne"
     if xorriso -indev "$ISO_HL" -find /barbacane/en-ligne 2>/dev/null | grep -q en-ligne; then refus "$ISO_HL : profil en ligne, pas l'ISO hors ligne"; fi
+    # Les ports figés dans l'ISO générique doivent être ceux de la passerelle de ce serveur.
+    W_EL=$(mktemp -d)
+    xorriso -osirrox on -indev "$ISO_EL" -extract /barbacane/en-ligne/agent.toml "$W_EL/agent.toml" >/dev/null 2>&1 \
+        || { rm -rf "$W_EL"; refus "$ISO_EL : agent.toml illisible"; }
+    pe_iso=$(sed -n 's/^port_enrolement = \([0-9]*\)$/\1/p' "$W_EL/agent.toml")
+    ps_iso=$(sed -n 's/^port_service = \([0-9]*\)$/\1/p' "$W_EL/agent.toml")
+    rm -rf "$W_EL"
+    [ "$pe_iso" = "$PORT_ENROLEMENT" ] || refus "ISO en ligne : port_enrolement=${pe_iso:-?}, --port-enrolement $PORT_ENROLEMENT"
+    [ "$ps_iso" = "$PORT" ] || refus "ISO en ligne : port_service=${ps_iso:-?}, --port $PORT"
     if xorriso -indev "$ISO_EL" -find /barbacane/en-ligne -name parametres.conf 2>/dev/null | grep -q parametres; then refus "$ISO_EL : ISO personnalisée (jeton) refusée"; fi
 fi
 [[ "$COMPTE_ADMIN" =~ ^[a-z][a-z0-9-]{1,30}$ ]] || refus "--compte-admin $COMPTE_ADMIN"
@@ -249,6 +264,7 @@ IF_ADMIN='$IF_ADMIN'
 IP_ADMIN='$IP_ADMIN'
 PORT_ADMIN='$PORT_ADMIN'
 PORT='$PORT'
+PORT_ENROLEMENT='$PORT_ENROLEMENT'
 SOURCE_HEURE='$SOURCE_HEURE'
 COMPTE_ADMIN='$COMPTE_ADMIN'
 HACHE_ADMIN='$HACHE_ADMIN'
@@ -258,6 +274,11 @@ if [ -n "$PKI_TEST" ]; then
     cp "$PKI_TEST/serveur/chaine.pem" "$B/pki-test/chaine.pem"
     cp "$PKI_TEST/serveur/cle.pem" "$B/pki-test/cle.pem"
     cp "$PKI_TEST/ca-bornes/cert.pem" "$B/pki-test/ca-bornes.pem"
+    # Clé de la CA bornes de TEST : la passerelle signe les certificats des bornes à l'enrôlement.
+    # En production, déposée par la cérémonie, jamais dans une ISO (politique-certification.md).
+    grep -q "TEST" <(openssl x509 -in "$PKI_TEST/ca-bornes/cert.pem" -noout -subject) \
+        || refus "--pki-test : la CA bornes n'est pas une CA de TEST (racine-test.sh) ; clé de production refusée"
+    cp "$PKI_TEST/ca-bornes/cle.pem" "$B/pki-test/cle-ca-bornes.pem"
     cp "$PKI_TEST/ca-bornes/crl.pem" "$B/pki-test/crl-bornes.pem"
     attention "ISO de TEST : PKI de test embarquée (jamais en production)"
 fi

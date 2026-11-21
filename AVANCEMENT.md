@@ -8,6 +8,10 @@
 2. **Charte v2 sur la borne : SUSPENDUE.** La borne reste en charte v1. La charte v2 sert seulement à
    l'interface web du serveur (adaptation simple, sans effets coûteux).
 
+## Publication (21/11, utilisateur)
+« Les points PRÉVU seront la v2.1.0 » : la **v2.0.0** sort avec ce qui est FAIT (branche `publication-v2`,
+notes `docs/notes-de-version/v2.0.0.md`) ; **tous les points PRÉVU ci-dessous sont reportés en v2.1.0**.
+
 ## Chantiers en cours (règle du 20/11 : parallèle, CI locale avant push, jamais attendre la CI)
 | Chantier | Branche / worktree | État | Attend |
 |---|---|---|---|
