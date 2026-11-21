@@ -25,6 +25,8 @@
 | Serveur : ISO des bornes depuis le serveur (§9) | `serveur-iso-bornes` / `wt-serveur-iso-bornes` | fusionné (CI locale FIN 0 sur la fusion) ; remaster prouvé sur la vraie ISO, QEMU : enrôlement sans saisie, battement, jeton effacé | validation de l’écart à D4 (port fixé à la construction) |
 | Rapports de passage (§10, D2) | `rapports-passage` / `wt-rapports-passage` | fusionné (CI locale FIN 0, non-régression 950 : 43 OK) ; route mTLS `/rapport/passage`, audit, page Passages, admind → agent → envoi/rejeu | PRÉVU : PostgreSQL, échec d'analyse, signature borne, QEMU |
 | Quarantaine (désactivée par défaut, étape 11) | `quarantaine` / `wt-quarantaine` | fusionné (CI locale FIN 0) ; verrou `mesures_dr_serveur` (reste `non`), double validation, AES-256-GCM ; ISO serveur n’installe pas encore le dossier d’homologation | TPM, envoi par la borne |
+| Borne : identifiant/PIN et politique USB (charte v1) | `borne-utilisateurs` / `wt-borne-utilisateurs` | sous-agent en cours | campagne 950 avant fusion |
+| Serveur : correctifs (Supervision, CA admin, TLS 1.2 option, QEMU en ligne) | `serveur-correctifs` / `wt-serveur-correctifs` | sous-agent en cours | — |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
 ## Plan et état
