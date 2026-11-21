@@ -32,7 +32,7 @@ ramené à moyen après essai (voir ci-dessous), est corrigé aussi.
 - Hypothèse initiale : Échap au démarrage ouvre le menu, `e` permet d'ajouter `init=/bin/sh -c "…"`
   (shell root sans PIN, avec le seul clavier du firmware). **Essai sur la borne** : Échap envoyé toutes
   les 30 ms pendant tout le démarrage n'ouvre pas le menu ; avec `GRUB_TIMEOUT=0` GRUB démarre
-  directement ([preuves/grub](preuves/grub/)). L'attaque n'est donc pas démontrée.
+  directement ([preuves/archives/2026-11-15-campagne/grub](preuves/grub/)). L'attaque n'est donc pas démontrée.
 - Risque résiduel : GRUB affiche son menu ou sa ligne de commande quand le démarrage échoue
   (configuration abîmée, entrée introuvable) ; sans mot de passe, ce menu permet la même attaque.
 - Correctif (défense en profondeur) : super-utilisateur GRUB avec mot de passe aléatoire jamais conservé
