@@ -182,3 +182,15 @@ Demande de l'utilisateur : moins de thème château fort, pour ne perdre personn
 - Partout (interfaces, messages, journaux, doc) : le NOM FONCTIONNEL seul — Borne autonome, Borne connectée, Clé Barbacane, Agent Poste, Serveur Barbacane, Console, Liaison bornes, Parc, Journal, Quarantaine, Dépôt, Contrôle postes, Autorité, Atelier signature.
 - Thème château fort : réservé au nom du produit (Barbacane) et au logo. Au plus un rappel discret dans la doc de présentation (schéma d'ensemble), jamais dans l'interface ni dans les procédures.
 - Les sous-titres (Herse, Donjon, Chemin de ronde, etc.) sont abandonnés.
+
+## Borne — grandes images ISO (21/11)
+
+- Exigence : la borne doit analyser et faire passer une ISO Debian 13 et une ISO Windows 11.
+- Décisions :
+  - « Les deux selon le cas » : empreinte dans la liste officielle signée → copie intacte immédiate ; sinon analyse complète du contenu (plus de refus automatique pour cause de nombre de fichiers), une ISO modifiée est donc toujours analysée.
+  - Clé de sortie : format AU CHOIX sur la borne (FAT32, exFAT, NTFS) au moment de la sortie ; avertir si un fichier dépasse 4 Go et que FAT32 est choisi.
+- Étape 1 : mesurer le comportement actuel (temps, mémoire, disque) avec les vraies ISO sur la borne 950. Étape 2 : version dédiée, placée après 2.0.1 (fonction cœur de la borne).
+
+## Découpage mis à jour (21/11) — grandes images en 2.1.0
+
+Les grandes images ISO deviennent la 2.1.0 (fonction cœur de la borne, avant toute nouvelle fonction) ; les versions suivantes sont décalées d'un cran : 2.2 comptes administrateurs + D13 · 2.3 journal + Syslog · 2.4 Autorité (TPM, PKI) · 2.5 chiffrement des bornes · 2.6 PIN par administrateur · 2.7 mises à jour signées du serveur · 2.8 installation modulaire + rôles · 2.9 utilisateurs hybride · 2.10 liste blanche · 2.11 quarantaine par la borne · 2.12 dépôt vers le SI · 2.13 ergonomie et statistiques · 3.0 contrôle postes. E1 terminée avant 2.4.
