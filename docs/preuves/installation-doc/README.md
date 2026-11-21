@@ -1,4 +1,4 @@
-# Test « depuis zéro » du guide (`docs/guide-installation-poste.md`)
+# Test « depuis zéro » du guide (`docs/archives/guide-installation-poste.md`, remplacé par le manuel `docs/Barbacane-installation.md`)
 
 15/11/2026, VM 903 (Debian 13 vierge, connectée à Internet, root) : les commandes de l'**étape 1**
 du guide ont été exécutées telles quelles (journal `zero-guide.log`, non versionné, la phrase de passe
