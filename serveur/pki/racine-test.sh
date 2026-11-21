@@ -1,7 +1,7 @@
 #!/bin/bash
 # PKI de TEST Barbacane (politique-certification.md §1–§3, §9 ; décisions D6, D7, D8).
 #
-#   racine-test.sh [--cas-de-test] [--nom-serveur NOM] [--site SITE] DOSSIER_DE_SORTIE
+#   racine-test.sh [--cas-de-test] [--nom-serveur NOM] [--ip-serveur IP]… [--site SITE] DOSSIER_DE_SORTIE
 #
 # Produit : racine TEST (P-384) → CA « bornes », CA « serveur » et CA « administrateurs »
 #           (P-384, signées SHA-384) → certificat serveur, certificat de borne et certificat
@@ -11,6 +11,9 @@
 # ca-administrateurs/cert.pem, crl_administrateurs = ca-administrateurs/crl.pem) ; le compte
 # se lie au certificat par « barbacane-web compte admin-01 administrateur
 # administrateurs/admin-01.cert.pem » (docs/suite/serveur-web.md §3).
+# --ip-serveur IP : adresse IPv4 ajoutée au SAN du certificat serveur (répétable) ; l'adresse
+#                 d'administration de l'ISO serveur (--ip-admin) est requise pour que la Console,
+#                 ouverte par son adresse, soit vérifiable contre la racine (curl --cacert).
 # --cas-de-test : ajoute une borne et un administrateur révoqués, et une CRL bornes déjà
 #                 expirée (tests de la passerelle et de l'interface web).
 #
@@ -22,6 +25,7 @@ O_TEST="Barbacane TEST — NE PAS UTILISER EN PRODUCTION"
 NOM_SERVEUR="passerelle.barbacane.invalid"
 SITE="site-1"
 CAS_DE_TEST=0
+SAN_SERVEUR=""
 
 usage() { echo "usage : $0 [--cas-de-test] [--nom-serveur NOM] [--site SITE] DOSSIER" >&2; exit 2; }
 while [ $# -gt 0 ]; do
@@ -29,6 +33,9 @@ while [ $# -gt 0 ]; do
 	--cas-de-test) CAS_DE_TEST=1; shift ;;
 	--nom-serveur) NOM_SERVEUR="${2:?}"; shift 2 ;;
 	--site) SITE="${2:?}"; shift 2 ;;
+	--ip-serveur)
+		[[ "${2:-}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || { echo "adresse IPv4 invalide" >&2; exit 2; }
+		SAN_SERVEUR="${SAN_SERVEUR},IP:$2"; shift 2 ;;
 	-*) usage ;;
 	*) break ;;
 	esac
@@ -121,7 +128,7 @@ authorityKeyIdentifier = keyid:always
 basicConstraints = critical, CA:FALSE
 keyUsage = critical, digitalSignature
 extendedKeyUsage = serverAuth
-subjectAltName = DNS:${NOM_SERVEUR}
+subjectAltName = DNS:${NOM_SERVEUR}${SAN_SERVEUR}
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid:always
 

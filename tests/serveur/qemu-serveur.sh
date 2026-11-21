@@ -11,7 +11,7 @@
 #     ISO    construite pour ce banc :
 #            serveur/iso/build-iso-serveur.sh --if-bornes ens8 --ip-bornes 10.0.2.15/24 --if-admin ens9 --ip-admin 10.0.3.15/24 \
 #              --pki-test PKI --hache-admin FICHIER --console-serie
-#     PKI    dossier de serveur/pki/racine-test.sh (certificat de borne pour l'essai mTLS) ; sans lui,
+#     PKI    dossier de serveur/pki/racine-test.sh --ip-serveur 10.0.3.15 (certificat de borne pour l'essai mTLS) ; sans lui,
 #            la passerelle doit être « en attente de PKI » (condition non remplie, pas d'échec).
 #     MDP_WEB fichier du mot de passe du compte web admin-01 (--mdp-web à la construction) : connexion
 #            complète à l'interface web (sinon : page de connexion seulement).
@@ -161,11 +161,13 @@ essai_tls() { # port [options openssl] → sortie du client
 }
 if [ -n "$PKI" ]; then
     # Le port de service est l'un des deux (ordre de l'ensemble nft) : on essaie les deux.
-    r=$(essai_tls 47001 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem")
+    # Chaîne du serveur vérifiée contre la racine de TEST et le nom attendu par les bornes (nom_serveur).
+    V=(-CAfile "$PKI/racine/cert.pem" -verify_return_error -verify_hostname passerelle.barbacane.invalid)
+    r=$(essai_tls 47001 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" "${V[@]}")
     if ! grep -q '"etat":"ok"' <<<"$r"; then
-        r=$(essai_tls 47005 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem")
+        r=$(essai_tls 47005 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" "${V[@]}")
     fi
-    if grep -q '"etat":"ok"' <<<"$r"; then ok "passerelle joignable depuis le réseau des bornes, borne mTLS acceptée : $(grep -o '{.*}' <<<"$r")"
+    if grep -q '"etat":"ok"' <<<"$r"; then ok "passerelle joignable depuis le réseau des bornes, borne mTLS acceptée, chaîne vérifiée contre la racine : $(grep -o '{.*}' <<<"$r")"
     else echec "passerelle : borne valide non servie : $(tail -n 3 <<<"$r")"; fi
     r=$(essai_tls 47001 -CAfile "$PKI/racine/cert.pem"; essai_tls 47005 -CAfile "$PKI/racine/cert.pem")
     if grep -q '"etat":"ok"' <<<"$r"; then echec "passerelle : client SANS certificat servi"; else ok "passerelle : client sans certificat refusé"; fi
@@ -183,6 +185,13 @@ if [ -n "$PKI" ]; then
     if [ "$code" = 200 ] && grep -q 'name="mot_de_passe"' "$W/connexion.html"; then
         ok "interface web servie sur 10.0.3.15:443 (administration) au certificat admin-01 de TEST : page de connexion, HTTP 200"
     else echec "interface web avec certificat admin-01 : HTTP ${code:-?} $(cat "$W/curl.err")"; fi
+    # Chaîne HTTPS de la Console vérifiée contre la RACINE de TEST seule, par l'adresse d'administration
+    # (SAN IP:10.0.3.15, racine-test.sh --ip-serveur) : sans --insecure.
+    code=$(curl --silent --show-error --max-time 20 --cacert "$PKI/racine/cert.pem" --cert "$PKI/administrateurs/admin-01.cert.pem" \
+        --key "$PKI/administrateurs/admin-01.cle.pem" --connect-to 10.0.3.15:443:127.0.0.1:47010 -o /dev/null -w '%{http_code}' \
+        https://10.0.3.15/connexion 2>"$W/curl-ca.err" || true)
+    [ "$code" = 200 ] && ok "interface web : certificat HTTPS vérifié contre la racine de TEST (chaîne complète, SAN 10.0.3.15)" \
+        || echec "interface web : vérification contre la racine (curl --cacert) : HTTP $code $(cat "$W/curl-ca.err")"
     # Refus par le serveur (alerte TLS « certificate required »), pas un simple service absent.
     r=$(curl --silent --show-error --max-time 20 --insecure -o /dev/null -w '%{http_code}' https://127.0.0.1:47010/connexion 2>&1 || true)
     grep -qi 'alert\|certificate required' <<<"$r" && ok "interface web : client SANS certificat refusé à la poignée de main TLS ($(grep -oi 'tlsv13 alert [a-z ]*\|certificate required' <<<"$r" | head -1))" \

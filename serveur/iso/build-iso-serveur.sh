@@ -310,6 +310,10 @@ HACHE_ADMIN='$HACHE_ADMIN'
 CONF
 if [ -n "$PKI_TEST" ]; then
     mkdir -p "$B/pki-test"
+    # La Console est ouverte par l'adresse d'administration : sans elle dans le SAN du certificat
+    # serveur, un navigateur ou « curl --cacert racine » refuse la connexion (v2.0.1).
+    openssl x509 -in "$PKI_TEST/serveur/cert.pem" -noout -checkip "${IP_ADMIN%/*}" | grep -q 'does match' \
+        || refus "--pki-test : certificat serveur sans l'adresse d'administration ${IP_ADMIN%/*} dans son SAN (racine-test.sh --ip-serveur ${IP_ADMIN%/*})"
     cp "$PKI_TEST/serveur/chaine.pem" "$B/pki-test/chaine.pem"
     cp "$PKI_TEST/serveur/cle.pem" "$B/pki-test/cle.pem"
     cp "$PKI_TEST/ca-bornes/cert.pem" "$B/pki-test/ca-bornes.pem"

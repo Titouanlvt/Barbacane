@@ -52,7 +52,8 @@ for k in crl_bornes registre; do # écrits par la passerelle (CRL republiée, re
 done
 
 # 3. PKI de TEST déposée comme le fait configurer-serveur.sh (noms de build-iso-serveur.sh).
-bash serveur/pki/racine-test.sh "$W/pki" >/dev/null 2>&1
+# Adresse d'administration dans le SAN du certificat serveur (Console ouverte par son adresse).
+bash serveur/pki/racine-test.sh --ip-serveur 10.99.0.1 "$W/pki" >/dev/null 2>&1
 cp "$W/pki/serveur/chaine.pem" "$W/racine/pki/chaine.pem"
 cp "$W/pki/serveur/cle.pem" "$W/racine/pki/cle.pem"
 cp "$W/pki/ca-bornes/cert.pem" "$W/racine/pki/ca-bornes.pem"
@@ -113,6 +114,26 @@ fi
 chmod 644 "$W/racine/web/comptes"
 if "$BINS/barbacane-web" --verifier-config "$W/vue-web.conf" >/dev/null 2>&1; then echec "web : comptes lisibles par tous acceptés"; fi
 chmod 600 "$W/racine/web/comptes"
+# Chaîne HTTPS de la Console (v2.0.1) : vraie interface lancée sur la boucle locale, vérifiée contre
+# la RACINE de TEST seule (chaîne complète présentée, SAN avec l'adresse d'administration).
+PW=$(shuf -i 30000-60000 -n 1)
+sed -e "s/^adresse = .*/adresse = 127.0.0.1/" -e "s/^port = .*/port = $PW/" "$W/vue-web.conf" > "$W/vue-web-lo.conf"
+"$BINS/barbacane-web" "$W/vue-web-lo.conf" > "$W/web.log" 2>&1 &
+PIDW=$!
+C=(--silent --max-time 10 --cacert "$W/pki/racine/cert.pem" --cert "$W/pki/administrateurs/admin-01.cert.pem"
+    --key "$W/pki/administrateurs/admin-01.cle.pem" -o /dev/null -w '%{http_code}')
+code=000
+for _ in $(seq 40); do
+    code=$(curl "${C[@]}" --connect-to "10.99.0.1:$PW:127.0.0.1:$PW" "https://10.99.0.1:$PW/connexion" 2>/dev/null || true)
+    [ "$code" = 000 ] || break
+    sleep 0.25
+done
+[ "$code" = 200 ] && echo "Console : HTTPS vérifié contre la racine de TEST (chaîne complète, SAN IP:10.99.0.1)" \
+    || echec "Console : vérification HTTPS contre la racine (curl --cacert) : HTTP $code $(tail -n 3 "$W/web.log")"
+# Contre-épreuve : une autre adresse que celle du SAN est refusée par le client (vérification réelle).
+code=$(curl "${C[@]}" --connect-to "10.99.0.2:$PW:127.0.0.1:$PW" "https://10.99.0.2:$PW/connexion" 2>/dev/null || true)
+[ "$code" = 000 ] || echec "Console : adresse hors SAN acceptée (HTTP $code)"
+kill "$PIDW" 2>/dev/null || true; wait "$PIDW" 2>/dev/null || true
 
 # 5. barbacane-registre : vue hôte (registre.conf) des mêmes fichiers.
 # shellcheck disable=SC2016  # motif littéral
