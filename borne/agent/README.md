@@ -1,4 +1,4 @@
-# barbacane-agent (borne en ligne uniquement)
+# barbacane-agent (Borne connectée uniquement)
 
 Seul processus réseau de la borne en ligne : connexion **sortante** unique vers le serveur
 (TLS 1.3 mutuel, CA serveur épinglée). N'existe que dans `build-iso.sh --profil en-ligne` ;

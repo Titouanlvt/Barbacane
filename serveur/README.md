@@ -1,9 +1,10 @@
-# Serveur Barbacane (suite, v2.0.0)
+# Serveur Barbacane (suite en ligne, v2.0.1)
 
-Serveur de gestion des bornes en ligne. Vue d'ensemble FAIT/PRÉVU : `docs/suite/README.md` ;
+Serveur de gestion des Bornes connectées : Liaison bornes (passerelle), Console (interface web), Journal
+d'audit, Quarantaine. Vue d'ensemble FAIT/PRÉVU : `docs/suite/README.md` ;
 conception : `docs/conception-barbacane-suite.md` ; décisions : `docs/suite/decisions.md`.
 
-**Rien ici n'entre dans la borne hors ligne** : `systeme/iso/build-iso.sh` (profil hors-ligne, le
+**Rien ici n'entre dans la Borne autonome** : `systeme/iso/build-iso.sh` (profil hors-ligne, le
 défaut) n'utilise pas ce dossier, et `tests/iso/hors-ligne.sh` le vérifie sur l'ISO produite.
 
 | Dossier | Rôle | Doc | Tests |
