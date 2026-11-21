@@ -26,7 +26,7 @@
 | Borne : utilisateurs et clés USB | `borne-utilisateurs` / `wt-borne-utilisateurs` | FAIT (CI locale FIN 0) : écrans identifiant/PIN (charte v1), relais admind → agent (socket 0600, PIN en mémoire seulement), politique USB ; hors ligne inchangé (tests). PRÉVU : QEMU en ligne, captures | non fusionné ; blanchiment autorisé sur toute clé (décision du 21/11) |
 | Rapports de passage (§10, D2) | `rapports-passage` / `wt-rapports-passage` | fusionné (CI locale FIN 0, non-régression 950 : 43 OK) ; route mTLS `/rapport/passage`, audit, page Passages, admind → agent → envoi/rejeu | PRÉVU : PostgreSQL, échec d'analyse, signature borne, QEMU |
 | Quarantaine (désactivée par défaut, étape 11) | `quarantaine` / `wt-quarantaine` | fusionné (CI locale FIN 0) ; option des administrateurs (verrou `mesures_dr_serveur` retiré le 21/11, avertissement DR), double validation, AES-256-GCM ; ISO serveur n’installe pas encore le dossier d’homologation | TPM, envoi par la borne |
-| Borne : identifiant/PIN et politique USB (charte v1) | `borne-utilisateurs` / `wt-borne-utilisateurs` | sous-agent en cours | campagne 950 avant fusion |
+| Borne : identifiant/PIN et politique USB (charte v1) | `borne-utilisateurs` / `wt-borne-utilisateurs` | fusionné (CI locale FIN 0, 950 : 43 OK) ; blanchiment autorisé sur toute clé (décision 21/11) | PRÉVU : captures des écrans, session liée aux rapports |
 | Serveur : correctifs (Supervision, CA admin, TLS 1.2 option, QEMU en ligne) | `serveur-correctifs` / `wt-serveur-correctifs` | fusionné (CI locale FIN 0) ; Supervision OK à 1280 px, CA admin de test, TLS 1.2 optionnel audité, QEMU en ligne + rapport de passage (analyse simulée) | — |
 | Surveillance CI | `lab/ci-surveille.sh BRANCHE` | `logs/ci-<branche>.log` | — |
 
