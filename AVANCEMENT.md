@@ -28,9 +28,17 @@ Une version = une seule famille de fonctions ; tests + non-régression 950 si la
 
 Sécurité d'abord ; porte de sortie de chaque version : revue de sécurité, CI, QEMU, 950, labo Proxmox, mise à jour depuis la précédente, retour arrière, doc. 2.0.1 fiabilité (USB ppoll, ISO serveur complète, banc QEMU, HTTPS, version) · 2.0.2 défauts du labo + noms · E1 étude de conformité (en parallèle, avant 2.4) · 2.1.0 grandes images ISO (Debian 13, Windows 11 : liste officielle ou analyse complète, sortie FAT32/exFAT/NTFS au choix) · 2.2.0 comptes administrateurs + D13 · 2.3.0 journal structuré + Syslog · 2.4.0 TPM serveur, AC hors passerelle, PKI de production · 2.5.0 chiffrement des bornes · 2.6.0 PIN par administrateur · 2.7.0 mises à jour signées du serveur + retour arrière · 2.8.0 installation modulaire + rôles séparés · 2.9.0 utilisateurs hybride · 2.10.0 liste blanche · 2.11.0 quarantaine par la borne · 2.12.0 dépôt vers le SI · 2.13.0 ergonomie et statistiques · 3.0.0 contrôle postes · ensuite module SOC/SIEM.
 
-## v2.0.2 (en cours)
+## v2.0.2 (publiée le 21/11/2026)
 Défauts du labo du 21/11 : page 500 ponctuelle (admin-02), message de jeton, écran « Clé détectée »,
 noms de site libres, doc barbadmin, noms fonctionnels ([labo](docs/preuves/2026-11-21-labo-proxmox/README.md)).
+
+## v2.0.3 (prochaine) : reprise des correctifs usbsas du CEA
+151 commits amont depuis notre base `69ebcf4`, surtout du durcissement : `fsrw/ntfs3g` et `ff`
+(fermetures, noms, NUL), `dev2scsi` (lectures hors périphérique, isolement, secteurs 4K, ISO9660),
+`comm`/seccomp, `net` (TLS 1.3, limites). Reprise commit par commit, chaque reprise dans
+`docs/noyau/ecarts.md`, même porte de sortie que les autres versions. Contributions envoyées au CEA
+(fork `Titouanlvt/usbsas`) : `usbdev-allow-ppoll`, `usb-transfer-timeouts`. Avec : dépendances
+`nix` 0.32 et `jiff` 1.0 (dependabot).
 
 ## Reporté après 2.0.2 (reprend les [notes v2.0.0](docs/notes-de-version/v2.0.0.md))
 - **PKI et passerelle** : clés dans le TPM, refus des certificats TEST en production, CRL de la
