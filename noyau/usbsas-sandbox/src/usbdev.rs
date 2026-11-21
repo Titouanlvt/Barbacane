@@ -88,6 +88,14 @@ pub fn seccomp_thread(udev_socket: RawFd, poll_fd: RawFd) -> Result<()> {
         )],
     )?;
 
+    // libudev (sd-device) may wait with ppoll()/poll() while scanning devices,
+    // e.g. at boot before udev has processed them. Without this the whole
+    // process is killed (SIGSYS, syscall 271 on x86_64), intermittently.
+    // These calls only wait on already open descriptors: no new capability.
+    ctx.allow_syscall(Syscall::ppoll)?;
+    #[cfg(not(target_arch = "aarch64"))]
+    ctx.allow_syscall(Syscall::poll)?;
+
     // Allow mprotect without PROT_EXEC
     ctx.allow_syscall(Syscall::mprotect)?;
     ctx.set_rule_for_syscall(
