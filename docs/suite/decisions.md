@@ -1,6 +1,6 @@
 # Décisions de la suite (journal)
 
-Niveau visé : **Diffusion Restreinte** (DR, IGI 1300). Il n'y a pas d'autorité d'homologation (AH) :
+Niveau visé : **Diffusion Restreinte** (DR, II 901 du 28/01/2015 ; l’IGI 1300 ne couvre que Secret et Très Secret). Il n'y a pas d'autorité d'homologation (AH) :
 Claude en tient le rôle « au mieux », en appliquant les recommandations ANSSI pour un SI DR. Claude ne
 peut **ni homologuer ni fournir de produit agréé** : ce qui l'exige est listé à part dans
 `dossier-homologation.md` (§6 et §7). Une décision ne change que par une nouvelle entrée datée.
@@ -37,3 +37,13 @@ non à l'installation. Discrétion conservée (port non standard, propre au site
 - **Quarantaine** : « La quarantaine est une option que l'administrateur choisit d'activer ou non. » Le verrou `mesures_dr_serveur` est retiré du logiciel (la ligne reste dans le dossier d'homologation, à titre d'information) ; gardés : désactivée par défaut, activation et export par double validation, désactivation par un seul, audit, AES-256-GCM, 30 jours. Avertissement DR affiché avant l'activation et journalisé avec elle (`docs/suite/quarantaine.md`).
 - **Blanchiment et politique USB** : le blanchiment reste autorisé sur toute clé, même non enrôlée et même avec une politique de site (il n'écrit aucune donnée sortante) ; seule la sortie de fichiers (copie, gravure) exige une clé enrôlée pour la sortie.
 - **Publication** : « Les points PRÉVU seront la v2.1.0. » La **v2.0.0** sort avec ce qui est FAIT ; tous les points PRÉVU (`docs/suite/README.md`, colonne PRÉVU) sont reportés en **v2.1.0**.
+
+## Décisions du 22/11/2026 (suite à l'étude E1, `etude-conformite-e1.md`)
+- **Niveaux visés : les trois**, par profil de déploiement :
+  - **SI non sensible** : hygiène ANSSI + RGPD/CNIL ;
+  - **Diffusion Restreinte (II 901)** : Borne autonome et suite en ligne, sous homologation de l'autorité de l'organisme ;
+  - **Classifié (IGI 1300)** : **Borne autonome hors ligne seule**, intégrée à un SI classifié déjà homologué, sur décision de son autorité ; la suite en ligne n'est pas prévue pour ce niveau. Barbacane ne revendique aucune conformité IGI 1300 par lui-même.
+  Chaque fonction de la feuille de route indique les profils où elle est permise (ex. Dépôt vers le SI, Contrôle postes : à soumettre à l'analyse d'interconnexion II 901).
+- **Conservation des rapports et journaux : configurable par l'administrateur** dans la Console (valeur par défaut 1 an, plafond imposé, changement audité et par double validation), avec purge effective des rapports de passage, rotation du journal d'audit par segments scellés et purge des sauvegardes (version 2.3). L'AIPD est mise à jour en conséquence.
+- **CSPN : non** (pas de certification visée pour l'instant).
+- **E1-bis (grilles ANSSI ligne à ligne, registre, plan MCS) : non** ; les écarts bloquants de l'étude restent traités dans les versions 2.2 à 2.4.
