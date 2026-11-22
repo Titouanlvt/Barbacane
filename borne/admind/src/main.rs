@@ -387,7 +387,9 @@ impl Ctx {
                 std::fs::remove_file(&p)?
             }
         }
-        let stamp = jiff::ZonedDateTime::now().strftime("%Y%m%d-%H%M%S").to_string();
+        let stamp = jiff::ZonedDateTime::now()
+            .strftime("%Y%m%d-%H%M%S")
+            .to_string();
         let out = dir.join(format!("barbacane-export-{stamp}"));
         let rapports = out.join("rapports");
         std::fs::create_dir_all(&rapports)?;
