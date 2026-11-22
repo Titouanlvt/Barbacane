@@ -772,6 +772,97 @@ if test_actif etcher; then
     attendre "à analyser" 300 || true
 fi
 
+# === grandes images ISO (v2.1.0) ============================================================
+# LISTE_BCU : mise à jour signée qui porte la liste « sha256 taille nom » avec ISO_WIN (pas ISO_DEB).
+# ISO_WIN : image officielle (copie en flux, écart n° 14) ; ISO_DEB : image non déclarée (analyse
+# complète). Clés émulées seulement (source exFAT de 12 Go, sortie de 16 Go).
+iso_sur_source() { # image fs taille
+    local img; img=$(virt_img "$SERIE_SOURCE"); liberer "$img"; rm -f "$img"; truncate -s "$3" "$img"
+    local d p; d=$(disque "$SERIE_SOURCE"); echo "type=7" | sfdisk -q "$d"; partx -u "$d" 2>/dev/null || true; sleep 2
+    p=$(partition "$d"); [ -n "$p" ] || { partx -a "$d" 2>/dev/null || true; sleep 1; p=$(partition "$d"); }
+    if [ "$2" = exfat ]; then mkfs.exfat -L SOURCE "$p" >/dev/null; else mkfs.vfat -F32 -n SOURCE "$p" >/dev/null; fi
+    mount "$p" "$T/m"; cp "$1" "$T/m/"; sync; umount "$T/m"
+}
+sortie_vierge() { # taille ; témoin écrit sur la sortie
+    local img; img=$(virt_img "$SERIE_SORTIE"); liberer "$img"; rm -f "$img"; truncate -s "$1" "$img"
+    formater "$SERIE_SORTIE" "" DEST; echo "témoin" > "$T/m/TEMOIN.txt"; umount "$T/m"
+}
+iso_sortie_identique() { # image fichier_sur_sortie
+    monter_ro "$SERIE_SORTIE"
+    local h; h=$(sha256sum "$T/m/$2" 2>/dev/null | cut -d' ' -f1)
+    lsblk -no FSTYPE "$(partition "$(disque "$SERIE_SORTIE")")" > "$D/$2.fstype" 2>/dev/null || true
+    ls -la "$T/m" > "$D/sortie-$(cat "$D/$2.fstype" 2>/dev/null || echo fs).txt"; umount "$T/m"
+    [ -n "$h" ] && [ "$h" = "$(sha256sum "$1" | cut -d' ' -f1)" ]
+}
+if test_actif grandes-iso; then
+    debut grandes-iso "grandes images ISO : Windows 11 officielle (liste signée), Debian 13 analysée, formats de sortie"
+    : "${ISO_WIN:?ISO_WIN}" "${ISO_DEB:?ISO_DEB}" "${LISTE_BCU:?LISTE_BCU}"
+    nwin=$(basename "$ISO_WIN"); ndeb=$(basename "$ISO_DEB")
+    sha256sum "$ISO_WIN" "$ISO_DEB" > "$D/sources.sha256"
+    si maj_appliquer "$LISTE_BCU" 00-liste "Paquet de mise à jour version" -- "liste d'images officielles signée (clé de TEST) appliquée" "liste non appliquée"
+    cliquer "Retour au menu"; debrancher usb1; quitter_admin
+    # 1. Windows 11 officielle → exFAT (défaut)
+    iso_sur_source "$ISO_WIN" exfat 12G
+    sortie_vierge 16G
+    t0=$SECONDS
+    brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120 "$D/01-cle-detectee.png"; cliquer "Analyser"
+    if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 3600)" = 2 ]; then
+        capture 02-resultat; lire 02-resultat >/dev/null
+        ok "Windows 11 (8,9 Go) : vérification de l'empreinte en $((SECONDS - t0)) s (le refus « Not enough space » de la v2.0.3 venait en 10 s)"
+        si grep -q "officielle reconnue" "$D/02-resultat.txt" -- "écran : « Image officielle reconnue »" "image officielle non reconnue"
+        cliquer "Copier vers une clé connue"
+        brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 90 "$D/03-destination.png"; lire 03-destination >/dev/null
+        si grep -q "exFAT" "$D/03-destination.txt" -- "choix du format affiché (exFAT par défaut)" "choix du format absent"
+        t1=$SECONDS; cliquer "Effacer cette clé"
+        if [ "$(premier "Une erreur est survenue" "Vous pouvez retirer" 10800)" = 2 ]; then
+            capture 04-termine; ok "copie en flux vers exFAT : $((SECONDS - t1)) s"
+        else capture 04-erreur; lire 04-erreur >/dev/null; ko "copie Windows 11 en erreur"; fi
+        debrancher usb2; debrancher usb1
+        si iso_sortie_identique "$ISO_WIN" "$nwin" -- "Windows 11 copiée sur exFAT, sha256 identique à l'image officielle" "image Windows absente ou différente en sortie (exFAT)"
+    else capture 02-erreur; lire 02-erreur >/dev/null; ko "analyse Windows 11 en erreur : $(head -c 300 "$D/02-erreur.txt" | tr '\n' ' ')"; cliquer "Recommencer depuis le début" || true; debrancher usb1; fi
+    voir "à analyser" 120 || true
+    # 2. Même image : FAT32 refusé avant écriture, puis NTFS
+    sortie_vierge 16G
+    brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120; cliquer "Analyser"
+    if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 3600)" = 2 ]; then
+        cliquer "Copier vers une clé connue"
+        brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 90
+        cliquer "FAT32"; sleep 2; cliquer "Effacer cette clé"
+        si voir "n'accepte pas" 60 "$D/05-fat32-refus.png" -- "FAT32 : fichier de plus de 4 Go refusé avant écriture, message clair" "FAT32 : pas de refus affiché"
+        lire 05-fat32-refus >/dev/null
+        debrancher usb2
+        monter_ro "$SERIE_SORTIE"; si [ -f "$T/m/TEMOIN.txt" ] -- "FAT32 refusé : clé de sortie non modifiée (témoin présent)" "FAT32 refusé : la clé de sortie a été écrite"; umount "$T/m"
+        brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 90
+        cliquer "NTFS"; sleep 2; capture 06-ntfs-choisi; t1=$SECONDS; cliquer "Effacer cette clé"
+        if [ "$(premier "Une erreur est survenue" "Vous pouvez retirer" 10800)" = 2 ]; then
+            capture 07-termine; ok "copie en flux vers NTFS : $((SECONDS - t1)) s"
+        else capture 07-erreur; lire 07-erreur >/dev/null; ko "copie NTFS en erreur"; fi
+        debrancher usb2; debrancher usb1
+        si iso_sortie_identique "$ISO_WIN" "$nwin" -- "Windows 11 copiée sur NTFS, sha256 identique" "image Windows absente ou différente en sortie (NTFS)"
+        si grep -qx ntfs "$D/$nwin.fstype" -- "clé de sortie en NTFS" "clé de sortie pas en NTFS : $(cat "$D/$nwin.fstype")"
+    else ko "deuxième analyse Windows 11 en erreur"; cliquer "Recommencer depuis le début" || true; debrancher usb1; fi
+    voir "à analyser" 120 || true
+    # 3. Debian 13 netinst, non déclarée : analyse complète, estimation affichée, copie exFAT
+    iso_sur_source "$ISO_DEB" vfat 2G
+    sortie_vierge 8G
+    t0=$SECONDS
+    brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120; cliquer "Analyser"
+    si voir "estimée" 300 "$D/08-estimation.png" -- "estimation de durée affichée avant l'analyse" "estimation absente"
+    lire 08-estimation >/dev/null
+    if [ "$(premier "Une erreur est survenue" "Résultat de l'analyse" 7200)" = 2 ]; then
+        capture 09-resultat; lire 09-resultat >/dev/null; ok "Debian 13 analysée intégralement en $((SECONDS - t0)) s"
+        cliquer "Copier vers une clé connue"
+        brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 90; cliquer "Effacer cette clé"
+        if [ "$(premier "Une erreur est survenue" "Vous pouvez retirer" 3600)" = 2 ]; then capture 10-termine
+        else capture 10-erreur; ko "copie Debian en erreur"; fi
+        debrancher usb2; debrancher usb1
+        si iso_sortie_identique "$ISO_DEB" "$ndeb" -- "Debian 13 analysée puis copiée, sha256 identique à l'image officielle" "image Debian absente ou différente en sortie"
+    else capture 09-erreur; lire 09-erreur >/dev/null; ko "analyse Debian en erreur"; cliquer "Recommencer depuis le début" || true; debrancher usb1; fi
+    voir "à analyser" 120 || true
+    # grosses images de test supprimées (recréées à la taille par défaut au besoin)
+    for n in "$SERIE_SOURCE" "$SERIE_SORTIE"; do i=$(virt_img "$n"); liberer "$i"; rm -f "$i"; done
+fi
+
 # === export des journaux et rapports =====================================================
 if test_actif export; then
     debut export "export des journaux et rapports sur la clé $SERIE_SORTIE"

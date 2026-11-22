@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
-use usbsas_comm::{ComRqUsbsas, ProtoReqCommon};
+use usbsas_comm::{ComRqUsbsas, ProtoReqCommon, ProtoReqUsbsas};
 use usbsas_fsrw::FSRead;
 use usbsas_process::{ChildMngt, UsbsasChild, UsbsasChildSpawner};
 
@@ -273,6 +273,11 @@ fn events(
 
 /// Parcours complet. `wipe_same` : Blanchir (la sortie est la clé source).
 fn run(env: &Env, wipe_same: bool) -> parcours::Analysis {
+    run_format(env, wipe_same, proto::common::FsType::Exfat)
+}
+
+/// Parcours complet, clé de sortie formatée en `fstype`.
+fn run_format(env: &Env, wipe_same: bool, fstype: proto::common::FsType) -> parcours::Analysis {
     let mut s = session(env);
     let devs = parcours::devices(&mut s.comm).unwrap();
     let (src_id, src) = devs.sources().next().cloned().unwrap();
@@ -301,6 +306,7 @@ fn run(env: &Env, wipe_same: bool) -> parcours::Analysis {
         devs.local_dir(env.dir.join("sortie").to_str().unwrap())
             .unwrap(),
         dst,
+        fstype,
         &tx,
     )
     .unwrap();
@@ -445,5 +451,125 @@ fn bout_en_bout() {
     assert!(
         !raw.windows(EICAR.len()).any(|w| w == EICAR.as_bytes()),
         "EICAR encore présent sur la clé blanchie"
+    );
+
+    // 6. Formats de sortie choisis sur la borne : NTFS puis FAT32 (chemin normal)
+    unsafe { std::env::set_var("USBSAS_MOCK_OUT_DEV", &output) };
+    let src = d.join("cle6");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("lettre.txt"), "format\n").unwrap();
+    make_disk(&input, &src, "vfat");
+    sh(&format!("rm {0}; truncate -s 64M {0}", output.display()));
+    run_format(&env, false, proto::common::FsType::Ntfs);
+    sh(&format!(
+        "dd if={o} of={o}.p bs=1M skip=1 status=none; ntfscat {o}.p lettre.txt | grep -qx format; rm {o}.p",
+        o = output.display()
+    ));
+    sh(&format!("rm {0}; truncate -s 64M {0}", output.display()));
+    run_format(&env, false, proto::common::FsType::Fat);
+    sh(&format!(
+        "dd if={o} of={o}.p bs=1M skip=1 status=none; file -s {o}.p | grep -q FAT; \
+         mtype -i {o}.p ::/lettre.txt | grep -qx format; rm {o}.p",
+        o = output.display()
+    ));
+
+    // 7. Image officielle portée comme fichier (écart n° 14) : vérifiée, puis copiée en flux
+    let src = d.join("cle7");
+    fs::create_dir_all(&src).unwrap();
+    let image: Vec<u8> = (0..3_000_000u32)
+        .map(|i| (i.wrapping_mul(2654435761) >> 13) as u8)
+        .collect();
+    fs::write(src.join("officielle.iso"), &image).unwrap();
+    fs::write(src.join("notes.txt"), "non copié\n").unwrap();
+    make_disk(&input, &src, "vfat");
+    let h = {
+        use sha2::Digest;
+        let d: [u8; 32] = sha2::Sha256::digest(&image).into();
+        d
+    };
+    let liste = vec![parcours::ImageListe {
+        sha256: h,
+        taille: Some(image.len() as u64),
+        nom: "Officielle 1.0".into(),
+    }];
+    let (tx, _h) = events(env.analyzer.clone(), "Tartempion");
+    let mut s = session(&env);
+    let devs = parcours::devices(&mut s.comm).unwrap();
+    let (src_id, _) = devs.sources().next().cloned().unwrap();
+    s.comm.userid(proto::usbsas::RequestUserId {}).unwrap();
+    s.comm
+        .inittransfer(proto::usbsas::RequestInitTransfer {
+            source: src_id,
+            destination: devs.sink.unwrap(),
+            fstype: None,
+            pin: None,
+            bootable: false,
+        })
+        .unwrap();
+    let parts = s
+        .comm
+        .partitions(proto::usbsas::RequestPartitions {})
+        .unwrap()
+        .partitions;
+    s.comm
+        .openpartition(proto::usbsas::RequestOpenPartition {
+            index: parcours::default_partition(&parts).unwrap(),
+        })
+        .unwrap();
+    let inv = parcours::inventaire(&mut s.comm).unwrap();
+    assert_eq!(inv.images, image.len() as u64);
+    let o = parcours::chercher_officielle(&mut s.comm, &inv, &liste, &tx)
+        .expect("image candidate")
+        .unwrap();
+    assert_eq!((o.chemin.as_str(), o.ignores), ("/officielle.iso", 1));
+    // empreinte différente (même taille) : pas reconnue, l'analyse normale reste possible
+    let fausse = vec![parcours::ImageListe {
+        sha256: [0; 32],
+        ..liste[0].clone()
+    }];
+    assert!(parcours::chercher_officielle(&mut s.comm, &inv, &fausse, &tx).is_none());
+    end(s);
+    for fstype in [proto::common::FsType::Exfat, proto::common::FsType::Ntfs] {
+        sh(&format!("rm {0}; truncate -s 64M {0}", output.display()));
+        let mut s = session(&env);
+        let devs = parcours::devices(&mut s.comm).unwrap();
+        let (src_id, _) = devs.sources().next().cloned().unwrap();
+        let dst = devs.destinations().next().unwrap().0;
+        parcours::ecrire_officielle_avec(&mut s.comm, src_id, dst, &o, fstype, &liste, &tx)
+            .unwrap();
+        let _ = s.wait();
+        if fstype == proto::common::FsType::Exfat {
+            let out = read_exfat(&output);
+            assert_eq!(names(&out), ["officielle.iso"], "seule l'image est copiée");
+            assert!(out[0].1 == image, "image copiée à l'identique");
+        } else {
+            sh(&format!(
+                "dd if={o} of={o}.p bs=1M skip=1 status=none; ntfscat {o}.p officielle.iso | cmp - {i}; rm {o}.p",
+                o = output.display(),
+                i = src.join("officielle.iso").display()
+            ));
+        }
+    }
+    // liste qui ne correspond plus : erreur, la clé de sortie n'est pas écrite
+    sh(&format!("rm {0}; truncate -s 64M {0}", output.display()));
+    let mut s = session(&env);
+    let devs = parcours::devices(&mut s.comm).unwrap();
+    let (src_id, _) = devs.sources().next().cloned().unwrap();
+    let dst = devs.destinations().next().unwrap().0;
+    let e = parcours::ecrire_officielle_avec(
+        &mut s.comm,
+        src_id,
+        dst,
+        &o,
+        proto::common::FsType::Exfat,
+        &fausse,
+        &tx,
+    )
+    .unwrap_err();
+    assert!(e.to_string().contains("image non reconnue"), "{e}");
+    let _ = s.wait();
+    assert!(
+        fs::read(&output).unwrap().iter().all(|b| *b == 0),
+        "rien ne doit être écrit sans empreinte reconnue"
     );
 }
