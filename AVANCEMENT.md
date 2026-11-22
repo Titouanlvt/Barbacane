@@ -48,20 +48,26 @@ Fait : base `c75c7eb`, écarts 1/3/8/10 retirés, 12 et 13 ajoutés, jiff 1.0, n
 Image officielle vérifiée puis copiée en flux (écart 14), analyse complète avec plafond et
 estimation, format de sortie au choix ([notes](docs/notes-de-version/v2.1.0.md)).
 
+## v2.2.0 (branche `v220`, preuves en cours, non fusionnée) : comptes administrateurs + D13
+Comptes gérés dans la Console (4 rôles, `.p12`, politique, dernier accès), double validation
+généralisée (comptes, certificats, révocation d'un site, quarantaine dont la désactivation),
+séparation des remises, D13 raccordée, migration des comptes 2.1.0
+([notes](docs/notes-de-version/v2.2.0.md), [référence](docs/suite/comptes-administrateurs.md)).
+Choix à valider par l'utilisateur : `docs/suite/decisions.md` (22/11, v2.2.0).
+
 ## Reporté après 2.0.2 (reprend les [notes v2.0.0](docs/notes-de-version/v2.0.0.md))
 - **PKI et passerelle** : clés dans le TPM, refus des certificats TEST en production, CRL de la
   racine et republication quotidienne, service PKI séparé, racine du lab sur VM sans réseau ;
   cérémonie de production.
-- **Enrôlement** : double validation des révocations massives ; PostgreSQL.
+- **Enrôlement** : PostgreSQL (double validation des révocations massives : faite en 2.2.0).
 - **ISO serveur** : machine physique avec TPM matériel et démarrage sécurisé, re-scellement (shim,
   `systemd-pcrlock`), faillock, AIDE, GNSS/radio, sauvegarde planifiée.
 - **Audit et mises à jour** : minuteries de scellement/export, clé d'audit dans le TPM, `chattr +a`,
   clé distincte pour le `.bcu` serveur, plancher étendu, diffusion par lot avec double validation.
-- **Interface web** : TPM, service systemd durci, pare-feu d'administration, double validation
-  générale (§3.10), deux facteurs des administrateurs, comparaison aux exports d'audit, fin du journal.
+- **Interface web** : TPM, service systemd durci, pare-feu d'administration, facteur matériel
+  des administrateurs, comparaison aux exports d'audit, fin du journal.
 - **Utilisateurs et clés USB** : rattachement aux rapports, synchronisation de l'annuaire, secrets
-  dans le TPM, mode par borne, rôles de site ; LDAPS sur un vrai annuaire ; raccorder
-  `quarantaine_active()` (renvoie encore toujours faux, D13).
+  dans le TPM, mode par borne, rôles de site ; LDAPS sur un vrai annuaire (D13 raccordée en 2.2.0).
 - **Borne en ligne** : clés dans le TPM, session jointe aux rapports, captures des nouveaux écrans.
 - **Rapports de passage** : analyse en échec, signature par la borne, rétention/purge, analyse
   réelle de bout en bout.
