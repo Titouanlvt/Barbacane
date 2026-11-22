@@ -305,7 +305,7 @@ impl WrittenState {
                     return Ok(State::WaitEnd(WaitEndState));
                 }
                 self.mass_storage
-                    .scsi_write_10(&req.data, req.sector, len / SECTOR_SIZE)?;
+                    .scsi_write(&req.data, req.sector, len / SECTOR_SIZE)?;
                 comm.writeraw(fs2dev::ResponseWriteRaw {})?;
                 Ok(State::Written(self))
             }
