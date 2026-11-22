@@ -64,14 +64,14 @@ fn ident_pem(cert: &Path, cle: &Path) -> Ident {
 fn demarrer(d: &Path, pki: &Path) -> SocketAddr {
     let ecoute = TcpListener::bind("127.0.0.1:0").unwrap();
     let web = ecoute.local_addr().unwrap();
-    let config = Config::analyser(&format!(
+    let texte = format!(
         "adresse = 127.0.0.1\nport = {}\nchaine_serveur = {p}/serveur/chaine.pem\ncle_serveur = {p}/serveur/cle.pem\nca_administrateurs = {p}/ca-administrateurs/cert.pem\ncrl_administrateurs = {p}/ca-administrateurs/crl.pem\ncle_ca_administrateurs = {p}/ca-administrateurs/cle.pem\ncomptes = {d}/comptes\npasserelle = {d}/passerelle.conf\ncle_audit_publique = {d}/audit.pub\n",
         web.port(),
         p = pki.display(),
         d = d.display(),
-    ))
-    .unwrap();
-    let w = Web::nouveau(config).unwrap();
+    );
+    std::fs::write(d.join("web.conf"), &texte).unwrap();
+    let w = Web::nouveau(Config::analyser(&texte).unwrap()).unwrap();
     std::thread::spawn(move || servir(ecoute, w));
     web
 }
@@ -115,6 +115,11 @@ fn banc() -> Banc {
     );
     std::fs::write(d.join("passerelle.conf"), &conf_passerelle).unwrap();
     let passerelle = barbacane_passerelle::Config::analyser(&conf_passerelle).unwrap();
+    std::fs::set_permissions(
+        pki.join("ca-administrateurs/cle.pem"),
+        std::fs::Permissions::from_mode(0o400),
+    )
+    .unwrap();
     let web = demarrer(&d, &pki);
     Banc {
         dossier,
@@ -155,6 +160,16 @@ impl Rep {
             .unwrap_or_else(|| panic!("« {libelle} » absent : {t}"));
         let m = "name=\"demande\" value=\"";
         let j = t[i..].find(m).unwrap() + i + m.len();
+        t[j..].split('"').next().unwrap().to_owned()
+    }
+    /// Valeur du champ caché `nom` qui suit `avant`.
+    fn champ_apres(&self, avant: &str, nom: &str) -> String {
+        let t = self.texte();
+        let i = t
+            .find(avant)
+            .unwrap_or_else(|| panic!("« {avant} » absent : {t}"));
+        let m = format!("name=\"{nom}\" value=\"");
+        let j = t[i..].find(&m).unwrap() + i + m.len();
         t[j..].split('"').next().unwrap().to_owned()
     }
     /// Texte en gras qui suit `avant` (secrets affichés une fois).
@@ -302,9 +317,53 @@ fn ouvrir_p12(d: &Path, nom: &str, octets: &[u8], mdp: &str) -> Ident {
     }
 }
 
-/// Secrets d'une remise : (mot de passe provisoire, identité TLS du .p12).
-fn remise(b: &Banc, par: &Ident, c: &str, csrf: &str, r: &Rep, nom: &str) -> (String, Ident) {
-    let provisoire = r.gras_apres("Mot de passe provisoire");
+/// Secrets d'une remise : (mot de passe provisoire, identité TLS du .p12). `demandeur` : le
+/// mot de passe provisoire lui est remis (séparation des remises), pas au validateur `par`.
+fn remise(
+    b: &Banc,
+    par: &Ident,
+    c: &str,
+    csrf: &str,
+    r: &Rep,
+    nom: &str,
+    demandeur: Option<(&Ident, &str, &str)>,
+) -> (String, Ident) {
+    let provisoire = match demandeur {
+        None => r.gras_apres("Mot de passe provisoire"),
+        Some((id, cd, sd)) => {
+            assert!(
+                !r.texte().contains("Mot de passe provisoire ("),
+                "le validateur ne voit pas le mot de passe provisoire"
+            );
+            let l = get(b, id, "/comptes", Some(cd));
+            let jeton = l.champ_apres("action=\"/comptes/remise\"", "jeton");
+            let p = post(
+                b,
+                id,
+                "/comptes/remise",
+                cd,
+                &[("csrf", sd), ("jeton", &jeton)],
+            );
+            assert_eq!(p.statut, 200, "{}", p.texte());
+            let deux = post(
+                b,
+                id,
+                "/comptes/remise",
+                cd,
+                &[("csrf", sd), ("jeton", &jeton)],
+            );
+            assert_eq!(deux.statut, 404, "remise unique");
+            let autre = post(
+                b,
+                par,
+                "/comptes/remise",
+                c,
+                &[("csrf", csrf), ("jeton", &jeton)],
+            );
+            assert_eq!(autre.statut, 404);
+            p.gras_apres("Mot de passe provisoire")
+        }
+    };
     let mdp_p12 = r.gras_apres("Mot de passe du fichier .p12");
     let jeton = r.champ("jeton");
     let p = post(
@@ -470,7 +529,7 @@ fn comptes_double_validation_roles_et_certificats() {
     );
     assert_eq!(r.statut, 200, "{}", r.texte());
     assert!(r.texte().contains("sans second administrateur"));
-    let (prov2, id2) = remise(&b, &b.admin01, &c1, &s1, &r, "admin-02");
+    let (prov2, id2) = remise(&b, &b.admin01, &c1, &s1, &r, "admin-02", None);
     let (c2, s2) = premier_mdp(&b, &id2, "admin-02", &prov2);
     // Deux administrateurs : plus d'amorçage.
     let r = post(
@@ -509,7 +568,8 @@ fn comptes_double_validation_roles_et_certificats() {
         &[("csrf", &s2), ("demande", &id_ope)],
     );
     assert_eq!(r.statut, 200, "{}", r.texte());
-    let (prov_ope, id_ope_tls) = remise(&b, &id2, &c2, &s2, &r, "ope");
+    let (prov_ope, id_ope_tls) =
+        remise(&b, &id2, &c2, &s2, &r, "ope", Some((&b.admin01, &c1, &s1)));
     let (co, so) = premier_mdp(&b, &id_ope_tls, "ope", &prov_ope);
     // Opérateur : exploitation oui, comptes / quarantaine / journal non.
     assert_eq!(get(&b, &id_ope_tls, "/comptes", Some(&co)).statut, 403);
@@ -553,7 +613,7 @@ fn comptes_double_validation_roles_et_certificats() {
         &[("csrf", &s1), ("demande", &dem)],
     );
     assert_eq!(r.statut, 200, "{}", r.texte());
-    let (prov_l, id_l) = remise(&b, &b.admin01, &c1, &s1, &r, "lect");
+    let (prov_l, id_l) = remise(&b, &b.admin01, &c1, &s1, &r, "lect", Some((&id2, &c2, &s2)));
     let (cl, sl) = premier_mdp(&b, &id_l, "lect", &prov_l);
     for page in [
         "/utilisateurs",
@@ -616,6 +676,56 @@ fn comptes_double_validation_roles_et_certificats() {
         &[("csrf", &s1), ("demande", &dem)],
     );
     assert_eq!(r.statut, 200);
+    // Séparation des remises : admin-02 a reçu le .p12 de « ope » → il ne peut pas réinitialiser
+    // son mot de passe ; admin-01 le peut, mais ne peut alors plus recevoir son certificat.
+    let r = post(
+        &b,
+        &id2,
+        "/comptes/reinitialiser",
+        &c2,
+        &[("csrf", &s2), ("identifiant", "ope")],
+    );
+    assert_eq!(r.statut, 400);
+    assert!(
+        r.texte().contains("séparation des remises"),
+        "{}",
+        r.texte()
+    );
+    let r = post(
+        &b,
+        &b.admin01,
+        "/comptes/reinitialiser",
+        &c1,
+        &[("csrf", &s1), ("identifiant", "ope")],
+    );
+    assert_eq!(r.statut, 200, "{}", r.texte());
+    assert!(!r.gras_apres("Mot de passe provisoire").is_empty());
+    let r = post(
+        &b,
+        &id2,
+        "/comptes/emettre",
+        &c2,
+        &[("csrf", &s2), ("identifiant", "ope")],
+    );
+    let dem = r.demande("Émettre un nouveau certificat pour ope");
+    let r = post(
+        &b,
+        &b.admin01,
+        "/validations/valider",
+        &c1,
+        &[("csrf", &s1), ("demande", &dem)],
+    );
+    assert_eq!(r.statut, 400);
+    assert!(
+        r.texte().contains("séparation des remises"),
+        "{}",
+        r.texte()
+    );
+    assert_eq!(
+        get(&b, &id_ope_tls, "/tableau", Some(&co)).statut,
+        303,
+        "mot de passe réinitialisé : changement imposé"
+    );
     // Révocation du certificat de l'opérateur : validée par admin-02, CRL republiée,
     // connexion TLS refusée ensuite.
     let r = post(
@@ -751,6 +861,52 @@ fn comptes_double_validation_roles_et_certificats() {
         &[("csrf", &s1), ("identifiant", "admin-01")],
     );
     assert!(r.texte().contains("dernier administrateur"));
+    // Amorçage unique : seul de nouveau, admin-01 ne peut PAS créer seul un administrateur
+    // (sinon : rétrograder l'autre puis créer un complice) ; « reamorcer » (console locale) le rouvre.
+    let r = post(
+        &b,
+        &b.admin01,
+        "/comptes/creer",
+        &c1,
+        &[
+            ("csrf", &s1),
+            ("identifiant", "admin-04"),
+            ("role", "administrateur"),
+        ],
+    );
+    assert!(
+        r.texte().contains("SECOND administrateur doit la valider"),
+        "{}",
+        r.texte()
+    );
+    let r = post(
+        &b,
+        &b.admin01,
+        "/validations/annuler",
+        &c1,
+        &[
+            ("csrf", &s1),
+            ("demande", &r.demande("Créer le compte admin-04")),
+        ],
+    );
+    assert_eq!(r.statut, 200);
+    barbacane_web::reamorcer(&Config::lire(&d.join("web.conf")).unwrap()).unwrap();
+    let r = post(
+        &b,
+        &b.admin01,
+        "/comptes/creer",
+        &c1,
+        &[
+            ("csrf", &s1),
+            ("identifiant", "admin-04"),
+            ("role", "administrateur"),
+        ],
+    );
+    assert!(
+        r.texte().contains("sans second administrateur"),
+        "{}",
+        r.texte()
+    );
     // Journal : demandes, validations, refus ; aucun secret.
     let (brut, a) = journal(&b);
     let brut = String::from_utf8_lossy(&brut);
@@ -762,6 +918,9 @@ fn comptes_double_validation_roles_et_certificats() {
         "mot-de-passe-change",
         "compte-supprime:admin-02",
         "annulation:elevation-compte",
+        "refus:comptes-reinitialiser:ope",
+        "mot-de-passe-remis:ope",
+        "reamorcage-local",
     ] {
         assert!(a.iter().any(|y| y.starts_with(x)), "{x} : {a:?}");
     }
@@ -837,6 +996,11 @@ fn migration_conservee_au_redemarrage_et_certificats_de_la_ceremonie() {
             .count(),
         1
     );
+    // Clé de la CA des administrateurs lisible par d'autres comptes : démarrage refusé.
+    let cle = b.pki.join("ca-administrateurs/cle.pem");
+    std::fs::set_permissions(&cle, std::fs::Permissions::from_mode(0o644)).unwrap();
+    assert!(Web::nouveau(Config::lire(&d.join("web.conf")).unwrap()).is_err());
+    std::fs::set_permissions(&cle, std::fs::Permissions::from_mode(0o400)).unwrap();
     let k = Comptes::ouvrir(&d.join("etat")).unwrap().lire().unwrap();
     let k = k.compte("admin-01").unwrap();
     assert!(k.dernier_acces.is_some());

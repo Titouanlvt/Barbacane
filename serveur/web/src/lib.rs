@@ -263,6 +263,15 @@ fn charger_ca_admin(config: &Config, registre: &Path) -> Result<Option<CaAdmin>>
     else {
         return Ok(None);
     };
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if std::fs::metadata(cle)?.permissions().mode() & 0o077 != 0 {
+            bail!(
+                "{} : clé de la CA des administrateurs accessible à d'autres comptes (0400 attendu)",
+                cle.display()
+            );
+        }
+    }
     let cle_pem = std::fs::read_to_string(cle)
         .with_context(|| format!("clé de la CA des administrateurs {}", cle.display()))?;
     for c in CertificateDer::pem_file_iter(&config.ca_administrateurs)? {
@@ -552,10 +561,19 @@ impl Web {
             .partition(|c| crl_emetteur_fin(c).is_ok_and(|(e, _)| e == ca.sujet));
         let mut crls = autres;
         let _v = self.crl_verrou.lock().unwrap_or_else(|e| e.into_inner());
-        let actuelle = CertificateRevocationListDer::pem_file_iter(&ca.crl)
-            .ok()
-            .and_then(|mut i| i.next())
-            .and_then(|c| c.ok());
+        // CRL gérée présente mais illisible : refus (fail-closed), jamais de republication qui
+        // perdrait ses révocations.
+        let actuelle = if ca.crl.exists() {
+            let c = CertificateRevocationListDer::pem_file_iter(&ca.crl)
+                .context("CRL des administrateurs gérée par la Console")?
+                .next()
+                .context("CRL des administrateurs gérée par la Console : vide")?
+                .context("CRL des administrateurs gérée par la Console : illisible")?;
+            crl_emetteur_fin(&c)?;
+            Some(c)
+        } else {
+            None
+        };
         let t = maintenant();
         let a_publier = match &actuelle {
             None => true,
@@ -1541,6 +1559,27 @@ pub fn servir(ecoute: TcpListener, web: Arc<Web>) -> Result<()> {
         });
     }
     Ok(())
+}
+
+/// Rouvre l'amorçage (commande locale `barbacane-web reamorcer`, console du serveur) : quand un
+/// seul administrateur utilisable reste, il pourra de nouveau créer seul un second
+/// administrateur. Refusé s'il y en a plusieurs (rien à réparer). Journalisé.
+pub fn reamorcer(config: &Config) -> Result<()> {
+    let passerelle = barbacane_passerelle::Config::lire(&config.passerelle)?;
+    let admin = Admin::ouvrir(passerelle)?;
+    let comptes = Comptes::ouvrir(admin.stockage.dossier())?;
+    comptes.transaction(|b| {
+        if b.administrateurs_utilisables_sauf("") != 1 {
+            bail!("réamorçage refusé : il doit rester exactement un administrateur utilisable");
+        }
+        b.second_administrateur_cree = false;
+        admin.stockage.auditer(
+            &barbacane_passerelle::admin::acteur_local(),
+            Evenement::Administration {
+                action: "reamorcage-local".into(),
+            },
+        )
+    })
 }
 
 /// Feuille de style servie (pour les captures de la documentation).

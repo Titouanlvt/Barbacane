@@ -44,11 +44,18 @@ pub struct CaAdmin {
     pub crl: PathBuf,
 }
 
-/// `.p12` en attente de son téléchargement unique (mémoire seulement).
+/// Secret en attente de sa remise unique (mémoire seulement, jamais sur disque).
+pub enum Contenu {
+    /// `.p12` (son mot de passe a été affiché une fois au destinataire).
+    P12(Vec<u8>),
+    /// Mot de passe provisoire d'un compte créé, remis au DEMANDEUR (séparation des remises).
+    MotDePasse(String),
+}
+
 pub struct RemiseP12 {
     pub pour: String,
     pub identifiant: String,
-    pub octets: Vec<u8>,
+    pub contenu: Contenu,
     pub expire_le: u64,
 }
 
@@ -89,6 +96,7 @@ impl Web {
             .statut(t)?
             .demandes
             .len();
+        let a_recuperer = self.remises_pour(u, t);
         let remise = secrets.map(|s| Remise {
             identifiant: &s.identifiant,
             mdp_provisoire: s.mdp_provisoire.as_deref(),
@@ -110,6 +118,7 @@ impl Web {
                     ca_presente: self.ca_admin.is_some(),
                     message,
                     remise,
+                    a_recuperer: &a_recuperer,
                 },
             ),
         ))
@@ -168,8 +177,45 @@ impl Web {
         )
     }
 
-    /// Lie un nouveau certificat au compte (l'ancien, s'il est connu, est révoqué).
-    fn lier_certificat(&self, k: &mut Compte, acteur: &str, t: u64) -> Result<(String, String)> {
+    fn deposer_remise(
+        &self,
+        pour: &str,
+        identifiant: &str,
+        contenu: Contenu,
+        duree: u64,
+        t: u64,
+    ) -> String {
+        let jeton = hex::encode(barbacane_passerelle::outils::aleatoire::<16>());
+        let mut r = self.remises.lock().unwrap_or_else(|e| e.into_inner());
+        r.retain(|_, x| x.expire_le > t);
+        r.insert(
+            jeton.clone(),
+            RemiseP12 {
+                pour: pour.into(),
+                identifiant: identifiant.into(),
+                contenu,
+                expire_le: t + duree,
+            },
+        );
+        jeton
+    }
+
+    /// Lie un nouveau certificat au compte (l'ancien, s'il est connu, est révoqué) ; le `.p12`
+    /// est remis à `acteur`, qui ne doit pas connaître le mot de passe provisoire du compte
+    /// (sauf `amorcage`).
+    fn lier_certificat(
+        &self,
+        k: &mut Compte,
+        acteur: &str,
+        amorcage: bool,
+        t: u64,
+    ) -> Result<(String, String)> {
+        if !amorcage && k.mot_de_passe_remis_a.as_deref() == Some(acteur) {
+            bail!(
+                "séparation des remises : vous connaissez le mot de passe provisoire de {} ; son certificat doit être remis à un autre administrateur",
+                k.identifiant
+            );
+        }
         let (c, empreinte, p12, mdp) = self.emettre(&k.identifiant, t)?;
         if let Some(s) = k.serie_certificat.take() {
             self.revoquer_series(&[(s.clone(), MOTIF_REMPLACE)], t)?;
@@ -178,22 +224,12 @@ impl Web {
         k.empreinte_certificat = Some(empreinte);
         k.serie_certificat = Some(c.serie.clone());
         k.certificat_expire_le = Some(c.expire_le);
+        k.certificat_remis_a = Some(acteur.into());
         self.auditer_web(
             acteur,
             &action("certificat-emis", &[&k.identifiant, &c.serie]),
         )?;
-        let jeton = hex::encode(barbacane_passerelle::outils::aleatoire::<16>());
-        let mut r = self.remises.lock().unwrap_or_else(|e| e.into_inner());
-        r.retain(|_, x| x.expire_le > t);
-        r.insert(
-            jeton.clone(),
-            RemiseP12 {
-                pour: acteur.into(),
-                identifiant: k.identifiant.clone(),
-                octets: p12,
-                expire_le: t + REMISE_S,
-            },
-        );
+        let jeton = self.deposer_remise(acteur, &k.identifiant, Contenu::P12(p12), REMISE_S, t);
         Ok((mdp, jeton))
     }
 
@@ -201,11 +237,12 @@ impl Web {
 
     fn executer(
         &self,
-        op: &Operation,
+        demande: &validations::Demande,
         base: &mut BaseComptes,
         validateur: &Utilisateur,
         t: u64,
     ) -> Result<(String, Option<Secrets>)> {
+        let op = &demande.operation;
         let a = validateur.acteur();
         let cible = |b: &mut BaseComptes, id: &str, numero: u64| -> Result<()> {
             match b.compte(id) {
@@ -215,7 +252,8 @@ impl Web {
         };
         Ok(match op {
             Operation::CreerCompte { identifiant, role } => {
-                let (m, s) = self.creer(base, identifiant, *role, &a, t)?;
+                let demandeur = format!("web:{}", demande.par);
+                let (m, s) = self.creer(base, identifiant, *role, &a, &demandeur, t)?;
                 (m, Some(s))
             }
             Operation::SupprimerCompte {
@@ -238,6 +276,7 @@ impl Web {
             } => {
                 cible(base, identifiant, *numero)?;
                 base.compte_mut(identifiant).context("compte")?.role = Role::Administrateur;
+                base.second_administrateur_cree = true;
                 self.auditer_web(&a, &action("compte-role", &[identifiant, "administrateur"]))?;
                 (format!("{identifiant} est administrateur."), None)
             }
@@ -256,7 +295,7 @@ impl Web {
             } => {
                 cible(base, identifiant, *numero)?;
                 let k = base.compte_mut(identifiant).context("compte")?;
-                let (mdp, jeton) = self.lier_certificat(k, &a, t)?;
+                let (mdp, jeton) = self.lier_certificat(k, &a, false, t)?;
                 (
                     format!("Nouveau certificat émis pour {identifiant} ; l'ancien est révoqué."),
                     Some(Secrets {
@@ -312,13 +351,17 @@ impl Web {
         })
     }
 
-    /// Création (après validation, ou seule pour le second administrateur).
+    /// Création, exécutée par `acteur` (le validateur, ou le seul administrateur à l'amorçage)
+    /// à la demande de `demandeur`. Séparation des remises : le `.p12` va à `acteur`, le mot de
+    /// passe provisoire au `demandeur` (deux administrateurs distincts : aucun ne peut se
+    /// connecter seul au nouveau compte) ; à l'amorçage, les deux vont au seul administrateur.
     fn creer(
         &self,
         base: &mut BaseComptes,
         identifiant: &str,
         role: Role,
         acteur: &str,
+        demandeur: &str,
         t: u64,
     ) -> Result<(String, Secrets)> {
         if self.ca_admin.is_none() {
@@ -326,16 +369,38 @@ impl Web {
                 "la clé de la CA des administrateurs n'est pas sur ce serveur : création impossible dans la Console"
             );
         }
+        let amorcage = acteur == demandeur;
         let provisoire = mot_de_passe_provisoire();
-        base.ajouter(identifiant, role, &provisoire, acteur, t)?;
+        base.ajouter(identifiant, role, &provisoire, demandeur, t)?;
+        base.compte_mut(identifiant).context("compte")?.cree_par = acteur.into();
         self.auditer_web(acteur, &action("compte-cree", &[identifiant, role.nom()]))?;
         let k = base.compte_mut(identifiant).context("compte")?;
-        let (mdp, jeton) = self.lier_certificat(k, acteur, t)?;
+        let (mdp, jeton) = self.lier_certificat(k, acteur, amorcage, t)?;
+        let mdp_provisoire = if amorcage {
+            Some(provisoire)
+        } else {
+            self.deposer_remise(
+                demandeur,
+                identifiant,
+                Contenu::MotDePasse(provisoire),
+                validations::DUREE_S,
+                t,
+            );
+            None
+        };
+        let suite = if amorcage {
+            String::new()
+        } else {
+            format!(
+                " Le mot de passe provisoire est remis au demandeur ({}) : il le récupère sur cette page (« Remises en attente »).",
+                demandeur.trim_start_matches("web:")
+            )
+        };
         Ok((
-            format!("Compte {identifiant} créé ({}).", role.libelle()),
+            format!("Compte {identifiant} créé ({}).{suite}", role.libelle()),
             Secrets {
                 identifiant: identifiant.into(),
-                mdp_provisoire: Some(provisoire),
+                mdp_provisoire,
                 p12: Some((mdp, jeton)),
             },
         ))
@@ -362,6 +427,9 @@ impl Web {
         let id = champ("identifiant");
         if chemin == "/comptes/p12" {
             return self.telecharger_p12(champ("jeton"), u, t).map(Some);
+        }
+        if chemin == "/comptes/remise" {
+            return self.remettre_mot_de_passe(champ("jeton"), u, t).map(Some);
         }
         let demande = |op: Operation| -> Result<String> {
             let (nom, cible) = (op.nom(), op.cible().to_owned());
@@ -391,10 +459,11 @@ impl Web {
                 if base.compte(id).is_some() {
                     bail!("identifiant déjà utilisé");
                 }
-                // Amorçage : un seul administrateur utilisable → il crée seul le second.
-                if role == Role::Administrateur && base.administrateurs_utilisables_sauf("") == 1 {
+                // Amorçage : un seul administrateur utilisable, jamais de second auparavant → il
+                // crée seul le second administrateur.
+                if role == Role::Administrateur && base.amorcage_possible() {
                     let (m, s) = self.comptes.transaction(|b| {
-                        if b.administrateurs_utilisables_sauf("") != 1 {
+                        if !b.amorcage_possible() {
                             bail!("état des comptes changé : recommencez");
                         }
                         self.auditer_web(
@@ -404,7 +473,7 @@ impl Web {
                                 &[id, "seul-administrateur"],
                             ),
                         )?;
-                        self.creer(b, id, role, &a, t)
+                        self.creer(b, id, role, &a, &a, t)
                     })?;
                     secrets = Some(s);
                     return Ok(format!(
@@ -491,7 +560,13 @@ impl Web {
                 }
                 let provisoire = mot_de_passe_provisoire();
                 self.comptes.transaction(|b| {
+                    if b.compte(id).context("compte inconnu")?.certificat_remis_a.as_deref()
+                        == Some(a.as_str())
+                    {
+                        bail!("séparation des remises : vous avez reçu le certificat de {id} ; un autre administrateur doit réinitialiser son mot de passe");
+                    }
                     b.definir_mot_de_passe(id, &provisoire, true, t)?;
+                    b.compte_mut(id).context("compte")?.mot_de_passe_remis_a = Some(a.clone());
                     self.auditer_web(&a, &action("mot-de-passe-reinitialise", &[id]))
                 })?;
                 self.verrous.succes(&[format!("compte:{id}")]);
@@ -563,7 +638,7 @@ impl Web {
                                 &[dem.operation.nom(), dem.operation.cible(), &dem.id],
                             ),
                         )?;
-                        self.executer(&dem.operation, base, u, t)
+                        self.executer(dem, base, u, t)
                     },
                 )?;
                 secrets = s;
@@ -579,33 +654,92 @@ impl Web {
         };
         Ok(Some(match r {
             Ok(m) => self.page_comptes(u, t, Some((true, &m)), secrets.as_ref())?,
-            Err(e) => self.page_comptes(u, t, Some((false, &format!("Refusé : {e:#}"))), None)?,
+            Err(e) => {
+                // Tout refus est inscrit au journal (route et cible, jamais le motif détaillé).
+                let route = chemin.trim_start_matches('/').replace('/', "-");
+                let cible = if identifiant_valide(id) { id } else { "-" };
+                self.auditer_web(&a, &action("refus", &[&route, cible]))?;
+                self.page_comptes(u, t, Some((false, &format!("Refusé : {e:#}"))), None)?
+            }
         }))
     }
 
-    fn telecharger_p12(&self, jeton: &str, u: &Utilisateur, t: u64) -> Result<Reponse> {
-        let r = {
-            let mut m = self.remises.lock().unwrap_or_else(|e| e.into_inner());
-            m.retain(|_, x| x.expire_le > t);
-            match m.get(jeton) {
-                Some(x) if x.pour == u.acteur() => m.remove(jeton),
-                _ => None,
+    /// Retire une remise destinée à `u` (une seule fois).
+    fn retirer_remise(&self, jeton: &str, u: &Utilisateur, p12: bool, t: u64) -> Option<RemiseP12> {
+        let mut m = self.remises.lock().unwrap_or_else(|e| e.into_inner());
+        m.retain(|_, x| x.expire_le > t);
+        match m.get(jeton) {
+            Some(x) if x.pour == u.acteur() && matches!(x.contenu, Contenu::P12(_)) == p12 => {
+                m.remove(jeton)
             }
+            _ => None,
+        }
+    }
+
+    /// Remises de mot de passe en attente pour `u` : (jeton, identifiant).
+    pub(crate) fn remises_pour(&self, u: &Utilisateur, t: u64) -> Vec<(String, String)> {
+        let m = self.remises.lock().unwrap_or_else(|e| e.into_inner());
+        m.iter()
+            .filter(|(_, x)| {
+                x.expire_le > t
+                    && x.pour == u.acteur()
+                    && matches!(x.contenu, Contenu::MotDePasse(_))
+            })
+            .map(|(j, x)| (j.clone(), x.identifiant.clone()))
+            .collect()
+    }
+
+    fn remettre_mot_de_passe(&self, jeton: &str, u: &Utilisateur, t: u64) -> Result<Reponse> {
+        let Some(RemiseP12 {
+            identifiant,
+            contenu: Contenu::MotDePasse(m),
+            ..
+        }) = self.retirer_remise(jeton, u, false, t)
+        else {
+            self.auditer_web(&u.acteur(), "remise-refusee")?;
+            return Ok(refus(
+                404,
+                "Remise déjà faite, expirée (1 h) ou destinée à un autre administrateur : faites réinitialiser le mot de passe.",
+            ));
         };
-        let Some(r) = r else {
+        self.auditer_web(&u.acteur(), &action("mot-de-passe-remis", &[&identifiant]))?;
+        let s = Secrets {
+            identifiant: identifiant.clone(),
+            mdp_provisoire: Some(m),
+            p12: None,
+        };
+        self.page_comptes(
+            u,
+            t,
+            Some((
+                true,
+                &format!("Mot de passe provisoire de {identifiant} (une seule fois)."),
+            )),
+            Some(&s),
+        )
+    }
+
+    fn telecharger_p12(&self, jeton: &str, u: &Utilisateur, t: u64) -> Result<Reponse> {
+        let r = self.retirer_remise(jeton, u, true, t);
+        let Some(RemiseP12 {
+            identifiant,
+            contenu: Contenu::P12(octets),
+            ..
+        }) = r
+        else {
             self.auditer_web(&u.acteur(), "p12-refuse")?;
             return Ok(refus(
                 404,
                 "Certificat déjà téléchargé, expiré (10 min) ou réservé à l'administrateur qui l'a obtenu : demandez un nouveau certificat.",
             ));
         };
-        self.auditer_web(&u.acteur(), &action("p12-telecharge", &[&r.identifiant]))?;
+        self.auditer_web(&u.acteur(), &action("p12-telecharge", &[&identifiant]))?;
         let mut rep = Reponse::texte(200, "");
         rep.type_contenu = "application/x-pkcs12";
-        rep.corps = r.octets;
+        rep.corps = octets;
         rep.entetes.push((
             "Content-Disposition",
-            format!("attachment; filename=\"barbacane-{}.p12\"", r.identifiant),
+            format!("attachment; filename=\"barbacane-{identifiant}.p12\""),
         ));
         Ok(rep)
     }

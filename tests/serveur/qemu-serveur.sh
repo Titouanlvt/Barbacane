@@ -233,9 +233,13 @@ parcours_comptes() {
     [ "$code" = 200 ] && [ "$code2" = 400 ] && grep -q 'second administrateur' "$W/auto.html" \
         && ok "double validation : demande d'admin-02, auto-validation refusée (400)" || echec "double validation : demande $code, auto-validation $code2"
     code=$(requete "${A1[@]}" "$W/creation-lect.html" /validations/valider "csrf=$S1" "demande=$D")
-    PL=$(gras "$W/creation-lect.html" "Mot de passe provisoire")
-    [ "$code" = 200 ] && [ -n "$PL" ] && ok "double validation : création du compte « lect » (lecture seule) validée par admin-01" \
-        || echec "double validation : validation par admin-01 : HTTP $code"
+    # Séparation des remises : le .p12 au validateur (admin-01), le mot de passe provisoire au demandeur.
+    requete "${A2[@]}" "$W/comptes-02.html" /comptes >/dev/null
+    code2=$(requete "${A2[@]}" "$W/remise-lect.html" /comptes/remise "csrf=$S2" "jeton=$(champ "$W/comptes-02.html" jeton)")
+    PL=$(gras "$W/remise-lect.html" "Mot de passe provisoire")
+    [ "$code" = 200 ] && [ "$code2" = 200 ] && [ -n "$PL" ] && ! grep -q 'Mot de passe provisoire (' "$W/creation-lect.html" \
+        && ok "double validation : « lect » (lecture seule) créé par admin-01 ; .p12 au validateur, mot de passe provisoire au demandeur" \
+        || echec "double validation : validation par admin-01 : HTTP $code, remise $code2"
     p12_vers_pem "$W/creation-lect.html" lect "${A1[@]}"
     premiere_connexion lect "$PL" "Phrase de passe du banc, lecture seule"
     AL=("$W/lect.cert.pem" "$W/lect.cle.pem" "$W/cookies-lect")

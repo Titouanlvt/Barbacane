@@ -5,6 +5,9 @@
 //! barbacane-web compte IDENTIFIANT RÔLE CERT.pem    ligne du fichier des comptes ; mot de passe
 //!                                                   lu sur l'entrée standard (première ligne)
 //! barbacane-web annuaire CONFIG                     synchronise les identifiants (LDAPS)
+//! barbacane-web reamorcer CONFIG                    console locale du serveur seulement : rouvre
+//!                                                   l'amorçage (un administrateur restant crée
+//!                                                   seul un second administrateur), journalisé
 //! barbacane-web --verifier-config CONFIG            contrôles de démarrage (TLS, CA et CRL des
 //!                                                   administrateurs, comptes, clé d'audit,
 //!                                                   passerelle, registre) sans écouter ; code 0
@@ -26,7 +29,7 @@ use barbacane_web::{Config, Web, servir};
 use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
 
-const USAGE: &str = "usage : barbacane-web CONFIG | barbacane-web compte IDENTIFIANT (administrateur|operateur|auditeur|lecture) CERT.pem < mot-de-passe | barbacane-web annuaire CONFIG | barbacane-web --verifier-config CONFIG";
+const USAGE: &str = "usage : barbacane-web CONFIG | barbacane-web compte IDENTIFIANT (administrateur|operateur|auditeur|lecture) CERT.pem < mot-de-passe | barbacane-web annuaire CONFIG | barbacane-web reamorcer CONFIG | barbacane-web --verifier-config CONFIG";
 
 fn executer(args: &[String]) -> Result<()> {
     match args {
@@ -39,6 +42,14 @@ fn executer(args: &[String]) -> Result<()> {
             std::io::stdin().lock().read_line(&mut mdp)?;
             let mdp = mdp.trim_end_matches(['\r', '\n']);
             println!("{}", ligne_compte(id, role, &der, mdp)?);
+            Ok(())
+        }
+        [c, config] if c == "reamorcer" => {
+            let config = Config::lire(&PathBuf::from(config))?;
+            barbacane_web::reamorcer(&config)?;
+            println!(
+                "amorçage rouvert : le seul administrateur utilisable peut de nouveau créer seul un second administrateur"
+            );
             Ok(())
         }
         [c, config] if c == "annuaire" => {

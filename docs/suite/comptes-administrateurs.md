@@ -53,7 +53,7 @@ lecture du journal et des utilisateurs). Nouveaux rôles : `operateur`, `lecture
 
 | Action | Qui | Double validation | Garde-fous |
 |---|---|:-:|---|
-| Créer un compte (tout rôle) | administrateur | **oui** — sauf le **second administrateur** quand un seul administrateur utilisable existe (amorçage, journalisé `creation-sans-double-validation`) | identifiant libre ; certificat émis et mot de passe provisoire remis au **validateur** |
+| Créer un compte (tout rôle) | administrateur | **oui** — sauf le **second administrateur** à l'amorçage (§3.1) | identifiant libre ; **séparation des remises** (§3.2) : `.p12` au validateur, mot de passe provisoire au demandeur |
 | Supprimer | administrateur | **oui** | jamais le dernier administrateur utilisable ; certificat révoqué (CRL) |
 | Passer administrateur (élévation) | administrateur | **oui** | |
 | Réactiver | administrateur | **oui** | |
@@ -61,10 +61,37 @@ lecture du journal et des utilisateurs). Nouveaux rôles : `operateur`, `lecture
 | Révoquer le certificat | administrateur | **oui** | jamais celui du dernier administrateur ; compte délié |
 | Désactiver | administrateur | non (sens sûr) | jamais le dernier administrateur, ni soi-même sans un second |
 | Rétrograder (rôle autre qu'administrateur) | administrateur | non (sens sûr) | idem |
-| Réinitialiser le mot de passe d'un autre | administrateur | non | provisoire affiché une fois, changement imposé ; pas sur son propre compte |
+| Réinitialiser le mot de passe d'un autre | administrateur | non | provisoire affiché une fois, changement imposé ; pas sur son propre compte ; refusé à qui a reçu le certificat en cours de ce compte (§3.2) |
 | Changer son mot de passe | tout compte | non | ancien mot de passe exigé, politique |
 
 « Administrateur utilisable » : actif, rôle administrateur, certificat lié.
+
+### 3.1 Amorçage
+
+Tant qu'il n'existe qu'**un** administrateur utilisable et qu'**aucun second administrateur n'a
+jamais existé** (`second_administrateur_cree`, posé dès qu'un administrateur est créé ou élevé, ou
+à la migration de deux administrateurs v2.1.0), il crée **seul** le second administrateur
+(journalisé `creation-sans-double-validation:<id>:seul-administrateur`) et reçoit ses deux
+secrets. L'amorçage ne se rouvre jamais par la Console : sinon un administrateur pourrait
+rétrograder ou désactiver l'autre (actions seules) puis créer seul un complice. Pour remplacer un
+administrateur qui part, créer le remplaçant **avant** de supprimer le partant. Seul recours si un
+seul administrateur reste : `barbacane-web reamorcer CONFIG` sur la **console locale** du serveur
+(compte d'administration système), refusé s'il reste plusieurs administrateurs, journalisé
+`reamorcage-local` (acteur `admin:uid-…`).
+
+### 3.2 Séparation des remises
+
+Un compte s'ouvre avec deux secrets : la clé privée (`.p12`) et le mot de passe. Personne d'autre
+que le titulaire ne doit détenir les deux.
+
+- Création validée : le `.p12` (et son mot de passe) va au **validateur** ; le mot de passe
+  provisoire au **demandeur**, qui le récupère une fois (1 h, mémoire seulement) dans « Remises en
+  attente » de la page Comptes. Demandeur et validateur étant distincts, aucun des deux ne peut
+  se connecter seul au nouveau compte.
+- Chaque compte retient qui a reçu son certificat en cours (`certificat_remis_a`) et qui connaît
+  son mot de passe provisoire en cours (`mot_de_passe_remis_a`, effacé quand le titulaire choisit le
+  sien) : la réinitialisation du mot de passe est refusée au premier, la remise d'un nouveau
+  certificat (validation de « Nouveau certificat ») est refusée au second.
 
 ## 4. Certificats et `.p12`
 
@@ -156,7 +183,7 @@ CA des administrateurs (`~barbacane-svc/web/cle-ca-administrateurs.pem`, 0400) e
 | `comptes::tests::*` | migration sans perte, politique, matrice des droits, garde-fous (dernier administrateur), base refusée si altérée ou 0644, rien d'écrit sans audit |
 | `validations::tests::auto_validation_expiration_et_non_administrateur` | auto-validation, non-administrateur, doublon, expiration à 1 h, exécution unique, demande d'un compte désactivé retirée |
 | `pkcs12::tests::der_et_aes` | DER, AES-256-CBC (SP 800-38A F.2.5) |
-| `serveur/web/tests/comptes.rs` | migration, CSRF, dernier administrateur, amorçage du 2e administrateur, `.p12` relu par `openssl pkcs12` (et mauvais mot de passe refusé), téléchargement unique, changement imposé, auto-validation refusée, rôles opérateur et lecture seule refusés, révocation d'un certificat (poignée de main refusée), révocation d'un site, suppression, journal sans secret, CRL de la cérémonie reprise, pas de réimportation |
+| `serveur/web/tests/comptes.rs` | migration, CSRF, dernier administrateur, amorçage du 2e administrateur puis amorçage refusé et `reamorcer`, séparation des remises (remise unique au demandeur, réinitialisation et nouveau certificat refusés au détenteur de l'autre secret), clé de la CA 0644 refusée, `.p12` relu par `openssl pkcs12` (et mauvais mot de passe refusé), téléchargement unique, changement imposé, auto-validation refusée, rôles opérateur et lecture seule refusés, révocation d'un certificat (poignée de main refusée), révocation d'un site, suppression, journal sans secret, CRL de la cérémonie reprise, pas de réimportation |
 | `serveur/web/tests/quarantaine.rs` | D13 dans les deux sens, jeton refusé, désactivation par double validation |
 | `serveur/passerelle/tests/maj.rs` `quarantaine_refusee_par_la_passerelle_si_desactivee` | D13 sur l'état réel, `sites_en_mode_aucun`, jetons |
 | `tests/serveur/migration-comptes.sh` | vrais binaires 2.1.0 puis 2.2.0 sur les mêmes fichiers : comptes conservés |
@@ -164,8 +191,8 @@ CA des administrateurs (`~barbacane-svc/web/cle-ca-administrateurs.pem`, 0400) e
 
 ## 9. Limites
 
-- Le validateur reçoit le certificat et le mot de passe provisoire du compte créé : il doit les
-  remettre par deux canaux séparés ; le changement imposé du mot de passe et le journal rendent
-  une usurpation visible. Facteur matériel (carte à puce, FIDO2) : P8 de l'étude E1.
+- Une collusion du demandeur et du validateur reste possible (limite de toute double validation) ;
+  à l'amorçage, le seul administrateur reçoit les deux secrets du second (changement imposé du mot
+  de passe et journal). Facteur matériel (carte à puce, FIDO2) : P8 de l'étude E1.
 - Clé de la CA des administrateurs en fichier (TPM : 2.4) ; elle est lisible par le service web.
 - Avec un seul administrateur, aucune action sensible n'est possible (sauf créer le second).

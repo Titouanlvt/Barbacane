@@ -63,12 +63,15 @@ Pris sans l'utilisateur, selon la consigne « sécurité d'abord » ; détail :
   et un administrateur seul pourrait s'en servir pour effacer ses traces ; elle passe en double
   validation à la demande de la tâche v2.2.0.* Désactivation et rétrogradation d'un compte,
   réinitialisation d'un mot de passe : un seul administrateur (sens sûr), jamais pour le dernier.
-- **Amorçage** : tant qu'il n'existe qu'un administrateur utilisable, il crée **seul** le second
-  administrateur (journalisé) ; c'est la seule exception (sinon aucun second administrateur ne
-  pourrait jamais exister).
+- **Amorçage** : tant qu'il n'existe qu'un administrateur utilisable et qu'aucun second n'a jamais
+  existé, il crée **seul** le second administrateur (journalisé) ; c'est la seule exception (sinon
+  aucun second administrateur ne pourrait jamais exister). Ensuite, seul `barbacane-web reamorcer`
+  sur la console locale du serveur la rouvre.
+- **Séparation des remises** : à la création, le `.p12` va au validateur et le mot de passe
+  provisoire au demandeur ; qui détient l'un des deux secrets d'un compte ne peut pas obtenir
+  l'autre (réinitialisation, nouveau certificat).
 - **CA « administrateurs » sur le serveur** (clé en fichier 0400, comme la CA bornes ; TPM en 2.4)
   pour que la Console émette les `.p12` et republie la CRL des administrateurs ; facultative
-  (absente : pas d'émission dans la Console). Le validateur d'une création reçoit le `.p12` et le
-  mot de passe provisoire (changement imposé à la première connexion).
+  (absente : pas d'émission dans la Console) ; refusée si lisible par d'autres comptes (0400).
 - **D13 raccordée** : `quarantaine_active()` lit l'état réel ; refus dans les deux sens et jeton
   d'enrôlement refusé pour un site en mode Aucun tant que la quarantaine est active.

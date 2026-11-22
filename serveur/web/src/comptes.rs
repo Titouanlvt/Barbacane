@@ -314,6 +314,14 @@ pub struct Compte {
     /// Dernière connexion réussie.
     pub dernier_acces: Option<u64>,
     pub mot_de_passe_change_le: Option<u64>,
+    /// Acteur qui a reçu le `.p12` en cours (séparation des remises : il ne peut pas recevoir
+    /// aussi un mot de passe provisoire de ce compte).
+    #[serde(default)]
+    pub certificat_remis_a: Option<String>,
+    /// Acteur qui connaît le mot de passe PROVISOIRE en cours (effacé quand le titulaire choisit
+    /// le sien) : il ne peut pas recevoir aussi le certificat de ce compte.
+    #[serde(default)]
+    pub mot_de_passe_remis_a: Option<String>,
 }
 
 impl Compte {
@@ -333,6 +341,10 @@ pub struct BaseComptes {
     pub version: u32,
     pub prochain_numero: u64,
     pub comptes: Vec<Compte>,
+    /// Vrai dès qu'un second administrateur a existé : l'amorçage (création seule du second
+    /// administrateur) n'est plus jamais possible, sauf `barbacane-web reamorcer` (console locale).
+    #[serde(default)]
+    pub second_administrateur_cree: bool,
 }
 
 impl Default for BaseComptes {
@@ -341,6 +353,7 @@ impl Default for BaseComptes {
             version: 2,
             prochain_numero: 1,
             comptes: Vec::new(),
+            second_administrateur_cree: false,
         }
     }
 }
@@ -413,7 +426,13 @@ impl BaseComptes {
         Ok(())
     }
 
-    /// Ajoute un compte (mot de passe provisoire, changement forcé). Renvoie son numéro.
+    /// Amorçage permis : un seul administrateur utilisable et jamais de second auparavant.
+    pub fn amorcage_possible(&self) -> bool {
+        !self.second_administrateur_cree && self.administrateurs_utilisables_sauf("") == 1
+    }
+
+    /// Ajoute un compte (mot de passe provisoire, changement forcé, remis à `par`). Renvoie son
+    /// numéro.
     pub fn ajouter(
         &mut self,
         identifiant: &str,
@@ -447,7 +466,12 @@ impl BaseComptes {
             cree_par: par.into(),
             dernier_acces: None,
             mot_de_passe_change_le: None,
+            certificat_remis_a: None,
+            mot_de_passe_remis_a: Some(par.into()),
         });
+        if role == Role::Administrateur {
+            self.second_administrateur_cree = true;
+        }
         Ok(numero)
     }
 
@@ -467,6 +491,9 @@ impl BaseComptes {
         c.hachage = hacher(mdp)?;
         c.changer_mot_de_passe = provisoire;
         c.mot_de_passe_change_le = Some(t);
+        if !provisoire {
+            c.mot_de_passe_remis_a = None;
+        }
         Ok(())
     }
 }
@@ -591,9 +618,16 @@ pub fn depuis_anciens(anciens: &[CompteAncien], t: u64) -> BaseComptes {
             cree_par: "migration-2.1.0".into(),
             dernier_acces: None,
             mot_de_passe_change_le: None,
+            certificat_remis_a: None,
+            mot_de_passe_remis_a: None,
         });
         b.prochain_numero += 1;
     }
+    b.second_administrateur_cree = anciens
+        .iter()
+        .filter(|a| a.role == Role::Administrateur)
+        .count()
+        >= 2;
     b
 }
 

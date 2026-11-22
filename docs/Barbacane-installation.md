@@ -661,13 +661,17 @@ Page **Comptes** (administrateur ; l'auditeur la consulte) : la liste donne pour
 son rôle, son état, son certificat (série, échéance) et son **dernier accès**.
 
 1. **Créer** : identifiant et rôle → **Demander la création**. Un **second administrateur**
-   valide la demande (bouton « Valider » dans « Demandes en attente », dans l'heure). Seul le
-   validateur voit alors, **une seule fois** : le mot de passe provisoire, le mot de passe du
-   certificat et le bouton de **téléchargement du `.p12`** (une seule fois, 10 minutes). Remettez le
-   `.p12` et les deux mots de passe par des canaux séparés. À sa première connexion, le titulaire
-   doit choisir son mot de passe avant toute autre page.
+   valide la demande (bouton « Valider » dans « Demandes en attente », dans l'heure). Le
+   **validateur** voit alors, **une seule fois**, le mot de passe du certificat et le bouton de
+   **téléchargement du `.p12`** (une seule fois, 10 minutes) ; le **demandeur** récupère le mot de
+   passe provisoire sous « Remises en attente » (une fois, dans l'heure). Chacun remet son secret
+   au titulaire : personne ne détient les deux. À sa première connexion, le titulaire doit choisir
+   son mot de passe avant toute autre page.
 2. **Premier démarrage** : tant qu'il n'existe qu'un administrateur, il crée **seul** le second
-   administrateur (inscrit au Journal) ; ensuite, toute action sensible exige deux administrateurs.
+   administrateur (inscrit au Journal) ; ensuite, toute action sensible exige deux administrateurs,
+   pour toujours. Créez le remplaçant d'un administrateur **avant** de supprimer le partant ; seul
+   recours sinon : `sudo -u barbacane-svc /usr/local/lib/barbacane-serveur/barbacane-web reamorcer
+   ~barbacane-svc/web/web.conf` sur la console du serveur (journalisé).
 3. **Double validation** (demande puis validation par un autre administrateur, dans l'heure ;
    votre propre demande ne peut pas être validée par vous) : création, suppression, réactivation,
    passage au rôle administrateur, nouveau certificat, révocation d'un certificat, révocation de

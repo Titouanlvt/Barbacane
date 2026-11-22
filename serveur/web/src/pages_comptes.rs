@@ -23,6 +23,8 @@ pub struct VueComptes<'a> {
     pub ca_presente: bool,
     pub message: Option<(bool, &'a str)>,
     pub remise: Option<Remise<'a>>,
+    /// Mots de passe provisoires à récupérer par ce compte : (jeton, identifiant).
+    pub a_recuperer: &'a [(String, String)],
 }
 
 fn bouton(
@@ -216,6 +218,20 @@ pub fn comptes(ctx: &Contexte, v: &VueComptes) -> String {
     }
     if let Some(r) = &v.remise {
         remise(&mut c, ctx, r);
+    }
+    if !v.a_recuperer.is_empty() {
+        c.b("<div class=\"b-carte\"><h2>Remises en attente</h2><p>Mot de passe provisoire d'un compte dont vous avez demandé la création (son certificat a été remis au validateur) :</p>");
+        for (jeton, id) in v.a_recuperer {
+            bouton(
+                &mut c,
+                ctx,
+                "/comptes/remise",
+                &[("jeton", jeton)],
+                &format!("Afficher le mot de passe provisoire de {id} (une fois)"),
+                false,
+            );
+        }
+        c.b("</div>");
     }
     c.b("<h2>Demandes en attente d'un second administrateur</h2><div class=\"b-tableau-cadre\"><table class=\"b-tableau\"><thead><tr><th>Action</th><th>Demandée par</th><th>Le</th><th>Expire</th><th>Décision</th></tr></thead><tbody>");
     if v.demandes.is_empty() {
