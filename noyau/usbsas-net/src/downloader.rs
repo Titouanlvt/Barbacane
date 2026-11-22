@@ -83,13 +83,15 @@ impl InitState {
             .read(false)
             .open(&self.tarpath)?;
 
+        let http_client = HttpClient::new(
+            &net_conf.url,
+            #[cfg(feature = "authkrb")]
+            net_conf.krb_service_name,
+        )?;
         Ok(State::Running(RunningState {
             file,
             url: net_conf.url,
-            http_client: HttpClient::new(
-                #[cfg(feature = "authkrb")]
-                net_conf.krb_service_name,
-            )?,
+            http_client,
         }))
     }
 }

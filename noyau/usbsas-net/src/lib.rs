@@ -186,10 +186,27 @@ fn transfer_timeout(size: u64) -> Duration {
     BASE_TIMEOUT + Duration::from_secs(size / MIN_THROUGHPUT)
 }
 
+/// Barbacane (écart n° 12) : plain http to a loopback IP address (127.0.0.0/8,
+/// ::1). The kiosk's analyzer listens on 127.0.0.1 only; nothing leaves the
+/// machine, so TLS brings nothing there. Host names (`localhost`) don't count.
+pub(crate) fn is_loopback_http(url: &str) -> bool {
+    match url::Url::parse(url) {
+        Ok(u) if u.scheme() == "http" => match u.host() {
+            Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+            Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
 /// Check that a configured URL uses https. Plain http is only accepted when
-/// built with the `allow-http` feature.
+/// built with the `allow-http` feature, or to a loopback address (écart n° 12).
 pub(crate) fn check_url(url: &str) -> Result<()> {
-    if url::Url::parse(url)?.scheme() == "https" || cfg!(feature = "allow-http") {
+    if url::Url::parse(url)?.scheme() == "https"
+        || cfg!(feature = "allow-http")
+        || is_loopback_http(url)
+    {
         Ok(())
     } else {
         Err(Error::InsecureUrl(url.to_string()))
@@ -227,15 +244,30 @@ pub(crate) struct HttpClient {
 }
 
 impl HttpClient {
-    fn new(#[cfg(feature = "authkrb")] krb_service_name: Option<String>) -> Result<Self> {
+    /// Client for `url`. Barbacane (écart n° 12) : for a loopback http URL,
+    /// https isn't enforced but no redirect is followed (nothing can send the
+    /// client elsewhere in clear text).
+    fn new(
+        url: &str,
+        #[cfg(feature = "authkrb")] krb_service_name: Option<String>,
+    ) -> Result<Self> {
+        let loopback = is_loopback_http(url);
         let builder = Client::builder()
             .connect_timeout(BASE_TIMEOUT)
             .tcp_user_timeout(BASE_TIMEOUT)
-            .redirect(reqwest::redirect::Policy::limited(MAX_REDIRECTS));
+            .redirect(if loopback {
+                reqwest::redirect::Policy::none()
+            } else {
+                reqwest::redirect::Policy::limited(MAX_REDIRECTS)
+            });
         #[cfg(not(feature = "allow-http"))]
-        let builder = builder
-            .https_only(true)
-            .tls_version_min(reqwest::tls::Version::TLS_1_3);
+        let builder = if loopback {
+            builder
+        } else {
+            builder
+                .https_only(true)
+                .tls_version_min(reqwest::tls::Version::TLS_1_3)
+        };
         let client = builder.build()?;
         Ok(Self {
             client,
@@ -491,5 +523,13 @@ mod tests {
         } else {
             assert!(matches!(http, Err(Error::InsecureUrl(_))));
         }
+        // Barbacane (écart n° 12) : loopback IP only
+        assert!(check_url("http://127.0.0.1:8042/api/scanbundle").is_ok());
+        assert!(check_url("http://[::1]:8042/api").is_ok());
+        assert!(is_loopback_http("http://127.0.0.1:8042/api"));
+        assert!(!is_loopback_http("http://localhost:8042/api"));
+        assert!(!is_loopback_http("http://10.0.3.15/api"));
+        assert!(!is_loopback_http("https://127.0.0.1/api"));
+        assert!(!is_loopback_http("http://127.0.0.1.example.org/api"));
     }
 }

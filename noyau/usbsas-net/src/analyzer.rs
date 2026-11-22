@@ -94,14 +94,16 @@ impl InitState {
             ]),
         )?;
         let file = File::open(&self.tarpath)?;
+        let http_client = HttpClient::new(
+            &conf.url,
+            #[cfg(feature = "authkrb")]
+            conf.krb_service_name,
+        )?;
         Ok(State::Running(RunningState {
             file: Some(file),
             url: conf.url,
             poll_timeout: Duration::from_secs(conf.poll_timeout),
-            http_client: HttpClient::new(
-                #[cfg(feature = "authkrb")]
-                conf.krb_service_name,
-            )?,
+            http_client,
             json_parser,
         }))
     }
