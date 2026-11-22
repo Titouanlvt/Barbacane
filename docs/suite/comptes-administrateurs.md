@@ -75,7 +75,7 @@ jamais existé** (`second_administrateur_cree`, posé dès qu'un administrateur 
 secrets. L'amorçage ne se rouvre jamais par la Console : sinon un administrateur pourrait
 rétrograder ou désactiver l'autre (actions seules) puis créer seul un complice. Pour remplacer un
 administrateur qui part, créer le remplaçant **avant** de supprimer le partant. Seul recours si un
-seul administrateur reste : `barbacane-web reamorcer CONFIG` sur la **console locale** du serveur
+seul administrateur reste : `barbacane-web reamorcer /var/lib/barbacane-serveur/svc/registre.conf` (sous `barbacane-svc`) sur la **console locale** du serveur
 (compte d'administration système), refusé s'il reste plusieurs administrateurs, journalisé
 `reamorcage-local` (acteur `admin:uid-…`).
 

@@ -670,8 +670,8 @@ son rôle, son état, son certificat (série, échéance) et son **dernier accè
 2. **Premier démarrage** : tant qu'il n'existe qu'un administrateur, il crée **seul** le second
    administrateur (inscrit au Journal) ; ensuite, toute action sensible exige deux administrateurs,
    pour toujours. Créez le remplaçant d'un administrateur **avant** de supprimer le partant ; seul
-   recours sinon : `sudo -u barbacane-svc /usr/local/lib/barbacane-serveur/barbacane-web reamorcer
-   ~barbacane-svc/web/web.conf` sur la console du serveur (journalisé).
+   recours sinon : `sudo runuser -u barbacane-svc -- /usr/local/lib/barbacane-serveur/barbacane-web reamorcer
+   /var/lib/barbacane-serveur/svc/registre.conf` sur la console du serveur (journalisé).
 3. **Double validation** (demande puis validation par un autre administrateur, dans l'heure ;
    votre propre demande ne peut pas être validée par vous) : création, suppression, réactivation,
    passage au rôle administrateur, nouveau certificat, révocation d'un certificat, révocation de

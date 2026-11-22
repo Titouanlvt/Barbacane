@@ -1564,8 +1564,8 @@ pub fn servir(ecoute: TcpListener, web: Arc<Web>) -> Result<()> {
 /// Rouvre l'amorçage (commande locale `barbacane-web reamorcer`, console du serveur) : quand un
 /// seul administrateur utilisable reste, il pourra de nouveau créer seul un second
 /// administrateur. Refusé s'il y en a plusieurs (rien à réparer). Journalisé.
-pub fn reamorcer(config: &Config) -> Result<()> {
-    let passerelle = barbacane_passerelle::Config::lire(&config.passerelle)?;
+pub fn reamorcer(passerelle: &Path) -> Result<()> {
+    let passerelle = barbacane_passerelle::Config::lire(passerelle)?;
     let admin = Admin::ouvrir(passerelle)?;
     let comptes = Comptes::ouvrir(admin.stockage.dossier())?;
     comptes.transaction(|b| {

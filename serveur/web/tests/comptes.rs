@@ -890,7 +890,7 @@ fn comptes_double_validation_roles_et_certificats() {
         ],
     );
     assert_eq!(r.statut, 200);
-    barbacane_web::reamorcer(&Config::lire(&d.join("web.conf")).unwrap()).unwrap();
+    barbacane_web::reamorcer(&d.join("passerelle.conf")).unwrap();
     let r = post(
         &b,
         &b.admin01,
