@@ -49,7 +49,8 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - VM existantes : **902 bu** (outils de dev, ISO, CI locale : `ssh -F lab/ssh_config bu`) et **950**
   (borne de développement, installée depuis l'ISO de TEST). Les autres numéros (901, 903, 920, 921,
   930, 940…) ont été supprimés ; ils ne survivent que comme valeurs par défaut de `tests/proxmox/*`
-  (VM créées par le script) et dans les preuves archivées. Ponts internes `vmbr9`/`vmbr10`.
+  (VM créées par le script) et dans les preuves archivées. Ponts internes Barbacane : `vmbr11` (bornes) et
+  `vmbr10` (administration), sans port physique ni adresse hôte (`/etc/network/interfaces.d/barbacane-labo`).
 - `tests/proxmox/preuve.sh` : installation de l'ISO dans une VM sans réseau, PIN, enrôlement,
   transfert, blanchiment, journal ; `REPRISE=1` / `REPRISE=propre`, `PROPRE=1`, `RETOUR=0`.
   Lanceur rapide : `tests/proxmox/campagne-rapide.sh` ; parallèle : `tests/proxmox/parallele.sh`.
@@ -59,8 +60,12 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - Disques optiques : lecteur passé en scsi-generic UNIQUEMENT (jamais de passthrough PCI : le
   contrôleur SATA porte le disque système de l'hôte) ; tiroir à refermer à la main (prévenir).
 - RTX 4000 non passée aux VM (seule carte d'affichage de l'hôte). Clés Phison très lentes (~4 Mo/s).
-- Rien de gros dans `rpool` ni `/var/lib/vz` (saturé le 17/11) : pools `nvme` / `essais`
-  (`docs/lab/essais.md`, désigner le disque par `/dev/disk/by-id/…20041A804255`).
+- Stockage (22/11/2026, `docs/lab/stockage.md`) : pool **`nvme`** = agrégat (sans redondance) de 2 Micron 2650
+  (`/dev/disk/by-id/nvme-2650_Micron_256GB_2523509303FF`, `…_252350930419`) : disques de bu et de la 950,
+  `/nvme/{contenu,correctifs,virt}`. Rien dans `rpool`/`local-zfs` ni `/var/lib/vz` (système seulement).
+- **Hôte partagé avec Clautilde** (Claude Code de l'infra LLC) : son pool PVE `clautilde`, ses stockages
+  `clautilde` et `clautilde-iso` (disque WDC …20041A804255), ses ponts `vmbr9` (NAT Internet) et `vmbr20` (isolé).
+  Ne jamais toucher à ses VM, volumes, stockages ni ponts ; ne jamais utiliser `vmbr9`/`vmbr20` pour Barbacane.
 
 ## Pièges encore utiles
 - `pkill -f` dont le motif figure dans la commande tue le shell ; jamais `pgrep -f` pour attendre.
