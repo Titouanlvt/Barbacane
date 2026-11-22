@@ -17,7 +17,7 @@
 #     --sans-clamav            ne pas inclure de signatures ClamAV
 #     --yara-sources FICHIER   une source par ligne : URL git (https://…git) ou URL d'un fichier .yar
 #     --yara DOSSIER           règles locales (*.yar, *.yara)
-#     --images-officielles FICHIER  liste « sha256  nom » d'images officielles (ISO Windows,
+#     --images-officielles FICHIER  liste « sha256 taille nom » (ou sortie de sha256sum) d'images officielles (ISO Windows,
 #                              Debian…) que la borne reconnaît sans les ouvrir ; calculer chaque
 #                              empreinte sur l'image téléchargée chez l'éditeur (sha256sum)
 #     --etat-borne FICHIER     dpkg-status exporté par la borne : inclut les mises à jour Debian
@@ -115,10 +115,22 @@ fi
 if [ -n "$IMAGES" ]; then
     etape "Images officielles"
     [ -f "$IMAGES" ] || die "--images-officielles : fichier introuvable"
-    grep -vE '^\s*(#|$)' "$IMAGES" | while read -r h nom; do
-        if ! [[ "$h" =~ ^[0-9a-fA-F]{64}$ ]] || [ -z "$nom" ]; then die "ligne invalide : $h $nom (attendu : sha256  nom)"; fi
-    done
-    mkdir -p "$P/listes"; grep -vE '^\s*(#|$)' "$IMAGES" > "$P/listes/images-officielles.sha256"
+    # Format écrit : « sha256 taille nom » (v2.1.0 : la taille permet à la borne de vérifier
+    # l'empreinte d'une grande image avant toute copie). Une ligne « sha256  fichier » (sortie de
+    # sha256sum) reçoit la taille du fichier s'il est présent ici.
+    mkdir -p "$P/listes"
+    grep -vE '^\s*(#|$)' "$IMAGES" | while read -r h reste; do
+        [[ "$h" =~ ^[0-9a-fA-F]{64}$ ]] && [ -n "$reste" ] || die "ligne invalide : $h $reste (attendu : sha256 taille nom, ou sha256  fichier)"
+        t=${reste%% *}; nom=${reste#* }
+        if [[ "$t" =~ ^[0-9]+$ ]] && [ "$nom" != "$reste" ]; then
+            echo "$h $t $nom"
+        elif [ -f "$reste" ]; then
+            echo "$h $(stat -c %s -- "$reste") $(basename -- "$reste")"
+        else
+            echo "ATTENTION : $reste sans taille, reconnue seulement à l'analyse (pas de copie en flux)" >&2
+            echo "$h  $reste"
+        fi
+    done > "$P/listes/images-officielles.sha256"
     echo "$(wc -l < "$P/listes/images-officielles.sha256") image(s) officielle(s)"
 fi
 

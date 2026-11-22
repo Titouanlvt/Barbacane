@@ -72,6 +72,10 @@ pub enum Event {
     Password(PasswordRequest),
     /// Plus de mot de passe attendu
     PasswordDone,
+    /// Estimation de durée, calculée sur l'inventaire de la clé AVANT la copie vers l'analyseur
+    Estimation { images: u64, secondes: u64 },
+    /// Vérification de l'empreinte d'une image candidate à la liste officielle (taille connue)
+    Verification { nom: String, taille: u64 },
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -372,6 +376,19 @@ pub struct Analysis {
     /// Autre clé démarrable (image Rufus/Etcher : ISO hybride, partition EFI) : sa partie
     /// démarrage n'est pas vérifiable ; un blanchiment ne la garde pas démarrable.
     pub demarrable_autre: bool,
+    /// Image officielle (fichier à la racine, empreinte et taille dans la liste signée) : copiée
+    /// intacte sans analyse (écart n° 14) ; rien d'autre n'est copié pendant ce passage.
+    pub officielle: Option<Officielle>,
+}
+
+/// Image officielle reconnue sur la clé source.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Officielle {
+    pub chemin: String,
+    pub nom: String,
+    pub taille: u64,
+    /// Autres éléments de la clé, non copiés pendant ce passage
+    pub ignores: usize,
 }
 
 /// Image démarrable écrite par Rufus « mode DD », balenaEtcher ou dd : ISO 9660 lue sur la
@@ -432,6 +449,212 @@ pub fn verifier_espace(contenu: u64, libre: u64) -> Result<()> {
         )));
     }
     Ok(())
+}
+
+/// Une image disque (ISO…) analysée intégralement occupe environ 16 fois sa taille dans l'espace
+/// de travail (mesure du 21/11/2026 : Debian 13 netinst de 756 Mo, ~77 000 fichiers extraits,
+/// ~12 Go de disque).
+pub const FACTEUR_IMAGE: u64 = 16;
+
+/// Plafond explicite des images disque analysées intégralement : 4 Go (environ 3 h d'analyse).
+/// Au-delà, seule une image officielle déclarée par l'administrateur peut passer.
+pub const PLAFOND_IMAGES: u64 = 4_000_000_000;
+
+/// Durée mesurée de l'analyse complète d'une image disque : environ 45 min par Go (Debian 13
+/// netinst : 35 min pour 756 Mo sur la borne 950).
+pub const SECONDES_PAR_GO_IMAGE: u64 = 45 * 60;
+/// Autres fichiers : environ 2 min par Go (copie, envoi à l'analyseur, antivirus).
+pub const SECONDES_PAR_GO_AUTRES: u64 = 120;
+
+/// Image disque reconnue à son extension (ce que l'analyseur ouvre et parcourt entièrement).
+pub fn est_image_disque(chemin: &str) -> bool {
+    let c = chemin.to_ascii_lowercase();
+    [
+        ".iso", ".img", ".wim", ".esd", ".vhd", ".vhdx", ".vmdk", ".dmg",
+    ]
+    .iter()
+    .any(|e| c.ends_with(e))
+}
+
+/// Inventaire d'une source (lecture des répertoires seulement, aucun contenu).
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Inventaire {
+    /// Taille des images disque
+    pub images: u64,
+    /// Taille des autres fichiers
+    pub autres: u64,
+    /// Entrées de la racine : (chemin, taille, fichier ordinaire)
+    pub racine: Vec<(String, u64, bool)>,
+    /// Inventaire interrompu (trop d'entrées) : tailles minorées
+    pub partiel: bool,
+}
+
+/// Au-delà, l'inventaire s'arrête (tailles minorées, estimation indicative).
+const INVENTAIRE_MAX: usize = 50_000;
+
+/// Parcourt la source ouverte (après `OpenPartition`) par `ReadDir`.
+pub fn inventaire(comm: &mut impl ProtoReqUsbsas) -> Result<Inventaire> {
+    let mut inv = Inventaire::default();
+    let mut a_voir = vec!["/".to_string()];
+    let mut vus = 0usize;
+    while let Some(d) = a_voir.pop() {
+        let r = comm.readdir(proto::usbsas::RequestReadDir { path: d.clone() })?;
+        for f in r.filesinfo {
+            vus += 1;
+            if vus > INVENTAIRE_MAX {
+                inv.partiel = true;
+                return Ok(inv);
+            }
+            let fichier = f.ftype == proto::common::FileType::Regular as i32;
+            if d == "/" {
+                inv.racine.push((f.path.clone(), f.size, fichier));
+            }
+            if f.ftype == proto::common::FileType::Directory as i32 {
+                a_voir.push(f.path);
+            } else if fichier {
+                if est_image_disque(&f.path) {
+                    inv.images += f.size;
+                } else {
+                    inv.autres += f.size;
+                }
+            }
+        }
+        inv.partiel |= r.max_depth_reached;
+    }
+    Ok(inv)
+}
+
+/// Durée estimée de l'analyse complète (secondes).
+pub fn estimation(inv: &Inventaire) -> u64 {
+    let par_go = |o: u64, s: u64| (o as u128 * s as u128 / 1_000_000_000) as u64;
+    par_go(inv.images, SECONDES_PAR_GO_IMAGE) + par_go(inv.autres, SECONDES_PAR_GO_AUTRES)
+}
+
+/// Durée lisible arrondie (« environ 35 min », « environ 2 h 15 »).
+pub fn duree_lisible(s: u64) -> String {
+    let min = s.div_ceil(60).max(1);
+    if min < 60 {
+        format!("environ {min} min")
+    } else {
+        let m = (min % 60) / 5 * 5;
+        if m == 0 {
+            format!("environ {} h", min / 60)
+        } else {
+            format!("environ {} h {m:02}", min / 60)
+        }
+    }
+}
+
+/// Refus clair et tôt (avant toute copie) d'une analyse complète impossible : plafond des
+/// images disque, puis espace de travail (images × 16, autres × 3).
+pub fn verifier_analyse(inv: &Inventaire, libre: Option<u64>) -> Result<()> {
+    if inv.images > PLAFOND_IMAGES {
+        return Err(Error::User(format!(
+            "image disque trop volumineuse pour une analyse complète : {} d'images (plafond {}, \
+             analyse estimée à {}). Seule une image officielle déclarée par l'administrateur \
+             (liste signée) peut passer au-delà. Rien n'a été copié.",
+            go(inv.images),
+            go(PLAFOND_IMAGES),
+            duree_lisible(estimation(inv))
+        )));
+    }
+    let besoin = inv
+        .images
+        .saturating_mul(FACTEUR_IMAGE)
+        .saturating_add(inv.autres.saturating_mul(FACTEUR_ESPACE));
+    if let Some(libre) = libre
+        && besoin > libre
+    {
+        return Err(Error::User(format!(
+            "contenu trop volumineux pour cette borne : {} à analyser (dont {} d'images disque), \
+             il faut environ {} d'espace de travail et {} sont disponibles. Rien n'a été copié.",
+            go(inv.images + inv.autres),
+            go(inv.images),
+            go(besoin),
+            go(libre)
+        )));
+    }
+    Ok(())
+}
+
+/// Entrée de la liste signée des images officielles : « sha256 taille nom » (v2.1.0) ou
+/// « sha256  nom » (v2.0, sans taille : reconnue seulement par l'analyseur et l'écart 11).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImageListe {
+    pub sha256: [u8; 32],
+    pub taille: Option<u64>,
+    pub nom: String,
+}
+
+/// Lit la liste ; lignes invalides ignorées ; absente : liste vide.
+pub fn liste_images(chemin: &str) -> Vec<ImageListe> {
+    let Ok(t) = std::fs::read_to_string(chemin) else {
+        return Vec::new();
+    };
+    t.lines()
+        .filter_map(|l| {
+            let mut it = l.split_whitespace();
+            let h = it.next()?;
+            if h.len() != 64 {
+                return None;
+            }
+            let mut o = [0u8; 32];
+            for (i, b) in o.iter_mut().enumerate() {
+                *b = u8::from_str_radix(h.get(2 * i..2 * i + 2)?, 16).ok()?;
+            }
+            let reste: Vec<&str> = it.collect();
+            let (taille, nom) = match reste.split_first() {
+                Some((t, n)) if !n.is_empty() && t.bytes().all(|b| b.is_ascii_digit()) => {
+                    (t.parse().ok(), n.join(" "))
+                }
+                _ => (None, reste.join(" ")),
+            };
+            Some(ImageListe {
+                sha256: o,
+                taille,
+                nom,
+            })
+        })
+        .collect()
+}
+
+/// Fichiers de la racine candidats à la liste officielle : taille présente dans la liste.
+pub fn candidats<'a>(inv: &'a Inventaire, liste: &[ImageListe]) -> Vec<&'a (String, u64, bool)> {
+    inv.racine
+        .iter()
+        .filter(|(_, t, f)| *f && liste.iter().any(|i| i.taille == Some(*t)))
+        .collect()
+}
+
+/// Empreintes et tailles de la liste au format de la requête `OfficialFile`.
+fn requete_liste(liste: &[ImageListe]) -> (Vec<Vec<u8>>, Vec<u64>) {
+    liste
+        .iter()
+        .filter_map(|i| Some((i.sha256.to_vec(), i.taille?)))
+        .unzip()
+}
+
+/// FAT32 : aucun fichier de plus de 4 Gio - 1. Refus clair AVANT toute écriture.
+pub fn verifier_format(fstype: FsType, tailles: impl IntoIterator<Item = u64>) -> Result<()> {
+    if fstype == FsType::Fat
+        && let Some(t) = tailles.into_iter().filter(|t| *t > 0xFFFF_FFFF).max()
+    {
+        return Err(Error::User(format!(
+            "un fichier fait {} : le format FAT32 n'accepte pas les fichiers de plus de 4 Go. \
+             Choisissez exFAT (recommandé) ou NTFS. Rien n'a été écrit.",
+            go(t)
+        )));
+    }
+    Ok(())
+}
+
+/// Nom lisible d'un format de sortie.
+pub fn nom_format(f: FsType) -> &'static str {
+    match f {
+        FsType::Fat => "FAT32",
+        FsType::Exfat => "exFAT",
+        FsType::Ntfs => "NTFS",
+    }
 }
 
 fn wait_done(comm: &mut impl ProtoReqUsbsas, ev: &Sender<Event>) -> io::Result<()> {
@@ -524,6 +747,51 @@ fn analyse_source(
         };
         comm.openpartition(proto::usbsas::RequestOpenPartition { index })?;
     }
+    // Inventaire (répertoires seulement) : image officielle, plafond, espace, estimation —
+    // tout est décidé avant de copier quoi que ce soit.
+    let inv = match inventaire(comm) {
+        Ok(i) => i,
+        Err(e) => {
+            let _ = comm.end();
+            return Err(e);
+        }
+    };
+    let liste = liste_images(LISTE_IMAGES);
+    if usb && let Some(o) = chercher_officielle(comm, &inv, &liste, ev) {
+        let _ = comm.end();
+        let o = o?;
+        return Ok(Analysis {
+            uid,
+            report: Report {
+                id: String::new(),
+                status: "officielle".into(),
+                files: vec![FileLine {
+                    path: o.chemin.clone(),
+                    container: None,
+                    size: o.taille,
+                    verdict: "CLEAN".into(),
+                    reason: format!(
+                        "image officielle reconnue (liste de l'administrateur : {})",
+                        o.nom
+                    ),
+                    output: Some(o.chemin.clone()),
+                }],
+            },
+            filtered: Vec::new(),
+            ventoy,
+            demarrable_autre,
+            officielle: Some(o),
+        });
+    }
+    let libre = espace(ESPACE_TRAVAIL).map(|(_, l)| l);
+    if let Err(e) = verifier_analyse(&inv, libre) {
+        let _ = comm.end();
+        return Err(e);
+    }
+    let _ = ev.send(Event::Estimation {
+        images: inv.images,
+        secondes: estimation(&inv),
+    });
     comm.selectfiles(proto::usbsas::RequestSelectFiles {
         selected: vec!["/".into()],
     })?;
@@ -557,7 +825,6 @@ fn analyse_source(
             }
         })
     };
-    let libre = espace(ESPACE_TRAVAIL).map(|(_, l)| l);
     let res = wait_done_espace(comm, ev, libre);
     stop.store(true, Ordering::Relaxed);
     let _ = watcher.join();
@@ -595,17 +862,120 @@ fn analyse_source(
         filtered,
         ventoy,
         demarrable_autre,
+        officielle: None,
     })
 }
 
-/// Écrit le dossier de préparation sur la clé `dst` (effacée et formatée en exFAT par usbsas).
+/// Cherche une image officielle parmi les fichiers de la racine dont la taille figure dans la
+/// liste : empreinte calculée par usbsas (lecture seule, rien n'est stocké). `None` : aucune
+/// (analyse normale). Une empreinte différente retombe sur l'analyse normale.
+pub fn chercher_officielle(
+    comm: &mut impl ProtoReqUsbsas,
+    inv: &Inventaire,
+    liste: &[ImageListe],
+    ev: &Sender<Event>,
+) -> Option<Result<Officielle>> {
+    let (sha256, size) = requete_liste(liste);
+    for (chemin, taille, _) in candidats(inv, liste) {
+        let _ = ev.send(Event::Verification {
+            nom: chemin.trim_start_matches('/').to_string(),
+            taille: *taille,
+        });
+        let r = match comm.officialfile(proto::usbsas::RequestOfficialFile {
+            path: chemin.clone(),
+            sha256: sha256.clone(),
+            size: size.clone(),
+            copy: false,
+        }) {
+            Ok(r) => r,
+            Err(e) => return Some(Err(e.into())),
+        };
+        if !r.matched {
+            log::info!("{chemin} : empreinte absente de la liste, analyse normale");
+            continue;
+        }
+        let nom = liste
+            .iter()
+            .find(|i| i.sha256.as_slice() == r.sha256.as_slice() && i.taille == Some(*taille))
+            .map(|i| i.nom.clone())
+            .unwrap_or_default();
+        return Some(Ok(Officielle {
+            chemin: chemin.clone(),
+            nom,
+            taille: *taille,
+            ignores: inv.racine.len() - 1,
+        }));
+    }
+    None
+}
+
+/// Copie l'image officielle `chemin` de la clé `src` sur `dst` (formatée en `fstype`), sans
+/// analyse : usbsas la relit en flux, la hache au passage et n'écrit `dst` que si l'empreinte
+/// figure dans la liste (écart n° 14). Contrôles de format et de place avant toute écriture.
+pub fn ecrire_officielle(
+    comm: &mut impl ProtoReqUsbsas,
+    src: u64,
+    dst: u64,
+    o: &Officielle,
+    fstype: FsType,
+    ev: &Sender<Event>,
+) -> Result<()> {
+    ecrire_officielle_avec(comm, src, dst, o, fstype, &liste_images(LISTE_IMAGES), ev)
+}
+
+/// Comme [`ecrire_officielle`], avec la liste donnée (tests).
+pub fn ecrire_officielle_avec(
+    comm: &mut impl ProtoReqUsbsas,
+    src: u64,
+    dst: u64,
+    o: &Officielle,
+    fstype: FsType,
+    liste: &[ImageListe],
+    ev: &Sender<Event>,
+) -> Result<()> {
+    verifier_format(fstype, [o.taille])?;
+    let (sha256, size) = requete_liste(liste);
+    if sha256.is_empty() {
+        return Err(Error::User(
+            "liste des images officielles absente : rien n'a été écrit".into(),
+        ));
+    }
+    let r = (|| -> Result<()> {
+        comm.userid(proto::usbsas::RequestUserId {})?;
+        comm.inittransfer(proto::usbsas::RequestInitTransfer {
+            source: src,
+            destination: dst,
+            fstype: Some(fstype.into()),
+            pin: None,
+            bootable: false,
+        })?;
+        let parts = comm
+            .partitions(proto::usbsas::RequestPartitions {})?
+            .partitions;
+        let index = default_partition(&parts)
+            .ok_or_else(|| Error::User("aucun système de fichiers lisible sur la clé".into()))?;
+        comm.openpartition(proto::usbsas::RequestOpenPartition { index })?;
+        comm.officialfile(proto::usbsas::RequestOfficialFile {
+            path: o.chemin.clone(),
+            sha256,
+            size,
+            copy: true,
+        })?;
+        Ok(wait_done(comm, ev)?)
+    })();
+    let _ = comm.end();
+    r
+}
+
+/// Écrit le dossier de préparation sur la clé `dst` (effacée et formatée en `fstype` par usbsas).
 pub fn write(
     comm: &mut impl ProtoReqUsbsas,
     stage: u64,
     dst: u64,
+    fstype: FsType,
     ev: &Sender<Event>,
 ) -> Result<proto::common::TransferReport> {
-    write_mode(comm, stage, dst, false, ev)
+    write_mode(comm, stage, dst, false, fstype, ev)
 }
 
 /// Écrit le dossier de préparation sur `dst` reconstruite en clé Ventoy démarrable (écart n° 9) :
@@ -617,7 +987,7 @@ pub fn write_demarrable(
     dst: u64,
     ev: &Sender<Event>,
 ) -> Result<proto::common::TransferReport> {
-    write_mode(comm, stage, dst, true, ev)
+    write_mode(comm, stage, dst, true, FsType::Exfat, ev)
 }
 
 /// Liste des images officielles livrée par mise à jour signée (aussi lue par l'analyseur).
@@ -626,22 +996,9 @@ pub const LISTE_IMAGES: &str = "/var/lib/barbacane/listes/images-officielles.sha
 /// Lecture d'une image disque limitée à 16 Gio (les ISO d'installation font moins de 10 Go).
 pub const IMAGE_MAX: u64 = 16 << 30;
 
-/// Empreintes SHA-256 de la liste (« sha256  nom » par ligne) ; absente : liste vide.
+/// Empreintes SHA-256 de la liste ; absente : liste vide.
 pub fn images_officielles(chemin: &str) -> Vec<[u8; 32]> {
-    let Ok(t) = std::fs::read_to_string(chemin) else {
-        return Vec::new();
-    };
-    t.lines()
-        .filter_map(|l| l.split_whitespace().next())
-        .filter(|h| h.len() == 64)
-        .filter_map(|h| {
-            let mut o = [0u8; 32];
-            for (i, b) in o.iter_mut().enumerate() {
-                *b = u8::from_str_radix(h.get(2 * i..2 * i + 2)?, 16).ok()?;
-            }
-            Some(o)
-        })
-        .collect()
+    liste_images(chemin).into_iter().map(|i| i.sha256).collect()
 }
 
 /// Clé Etcher / Rufus « mode DD » : réécrit l'image qu'elle porte si ses premiers octets sont
@@ -685,13 +1042,14 @@ fn write_mode(
     stage: u64,
     dst: u64,
     demarrable: bool,
+    fstype: FsType,
     ev: &Sender<Event>,
 ) -> Result<proto::common::TransferReport> {
     comm.userid(proto::usbsas::RequestUserId {})?;
     comm.inittransfer(proto::usbsas::RequestInitTransfer {
         source: stage,
         destination: dst,
-        fstype: Some(FsType::Exfat.into()),
+        fstype: Some(fstype.into()),
         pin: None,
         bootable: demarrable,
     })?;
@@ -776,6 +1134,86 @@ mod tests {
         assert_eq!(l[0][0], 0x6f);
         assert_eq!(l[0][31], 0x4d);
         assert!(images_officielles("/nexiste/pas").is_empty());
+    }
+
+    #[test]
+    fn liste_avec_tailles() {
+        let d = tempfile::tempdir().unwrap();
+        let f = d.path().join("l.sha256");
+        let h = "6f1e0c6b714f041eb55f852d2c8622ea57e4a20e67d086a1ecb6109d8e47da4d";
+        std::fs::write(
+            &f,
+            format!("{h} 8945637376 Win11 26H2.iso\n{h}  ancien_format.iso\n"),
+        )
+        .unwrap();
+        let l = liste_images(f.to_str().unwrap());
+        assert_eq!(l.len(), 2);
+        assert_eq!(l[0].taille, Some(8_945_637_376));
+        assert_eq!(l[0].nom, "Win11 26H2.iso");
+        assert_eq!(l[1].taille, None);
+        assert_eq!(l[1].nom, "ancien_format.iso");
+        // seules les entrées avec taille vont à usbsas
+        let (h2, t2) = requete_liste(&l);
+        assert_eq!((h2.len(), t2), (1, vec![8_945_637_376]));
+        let inv = Inventaire {
+            racine: vec![
+                ("/Win11.iso".into(), 8_945_637_376, true),
+                ("/autre.iso".into(), 12, true),
+                ("/dossier".into(), 8_945_637_376, false),
+            ],
+            ..Default::default()
+        };
+        let c = candidats(&inv, &l);
+        assert_eq!(c.len(), 1);
+        assert_eq!(c[0].0, "/Win11.iso");
+    }
+
+    #[test]
+    fn plafond_espace_et_estimation() {
+        // Debian 13 netinst mesurée : 756 Mo → ~34 min, 12 Go de travail, passe sur 15 Go
+        let deb = Inventaire {
+            images: 756_000_000,
+            ..Default::default()
+        };
+        assert_eq!(duree_lisible(estimation(&deb)), "environ 35 min");
+        assert!(verifier_analyse(&deb, Some(15_000_000_000)).is_ok());
+        assert!(verifier_analyse(&deb, Some(10_000_000_000)).is_err());
+        // Windows 11 (8,9 Go) : au-delà du plafond, message clair
+        let win = Inventaire {
+            images: 8_900_000_000,
+            ..Default::default()
+        };
+        let m = verifier_analyse(&win, None).unwrap_err().to_string();
+        assert!(m.contains("plafond") && m.contains("officielle"), "{m}");
+        assert!(!m.contains("Not enough space"));
+        // autres fichiers : facteur 3
+        let doc = Inventaire {
+            autres: 4_000_000_000,
+            ..Default::default()
+        };
+        assert!(verifier_analyse(&doc, Some(15_000_000_000)).is_ok());
+        let m = verifier_analyse(&doc, Some(11_000_000_000))
+            .unwrap_err()
+            .to_string();
+        assert!(m.contains("12,0 Go") && m.contains("11,0 Go"), "{m}");
+        assert_eq!(duree_lisible(0), "environ 1 min");
+        assert_eq!(duree_lisible(3 * 3600 + 17 * 60), "environ 3 h 15");
+        assert_eq!(duree_lisible(7200), "environ 2 h");
+        assert!(est_image_disque("/A/Win11.ISO") && !est_image_disque("/notes.txt"));
+    }
+
+    #[test]
+    fn fat32_refuse_plus_de_4_go() {
+        let e = verifier_format(FsType::Fat, [10, 8_945_637_376]).unwrap_err();
+        let m = e.to_string();
+        assert!(
+            m.contains("FAT32") && m.contains("8,9 Go") && m.contains("exFAT"),
+            "{m}"
+        );
+        assert!(verifier_format(FsType::Fat, [0xFFFF_FFFF]).is_ok());
+        assert!(verifier_format(FsType::Exfat, [8_945_637_376]).is_ok());
+        assert!(verifier_format(FsType::Ntfs, [u64::MAX]).is_ok());
+        assert_eq!(nom_format(FsType::Exfat), "exFAT");
     }
 
     #[test]

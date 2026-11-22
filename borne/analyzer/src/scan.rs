@@ -85,8 +85,14 @@ pub fn charger_officielles(p: Option<&Path>) -> std::collections::HashMap<String
         .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
         .filter_map(|l| {
             let (h, nom) = l.split_once(char::is_whitespace)?;
+            // « sha256 taille nom » (v2.1.0) ou « sha256  nom » : la taille n'est pas un nom
+            let nom = nom.trim();
+            let nom = match nom.split_once(char::is_whitespace) {
+                Some((t, n)) if t.bytes().all(|b| b.is_ascii_digit()) => n.trim(),
+                _ => nom,
+            };
             (h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()))
-                .then(|| (h.to_ascii_lowercase(), nom.trim().to_string()))
+                .then(|| (h.to_ascii_lowercase(), nom.to_string()))
         })
         .collect()
 }
@@ -633,5 +639,29 @@ pub fn human(n: u64) -> String {
         format!("{n} o")
     } else {
         format!("{v:.1} {}", U[i])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn liste_officielle_avec_ou_sans_taille() {
+        let d = tempfile::tempdir().unwrap();
+        let f = d.path().join("l");
+        let h = "6F1E0C6B714F041EB55F852D2C8622EA57E4A20E67D086A1ECB6109D8E47DA4D";
+        std::fs::write(
+            &f,
+            format!(
+                "# c\n{h} 8945637376 Win11 26H2.iso\n{}  debian.iso\n",
+                "ab".repeat(32)
+            ),
+        )
+        .unwrap();
+        let l = charger_officielles(Some(&f));
+        assert_eq!(l[&h.to_ascii_lowercase()], "Win11 26H2.iso");
+        assert_eq!(l[&"ab".repeat(32)], "debian.iso");
+        assert!(charger_officielles(None).is_empty());
     }
 }

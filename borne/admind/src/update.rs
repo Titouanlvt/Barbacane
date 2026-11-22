@@ -369,7 +369,7 @@ pub fn apply_from(ctx: &Ctx, dir: &Path, attendue: Option<u64>) -> Result<Outcom
     })
 }
 
-/// Liste d'images officielles : une ligne « <sha256 hexadécimal>  <nom> » par image, rien d'autre.
+/// Liste d'images officielles : une ligne « <sha256 hexadécimal> [<taille>] <nom> » par image, rien d'autre.
 fn verifier_liste(p: &Path) -> Result<()> {
     let texte = std::fs::read_to_string(p).with_context(|| format!("{}", p.display()))?;
     for (i, l) in texte.lines().enumerate() {

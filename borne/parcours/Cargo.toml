@@ -16,5 +16,6 @@ libc = "0.2.191"
 [dev-dependencies]
 usbsas-process = { path = "../../noyau/usbsas-process" }
 tempfile = "3.27.0"
+sha2 = { version = "0.11", default-features = false }
 usbsas-fsrw = { path = "../../noyau/usbsas-fsrw" }
 usbsas-mbr = { path = "../../noyau/usbsas-mbr" }
