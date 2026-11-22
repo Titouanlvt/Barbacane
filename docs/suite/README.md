@@ -63,6 +63,7 @@ jour restent des `.bcu` signés hors ligne et revérifiés par la borne.
 | [serveur-iso-bornes.md](serveur-iso-bornes.md) | ISO des bornes personnalisées et téléchargées depuis le serveur. |
 | [borne-en-ligne.md](borne-en-ligne.md) | Profil `en-ligne` de l'ISO borne, `barbacane-agent`, écrans identifiant/PIN. |
 | [quarantaine.md](quarantaine.md) | Quarantaine côté serveur, optionnelle, désactivée par défaut. |
+| [etude-conformite-e1.md](etude-conformite-e1.md) | Étude E1 : conformité ANSSI, RGPD/CNIL, II 901, IGI 1300 ; écarts et questions ouvertes. |
 
 ## Ordre de lecture
 
