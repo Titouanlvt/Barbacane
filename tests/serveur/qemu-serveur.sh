@@ -174,6 +174,94 @@ if [ -n "$PKI" ]; then
     r=$(essai_tls 47002 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem"; essai_tls 47006 -cert "$PKI/bornes/borne-01.cert.pem" -key "$PKI/bornes/borne-01.cle.pem" -CAfile "$PKI/racine/cert.pem")
     if grep -q '"etat":"ok"' <<<"$r"; then echec "passerelle joignable depuis le réseau d'ADMINISTRATION"; else ok "passerelle injoignable depuis le réseau d'administration"; fi
 fi
+# v2.2.0 : comptes de la Console, double validation, D13, rôle lecture seule (après la connexion
+# d'admin-01, cookies dans $W/cookies). Chaque .p12 est relu par openssl (MAC et chiffrement).
+U=https://127.0.0.1:47010
+champ() { sed -n "s/.*name=\"$2\" value=\"\([^\"]*\)\".*/\1/p" "$1" | head -1; }
+gras() { grep -o "$2[^<]*<b class=\"b-mono\">[^<]*" "$1" | sed 's/.*<b class="b-mono">//' | head -1; }
+requete() { # CERT CLE JAR SORTIE CHEMIN [champs…] → code HTTP (GET si aucun champ)
+    local c=$1 k=$2 j=$3 o=$4 ch=$5; shift 5
+    local d=(); for x in "$@"; do d+=(--data-urlencode "$x"); done
+    curl --silent --max-time 30 --insecure --cert "$c" --key "$k" -b "$j" -c "$j" -o "$o" -w '%{http_code}' "${d[@]}" "$U$ch" 2>/dev/null || true
+}
+A1=("$PKI/administrateurs/admin-01.cert.pem" "$PKI/administrateurs/admin-01.cle.pem" "$W/cookies")
+p12_vers_pem() { # PAGE NOM IDENTITÉ… : télécharge le .p12 (une fois), le relit, écrit NOM.cert.pem/NOM.cle.pem
+    local page=$1 nom=$2; shift 2
+    local mdp jeton
+    mdp=$(gras "$page" "Mot de passe du fichier .p12")
+    jeton=$(champ "$page" jeton)
+    code=$(requete "$@" "$W/$nom.p12" /comptes/p12 "csrf=$(champ "$page" csrf)" "jeton=$jeton")
+    code2=$(requete "$@" /dev/null /comptes/p12 "csrf=$(champ "$page" csrf)" "jeton=$jeton")
+    openssl pkcs12 -in "$W/$nom.p12" -passin "pass:$mdp" -clcerts -nokeys -out "$W/$nom.cert.pem" 2>/dev/null \
+        && openssl pkcs12 -in "$W/$nom.p12" -passin "pass:$mdp" -nocerts -nodes -out "$W/$nom.cle.pem" 2>/dev/null \
+        && [ "$code" = 200 ] && [ "$code2" = 404 ] \
+        && ok "$nom : .p12 téléchargé une seule fois (puis $code2), relu par openssl (PBES2 AES-256, MAC SHA-256)" \
+        || echec "$nom : .p12 (téléchargement $code puis $code2, ou openssl refuse)"
+}
+premiere_connexion() { # NOM MDP_PROVISOIRE NOUVEAU
+    local n=$1 c="$W/$1.cert.pem" k="$W/$1.cle.pem" j="$W/cookies-$1"
+    rm -f "$j"
+    requete "$c" "$k" "$j" "$W/cx-$n.html" /connexion >/dev/null
+    code=$(requete "$c" "$k" "$j" /dev/null /connexion "csrf=$(champ "$W/cx-$n.html" csrf)" "identifiant=$n" "mot_de_passe=$2")
+    code2=$(curl --silent --insecure --cert "$c" --key "$k" -b "$j" -o /dev/null -w '%{http_code} %{redirect_url}' "$U/tableau" 2>/dev/null || true)
+    requete "$c" "$k" "$j" "$W/mdp-$n.html" /mot-de-passe >/dev/null
+    code3=$(requete "$c" "$k" "$j" /dev/null /mot-de-passe "csrf=$(champ "$W/mdp-$n.html" csrf)" "actuel=$2" "nouveau=$3" "confirmation=$3")
+    code4=$(requete "$c" "$k" "$j" "$W/tableau-$n.html" /tableau)
+    [ "$code" = 303 ] && [[ "$code2" == "303 "*"/mot-de-passe" ]] && [ "$code3" = 303 ] && [ "$code4" = 200 ] \
+        && ok "$n : connexion au mot de passe provisoire, changement imposé ($code2), nouveau mot de passe accepté, tableau 200" \
+        || echec "$n : première connexion (connexion $code, tableau $code2, changement $code3, puis $code4)"
+}
+parcours_comptes() {
+    requete "${A1[@]}" "$W/comptes.html" /comptes >/dev/null
+    S1=$(champ "$W/comptes.html" csrf)
+    grep -q 'migration-2.1.0' "$W/comptes.html" && ok "comptes : admin-01 importé du fichier v2.1.0 (migration au premier démarrage)" \
+        || echec "comptes : admin-01 non migré"
+    code=$(requete "${A1[@]}" /dev/null /comptes/creer "identifiant=pirate" "role=administrateur")
+    [ "$code" = 403 ] && ok "comptes : création sans jeton anti-CSRF refusée (403)" || echec "comptes : POST sans CSRF : $code"
+    code=$(requete "${A1[@]}" "$W/creation-02.html" /comptes/creer "csrf=$S1" "identifiant=admin-02" "role=administrateur")
+    P2=$(gras "$W/creation-02.html" "Mot de passe provisoire")
+    [ "$code" = 200 ] && [ -n "$P2" ] && grep -q 'sans second administrateur' "$W/creation-02.html" \
+        && ok "comptes : second administrateur admin-02 créé par le seul administrateur (amorçage journalisé)" \
+        || echec "comptes : création d'admin-02 : HTTP $code"
+    p12_vers_pem "$W/creation-02.html" admin-02 "${A1[@]}"
+    premiere_connexion admin-02 "$P2" "Phrase de passe du banc, deuxième administrateur"
+    A2=("$W/admin-02.cert.pem" "$W/admin-02.cle.pem" "$W/cookies-admin-02")
+    S2=$(champ "$W/tableau-admin-02.html" csrf)
+    code=$(requete "${A2[@]}" "$W/demande-lect.html" /comptes/creer "csrf=$S2" "identifiant=lect" "role=lecture")
+    D=$(champ "$W/demande-lect.html" demande)
+    code2=$(requete "${A2[@]}" "$W/auto.html" /validations/valider "csrf=$S2" "demande=$D")
+    [ "$code" = 200 ] && [ "$code2" = 400 ] && grep -q 'second administrateur' "$W/auto.html" \
+        && ok "double validation : demande d'admin-02, auto-validation refusée (400)" || echec "double validation : demande $code, auto-validation $code2"
+    code=$(requete "${A1[@]}" "$W/creation-lect.html" /validations/valider "csrf=$S1" "demande=$D")
+    PL=$(gras "$W/creation-lect.html" "Mot de passe provisoire")
+    [ "$code" = 200 ] && [ -n "$PL" ] && ok "double validation : création du compte « lect » (lecture seule) validée par admin-01" \
+        || echec "double validation : validation par admin-01 : HTTP $code"
+    p12_vers_pem "$W/creation-lect.html" lect "${A1[@]}"
+    premiere_connexion lect "$PL" "Phrase de passe du banc, lecture seule"
+    AL=("$W/lect.cert.pem" "$W/lect.cle.pem" "$W/cookies-lect")
+    SL=$(champ "$W/tableau-lect.html" csrf)
+    c1=$(requete "${AL[@]}" /dev/null /comptes); c2=$(requete "${AL[@]}" /dev/null /audit)
+    c3=$(requete "${AL[@]}" /dev/null /sites/mode "csrf=$SL" "site=labo" "mode=aucun")
+    c4=$(requete "${AL[@]}" /dev/null /enrolement/jeton "csrf=$SL" "site=labo")
+    [ "$c1$c2$c3$c4" = 403403403403 ] && ok "rôle lecture seule : comptes, journal, réglage de site et jeton refusés (403)" \
+        || echec "rôle lecture seule : $c1 $c2 $c3 $c4"
+    # D13 : site en mode Aucun → activation de la quarantaine refusée ; quarantaine active → Aucun refusé.
+    code=$(requete "${A1[@]}" /dev/null /sites/mode "csrf=$S1" "site=labo" "mode=aucun")
+    code2=$(requete "${A1[@]}" "$W/q1.html" /quarantaine/activer "csrf=$S1")
+    [ "$code" = 200 ] && [ "$code2" = 400 ] && grep -q 'D13' "$W/q1.html" \
+        && ok "D13 : site « labo » en mode Aucun, activation de la quarantaine refusée (400, message D13)" || echec "D13 : activation avec site Aucun : $code $code2"
+    requete "${A1[@]}" /dev/null /sites/mode "csrf=$S1" "site=labo" "mode=identification" >/dev/null
+    requete "${A1[@]}" "$W/q2.html" /quarantaine/activer "csrf=$S1" >/dev/null
+    code=$(requete "${A2[@]}" "$W/q3.html" /quarantaine/valider "csrf=$S2" "demande=$(champ "$W/q2.html" demande)")
+    code2=$(requete "${A1[@]}" "$W/q4.html" /sites/mode "csrf=$S1" "site=labo" "mode=aucun")
+    [ "$code" = 200 ] && grep -q '>Active<' "$W/q3.html" && [ "$code2" = 400 ] && grep -q 'D13' "$W/q4.html" \
+        && ok "D13 : quarantaine activée par double validation (admin-01 puis admin-02), mode Aucun alors refusé (400)" \
+        || echec "D13 : activation $code, mode Aucun $code2"
+    requete "${A1[@]}" "$W/q5.html" /quarantaine/desactiver "csrf=$S1" >/dev/null
+    code=$(requete "${A2[@]}" "$W/q6.html" /quarantaine/valider "csrf=$S2" "demande=$(champ "$W/q5.html" demande)")
+    [ "$code" = 200 ] && grep -q 'Désactivée' "$W/q6.html" && ok "quarantaine désactivée par double validation" \
+        || echec "désactivation de la quarantaine : $code"
+}
 if [ -n "$PKI" ]; then
     A=(--silent --show-error --max-time 20 --insecure --cert "$PKI/administrateurs/admin-01.cert.pem" --key "$PKI/administrateurs/admin-01.cle.pem")
     : > "$W/connexion.html"
@@ -213,6 +301,7 @@ if [ -n "$PKI" ]; then
         if [ "$code2" = 200 ] && grep -q "Bornes actives" "$W/tableau.html"; then
             ok "interface web : connexion admin-01 (certificat + mot de passe Argon2id, HTTP $code) puis tableau de bord HTTP 200"
         else echec "interface web : connexion admin-01 (POST $code, tableau $code2)"; fi
+        parcours_comptes
     fi
 fi
 # 443 et 22 sur l'interface bornes : filtrés (aucun octet en retour, même à une requête).
