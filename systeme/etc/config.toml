@@ -3,6 +3,8 @@
 out_directory = "/var/lib/barbacane/travail/usbsas"   # volume chiffré éphémère
 # Zone de démarrage Ventoy de confiance (clés démarrables reconstruites, écart n° 9)
 ventoy = "/usr/share/barbacane/ventoy"
+# Liste signée des images officielles (« sha256 taille nom », mises à jour signées, écart n° 14)
+official_images = "/var/lib/barbacane/listes/images-officielles.sha256"
 keep_tmp_files = false
 lang = "fr"
 window_title = "Barbacane"

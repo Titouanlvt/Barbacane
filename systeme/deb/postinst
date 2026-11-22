@@ -47,6 +47,10 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     if [ -f "$C" ] && grep -q '^\[analyzer\]' "$C" && ! grep -q '^poll_timeout' "$C"; then
         sed -i '/^\[analyzer\]/a poll_timeout = 43200' "$C"
     fi
+    # v2.1.0 (écart n° 14) : usbsas relit lui-même la liste signée des images officielles
+    if [ -f "$C" ] && ! grep -q '^official_images' "$C"; then
+        sed -i '1i official_images = "/var/lib/barbacane/listes/images-officielles.sha256"' "$C"
+    fi
 
     systemctl daemon-reload >/dev/null 2>&1 || true
     sysctl --system >/dev/null 2>&1 || true
