@@ -32,7 +32,8 @@ Sécurité d'abord ; porte de sortie de chaque version : revue de sécurité, CI
 Défauts du labo du 21/11 : page 500 ponctuelle (admin-02), message de jeton, écran « Clé détectée »,
 noms de site libres, doc barbadmin, noms fonctionnels ([labo](docs/preuves/2026-11-21-labo-proxmox/README.md)).
 
-## v2.0.3 (prochaine) : reprise des correctifs usbsas du CEA
+## v2.0.3 (branche `v203`, preuves faites, non fusionnée) : reprise des correctifs usbsas du CEA
+Fait : base `c75c7eb`, écarts 1/3/8/10 retirés, 12 et 13 ajoutés, jiff 1.0, nix 0.32 ([notes](docs/notes-de-version/v2.0.3.md)).
 151 commits amont depuis notre base `69ebcf4`, surtout du durcissement : `fsrw/ntfs3g` et `ff`
 (fermetures, noms, NUL), `dev2scsi` (lectures hors périphérique, isolement, secteurs 4K, ISO9660),
 `comm`/seccomp, `net` (TLS 1.3, limites). Reprise commit par commit, chaque reprise dans

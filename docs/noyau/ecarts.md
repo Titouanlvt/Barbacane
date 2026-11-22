@@ -6,6 +6,8 @@ un par un sur le noyau (commits « noyau : reprise amont <commit> », v2.0.3), s
 - la réécriture de `usbsas-analyzer-server` (`14dfd4c`, `fd9746f`, `82f28b8`) : la borne a son propre
   analyseur (`borne/analyzer`) ; l'ancien serveur ne sert qu'aux tests du noyau ;
 - `usbsas-client` (`78cf7f2`, `d662267`, `790207a`, `0cc9d50`) : interface amont non utilisée ;
+- le changement du fichier de configuration livré par le paquet usbsas (`0ad9073`, partie
+  `assets/config.toml`) : conffile remplacé sur la borne, la mise à jour signée échouait (v2.0.3) ;
 - la documentation, le README, `config.example.toml`, `debian/` et `.github/` à la racine amont, et ses
   `Cargo.lock` (le workspace Barbacane a le sien).
 Les commits `usbsas-fsrw` du 02/11 (`5d143fd`…`47da6bc`) étaient déjà présents (écart 3) : rejeu vide,

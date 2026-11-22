@@ -41,6 +41,13 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
         done
     fi
 
+    # usbsas (amont 97ada8b, v2.0.3) attend le résultat d'analyse 30 min par défaut : 12 h sur les
+    # bornes mises à jour aussi (leur /etc/usbsas/config.toml est local, jamais remplacé).
+    C=/etc/usbsas/config.toml
+    if [ -f "$C" ] && grep -q '^\[analyzer\]' "$C" && ! grep -q '^poll_timeout' "$C"; then
+        sed -i '/^\[analyzer\]/a poll_timeout = 43200' "$C"
+    fi
+
     systemctl daemon-reload >/dev/null 2>&1 || true
     sysctl --system >/dev/null 2>&1 || true
     udevadm control --reload-rules >/dev/null 2>&1 || true
