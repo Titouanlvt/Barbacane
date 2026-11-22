@@ -199,6 +199,13 @@ réécrit sur `is_iso9660` amont), 9 (Ventoy, suit le renommage amont `scsi_writ
      l'empreinte figure dans la liste ; sinon erreur et rien n'est écrit. Les octets écrits sont
      ceux qui ont été hachés : une clé source qui renverrait d'autres données à la seconde lecture
      est refusée.
+- Liste bornée par usbsas : option de configuration `official_images` (chemin de la liste signée
+  « sha256 taille nom », lue avant l'application du bac à sable, comme l'écart 9) ; si elle est
+  présente, seuls les couples (empreinte, taille) qui y figurent sont acceptés, quoi que le client
+  envoie (un client compromis ne peut pas faire passer un fichier sans analyse). Liste absente ou
+  illisible : aucune image acceptée. Sans l'option : liste du client (comme l'écart 11).
 - Le reste du transfert (`TransferDst`, rapport) est celui de l'amont.
-- Tests : `states.rs` (`liste_validee`, `place_controlee_avant_ecriture`) ; `parcours`
+- Tests : `states.rs` (`liste_validee`, `place_controlee_avant_ecriture`), `usbsas-config`
+  (`official_images_parsed`) ; `parcours` (e2e : image copiée en exFAT et NTFS, empreinte refusée
+  sans rien écrire),
   (`liste_images_lue`, tailles) ; campagne 950 (`lab/rapide-v210.sh`, ISO Windows 11).

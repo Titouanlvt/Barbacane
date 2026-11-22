@@ -146,11 +146,42 @@ pub struct Config {
     /// Ventoy boot area loaded from `ventoy` (set by usbsas at runtime)
     #[serde(skip)]
     pub ventoy_data: Option<std::sync::Arc<VentoyData>>,
+    /// Barbacane (écart n° 14) : signed list of official images (« sha256 size name » lines).
+    /// When set, `OfficialFile` only accepts (sha256, size) pairs present in this file, whatever
+    /// the client sends. Loaded before the sandbox is applied.
+    pub official_images: Option<String>,
+    /// (sha256, size) pairs loaded from `official_images` (set by usbsas at runtime)
+    #[serde(skip)]
+    pub official_list: Option<std::sync::Arc<OfficialList>>,
     // filled by usbsas process
     /// Free space in `out_directory`, in bytes (set by usbsas at runtime)
     pub available_space: Option<u64>,
     /// Id of the session (set by usbsas at runtime)
     pub session_id: Option<String>,
+}
+
+/// (sha256, size) pairs of official images.
+pub type OfficialList = Vec<([u8; 32], u64)>;
+
+/// Barbacane (écart n° 14) : parse a list of official images, keeping only the lines with a
+/// SHA-256 and a size (« sha256 size name ») ; other lines are ignored.
+pub fn parse_official_images(text: &str) -> OfficialList {
+    text.lines()
+        .filter_map(|l| {
+            let mut it = l.split_whitespace();
+            let h = it.next()?;
+            let size: u64 = it.next()?.parse().ok()?;
+            it.next()?;
+            if h.len() != 64 {
+                return None;
+            }
+            let mut o = [0u8; 32];
+            for (i, b) in o.iter_mut().enumerate() {
+                *b = u8::from_str_radix(h.get(2 * i..2 * i + 2)?, 16).ok()?;
+            }
+            Some((o, size))
+        })
+        .collect()
 }
 
 /// Trusted Ventoy boot area (see `Config::ventoy`).
@@ -222,4 +253,18 @@ pub fn conf_parse(conf_str: &str) -> io::Result<Config> {
             format!("Couldn't parse config: {err}"),
         )
     })
+}
+
+#[cfg(test)]
+mod tests_official_images {
+    use super::parse_official_images;
+
+    #[test]
+    fn official_images_parsed() {
+        let h = "ab".repeat(32);
+        let l = parse_official_images(&format!(
+            "# c\n{h} 8913713152 Win 11.iso\n{h}  ancien.iso\nzz 12 x\n{h} 12\n"
+        ));
+        assert_eq!(l, vec![([0xab; 32], 8_913_713_152)]);
+    }
 }

@@ -148,6 +148,18 @@ fn main() -> Result<()> {
         }
     }
 
+    // Barbacane (écart n° 14) : official images list, read before the sandbox (absent or
+    // unreadable : empty list, no official file is accepted)
+    if let Some(path) = &config.official_images {
+        let list = fs::read_to_string(path)
+            .map(|t| usbsas_config::parse_official_images(&t))
+            .unwrap_or_else(|err| {
+                log::warn!("official images list {path}: {err}");
+                Vec::new()
+            });
+        config.official_list = Some(std::sync::Arc::new(list));
+    }
+
     let fs_stats = nix::sys::statvfs::statvfs(config.out_directory.as_str())?;
     let available = fs_stats.block_size() * fs_stats.blocks_available();
     config.available_space = Some(available);

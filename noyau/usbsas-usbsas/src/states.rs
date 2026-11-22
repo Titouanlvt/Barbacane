@@ -649,7 +649,9 @@ impl RunState for BrowseSrcState {
                 }
                 // Barbacane (écart n° 14) : image officielle portée comme fichier
                 Msg::OfficialFile(req) => {
-                    let liste = match liste_officielle(&req.sha256, &req.size) {
+                    let liste = match liste_officielle(&req.sha256, &req.size)
+                        .map(|l| restreindre_liste(l, self.config.official_list.as_deref()))
+                    {
                         Ok(l) => l,
                         Err(err) => {
                             comm.error(err)?;
@@ -1831,6 +1833,18 @@ pub(crate) fn liste_officielle(sha256: &[Vec<u8>], size: &[u64]) -> Result<Vec<(
         .collect()
 }
 
+/// Ne garde de la liste du client que les couples présents dans la liste signée chargée par
+/// usbsas (`official_images`), si elle est configurée : un client ne peut pas élargir la liste.
+pub(crate) fn restreindre_liste(
+    client: Vec<([u8; 32], u64)>,
+    config: Option<&Vec<([u8; 32], u64)>>,
+) -> Vec<([u8; 32], u64)> {
+    match config {
+        Some(c) => client.into_iter().filter(|e| c.contains(e)).collect(),
+        None => client,
+    }
+}
+
 /// Lit un fichier de la source (rien n'est stocké) : (taille lue, SHA-256).
 fn hacher_fichier(src: &mut UsbsasChild<ComRqFiles>, path: &str) -> Result<(u64, [u8; 32])> {
     let attrs = src
@@ -1900,7 +1914,9 @@ impl RunState for OfficialFileState {
         else {
             bail!("image officielle : destination clé USB requise");
         };
-        let dev_size = usbdev.dev_size.ok_or(anyhow!("taille de destination inconnue"))?;
+        let dev_size = usbdev
+            .dev_size
+            .ok_or(anyhow!("taille de destination inconnue"))?;
         if self.transfer.bootable {
             bail!("image officielle : destination démarrable non prise en charge");
         }
@@ -1914,8 +1930,13 @@ impl RunState for OfficialFileState {
             bail!("'{}' n'est pas un fichier", self.path);
         }
         let taille = attrs.size;
+        if self.liste.is_empty() {
+            bail!("image non reconnue : aucune image officielle connue ; rien n'a été écrit");
+        }
         if !self.liste.iter().any(|(_, t)| *t == taille) {
-            bail!("image non reconnue : sa taille ne figure pas dans la liste ; rien n'a été écrit");
+            bail!(
+                "image non reconnue : sa taille ne figure pas dans la liste ; rien n'a été écrit"
+            );
         }
         verifier_place_officielle(
             taille,
@@ -2006,6 +2027,12 @@ mod tests_fichier_officiel {
         assert!(liste_officielle(&[vec![0; 31]], &[1]).is_err());
         let l = liste_officielle(&[vec![7; 32]], &[42]).unwrap();
         assert_eq!(l, vec![([7; 32], 42)]);
+        // la liste signée chargée par usbsas borne celle du client
+        let client = vec![([7; 32], 42), ([8; 32], 42), ([7; 32], 43)];
+        let signee = vec![([7; 32], 42)];
+        assert_eq!(restreindre_liste(client.clone(), Some(&signee)), signee);
+        assert!(restreindre_liste(client.clone(), Some(&Vec::new())).is_empty());
+        assert_eq!(restreindre_liste(client.clone(), None), client);
     }
 
     #[test]
