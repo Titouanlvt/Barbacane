@@ -339,7 +339,20 @@ pub fn sites(ctx: &Contexte, lignes: &[LigneSite], m: Option<(bool, &str)>) -> S
         csrf(&mut c, ctx.csrf);
         c.b("<div class=\"b-champ\"><label for=\"site\">Site</label><input class=\"b-saisie b-mono\" id=\"site\" name=\"site\" required maxlength=\"32\" pattern=\"[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?\" placeholder=\"labo\"></div><div class=\"b-champ\"><label for=\"mode\">Mode</label><select class=\"b-saisie\" id=\"mode\" name=\"mode\"><option value=\"aucun\">Aucun</option><option value=\"identification\">Identification</option><option value=\"authentification\">Authentification</option></select></div><div class=\"b-formulaire__actions\"><button class=\"b-btn b-btn--principal\" type=\"submit\">Appliquer</button></div></form></div>");
     }
-    c.b("<p class=\"b-aide\">Défaut : mode Aucun et clés non enrôlées admises en entrée (comportement de la v1). La sortie (copie, blanchiment) ne se fait que vers une clé enrôlée avec l'usage « sortie ». Le mode Aucun est interdit si la quarantaine est activée. Les bornes appliquent la politique à leur prochain contact (60 s).</p>");
+    if ctx.peut(crate::comptes::Droit::Administrer) {
+        c.b("<div class=\"b-carte\"><h2>Révoquer toutes les bornes d'un site</h2><form class=\"b-formulaire\" method=\"post\" action=\"/bornes/revoquer-site\">");
+        csrf(&mut c, ctx.csrf);
+        c.b("<div class=\"b-champ\"><label for=\"rs-site\">Site</label><input class=\"b-saisie b-mono\" id=\"rs-site\" name=\"site\" required maxlength=\"32\"></div><div class=\"b-champ\"><label for=\"rs-motif\">Motif</label><select class=\"b-saisie\" id=\"rs-motif\" name=\"motif\">");
+        for (code, libelle) in crate::pages::MOTIFS {
+            c.b("<option value=\"")
+                .b(code)
+                .b("\">")
+                .b(libelle)
+                .b("</option>");
+        }
+        c.b("</select></div><div class=\"b-champ\"><label for=\"rs-conf\">Retapez le nom du site</label><input class=\"b-saisie b-mono\" id=\"rs-conf\" name=\"confirmation\" required maxlength=\"32\"></div><div class=\"b-formulaire__actions\"><button class=\"b-btn b-btn--danger\" type=\"submit\">Demander la révocation (second administrateur)</button></div></form></div>");
+    }
+    c.b("<p class=\"b-aide\">Défaut : mode Aucun et clés non enrôlées admises en entrée (comportement de la v1). La sortie (copie, blanchiment) ne se fait que vers une clé enrôlée avec l'usage « sortie ». D13 : le mode Aucun est refusé tant que la quarantaine est active, et la quarantaine ne peut pas être activée tant qu'un site est en mode Aucun. Les bornes appliquent la politique à leur prochain contact (60 s).</p>");
     coque(
         ctx,
         Rubrique::Sites,

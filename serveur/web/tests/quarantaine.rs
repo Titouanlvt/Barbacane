@@ -25,9 +25,9 @@ use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName};
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 
-const MDP_ALICE: &str = "alice : phrase de passe de TEST";
-const MDP_CAROLE: &str = "carole : phrase de passe de TEST";
-const MDP_BOB: &str = "bob : phrase de passe de TEST";
+const MDP_ALICE: &str = "phrase de passe de TEST, premier compte";
+const MDP_CAROLE: &str = "phrase de passe de TEST, troisième compte";
+const MDP_BOB: &str = "phrase de passe de TEST, deuxième compte";
 
 struct Ident {
     chaine: Vec<CertificateDer<'static>>,
@@ -399,6 +399,87 @@ fn quarantaine_desactivee_double_validation_auditeur_refuse() {
     assert!(r.entetes.contains("application/octet-stream"));
     assert!(r.entetes.contains(&format!("quarantaine-{}.bin", e.id)));
     assert_eq!(r.corps, contenu);
+    // D13 (v2.2.0) : quarantaine active → mode Aucun refusé, et jeton d'enrôlement pour un
+    // site encore en mode Aucun refusé ; Identification acceptée.
+    let mode = |m: &str| {
+        post(
+            &b,
+            &b.alice,
+            "/sites/mode",
+            &ca,
+            &[("csrf", &csrf_a), ("site", "site-1"), ("mode", m)],
+        )
+    };
+    let r = mode("aucun");
+    assert_eq!(r.statut, 400, "{}", r.texte());
+    assert!(r.texte().contains("D13"), "{}", r.texte());
+    assert_eq!(mode("identification").statut, 200);
+    let r = post(
+        &b,
+        &b.alice,
+        "/enrolement/jeton",
+        &ca,
+        &[("csrf", &csrf_a), ("site", "site-9")],
+    );
+    assert_eq!(r.statut, 400, "{}", r.texte());
+    assert!(r.texte().contains("D13"), "{}", r.texte());
+    let r = post(
+        &b,
+        &b.alice,
+        "/enrolement/jeton",
+        &ca,
+        &[("csrf", &csrf_a), ("site", "site-1")],
+    );
+    assert_eq!(r.statut, 200, "site en Identification : jeton émis");
+    // Désactivation : double validation (v2.2.0), auto-validation refusée.
+    let r = post(
+        &b,
+        &b.alice,
+        "/quarantaine/desactiver",
+        &ca,
+        &[("csrf", &csrf_a)],
+    );
+    assert_eq!(r.statut, 200, "{}", r.texte());
+    assert!(
+        r.texte().contains("Active"),
+        "toujours active avant validation"
+    );
+    let id = demande(&r.texte());
+    let r = post(
+        &b,
+        &b.alice,
+        "/quarantaine/valider",
+        &ca,
+        &[("csrf", &csrf_a), ("demande", &id)],
+    );
+    assert_eq!(r.statut, 400);
+    let r = post(
+        &b,
+        &b.carole,
+        "/quarantaine/valider",
+        &cc,
+        &[("csrf", &csrf_c), ("demande", &id)],
+    );
+    assert_eq!(r.statut, 200, "{}", r.texte());
+    assert!(r.texte().contains("Désactivée"));
+    assert!(!barbacane_passerelle::utilisateurs::quarantaine_active(
+        &admin.stockage
+    ));
+    // Quarantaine inactive : Aucun de nouveau permis ; puis l'activation est refusée (D13).
+    assert_eq!(mode("aucun").statut, 200);
+    let r = post(
+        &b,
+        &b.alice,
+        "/quarantaine/activer",
+        &ca,
+        &[("csrf", &csrf_a)],
+    );
+    assert_eq!(r.statut, 400, "{}", r.texte());
+    assert!(
+        r.texte().contains("D13") && r.texte().contains("site-1"),
+        "{}",
+        r.texte()
+    );
     let a = quarantaine(&b);
     for x in [
         "activation-validee",
@@ -406,6 +487,9 @@ fn quarantaine_desactivee_double_validation_auditeur_refuse() {
         "export-demande",
         "validation-refusee",
         "export-valide",
+        "desactivation-demandee",
+        "desactivation-validee",
+        "activation-refusee-d13",
     ] {
         assert!(a.contains(&x.to_owned()), "{x} : {a:?}");
     }

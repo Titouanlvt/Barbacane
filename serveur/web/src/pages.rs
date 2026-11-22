@@ -9,7 +9,7 @@ use barbacane_passerelle::outils::date_utc;
 use barbacane_passerelle::registre::{Alerte, Borne, Demande, LigneSupervision};
 use barbacane_protocole::EtatBorne;
 
-use crate::comptes::Role;
+use crate::comptes::{Droit, Role};
 use crate::html::Html;
 
 /// Contexte d'une page authentifiée.
@@ -21,8 +21,13 @@ pub struct Contexte<'a> {
 }
 
 impl Contexte<'_> {
+    /// Actions d'exploitation du parc (administrateur ou opérateur).
     pub(crate) fn admin(&self) -> bool {
-        self.role == Role::Administrateur
+        self.role.peut(Droit::Exploiter)
+    }
+
+    pub(crate) fn peut(&self, d: Droit) -> bool {
+        self.role.peut(d)
     }
 }
 
@@ -39,9 +44,12 @@ pub enum Rubrique {
     IsoBornes,
     Quarantaine,
     Passages,
+    Comptes,
+    /// Page personnelle (mot de passe) : hors navigation.
+    Compte,
 }
 
-const SYMBOLE: &str = "<svg viewBox=\"0 0 64 64\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M6 58V12h4v4h4v-4h4v4h4v42ZM12.5 26v10h3V26ZM42 58V16h4v-4h4v4h4v-4h4v46ZM48.5 26v10h3V26ZM22 58V24h20v34ZM27 58V43a5 5 0 0 1 10 0v15Z\"/><rect class=\"b-herse\" x=\"27\" y=\"46\" width=\"10\" height=\"2\"/><rect class=\"b-herse\" x=\"27\" y=\"51\" width=\"10\" height=\"2\"/></svg>";
+pub(crate) const SYMBOLE: &str = "<svg viewBox=\"0 0 64 64\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M6 58V12h4v4h4v-4h4v4h4v42ZM12.5 26v10h3V26ZM42 58V16h4v-4h4v4h4v-4h4v46ZM48.5 26v10h3V26ZM22 58V24h20v34ZM27 58V43a5 5 0 0 1 10 0v15Z\"/><rect class=\"b-herse\" x=\"27\" y=\"46\" width=\"10\" height=\"2\"/><rect class=\"b-herse\" x=\"27\" y=\"51\" width=\"10\" height=\"2\"/></svg>";
 
 const NAV: &[(Rubrique, &str, &str, &str)] = &[
     (
@@ -104,9 +112,15 @@ const NAV: &[(Rubrique, &str, &str, &str)] = &[
         "Quarantaine",
         "<rect width=\"16\" height=\"11\" x=\"4\" y=\"10\" rx=\"2\"/><path d=\"M8 10V7a4 4 0 0 1 8 0v3\"/>",
     ),
+    (
+        Rubrique::Comptes,
+        "/comptes",
+        "Comptes",
+        "<circle cx=\"9\" cy=\"8\" r=\"4\"/><path d=\"M2 21a7 7 0 0 1 14 0\"/><path d=\"m16 11 2 2 4-4\"/>",
+    ),
 ];
 
-fn tete(h: &mut Html, titre: &str) {
+pub(crate) fn tete(h: &mut Html, titre: &str) {
     h.b("<!doctype html><html lang=\"fr\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>")
         .t(titre)
         .b(" — Console Barbacane</title><link rel=\"stylesheet\" href=\"/statique/barbacane.css\"><link rel=\"icon\" href=\"/statique/symbole.svg\" type=\"image/svg+xml\"></head>");
@@ -134,6 +148,10 @@ pub(crate) fn coque(
         .b(SYMBOLE)
         .b(" Barbacane <span class=\"b-douce\">Console</span></div>");
     for (r, lien, nom, icone) in NAV {
+        // Liens montrés selon le rôle (la route est de toute façon contrôlée côté serveur).
+        if !ctx.role.peut(crate::droit_route("GET", lien)) {
+            continue;
+        }
         h.b("<a href=\"").b(lien).b("\"");
         if *r == rubrique {
             h.b(" aria-current=\"page\"");
@@ -148,7 +166,7 @@ pub(crate) fn coque(
         .t(ctx.compte)
         .b("</b><br>")
         .b(ctx.role.libelle())
-        .b("<br>Certificat et mot de passe</div><form class=\"b-en-ligne\" method=\"post\" action=\"/deconnexion\">");
+        .b("<br><a href=\"/mot-de-passe\">Changer mon mot de passe</a></div><form class=\"b-en-ligne\" method=\"post\" action=\"/deconnexion\">");
     csrf(&mut h, ctx.csrf);
     h.b("<button class=\"b-btn\" type=\"submit\">Se déconnecter</button></form></div></nav><main class=\"b-contenu\" id=\"contenu\"><div class=\"b-entete\"><div><div class=\"b-fil\">")
         .t(fil)

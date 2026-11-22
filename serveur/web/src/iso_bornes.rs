@@ -18,7 +18,7 @@ use anyhow::{Context, Result, bail};
 use barbacane_passerelle::outils::{aleatoire, date_utc};
 use barbacane_protocole::DUREE_JETON_S;
 
-use crate::comptes::Role;
+use crate::comptes::Droit;
 use crate::html::Html;
 use crate::http::{ENTETES_SECURITE, Refus, Reponse, Requete, lire_formulaire};
 use crate::pages::{self, Contexte, Rubrique};
@@ -302,8 +302,11 @@ impl Web {
         t: u64,
         message: Option<(bool, &str)>,
     ) -> Result<Reponse> {
-        if u.role != Role::Administrateur {
-            return Ok(refus(403, "Page réservée aux administrateurs."));
+        if !u.role.peut(Droit::Exploiter) {
+            return Ok(refus(
+                403,
+                "Page réservée aux administrateurs et opérateurs.",
+            ));
         }
         let ctx = u.contexte(t);
         let attente = self.depot_iso()?.purger(t);
@@ -379,8 +382,11 @@ impl Web {
                 "Session absente ou expirée : reconnectez-vous.",
             )));
         };
-        if u.role != Role::Administrateur {
-            return Ok(Some(refus(403, "Rôle auditeur : lecture seule.")));
+        if !u.role.peut(Droit::Exploiter) || u.doit_changer {
+            return Ok(Some(refus(
+                403,
+                "Rôle non autorisé ou mot de passe provisoire à changer.",
+            )));
         }
         let f = match lire_formulaire(r, flux) {
             Ok(f) => f,

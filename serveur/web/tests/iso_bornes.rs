@@ -25,8 +25,8 @@ use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName};
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 
-const MDP_ALICE: &str = "alice : phrase de passe de TEST";
-const MDP_BOB: &str = "bob : phrase de passe de TEST";
+const MDP_ALICE: &str = "phrase de passe de TEST, premier compte";
+const MDP_BOB: &str = "phrase de passe de TEST, deuxième compte";
 
 struct Ident {
     chaine: Vec<CertificateDer<'static>>,

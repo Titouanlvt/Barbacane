@@ -29,8 +29,8 @@ use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, Serve
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 
 const NOM_SERVEUR: &str = "passerelle.barbacane.invalid";
-const MDP_ALICE: &str = "alice : phrase de passe de TEST";
-const MDP_BOB: &str = "bob : phrase de passe de TEST";
+const MDP_ALICE: &str = "phrase de passe de TEST, premier compte";
+const MDP_BOB: &str = "phrase de passe de TEST, deuxième compte";
 
 /// Identité TLS d'un administrateur.
 struct Ident {
@@ -537,9 +537,10 @@ fn auditeur_ne_peut_pas_poster() {
         );
         assert_eq!(r.statut, 403, "{chemin}");
     }
+    // v2.2.0 : refusé par la matrice des droits avant toute recherche (403, plus 404).
     assert_eq!(
         get(&b, &b.bob, "/enrolement/demande?id=x", Some(&c)).statut,
-        404
+        403
     );
     let reg = Admin::ouvrir(b.passerelle.clone())
         .unwrap()

@@ -10,7 +10,9 @@
 //!                                                   passerelle, registre) sans écouter ; code 0
 //!                                                   si l'interface démarrerait
 //! ```
-//! RÔLE : `administrateur` ou `auditeur`. Voir `docs/suite/serveur-web.md`.
+//! RÔLE : `administrateur`, `operateur`, `auditeur` ou `lecture`. Le fichier produit par
+//! `compte` (format v2.1.0) est importé au premier démarrage dans la base des comptes gérée par
+//! la Console (`docs/suite/comptes-administrateurs.md`). Voir `docs/suite/serveur-web.md`.
 #![forbid(unsafe_code)]
 
 use std::io::BufRead;
@@ -24,12 +26,13 @@ use barbacane_web::{Config, Web, servir};
 use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
 
-const USAGE: &str = "usage : barbacane-web CONFIG | barbacane-web compte IDENTIFIANT (administrateur|auditeur) CERT.pem < mot-de-passe | barbacane-web annuaire CONFIG | barbacane-web --verifier-config CONFIG";
+const USAGE: &str = "usage : barbacane-web CONFIG | barbacane-web compte IDENTIFIANT (administrateur|operateur|auditeur|lecture) CERT.pem < mot-de-passe | barbacane-web annuaire CONFIG | barbacane-web --verifier-config CONFIG";
 
 fn executer(args: &[String]) -> Result<()> {
     match args {
         [c, id, role, cert] if c == "compte" => {
-            let role = Role::analyser(role).context("rôle : administrateur ou auditeur")?;
+            let role = Role::analyser(role)
+                .context("rôle : administrateur, operateur, auditeur ou lecture")?;
             let der = CertificateDer::from_pem_file(cert)
                 .with_context(|| format!("certificat {cert}"))?;
             let mut mdp = String::new();
@@ -61,7 +64,7 @@ fn executer(args: &[String]) -> Result<()> {
         [v, config] if v == "--verifier-config" => {
             let config = Config::lire(&PathBuf::from(config))?;
             let adresse = config.adresse_ecoute();
-            Web::nouveau(config)?;
+            Web::verifier(config)?;
             println!("configuration valide : Console sur {adresse}");
             Ok(())
         }

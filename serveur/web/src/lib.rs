@@ -4,12 +4,15 @@
 //!   client d'administrateur **obligatoire** (CA « administrateurs », CRL relue à chaque
 //!   connexion, fail-closed), pas de reprise de session TLS ;
 //! - second facteur : mot de passe Argon2id du compte **lié à ce certificat** ;
-//! - rôles administrateur / auditeur (lecture seule), sessions courtes, jeton anti-CSRF ;
+//! - rôles administrateur, opérateur, auditeur, lecture seule (matrice : `comptes::Role::peut`,
+//!   contrôlée AVANT la lecture du corps par [`droit_route`]), sessions courtes, jeton anti-CSRF ;
+//! - comptes gérés dans la Console (`admin_comptes`), double validation (`validations`) ;
 //! - pages sans JavaScript, échappées par construction (`html`), en-têtes de sécurité (`http`) ;
 //! - chaque action passe par `barbacane_passerelle::admin::Admin` (journal d'audit chaîné,
 //!   acteur `web:<compte>`).
 #![forbid(unsafe_code)]
 
+pub mod admin_comptes;
 pub mod annuaire;
 pub mod comptes;
 pub mod html;
@@ -17,10 +20,13 @@ pub mod http;
 pub mod iso_bornes;
 pub mod multipart;
 pub mod pages;
+pub mod pages_comptes;
 pub mod pages_passages;
 pub mod pages_utilisateurs;
+pub mod pkcs12;
 pub mod quarantaine;
 pub mod sessions;
+pub mod validations;
 
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
@@ -28,7 +34,7 @@ use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail};
@@ -51,7 +57,10 @@ use rustls::{RootCertStore, ServerConfig, ServerConnection, StreamOwned};
 use x509_parser::prelude::{ASN1Time, FromDer};
 use x509_parser::revocation_list::CertificateRevocationList;
 
-use crate::comptes::{Role, Verrous, empreinte_certificat, identifiant_valide, lire_comptes};
+use crate::admin_comptes::{CaAdmin, RENOUVELLEMENT_CRL_S, RemiseP12};
+use crate::comptes::{
+    Comptes, Droit, Role, Verrous, empreinte_certificat, identifiant_valide, lire_comptes,
+};
 use crate::http::{Refus, Reponse, Requete, lire_entete, lire_formulaire};
 use crate::multipart::{Multipart, frontiere};
 use crate::pages::{Contexte, JetonAffiche, Rubrique};
@@ -92,6 +101,10 @@ pub struct Config {
     pub iso_bornes: PathBuf,
     /// Outil de remaster (facultatif ; `iso_bornes::OUTIL_DEFAUT`).
     pub outil_iso_borne: PathBuf,
+    /// Clé de la CA « administrateurs » (facultative ; absente ou fichier inexistant : la
+    /// Console n'émet aucun certificat). Avec elle, la Console publie la CRL des
+    /// administrateurs (`<registre>/administrateurs/crl-administrateurs.pem`).
+    pub cle_ca_administrateurs: Option<PathBuf>,
 }
 
 impl Config {
@@ -116,6 +129,7 @@ impl Config {
             "annuaire",
             "iso_bornes",
             "outil_iso_borne",
+            "cle_ca_administrateurs",
         ];
         for (n, ligne) in texte.lines().enumerate() {
             let ligne = ligne.trim();
@@ -160,6 +174,7 @@ impl Config {
                     .copied()
                     .unwrap_or(iso_bornes::OUTIL_DEFAUT),
             ),
+            cle_ca_administrateurs: v.get("cle_ca_administrateurs").map(PathBuf::from),
         })
     }
 
@@ -170,8 +185,8 @@ impl Config {
 
 // ───────────────────────────── TLS ────────────────────────────────────────────────────────────
 
-/// Lit la CRL et refuse si elle est absente, illisible, sans date de fin ou expirée.
-fn lire_crl(chemin: &Path) -> Result<Vec<CertificateRevocationListDer<'static>>> {
+/// Lit les CRL d'un fichier PEM (au moins une).
+fn lire_crls(chemin: &Path) -> Result<Vec<CertificateRevocationListDer<'static>>> {
     let crls = CertificateRevocationListDer::pem_file_iter(chemin)
         .with_context(|| format!("CRL {}", chemin.display()))?
         .collect::<Result<Vec<_>, _>>()
@@ -179,21 +194,35 @@ fn lire_crl(chemin: &Path) -> Result<Vec<CertificateRevocationListDer<'static>>>
     if crls.is_empty() {
         bail!("aucune CRL dans {}", chemin.display());
     }
+    Ok(crls)
+}
+
+/// Émetteur (DER) et fin de validité d'une CRL.
+fn crl_emetteur_fin(crl: &[u8]) -> Result<(Vec<u8>, Option<ASN1Time>)> {
+    let (_, a) =
+        CertificateRevocationList::from_der(crl).map_err(|e| anyhow::anyhow!("CRL : {e}"))?;
+    Ok((a.issuer().as_raw().to_vec(), a.next_update()))
+}
+
+/// Refuse si une CRL est sans date de fin ou expirée (fail-closed).
+fn controler_crls(crls: &[CertificateRevocationListDer<'static>]) -> Result<()> {
     let t = ASN1Time::now();
-    for crl in &crls {
-        let (_, a) =
-            CertificateRevocationList::from_der(crl).map_err(|e| anyhow::anyhow!("CRL : {e}"))?;
-        match a.next_update() {
+    for crl in crls {
+        match crl_emetteur_fin(crl)?.1 {
             Some(fin) if fin > t => {}
             Some(fin) => bail!("CRL des administrateurs expirée depuis {fin}"),
             None => bail!("CRL sans date de prochaine mise à jour"),
         }
     }
-    Ok(crls)
+    Ok(())
 }
 
-/// Configuration TLS de l'écoute d'administration (relue à chaque connexion).
-pub fn config_tls(config: &Config) -> Result<Arc<ServerConfig>> {
+/// Configuration TLS de l'écoute d'administration avec ces CRL (contrôlées ici).
+pub fn config_tls(
+    config: &Config,
+    crls: Vec<CertificateRevocationListDer<'static>>,
+) -> Result<Arc<ServerConfig>> {
+    controler_crls(&crls)?;
     let mut ancres = RootCertStore::empty();
     for c in
         CertificateDer::pem_file_iter(&config.ca_administrateurs).context("CA administrateurs")?
@@ -205,7 +234,7 @@ pub fn config_tls(config: &Config) -> Result<Arc<ServerConfig>> {
     }
     let verificateur =
         WebPkiClientVerifier::builder_with_provider(Arc::new(ancres), Arc::new(fournisseur()))
-            .with_crls(lire_crl(&config.crl_administrateurs)?)
+            .with_crls(crls)
             .enforce_revocation_expiration()
             .build()?;
     let chaine = CertificateDer::pem_file_iter(&config.chaine_serveur)
@@ -222,6 +251,42 @@ pub fn config_tls(config: &Config) -> Result<Arc<ServerConfig>> {
     tls.send_tls13_tickets = 0;
     tls.alpn_protocols = vec![b"http/1.1".to_vec()];
     Ok(Arc::new(tls))
+}
+
+/// Charge la CA « administrateurs » si sa clé est sur le serveur : le certificat est cherché
+/// parmi les ancres de `ca_administrateurs` (celui qui correspond à la clé).
+fn charger_ca_admin(config: &Config, registre: &Path) -> Result<Option<CaAdmin>> {
+    let Some(cle) = config
+        .cle_ca_administrateurs
+        .as_ref()
+        .filter(|c| c.exists())
+    else {
+        return Ok(None);
+    };
+    let cle_pem = std::fs::read_to_string(cle)
+        .with_context(|| format!("clé de la CA des administrateurs {}", cle.display()))?;
+    for c in CertificateDer::pem_file_iter(&config.ca_administrateurs)? {
+        let der = c?;
+        let pem = format!(
+            "-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----\n",
+            data_encoding::BASE64.encode(&der)
+        );
+        if let Ok(ca) = barbacane_passerelle::ca::CaBornes::depuis_pem(&pem, &cle_pem) {
+            let (_, x) = x509_parser::prelude::X509Certificate::from_der(&der)
+                .map_err(|e| anyhow::anyhow!("CA administrateurs : {e}"))?;
+            return Ok(Some(CaAdmin {
+                ca,
+                sujet: x.subject().as_raw().to_vec(),
+                cert_der: der.to_vec(),
+                crl: Comptes::ouvrir(registre)?
+                    .dossier()
+                    .join("crl-administrateurs.pem"),
+            }));
+        }
+    }
+    bail!(
+        "la clé de la CA des administrateurs ne correspond à aucun certificat de ca_administrateurs"
+    )
 }
 
 /// Flux TCP à échéance totale.
@@ -321,15 +386,22 @@ pub struct Web {
     pub config: Config,
     pub passerelle: barbacane_passerelle::Config,
     sessions: Sessions,
-    verrous: Verrous,
+    pub(crate) verrous: Verrous,
+    pub(crate) comptes: Comptes,
+    pub(crate) ca_admin: Option<CaAdmin>,
+    /// `.p12` en attente de leur téléchargement unique (jamais sur disque).
+    pub(crate) remises: Mutex<std::collections::HashMap<String, RemiseP12>>,
+    pub(crate) crl_verrou: Mutex<()>,
 }
 
 /// Utilisateur authentifié de la requête.
-struct Utilisateur {
+pub(crate) struct Utilisateur {
     id_session: String,
     session: Session,
-    compte: String,
-    role: Role,
+    pub(crate) compte: String,
+    pub(crate) role: Role,
+    /// Mot de passe provisoire : seul son changement est permis.
+    pub(crate) doit_changer: bool,
 }
 
 impl Utilisateur {
@@ -342,24 +414,67 @@ impl Utilisateur {
         }
     }
 
-    fn acteur(&self) -> String {
+    pub(crate) fn acteur(&self) -> String {
         format!("web:{}", self.compte)
     }
 }
 
-fn page(statut: u16, html: String) -> Reponse {
+/// Droit exigé par une route (refus par défaut : une route POST inconnue exige
+/// [`Droit::Administrer`]). Matrice : `docs/suite/comptes-administrateurs.md` §2.
+pub fn droit_route(methode: &str, chemin: &str) -> Droit {
+    match (methode, chemin) {
+        ("GET", "/utilisateurs" | "/passages" | "/passages/detail") => Droit::ConsulterPersonnel,
+        ("GET", "/audit" | "/audit/verification") => Droit::ConsulterJournal,
+        ("GET", "/comptes") => Droit::ConsulterComptes,
+        ("GET", "/enrolement/demande" | "/bornes/revoquer" | iso_bornes::ROUTE) => Droit::Exploiter,
+        ("GET", quarantaine::ROUTE) => Droit::Administrer,
+        ("GET", _) => Droit::Consulter,
+        ("POST", "/deconnexion" | "/mot-de-passe") => Droit::Consulter,
+        (
+            "POST",
+            "/enrolement/jeton"
+            | "/enrolement/valider"
+            | "/enrolement/refuser"
+            | "/bornes/revoquer"
+            | "/maj/diffuser"
+            | "/maj/depot"
+            | "/maj/plancher"
+            | iso_bornes::ROUTE_PREPARER
+            | iso_bornes::ROUTE_TELECHARGER,
+        ) => Droit::Exploiter,
+        ("POST", c)
+            if c.starts_with("/utilisateurs/")
+                || c.starts_with("/sites/")
+                || c.starts_with("/cles-usb/") =>
+        {
+            Droit::Exploiter
+        }
+        _ => Droit::Administrer,
+    }
+}
+
+pub(crate) fn page(statut: u16, html: String) -> Reponse {
     Reponse::html(statut, html)
 }
 
-fn refus(statut: u16, message: &str) -> Reponse {
+pub(crate) fn refus(statut: u16, message: &str) -> Reponse {
     page(statut, pages::erreur(statut, message))
 }
 
 impl Web {
-    /// Contrôles au démarrage : TLS (donc CRL valide), comptes, passerelle, clé d'audit.
+    /// Contrôles au démarrage : TLS (donc CRL valide), comptes (migrés depuis la v2.1.0 au
+    /// premier démarrage), passerelle, clé d'audit.
     pub fn nouveau(config: Config) -> Result<Arc<Web>> {
-        config_tls(&config)?;
-        lire_comptes(&config.comptes)?;
+        Web::preparer(config, true)
+    }
+
+    /// Mêmes contrôles sans rien écrire (`--verifier-config`) : base des comptes lue si elle
+    /// existe, sinon le fichier de la v2.1.0 qui serait importé.
+    pub fn verifier(config: Config) -> Result<()> {
+        Web::preparer(config, false).map(|_| ())
+    }
+
+    fn preparer(config: Config, ecrire: bool) -> Result<Arc<Web>> {
         ClePublique::lire(&config.cle_audit_publique).context("clé publique d'audit")?;
         let passerelle = barbacane_passerelle::Config::lire(&config.passerelle)?;
         if passerelle.port == config.port || passerelle.port_enrolement == config.port {
@@ -369,6 +484,31 @@ impl Web {
         }
         let admin = Admin::ouvrir(passerelle.clone())?;
         Utilisateurs::ouvrir(&admin.stockage)?.lire()?;
+        let comptes = Comptes::ouvrir(admin.stockage.dossier())?;
+        if !comptes.existe() {
+            if ecrire {
+                let n = comptes.migrer(&config.comptes, maintenant(), |n| {
+                    admin.stockage.auditer(
+                        &barbacane_passerelle::admin::acteur_local(),
+                        Evenement::Administration {
+                            action: format!("migration-comptes-2.1.0:{n}"),
+                        },
+                    )
+                })?;
+                if let Some(n) = n {
+                    eprintln!(
+                        "barbacane-web : {n} compte(s) importé(s) de {} (format v2.1.0) dans {} ; ce fichier n'est plus lu",
+                        config.comptes.display(),
+                        comptes.fichier().display()
+                    );
+                }
+            } else {
+                lire_comptes(&config.comptes)?;
+            }
+        } else {
+            comptes.lire()?;
+        }
+        let ca_admin = charger_ca_admin(&config, admin.stockage.dossier())?;
         if let Some(a) = &config.annuaire
             && annuaire::ConfigAnnuaire::lire(a)?.tls12
         {
@@ -377,12 +517,86 @@ impl Web {
                 &barbacane_passerelle::admin::acteur_local(),
             )?;
         }
-        Ok(Arc::new(Web {
+        let web = Web {
             config,
             passerelle,
             sessions: Sessions::default(),
             verrous: Verrous::default(),
-        }))
+            comptes,
+            ca_admin,
+            remises: Mutex::new(Default::default()),
+            crl_verrou: Mutex::new(()),
+        };
+        if ecrire {
+            web.tls()?;
+        } else {
+            web.crls(false).and_then(|c| config_tls(&web.config, c))?;
+        }
+        Ok(Arc::new(web))
+    }
+
+    pub(crate) fn stockage(&self) -> Result<barbacane_passerelle::registre::Stockage> {
+        barbacane_passerelle::registre::Stockage::ouvrir(&self.passerelle.registre)
+    }
+
+    /// CRL de la poignée de main : celles du fichier configuré, sauf celles de la CA gérée par
+    /// la Console, remplacées par la CRL que la Console publie (initialisée depuis la CRL de
+    /// la cérémonie, republiée quand il lui reste moins de 4 jours si `renouveler`).
+    fn crls(&self, renouveler: bool) -> Result<Vec<CertificateRevocationListDer<'static>>> {
+        let mut crls = lire_crls(&self.config.crl_administrateurs)?;
+        let Some(ca) = &self.ca_admin else {
+            return Ok(crls);
+        };
+        let (de_la_ca, autres): (Vec<_>, Vec<_>) = crls
+            .drain(..)
+            .partition(|c| crl_emetteur_fin(c).is_ok_and(|(e, _)| e == ca.sujet));
+        let mut crls = autres;
+        let _v = self.crl_verrou.lock().unwrap_or_else(|e| e.into_inner());
+        let actuelle = CertificateRevocationListDer::pem_file_iter(&ca.crl)
+            .ok()
+            .and_then(|mut i| i.next())
+            .and_then(|c| c.ok());
+        let t = maintenant();
+        let a_publier = match &actuelle {
+            None => true,
+            Some(c) => crl_emetteur_fin(c)?
+                .1
+                .is_none_or(|fin| fin.timestamp() < (t + RENOUVELLEMENT_CRL_S) as i64),
+        };
+        if a_publier && renouveler {
+            if actuelle.is_none()
+                && let Some(c) = de_la_ca.first()
+            {
+                // Reprise des révocations de la cérémonie.
+                let pem = format!(
+                    "-----BEGIN X509 CRL-----\n{}\n-----END X509 CRL-----\n",
+                    data_encoding::BASE64.encode(c)
+                );
+                barbacane_passerelle::outils::ecrire_atomique(&ca.crl, pem.as_bytes())?;
+            }
+            let n = ca.ca.publier_crl(&ca.crl, &[], 0, t)?;
+            self.stockage()?.auditer(
+                "web",
+                Evenement::Administration {
+                    action: format!("crl-administrateurs-publiee:{n}"),
+                },
+            )?;
+        }
+        match CertificateRevocationListDer::pem_file_iter(&ca.crl)
+            .ok()
+            .and_then(|mut i| i.next())
+            .and_then(|c| c.ok())
+        {
+            Some(c) => crls.push(c),
+            // Vérification seule, CRL pas encore publiée : celle de la cérémonie.
+            None => crls.extend(de_la_ca),
+        }
+        Ok(crls)
+    }
+
+    /// Configuration TLS (relue à chaque connexion : CRL à jour, fail-closed).
+    pub fn tls(&self) -> Result<Arc<ServerConfig>> {
+        config_tls(&self.config, self.crls(true)?)
     }
 
     fn admin(&self, u: &Utilisateur) -> Result<Admin> {
@@ -403,25 +617,26 @@ impl Web {
         let id = r.cookies.get(COOKIE)?;
         let session = self.sessions.obtenir(id, empreinte, t)?;
         let (compte, role) = session.compte.clone()?;
-        let comptes = lire_comptes(&self.config.comptes).ok()?;
-        let valide = comptes.iter().any(|c| {
-            c.identifiant == compte && c.role == role && c.empreinte_certificat == empreinte
+        let base = self.comptes.lire().ok()?;
+        let k = base.compte(&compte).filter(|c| {
+            c.actif && c.role == role && c.empreinte_certificat.as_deref() == Some(empreinte)
         });
-        if !valide {
+        let Some(k) = k else {
             self.sessions.supprimer(id);
             return None;
-        }
+        };
         Some(Utilisateur {
             id_session: id.clone(),
             session,
             compte,
             role,
+            doit_changer: k.changer_mot_de_passe,
         })
     }
 
     /// Répond à une requête dont les en-têtes sont lus ; le corps est lu ici, après contrôle
     /// de la session et du rôle.
-    fn repondre(&self, r: &Requete, flux: &mut impl Read, empreinte: &str) -> Reponse {
+    fn repondre(&self, r: &Requete, flux: &mut impl Read, empreinte: &str, der: &[u8]) -> Reponse {
         let t = maintenant();
         if r.methode == "GET"
             && let Some(rep) = statique(&r.chemin)
@@ -439,7 +654,7 @@ impl Web {
             ("GET", "/connexion") => return self.page_connexion(r, empreinte, t, None),
             ("POST", "/connexion") => {
                 return self
-                    .connexion(r, flux, empreinte, t)
+                    .connexion(r, flux, empreinte, der, t)
                     .unwrap_or_else(|e| refus(500, &format!("{e:#}")));
             }
             _ => {}
@@ -451,13 +666,24 @@ impl Web {
                 refus(403, "Session absente ou expirée : reconnectez-vous.")
             };
         };
+        // Rôle vérifié AVANT la lecture du corps (matrice `droit_route`).
+        if !u.role.peut(droit_route(&r.methode, &r.chemin)) {
+            return refus(
+                403,
+                &format!("Rôle {} : action ou page non autorisée.", u.role.libelle()),
+            );
+        }
+        // Mot de passe provisoire : rien d'autre que son changement (et la déconnexion).
+        if u.doit_changer && r.chemin != "/mot-de-passe" && r.chemin != "/deconnexion" {
+            return if r.methode == "GET" {
+                Reponse::redirection("/mot-de-passe")
+            } else {
+                refus(403, "Changez d'abord votre mot de passe provisoire.")
+            };
+        }
         let resultat = match r.methode.as_str() {
             "GET" => self.get(r, &u, t),
             "POST" => {
-                // Rôle vérifié AVANT la lecture du corps.
-                if u.role != Role::Administrateur && r.chemin != "/deconnexion" {
-                    return refus(403, "Rôle auditeur : lecture seule.");
-                }
                 if ROUTES_DEPOT.contains(&r.chemin.as_str()) {
                     self.depot(r, flux, &u, t)
                 } else {
@@ -501,6 +727,7 @@ impl Web {
         r: &Requete,
         flux: &mut impl Read,
         empreinte: &str,
+        der: &[u8],
         t: u64,
     ) -> Result<Reponse> {
         let pre = r
@@ -530,15 +757,19 @@ impl Web {
         };
         let acteur = format!("web:{ident_sur}");
         let cles = [format!("compte:{ident_sur}"), format!("cert:{empreinte}")];
-        let comptes = lire_comptes(&self.config.comptes)?;
-        let compte = comptes.iter().find(|c| c.identifiant == ident);
+        let base = self.comptes.lire()?;
+        let compte = base.compte(ident).filter(|c| c.actif);
         let refuse = "Identifiant, mot de passe ou certificat refusé.";
         if self.verrous.verrouille(&cles, t) {
             self.auditer(&acteur, "connexion-verrouillee")?;
             return Ok(self.page_connexion(r, empreinte, t, Some(refuse)));
         }
         let ok = comptes::verifier_mot_de_passe(compte, mdp)
-            && compte.is_some_and(|c| egal(&c.empreinte_certificat, empreinte));
+            && compte.is_some_and(|c| {
+                c.empreinte_certificat
+                    .as_deref()
+                    .is_some_and(|e| egal(e, empreinte))
+            });
         let Some(compte) = compte.filter(|_| ok) else {
             self.verrous.echec(&cles, t);
             self.auditer(&acteur, "connexion-refusee")?;
@@ -546,6 +777,25 @@ impl Web {
         };
         self.verrous.succes(&cles);
         self.auditer(&acteur, "connexion")?;
+        // Dernier accès ; numéro de série et échéance d'un certificat antérieur à la v2.2.0.
+        let (serie, fin) = x509_parser::prelude::X509Certificate::from_der(der)
+            .map(|(_, x)| {
+                (
+                    barbacane_passerelle::outils::serie_hex(x.raw_serial()),
+                    u64::try_from(x.validity().not_after.timestamp()).ok(),
+                )
+            })
+            .map_err(|e| anyhow::anyhow!("certificat client : {e}"))?;
+        self.comptes.transaction(|b| {
+            if let Some(k) = b.compte_mut(&compte.identifiant) {
+                k.dernier_acces = Some(t);
+                if k.serie_certificat.is_none() {
+                    k.serie_certificat = Some(serie);
+                    k.certificat_expire_le = fin;
+                }
+            }
+            Ok(())
+        })?;
         let (id, _) = self.sessions.creer(
             Some((compte.identifiant.clone(), compte.role)),
             empreinte,
@@ -570,14 +820,14 @@ impl Web {
                 200,
                 pages::enrolement(&ctx, &admin.demandes(t)?, None, None),
             ),
-            "/enrolement/demande" if u.role == Role::Administrateur => {
+            "/enrolement/demande" => {
                 let id = r.parametres.get("id").map(String::as_str).unwrap_or("");
                 match admin.demandes(t)?.into_iter().find(|d| d.id == id) {
                     Some(d) => page(200, pages::demande(&ctx, &d, None, "")),
                     None => refus(404, "Demande inconnue, expirée ou déjà traitée."),
                 }
             }
-            "/bornes/revoquer" if u.role == Role::Administrateur => {
+            "/bornes/revoquer" => {
                 let uuid = r.parametres.get("uuid").map(String::as_str).unwrap_or("");
                 let reg = admin.stockage.lire()?;
                 match reg
@@ -609,6 +859,11 @@ impl Web {
                 self.page_utilisateurs(&ctx, &base, saisie.map(|s| (s, trouve)), None, None)
             }
             "/sites" => self.page_sites(&admin, &ctx, None)?,
+            "/comptes" => {
+                self.auditer(&u.acteur(), "consultation-comptes")?;
+                self.page_comptes(u, t, None, None)?
+            }
+            "/mot-de-passe" => self.page_mot_de_passe(u, t, None),
             "/passages" | "/passages/detail" => {
                 admin.stockage.auditer(
                     &u.acteur(),
@@ -835,13 +1090,7 @@ impl Web {
                 let r = match mode {
                     None => Err(anyhow::anyhow!("mode inconnu")),
                     Some(m) => ut
-                        .definir_mode(
-                            site,
-                            m,
-                            barbacane_passerelle::utilisateurs::quarantaine_active(&admin.stockage),
-                            &acteur,
-                            t,
-                        )
+                        .definir_mode_d13(site, m, &acteur, t)
                         .map(|_| format!("Site {site} : mode {} appliqué.", nom_mode(m))),
                 };
                 let (ok, m) = issue(r);
@@ -940,7 +1189,13 @@ impl Web {
             rep.entetes.push(("Set-Cookie", cookie_efface()));
             return Ok(rep);
         }
+        if r.chemin == "/mot-de-passe" {
+            return self.changer_mot_de_passe(f, u, t);
+        }
         let admin = self.admin(u)?;
+        if let Some(rep) = self.post_comptes(&r.chemin, f, u, t)? {
+            return Ok(rep);
+        }
         if let Some(rep) = self.post_quarantaine(&r.chemin, f, u, t)? {
             return Ok(rep);
         }
@@ -964,7 +1219,16 @@ impl Web {
                         ),
                     ));
                 }
-                let jeton = admin.creer_jeton(site, t)?;
+                let jeton = match admin.creer_jeton(site, t) {
+                    Ok(j) => j,
+                    Err(e) => {
+                        let m = format!("Refusé : {e:#}");
+                        return Ok(page(
+                            400,
+                            pages::enrolement(&ctx, &admin.demandes(t)?, None, Some((site, &m))),
+                        ));
+                    }
+                };
                 let texte = jeton.formater();
                 page(
                     200,
@@ -1185,7 +1449,7 @@ fn traiter(flux: TcpStream, web: &Web) -> Result<String> {
         fin: Instant::now() + DELAI_TOTAL,
     };
     // Configuration (donc CRL des administrateurs) relue à chaque connexion.
-    let mut tls = StreamOwned::new(ServerConnection::new(config_tls(&web.config)?)?, flux);
+    let mut tls = StreamOwned::new(ServerConnection::new(web.tls()?)?, flux);
     while tls.conn.is_handshaking() {
         tls.conn.complete_io(&mut tls.sock)?;
     }
@@ -1195,6 +1459,7 @@ fn traiter(flux: TcpStream, web: &Web) -> Result<String> {
         .and_then(|c| c.first())
         .context("aucun certificat client")?;
     let empreinte = empreinte_certificat(der);
+    let der = der.to_vec();
     let reponse = match lire_entete(&mut tls) {
         Err(Refus(s)) => refus(s, "Requête invalide."),
         Ok(r) if r.methode == "POST" && r.chemin == iso_bornes::ROUTE_TELECHARGER => {
@@ -1214,7 +1479,7 @@ fn traiter(flux: TcpStream, web: &Web) -> Result<String> {
             if r.methode == "POST" && ROUTES_DEPOT.contains(&r.chemin.as_str()) {
                 tls.sock.fin += Duration::from_secs(r.longueur / DEBIT_MIN_DEPOT);
             }
-            web.repondre(&r, &mut tls, &empreinte)
+            web.repondre(&r, &mut tls, &empreinte, &der)
         }
     };
     reponse.ecrire(&mut tls)?;
