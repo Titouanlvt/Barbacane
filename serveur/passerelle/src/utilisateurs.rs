@@ -635,7 +635,7 @@ impl Utilisateurs {
     }
 
     /// Mode d'un site. `quarantaine_active` : D13, le mode Aucun est interdit si la
-    /// quarantaine est activée (elle ne l'est jamais dans cette version, D3).
+    /// quarantaine est activée. La Console passe par [`Utilisateurs::definir_mode_d13`].
     pub fn definir_mode(
         &self,
         site: &str,
@@ -648,7 +648,7 @@ impl Utilisateurs {
             bail!("{SITE_INVALIDE}");
         }
         if mode == ModeUtilisateurs::Aucun && quarantaine_active {
-            bail!("mode Aucun interdit : la quarantaine est activée (D13)");
+            bail!("{REFUS_D13_MODE}");
         }
         self.transaction(t, |b| {
             b.sites.entry(site.into()).or_default().mode = mode;
@@ -661,6 +661,20 @@ impl Utilisateurs {
                 },
             )
         })
+    }
+
+    /// [`Utilisateurs::definir_mode`] avec l'état RÉEL de la quarantaine, lu sous son verrou
+    /// (une activation validée en même temps ne peut pas s'intercaler, D13).
+    pub fn definir_mode_d13(
+        &self,
+        site: &str,
+        mode: ModeUtilisateurs,
+        acteur: &str,
+        t: u64,
+    ) -> Result<()> {
+        let q = crate::quarantaine::Quarantaine::ouvrir(&self.stockage)?;
+        let _v = q.verrouiller()?;
+        self.definir_mode(site, mode, quarantaine_active(&self.stockage), acteur, t)
     }
 
     pub fn definir_entree(
@@ -1030,10 +1044,52 @@ pub fn nom_mode(m: ModeUtilisateurs) -> &'static str {
     }
 }
 
-/// La quarantaine n'existe pas encore (D3, étape 6) : jamais active. Le jour où elle le sera,
-/// cette fonction lira son état et [`Utilisateurs::definir_mode`] refusera le mode Aucun.
-pub fn quarantaine_active(_stockage: &Stockage) -> bool {
-    false
+/// Message de refus D13 (activation de la quarantaine avec un site en mode Aucun).
+pub const REFUS_D13_QUARANTAINE: &str = "D13 : la quarantaine ne peut pas être activée tant qu'un site est en mode Aucun ; passez d'abord ces sites en Identification ou Authentification";
+/// Message de refus D13 (mode Aucun demandé alors que la quarantaine est active).
+pub const REFUS_D13_MODE: &str = "mode Aucun interdit : la quarantaine est activée (D13) ; désactivez-la d'abord (double validation)";
+/// Message de refus D13 (jeton d'enrôlement pour un site en mode Aucun, quarantaine active).
+pub const REFUS_D13_JETON: &str = "D13 : la quarantaine est active et ce site est en mode Aucun ; choisissez d'abord Identification ou Authentification pour ce site (Sites et modes)";
+
+/// État RÉEL de la quarantaine (D13). Fail-closed : un état illisible compte comme actif.
+pub fn quarantaine_active(stockage: &Stockage) -> bool {
+    match crate::quarantaine::Quarantaine::ouvrir(stockage)
+        .and_then(|q| q.statut(crate::outils::maintenant()))
+    {
+        Ok(s) => s.active,
+        Err(_) => true,
+    }
+}
+
+/// Sites en mode Aucun (D13) : sites réglés, sites des bornes actives, des jetons valides, des
+/// demandes d'enrôlement en attente et des clés USB (un site jamais réglé est en mode Aucun).
+pub fn sites_en_mode_aucun(stockage: &Stockage, t: u64) -> Result<Vec<String>> {
+    let reg = stockage.lire()?;
+    let base = Utilisateurs::ouvrir(stockage)?.lire()?;
+    let mut sites: std::collections::BTreeSet<String> = base.sites.keys().cloned().collect();
+    sites.extend(
+        reg.bornes
+            .iter()
+            .filter(|b| b.statut == crate::registre::StatutBorne::Active)
+            .map(|b| b.site.clone()),
+    );
+    sites.extend(
+        reg.jetons
+            .iter()
+            .filter(|j| j.utilise_le.is_none() && j.expire_le > t)
+            .map(|j| j.site.clone()),
+    );
+    sites.extend(
+        reg.demandes
+            .iter()
+            .filter(|d| d.statut == crate::registre::StatutDemande::EnAttente)
+            .map(|d| d.site.clone()),
+    );
+    sites.extend(base.cles_usb.iter().filter_map(|c| c.site.clone()));
+    Ok(sites
+        .into_iter()
+        .filter(|s| base.reglage(s).mode == ModeUtilisateurs::Aucun)
+        .collect())
 }
 
 #[cfg(test)]

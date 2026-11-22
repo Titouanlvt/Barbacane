@@ -69,6 +69,16 @@ impl Admin {
 
     /// Nouveau jeton (1 h, usage unique) pour un site ; le secret n'est affiché qu'une fois.
     pub fn creer_jeton(&self, site: &str, t: u64) -> Result<Jeton> {
+        // D13 : pas de nouvelle borne sur un site en mode Aucun si la quarantaine est active.
+        if crate::utilisateurs::quarantaine_active(&self.stockage)
+            && crate::utilisateurs::Utilisateurs::ouvrir(&self.stockage)?
+                .lire()?
+                .reglage(site)
+                .mode
+                == barbacane_protocole::utilisateurs::ModeUtilisateurs::Aucun
+        {
+            anyhow::bail!("{}", crate::utilisateurs::REFUS_D13_JETON);
+        }
         let jeton = Jeton::nouveau(self.config.port_enrolement, &aleatoire::<16>());
         self.stockage.transaction(|r| {
             r.creer_jeton(site, &jeton.secret, t)?;
@@ -143,6 +153,44 @@ impl Admin {
         self.stockage
             .journaliser(t, "borne_revoquee", json!({"borne": uuid, "motif": motif}));
         Ok(())
+    }
+
+    /// Révocation MASSIVE : toutes les bornes actives d'un site, une seule CRL republiée, dans
+    /// une seule transaction (rien n'est révoqué si une étape échoue). Exécutée après la double
+    /// validation de la Console. Renvoie les uuid révoqués.
+    pub fn revoquer_site(&self, site: &str, motif: Motif, t: u64) -> Result<Vec<String>> {
+        let ca = self.ca()?;
+        let uuids = self.stockage.transaction(|r| {
+            let uuids: Vec<String> = r
+                .bornes
+                .iter()
+                .filter(|b| b.site == site && b.statut == crate::registre::StatutBorne::Active)
+                .map(|b| b.uuid.clone())
+                .collect();
+            if uuids.is_empty() {
+                anyhow::bail!("aucune borne active sur ce site");
+            }
+            for u in &uuids {
+                r.revoquer(u, motif, t)?;
+            }
+            publier_crl(&ca, &self.config, r, t)?;
+            for u in &uuids {
+                self.auditer(Evenement::Revocation {
+                    borne: u.clone(),
+                    motif: serde_json::to_value(motif)?
+                        .as_str()
+                        .unwrap_or("inconnu")
+                        .into(),
+                })?;
+            }
+            Ok(uuids)
+        })?;
+        self.stockage.journaliser(
+            t,
+            "site_revoque",
+            json!({"site": site, "bornes": uuids, "motif": motif}),
+        );
+        Ok(uuids)
     }
 
     /// Republication de la CRL (quotidienne, D8). Renvoie son numéro.

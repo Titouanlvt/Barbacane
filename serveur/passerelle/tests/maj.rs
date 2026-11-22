@@ -559,8 +559,30 @@ fn quarantaine_refusee_par_la_passerelle_si_desactivee() {
         journal.contains(&format!("\"reception-refusee\",\"element\":\"{uuid}\"")),
         "{journal}"
     );
-    // Double validation : dépôt accepté.
+    // D13 : la borne enrôlée est sur un site en mode Aucun (défaut) → activation refusée.
     let q = Quarantaine::ouvrir(&b.admin.stockage).unwrap();
+    let site = b.admin.stockage.lire().unwrap().bornes[0].site.clone();
+    let e = q
+        .demander_activation("web:alice", maintenant())
+        .unwrap_err();
+    assert!(
+        format!("{e:#}").contains("D13") && format!("{e:#}").contains(&site),
+        "{e:#}"
+    );
+    let u = barbacane_passerelle::utilisateurs::Utilisateurs::ouvrir(&b.admin.stockage).unwrap();
+    u.definir_mode_d13(
+        &site,
+        barbacane_protocole::utilisateurs::ModeUtilisateurs::Identification,
+        "web:alice",
+        maintenant(),
+    )
+    .unwrap();
+    assert!(
+        barbacane_passerelle::utilisateurs::sites_en_mode_aucun(&b.admin.stockage, maintenant())
+            .unwrap()
+            .is_empty()
+    );
+    // Double validation : dépôt accepté.
     let d = q.demander_activation("web:alice", maintenant()).unwrap();
     assert!(matches!(
         q.valider(&d, "web:carole", maintenant()).unwrap(),
@@ -569,4 +591,40 @@ fn quarantaine_refusee_par_la_passerelle_si_desactivee() {
     let r = post(&b, b.service, Some(&cle), chemin, &corps).unwrap();
     assert_eq!(r.0, 200, "{}", String::from_utf8_lossy(&r.1));
     assert_eq!(q.elements(maintenant()).unwrap()[0].borne, uuid);
+    // D13, état RÉEL : quarantaine active → mode Aucun refusé, jeton d'un site Aucun refusé.
+    assert!(barbacane_passerelle::utilisateurs::quarantaine_active(
+        &b.admin.stockage
+    ));
+    let e = u
+        .definir_mode_d13(
+            &site,
+            barbacane_protocole::utilisateurs::ModeUtilisateurs::Aucun,
+            "web:alice",
+            maintenant(),
+        )
+        .unwrap_err();
+    assert!(format!("{e:#}").contains("D13"));
+    assert!(b.admin.creer_jeton("site-neuf", maintenant()).is_err());
+    assert!(b.admin.creer_jeton(&site, maintenant()).is_ok());
+    // Désactivation : double validation, puis Aucun de nouveau permis.
+    let d = q.demander_desactivation("web:alice", maintenant()).unwrap();
+    assert!(
+        q.valider(&d, "web:alice", maintenant()).is_err(),
+        "auto-validation"
+    );
+    let d = q.demander_desactivation("web:alice", maintenant()).unwrap();
+    assert!(matches!(
+        q.valider(&d, "web:carole", maintenant()).unwrap(),
+        Validation::Desactivee
+    ));
+    assert!(!barbacane_passerelle::utilisateurs::quarantaine_active(
+        &b.admin.stockage
+    ));
+    u.definir_mode_d13(
+        &site,
+        barbacane_protocole::utilisateurs::ModeUtilisateurs::Aucun,
+        "web:alice",
+        maintenant(),
+    )
+    .unwrap();
 }

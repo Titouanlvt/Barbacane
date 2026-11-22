@@ -127,7 +127,13 @@ impl CaBornes {
             .with_context(|| format!("lecture de {}", cert.display()))?;
         let cle_pem = std::fs::read_to_string(cle)
             .with_context(|| format!("lecture de {}", cle.display()))?;
-        let cle = KeyPair::from_pem(&cle_pem).context("clé de la CA bornes illisible")?;
+        CaBornes::depuis_pem(&cert_pem, &cle_pem)
+    }
+
+    /// Comme [`CaBornes::charger`], depuis le texte PEM (certificat de la CA, clé PKCS#8).
+    pub fn depuis_pem(cert_pem: &str, cle_pem: &str) -> Result<CaBornes> {
+        let cert_pem = cert_pem.to_owned();
+        let cle = KeyPair::from_pem(cle_pem).context("clé de la CA bornes illisible")?;
         if cle.algorithm() != &rcgen::PKCS_ECDSA_P384_SHA384 {
             bail!("clé de la CA bornes : ECDSA P-384 exigée (D6)");
         }
@@ -196,6 +202,42 @@ impl CaBornes {
         p.not_before = temps(emis_le)?;
         p.not_after = temps(expire_le)?;
         let cert = p.signed_by(&cle, &self.issuer)?;
+        Ok(CertificatEmis {
+            pem: cert.pem(),
+            serie: serie_hex(&serie),
+            emis_le,
+            expire_le,
+        })
+    }
+
+    /// Émet un certificat d'ADMINISTRATEUR de la Console (clientAuth, `validite_j` jours) pour
+    /// une clé P-256 tirée par le serveur (`docs/suite/comptes-administrateurs.md` §4). Même
+    /// code pour toute CA chargée par [`CaBornes::charger`] (ici la CA « administrateurs »).
+    pub fn emettre_administrateur(
+        &self,
+        cle: &impl PublicKeyData,
+        identifiant: &str,
+        validite_j: u64,
+        maintenant: u64,
+    ) -> Result<CertificatEmis> {
+        let mut dn = DistinguishedName::new();
+        dn.push(DnType::CommonName, format!("administrateur {identifiant}"));
+        dn.push(DnType::OrganizationName, self.organisation.as_str());
+        let mut p = CertificateParams::default();
+        p.distinguished_name = dn;
+        p.is_ca = IsCa::ExplicitNoCa;
+        p.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+        p.extended_key_usages = vec![ExtendedKeyUsagePurpose::ClientAuth];
+        p.use_authority_key_identifier_extension = true;
+        let mut serie = aleatoire::<16>();
+        serie[0] &= 0x7f;
+        serie[0] |= 0x40;
+        p.serial_number = Some(SerialNumber::from_slice(&serie));
+        let emis_le = maintenant.saturating_sub(60);
+        let expire_le = maintenant + validite_j * JOUR;
+        p.not_before = temps(emis_le)?;
+        p.not_after = temps(expire_le)?;
+        let cert = p.signed_by(cle, &self.issuer)?;
         Ok(CertificatEmis {
             pem: cert.pem(),
             serie: serie_hex(&serie),
