@@ -16,7 +16,7 @@ archives) puis :
 - **copie** les seuls fichiers sains vers une clé de destination ;
 - ou **blanchit** le support : effacement complet, puis réécriture des seuls fichiers sains.
 
-Aucune connaissance du projet n'est nécessaire. Ce manuel correspond à **Barbacane v2.0.3**.
+Aucune connaissance du projet n'est nécessaire. Ce manuel correspond à **Barbacane v2.1.0**.
 
 ## Les noms utilisés
 
@@ -375,18 +375,54 @@ la version installée :
 
 ### Images officielles (ISO Windows, Debian…)
 
-Une ISO d'installation Windows contient plus d'un million de fichiers : trop pour être ouverte
-sur la borne, elle est refusée. L'administrateur peut déclarer les images qu'il a téléchargées
-chez l'éditeur ; la borne les reconnaît alors par leur empreinte et les copie **intactes**, sans
-les ouvrir :
+Une ISO d'installation Windows (8,9 Go, plus d'un million de fichiers dans `install.wim`) est
+trop grande pour être analysée sur la borne. L'administrateur peut déclarer les images qu'il a
+téléchargées chez l'éditeur (empreinte vérifiée sur le site officiel) ; la borne les reconnaît
+alors par leur **empreinte et leur taille** et les copie **intactes**, sans les ouvrir :
 
 ```sh
-sha256sum Win11_26H2_French_x64.iso > images-officielles.sha256
+sha256sum Win11_26H2_French_x64.iso debian-13.7.0-amd64-netinst.iso > images-officielles.sha256
 borne/update/barbacane-update-prepare --cle ~/cles-barbacane/barbacane-maj.key --sortie ./maj \
     --images-officielles images-officielles.sha256
 ```
 
-La liste n'entre sur la borne que dans un paquet **signé** (preuve : `preuves/liste-blanche/`).
+Lancé dans le dossier des ISO, le script ajoute la taille de chaque fichier : la liste signée a la
+forme « sha256 taille nom » (v2.1.0). Une ligne sans taille (listes v2.0) reste reconnue par
+l'analyseur, mais ne permet pas la copie en flux des grandes images.
+
+Sur la borne (v2.1.0), pour un fichier à la racine de la clé dont la taille figure dans la liste :
+
+1. pendant l'« analyse », la borne lit l'image et calcule son empreinte **sans la stocker** ;
+   écran : « Vérification de l'empreinte… » ;
+2. empreinte présente dans la liste : le résultat indique « Image officielle reconnue » ; seule
+   cette image est copiée pendant ce passage (les autres fichiers de la clé sont signalés,
+   à faire analyser dans un passage séparé) ;
+3. à l'écriture, la borne relit l'image, la hache de nouveau au fil de la copie (une seule copie
+   dans l'espace de travail) et **n'écrit la clé de destination que si l'empreinte correspond
+   toujours** ; sinon rien n'est écrit ;
+4. empreinte absente de la liste : l'image suit le chemin normal (analyse complète, ci-dessous).
+
+La liste n'entre sur la borne que dans un paquet **signé** (preuves : `preuves/liste-blanche/`,
+`preuves/2026-11-22-v2.1.0/`).
+
+### Grandes images ISO non déclarées : analyse complète
+
+Une image disque (ISO, IMG, WIM…) qui n'est pas dans la liste est ouverte et **tout son contenu
+est analysé** (Debian 13 netinst de 756 Mo : environ 77 000 fichiers, 35 min, 12 Go d'espace de
+travail sur la borne de mesure). Avant de copier quoi que ce soit, la borne :
+
+- affiche une **estimation de durée** (environ 45 min par Go d'image) sur l'écran d'analyse ;
+- refuse avec un message clair une image de plus de **4 Go** (plafond d'analyse complète) :
+  seule une image officielle déclarée peut passer au-delà ;
+- refuse avec un message clair un contenu que l'espace de travail ne peut pas contenir (environ
+  16 fois la taille des images, 3 fois celle des autres fichiers).
+
+### Format de la clé de sortie
+
+L'écran « Insérez la clé de destination » propose le format : **exFAT (recommandé**, par
+défaut), **NTFS** ou **FAT32**. FAT32 n'accepte pas les fichiers de plus de 4 Go : si un
+fichier à copier dépasse cette taille, la borne le dit avant toute écriture et propose de choisir
+exFAT ou NTFS ; rien n'est effacé. Le blanchiment (clé source réécrite) reste en exFAT.
 
 ## Rotation de la clé de signature
 
@@ -866,7 +902,7 @@ du serveur et des administrateurs (politique de certification, `docs/suite/polit
 Les clés ne sont **jamais** dans une ISO de production : elles sont déposées sur le serveur après
 la cérémonie (§10.5). La procédure de cérémonie de production est prévue en **v2.1.0**.
 
-## 14.2 Mesures en place (v2.0.3)
+## 14.2 Mesures en place (v2.1.0)
 
 - Serveur : disque chiffré LUKS2 scellé au TPM, pare-feu en liste blanche, aucune route par
   défaut, aucun accès distant, services en conteneurs sans root, journal persistant 1 an.
