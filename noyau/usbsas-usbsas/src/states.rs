@@ -1104,7 +1104,7 @@ pub struct AnalyzeState {
 
 impl RunState for AnalyzeState {
     fn run(mut self, comm: &mut impl ProtoRespUsbsas, children: &mut Children) -> Result<State> {
-        info!("analyzing files");
+        info!("uploading bundle for analysis");
         children
             .analyzer
             .comm
@@ -1112,6 +1112,7 @@ impl RunState for AnalyzeState {
                 id: self.transfer.userid.clone(),
             })?;
         self.forward_status(comm, &mut children.analyzer.comm)?;
+        info!("bundle uploaded, analyzing files");
         comm.status(0, 0, false, Status::Analyze)?;
         let report = children
             .analyzer
