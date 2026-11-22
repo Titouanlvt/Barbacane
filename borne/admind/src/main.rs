@@ -387,7 +387,7 @@ impl Ctx {
                 std::fs::remove_file(&p)?
             }
         }
-        let stamp = jiff::Zoned::now().strftime("%Y%m%d-%H%M%S").to_string();
+        let stamp = jiff::ZonedDateTime::now().strftime("%Y%m%d-%H%M%S").to_string();
         let out = dir.join(format!("barbacane-export-{stamp}"));
         let rapports = out.join("rapports");
         std::fs::create_dir_all(&rapports)?;
@@ -516,7 +516,7 @@ impl Ctx {
                 let mut e: Enrolled = self.read_json("enroles.json");
                 let key = json!({
                     "vendorid": req["vendorid"], "productid": req["productid"], "serial": req["serial"],
-                    "description": req["description"], "added": jiff::Zoned::now().strftime("%d/%m/%Y %H:%M").to_string(),
+                    "description": req["description"], "added": jiff::ZonedDateTime::now().strftime("%d/%m/%Y %H:%M").to_string(),
                 });
                 if req["serial"].as_str().unwrap_or_default().is_empty() {
                     bail!("cette clé n'a pas de numéro de série : elle ne peut pas être enrôlée");

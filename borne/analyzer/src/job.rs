@@ -49,8 +49,8 @@ pub struct State {
     pub entries: Vec<Entry>,
     pub antivirus: Antivirus,
     pub yara: bool,
-    pub started: jiff::Zoned,
-    pub finished: Option<jiff::Zoned>,
+    pub started: jiff::ZonedDateTime,
+    pub finished: Option<jiff::ZonedDateTime>,
 }
 
 pub struct Job {
@@ -80,7 +80,7 @@ impl Job {
                 entries: Vec::new(),
                 antivirus: Antivirus::default(),
                 yara: false,
-                started: jiff::Zoned::now(),
+                started: jiff::ZonedDateTime::now(),
                 finished: None,
             }),
             cond: Condvar::new(),

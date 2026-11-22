@@ -330,7 +330,7 @@ fn run_scan(app: &App, job: &Job, tar_path: &std::path::Path, import: Option<std
     let res = av.and_then(|_| scanner.run(tar_path));
     let _ = std::fs::remove_file(tar_path);
     let mut s = job.lock();
-    s.finished = Some(jiff::Zoned::now());
+    s.finished = Some(jiff::ZonedDateTime::now());
     match res {
         Ok(entries) => {
             s.entries = entries;
