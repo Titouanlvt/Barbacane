@@ -1,9 +1,32 @@
 # Écarts du noyau par rapport à usbsas (CEA)
 
-Base : `cea-sec/usbsas`, commit `69ebcf4` (usbsas-usbsas 0.3.4).
+Base : `cea-sec/usbsas`, commit `c75c7eb` (branche `main` du 21/11/2026), depuis la v2.0.3.
+Base précédente : `69ebcf4` (usbsas-usbsas 0.3.4) ; les 151 commits amont intermédiaires ont été rejoués
+un par un sur le noyau (commits « noyau : reprise amont <commit> », v2.0.3), sauf :
+- la réécriture de `usbsas-analyzer-server` (`14dfd4c`, `fd9746f`, `82f28b8`) : la borne a son propre
+  analyseur (`borne/analyzer`) ; l'ancien serveur ne sert qu'aux tests du noyau ;
+- `usbsas-client` (`78cf7f2`, `d662267`, `790207a`, `0cc9d50`) : interface amont non utilisée ;
+- la documentation, le README, `config.example.toml`, `debian/` et `.github/` à la racine amont, et ses
+  `Cargo.lock` (le workspace Barbacane a le sien).
+Les commits `usbsas-fsrw` du 02/11 (`5d143fd`…`47da6bc`) étaient déjà présents (écart 3) : rejeu vide,
+seuls les retraits de features par défaut (`518da6d`, `272eab0`, `c9d3c65`) ont été ajoutés.
 
 Le code usbsas n'est modifié que par les écarts listés ci-dessous (commits dédiés). Le noyau est dans `noyau/`, le code de la borne dans `borne/`.
-Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
+Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`. `fscommon` est vendu dans `noyau/fscommon`
+(dépôt autonome : `path = "../fscommon"` au lieu de la dépendance git amont, même révision `8970625`).
+
+## Écarts devenus inutiles (v2.0.3)
+- **1** (seccomp masqué) : identique à l'amont `6bd82f1` (+ `b7a8406`) ; plus aucune différence de code.
+- **3** (reprise fsrw/usbsas) : absorbé par la nouvelle base.
+- **8** (délai de 12 h) : remplacé par l'amont `da593f3` / `99490e2` : délai de chaque envoi calculé sur
+  sa taille (30 s + 1 s par 256 Kio, soit environ 5 h 30 pour 4,9 Go), `tcp_user_timeout` de 30 s.
+- **10** (étiquette FAT12/16) : identique à l'amont `893c004`, version amont reprise.
+Leurs sections ci-dessous sont gardées pour l'historique.
+
+## Écarts restants (v2.0.3)
+2 (délais USB), 4 (preinst Proxmox), 5 (dossier local analysé), 6 (allow bindgen), 7 (ISO hybride,
+réécrit sur `is_iso9660` amont), 9 (Ventoy, suit le renommage amont `scsi_write`), 11 (RewriteImage),
+12 (http de bouclage), 13 (ppoll dans usbdev).
 
 ## Écarts appliqués
 
@@ -136,3 +159,22 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`.
 - Limite : lecture bornée à `max_size` (16 Gio côté borne).
 - Tests : `states.rs` (`image_reconnue_a_la_bonne_frontiere`, `bitvec_des_premiers_secteurs`),
   `parcours` (`liste_images_lue`).
+
+### 12. http en clair accepté vers une adresse de bouclage seulement (`usbsas-net/src/lib.rs`, v2.0.3)
+- Constat : l'amont (`de888f1`, `ea238ef`) impose https et TLS 1.3 à l'analyseur, au téléversement et
+  au téléchargement, sauf construction avec la feature `allow-http`. L'analyseur de la borne écoute
+  `http://127.0.0.1:8042` : usbsas-analyzer aurait refusé toute analyse.
+- Correctif : `allow-http` n'est PAS activée (elle lèverait TLS pour toutes les URL). `is_loopback_http`
+  accepte seulement `http://` vers une adresse IP de bouclage (127.0.0.0/8, `::1`, pas de nom
+  `localhost`) ; pour une telle URL le client ne suit aucune redirection. Toute autre URL : https et
+  TLS 1.3 comme en amont.
+- Test : `usbsas-net` `url_scheme` (cas de bouclage, `localhost`, IP privée, nom piège) ; phase 1 et e2e
+  (analyseur sur 127.0.0.1).
+
+### 13. `ppoll`/`poll` autorisés dans le fil udev d'usbdev (`usbsas-sandbox/src/usbdev.rs`, v2.0.1)
+- Constat (v2.0.1, `874c334`) : libudev attend parfois avec `ppoll` pendant l'énumération (au
+  démarrage) ; le processus était tué (SIGSYS, appel 271) par intermittence. Écart présent depuis la
+  v2.0.1 mais absent de cette liste ; ajouté lors de la revue v2.0.3. Proposé au CEA (branche
+  `usbdev-allow-ppoll` du fork `Titouanlvt/usbsas`).
+- Correctif : `ppoll` (et `poll` hors aarch64) autorisés ; ils n'attendent que sur des descripteurs
+  déjà ouverts.
