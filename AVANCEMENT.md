@@ -48,11 +48,13 @@ Fait : base `c75c7eb`, écarts 1/3/8/10 retirés, 12 et 13 ajoutés, jiff 1.0, n
 Image officielle vérifiée puis copiée en flux (écart 14), analyse complète avec plafond et
 estimation, format de sortie au choix ([notes](docs/notes-de-version/v2.1.0.md)).
 
-## v2.2.0 (branche `v220`, preuves en cours, non fusionnée) : comptes administrateurs + D13
+## v2.2.0 (branche `v220`, preuves faites, non fusionnée) : comptes administrateurs + D13
 Comptes gérés dans la Console (4 rôles, `.p12`, politique, dernier accès), double validation
 généralisée (comptes, certificats, révocation d'un site, quarantaine dont la désactivation),
 séparation des remises, D13 raccordée, migration des comptes 2.1.0
 ([notes](docs/notes-de-version/v2.2.0.md), [référence](docs/suite/comptes-administrateurs.md)).
+Preuves ([dossier](docs/preuves/2026-11-22-v2.2.0/README.md)) : CI locale FIN 0, banc serveur
+66 OK, banc borne 3/3, migration 2.1.0 → 2.2.0 14 OK, campagne 950 57 OK.
 Choix à valider par l'utilisateur : `docs/suite/decisions.md` (22/11, v2.2.0).
 
 ## Reporté après 2.0.2 (reprend les [notes v2.0.0](docs/notes-de-version/v2.0.0.md))

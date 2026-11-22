@@ -9,7 +9,7 @@ documentation et les preuves. PKI de TEST de `serveur/pki/racine-test.sh`, TPM l
 | Banc QEMU serveur `tests/serveur/qemu-serveur.sh` (ISO installée, parcours étendu) | `qemu-serveur.txt` | **66 OK, 0 ÉCHEC** (53 en 2.1.0 + 13 nouveaux) |
 | Mise à jour de la Console 2.1.0 → 2.2.0 (vrais binaires, mêmes fichiers) `tests/serveur/migration-comptes.sh` | `migration-comptes.txt` | **14 OK, 0 ÉCHEC** |
 | Banc QEMU borne `tests/iso/qemu.sh` (ISO hors ligne 2.2.0 de la CI, sha256 `d096fad1…c038a`, `lab/qemu-v220-borne.sh`) | — | **3 passages sur 3, code 0** |
-| Campagne 950 : mise à jour signée de TEST 2.1.0 → 2.2.0, non-régression + `grandes-iso` | `resultats.txt` | À COMPLÉTER |
+| Campagne 950 (`lab/rapide-v220.sh`, ISO de TEST `538c9847…6cca`) : mise à jour signée de TEST 2.1.0 → 2.2.0 (`5181187`), non-régression + `grandes-iso` | `resultats.txt`, `contexte.txt` | **57 OK, 0 ÉCHEC** |
 
 ## Nouveaux parcours du banc serveur (sur l'ISO installée, Console sur 10.0.3.15:443)
 
