@@ -287,6 +287,7 @@ impl IntegrationTester {
                 destination: out_id,
                 fstype: Some(FsType::Ntfs.into()),
                 pin: None,
+                bootable: false,
             })?;
         let _ = self
             .comm()
