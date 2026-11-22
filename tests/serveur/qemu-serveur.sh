@@ -401,10 +401,11 @@ kill $PID 2>/dev/null || true; wait $PID 2>/dev/null || true
 # ------------------------------------------------------------------ 5. disque vu de l'extérieur
 echo "== en-tête LUKS du disque (sans clé)"
 modprobe nbd max_part=8
-qemu-nbd -r -c /dev/nbd0 "$W/disque.qcow2"
-trap 'qemu-nbd -d /dev/nbd0 >/dev/null 2>&1 || true' EXIT
+NBD=${NBD:-/dev/nbd0} # autre périphérique si un autre banc tourne en même temps
+qemu-nbd -r -c "$NBD" "$W/disque.qcow2"
+trap 'qemu-nbd -d "$NBD" >/dev/null 2>&1 || true' EXIT
 sleep 2
-luks=$(lsblk -lnpo NAME,FSTYPE /dev/nbd0 | awk '$2 == "crypto_LUKS" { print $1; exit }')
+luks=$(lsblk -lnpo NAME,FSTYPE "$NBD" | awk '$2 == "crypto_LUKS" { print $1; exit }')
 if [ -z "$luks" ]; then
     echec "aucune partition LUKS sur le disque"
 else
@@ -427,7 +428,7 @@ else
     else
         ok "phrase de passe d'installation effacée du disque"
     fi
-    n_ext4=$(lsblk -lnpo NAME,FSTYPE /dev/nbd0 | awk '$2 == "ext4"' | wc -l)
+    n_ext4=$(lsblk -lnpo NAME,FSTYPE "$NBD" | awk '$2 == "ext4"' | wc -l)
     [ "$n_ext4" = 1 ] && ok "une seule partition en clair (/boot)" || echec "$n_ext4 partitions ext4 en clair"
 fi
 echo "TPM : logiciel (swtpm $(swtpm --version 2>&1 | head -1 | awk '{ print $NF }')), banc de test uniquement"
