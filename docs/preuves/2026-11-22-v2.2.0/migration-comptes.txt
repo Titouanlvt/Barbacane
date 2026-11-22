@@ -1,0 +1,19 @@
+# tests/serveur/migration-comptes.sh : binaires 2.1.0 (ca83c24) puis 2.2.0 (5181187), bu, 22/11/2026
+== 1. Console 2.1.0
+OK : 2.1.0 : admin-01 connecté (certificat + mot de passe), tableau 200
+OK : 2.1.0 : pas de base de comptes (fichier texte seul)
+== 2. Console 2.2.0, même configuration
+OK : 2.2.0 : admin-01 connecté avec le MÊME mot de passe et le MÊME certificat
+OK : 2.2.0 : admin-01 listé dans la Console (créé par migration-2.1.0)
+OK : 2.2.0 : base registre/administrateurs/comptes.json créée en 0600
+OK : fichier des comptes v2.1.0 intact (retour arrière possible)
+OK : journal du service : importation annoncée
+OK : aucun secret dans le journal du service
+== 3. Console 2.2.0, web.conf de la 2.2.0 (clé de la CA)
+OK : 2.2.0 + CA : connexion
+OK : CRL des administrateurs publiée par la Console
+OK : second administrateur créé après la mise à jour
+OK : redémarrage : connexion
+OK : redémarrage : admin-01 et admin-02 conservés, aucune réimportation
+OK : une seule importation sur trois démarrages en 2.2.0
+MIGRATION COMPTES : OK
