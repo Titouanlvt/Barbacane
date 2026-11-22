@@ -1,0 +1,66 @@
+|. BAR BACAN E Signatures antivirales : 4 jour(s)
+
+# Êlé + Analyse # Résu.tat 4 Clé de destination
+
+nsérez acécecestination
+
+sur Le port de sortie de la borne.
+
+un fichier fait 8,9 Go: le format FAT37 n'accepte pas les fichiers de plus de 4 Go.
+Choisissez exFAT frecommandé) ou NTES. Rien n'a été écrit.
+
+Fr + F #
+
+Format de La clé : exFAT (recommandé) NTFS CA L3 4
+
+Clé de destination : GEMU QEMU USB HARDDRIVE {n° de série BBVIRTSORTIE, 4646861;
+
+
+td BARBACANE Signatures antivirales : 4 jour(s}
+# Clé ?» Analyse > / Résultat | 4 Clé de destination |» 5 Écriture > 6 Terminé
+
+Li
+
+Insérez la clé de destination
+
+sur le port de sortie de la borne.
+
+un fichier fait 8,9 Go : Le format FAT32 n'accepte pas les fichiers de plus de 4 Go.
+Choisissez exFAT (recommandé) ou NTFS. Rien n'a été écrit.
+
+Format de la clé : exFAT D exFAT (recommandé) | [us | FAT32
+
+Clé de destination : GEMU GEMU USB HARDDRIVE (n° de série BBVIRTSORTIE, 46f4:@861)
+
+Son contenu actuel sera entièrement effacé.
+
+Barbacane 21.6 — station blanche hors ligne Mode clés enrôlées Administration
+
+# Clé » Analyse > ” Résultat D 5 Écriture > 6 Terminé
+
+exFAT (recommandé) NTFS FAT 32
+
+Clé de destination : GEMU GEMU USB HARDDRIVE (n° de série BBVIRTSORTIE, 46f4:6991)
+
+Son contenu actuel sera entièrement effacé.
+
+Administration
+
+rt BARBACANE
+
+LE 5 Analyse
+
+Insérez la clé de destination
+
+sur Le port de sortie de la borne.
+
+Format de la clé :
+
+FAT32
+
+Clé de destination : GEMU GEMU USB HARDDRIVE (n° de série BBVIRTSORTIE, 46f4:9861)
+
+Son contenu actuel sera entiérement effacé.
+
+Barbacane 21.0 — station blanche hors ligne Mode clés enrûlées Administration
+

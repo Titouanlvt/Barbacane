@@ -41,6 +41,10 @@ Fait : base `c75c7eb`, écarts 1/3/8/10 retirés, 12 et 13 ajoutés, jiff 1.0, n
 (fork `Titouanlvt/usbsas`) : `usbdev-allow-ppoll`, `usb-transfer-timeouts`. Avec : dépendances
 `nix` 0.32 et `jiff` 1.0 (dependabot).
 
+## v2.1.0 (branche `v210`, preuves faites, non fusionnée) : grandes images ISO
+Image officielle vérifiée puis copiée en flux (écart 14), analyse complète avec plafond et
+estimation, format de sortie au choix ([notes](docs/notes-de-version/v2.1.0.md)).
+
 ## Reporté après 2.0.2 (reprend les [notes v2.0.0](docs/notes-de-version/v2.0.0.md))
 - **PKI et passerelle** : clés dans le TPM, refus des certificats TEST en production, CRL de la
   racine et republication quotidienne, service PKI séparé, racine du lab sur VM sans réseau ;

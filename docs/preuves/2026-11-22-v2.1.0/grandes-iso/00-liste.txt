@@ -1,0 +1,59 @@
+|. BAR BACAN E Signatures antivirales : 4 jour(s)
+
+‘ise à our 10rs igne
+
+1 Branchez la clé administrateur contenant Le paquet de mise à jour (.beu et * beu.minisig} sur Le port d'entrée.
+
+?. Lancez la lecture : le paquet est lu par USb5as, 5a signature et 5a version sont vérifiées, puis il est appliqué.
+
+Paquet de mise à jour version 202611221228 du 2826-11-22 12:28 UTC
+- liste d'images officielles : 1 image{s)
+
+Retour au menu Ciré ét APRLIQUEI
+
+
+Df BARBACANE
+
+Signatures antivirales : 4 jour(s)
+
+Mise à jour hors ligne
+
+1. Branchez la clé administrateur contenant le paquet de mise à jour (*.beu et *.beu.minisig) sur le port d'entrée.
+
+2. Lancez la lecture : le paquet est Lu par usbsas, sa signature et sa version sont vérifiées, puis il est appliqué.
+
+Un paquet non signé, corrompu où plus ancien que la version installée est refusé.
+
+Paquet de mise à jour version 282611221228 du 2826-11-22 12:28 UTC
+- liste d'images officielles : 1 image(s)
+
+Barbacane 21.6 — station blanche hors ligne Mode clés enrôlées Administration
+
+BARBACANE
+
+1. Branchez la clé administrateur contenant le paquet de mise à jour (*.bcu et “.bcu.minisig) sur le port d'entrée.
+
+2. Lancez la lecture : le paquet est lu par usbsss, s3 signature et sa version sont vérifiées, puis il est appliqué.
+
+Un paquet non signé, corrompu ou plus ancien que la version installée est refusé.
+
+Paquet de mise à jour version 262611221228 du 2926-11-22 12:28 UTC
+- liste d'images officielles : 1 image{s)
+
+Administration
+
+rt BARBACANE
+
+MISe à JOUr Nors MODE
+
+2. Lancez la lecture : le paquet est lu par usbsas, sa signature et sa version sont vérifiées, puis il est appliqué.
+
+Un paquet non signé, corrompu ou plus ancien que la version installée est refusé.
+
+Paquet de mise à jour version 292611221228 du 2826-11-22 12:28 UTC
+- liste d'images officielles : 1 image(s)
+
+Lire et appliquer
+
+Barbacane 21.0 — station blanche hors ligne Mode clés enrûlées Administration
+

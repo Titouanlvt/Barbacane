@@ -1,0 +1,5 @@
+ISO sha256 : 538c984718c84c40d013bc06dff83566817d93ea3f568edb03d0a8be34096cca
+Commit : 
+VM : 950, 8192 Mo, disque 32 Go, UEFI, sans réseau
+Date : 2026-11-22T13:28:41+01:00
+Clés : installation virt:install, source virt:source, sortie virt:sortie, autre virt:autre
