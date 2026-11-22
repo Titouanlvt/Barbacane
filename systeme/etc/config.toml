@@ -13,6 +13,9 @@ url = "http://127.0.0.1:8042/api/scanbundle"
 analyze_usb = true
 analyze_net = false
 analyze_cmd = true
+# Attente du résultat (usbsas amont 97ada8b : 1800 s par défaut, trop court pour une clé de plusieurs
+# Go analysée par ClamAV) : 12 h, comme l'ancien écart n° 8.
+poll_timeout = 43200
 
 # Transfert A (analyse) : destination « commande » sans effet ; l'analyseur prépare
 # ensuite le dossier de sortie, relu par le transfert B (voir docs/conception.md).
