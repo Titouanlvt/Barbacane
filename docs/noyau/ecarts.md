@@ -25,10 +25,10 @@ Ajouts hors code : `docs/`, `.github/workflows/barbacane.yml`. `fscommon` est ve
 - **10** (étiquette FAT12/16) : identique à l'amont `893c004`, version amont reprise.
 Leurs sections ci-dessous sont gardées pour l'historique.
 
-## Écarts restants (v2.0.3)
+## Écarts restants (v2.1.0)
 2 (délais USB), 4 (preinst Proxmox), 5 (dossier local analysé), 6 (allow bindgen), 7 (ISO hybride,
 réécrit sur `is_iso9660` amont), 9 (Ventoy, suit le renommage amont `scsi_write`), 11 (RewriteImage),
-12 (http de bouclage), 13 (ppoll dans usbdev).
+12 (http de bouclage), 13 (ppoll dans usbdev), 14 (image officielle portée comme fichier, v2.1.0).
 
 ## Écarts appliqués
 
@@ -180,3 +180,25 @@ réécrit sur `is_iso9660` amont), 9 (Ventoy, suit le renommage amont `scsi_writ
   `usbdev-allow-ppoll` du fork `Titouanlvt/usbsas`).
 - Correctif : `ppoll` (et `poll` hors aarch64) autorisés ; ils n'attendent que sur des descripteurs
   déjà ouverts.
+
+### 14. Image officielle portée comme fichier : vérification et copie en flux (`usbsas-usbsas`, protocole, v2.1.0)
+- Constat (mesure du 21/11/2026 sur la borne 950, espace de travail 15 Go) : une ISO Windows 11
+  officielle de 8,9 Go posée comme fichier sur une clé est refusée en 10 s par `FileSelectionState`
+  (« Not enough space » : 2 × taille > espace, archive de session + système de fichiers de sortie) ;
+  la liste blanche de l'analyseur n'est jamais atteinte.
+- Correctif : requête `OfficialFile { path, sha256[], size[], copy }`, acceptée dans `BrowseSrc`
+  (après `OpenPartition`), sur le modèle de l'écart 11 (même liste signée, même principe : rien
+  n'est écrit sans empreinte reconnue) :
+  1. `copy = false` : le fichier est lu et haché sans rien stocker ; la réponse donne l'empreinte et
+     si le couple (empreinte, taille) figure dans la liste. La session reste dans `BrowseSrc` :
+     le client peut ensuite lancer l'analyse normale (empreinte différente) ou terminer.
+  2. `copy = true` (destination clé USB) : contrôles AVANT toute copie (taille présente dans la
+     liste, FAT32 et fichier > 4 Gio - 1, place sur la clé, espace de travail pour **une** copie) ;
+     copie en flux source → système de fichiers de sortie (files2fs), SHA-256 au fil de la lecture,
+     pas d'archive de session ni d'analyse ; la clé de destination n'est écrite (fs2dev) que si
+     l'empreinte figure dans la liste ; sinon erreur et rien n'est écrit. Les octets écrits sont
+     ceux qui ont été hachés : une clé source qui renverrait d'autres données à la seconde lecture
+     est refusée.
+- Le reste du transfert (`TransferDst`, rapport) est celui de l'amont.
+- Tests : `states.rs` (`liste_validee`, `place_controlee_avant_ecriture`) ; `parcours`
+  (`liste_images_lue`, tailles) ; campagne 950 (`lab/rapide-v210.sh`, ISO Windows 11).

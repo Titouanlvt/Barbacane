@@ -93,6 +93,21 @@ message RequestRewriteImage {
   uint64 max_size = 3;
 };
 
+// Barbacane (écart n° 14) : image officielle portée comme FICHIER par la clé source (ISO
+// Windows, Debian…), après OpenPartition. `copy` faux : le fichier est lu et haché (rien n'est
+// stocké), la réponse donne son empreinte et si elle figure dans la liste. `copy` vrai
+// (destination clé USB) : le fichier est copié en flux dans le système de fichiers de sortie
+// (une seule copie dans l'espace de travail), haché au passage, et la clé de destination n'est
+// écrite QUE si l'empreinte figure dans la liste ; sinon erreur, rien n'est écrit. Réponse
+// immédiate puis réponses d'état, comme RewriteImage.
+message RequestOfficialFile {
+  string path = 1;
+  // Empreintes SHA-256 de la liste et tailles (octets) correspondantes, même rang
+  repeated bytes sha256 = 2;
+  repeated uint64 size = 3;
+  bool copy = 4;
+};
+
 message Request {
   reserved 4; // removed opendevice
   oneof msg {
@@ -109,6 +124,7 @@ message Request {
     RequestWipe Wipe = 12;
     RequestEnd End = 13;
     RequestRewriteImage RewriteImage = 14;
+    RequestOfficialFile OfficialFile = 15;
   }
 };
 
@@ -163,6 +179,12 @@ message ResponseWipe {
 message ResponseRewriteImage {
 };
 
+message ResponseOfficialFile {
+  // Empreinte du fichier (mode vérification seulement)
+  bytes sha256 = 1;
+  bool matched = 2;
+};
+
 message Response {
   reserved 4; // removed opendevice
   oneof msg {
@@ -181,5 +203,6 @@ message Response {
     common.ResponseError Error = 14;
     common.ResponseStatus Status = 15;
     ResponseRewriteImage RewriteImage = 16;
+    ResponseOfficialFile OfficialFile = 17;
   }
 };

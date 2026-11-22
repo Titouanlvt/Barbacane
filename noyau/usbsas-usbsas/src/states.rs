@@ -53,6 +53,7 @@ pub enum State {
     ImgDisk(ImgDiskState),
     Wipe(WipeState),
     RewriteImage(RewriteImageState),
+    OfficialFile(OfficialFileState),
     End(EndState),
     /// Children are ended, the server exits
     Exit,
@@ -73,6 +74,7 @@ impl State {
             State::Wipe(s) => s.run(comm, children),
             State::ImgDisk(s) => s.run(comm, children),
             State::RewriteImage(s) => s.run(comm, children),
+            State::OfficialFile(s) => s.run(comm, children),
             State::End(s) => s.run(comm, children),
             State::Exit => Ok(State::Exit),
         }
@@ -642,6 +644,36 @@ impl RunState for BrowseSrcState {
                         Err(err) => {
                             comm.error(err)?;
                         }
+                    }
+                    continue;
+                }
+                // Barbacane (écart n° 14) : image officielle portée comme fichier
+                Msg::OfficialFile(req) => {
+                    let liste = match liste_officielle(&req.sha256, &req.size) {
+                        Ok(l) => l,
+                        Err(err) => {
+                            comm.error(err)?;
+                            continue;
+                        }
+                    };
+                    if req.copy {
+                        return Ok(State::OfficialFile(OfficialFileState {
+                            config: self.config,
+                            transfer: self.transfer,
+                            path: req.path,
+                            liste,
+                        }));
+                    }
+                    match hacher_fichier(src_reader, &req.path) {
+                        Ok((taille, d)) => {
+                            let matched = liste.contains(&(d, taille));
+                            info!("official file check '{}': {matched}", req.path);
+                            comm.officialfile(proto::usbsas::ResponseOfficialFile {
+                                sha256: d.to_vec(),
+                                matched,
+                            })?
+                        }
+                        Err(err) => comm.error(err)?,
                     }
                     continue;
                 }
@@ -1778,6 +1810,216 @@ impl RunState for RewriteImageState {
         Ok(State::End(EndState {
             report: Some(report),
         }))
+    }
+}
+
+/// Liste (empreinte, taille) reçue du client, validée.
+pub(crate) fn liste_officielle(sha256: &[Vec<u8>], size: &[u64]) -> Result<Vec<([u8; 32], u64)>> {
+    if sha256.is_empty() || sha256.len() != size.len() {
+        bail!("liste d'images officielles vide ou incohérente");
+    }
+    sha256
+        .iter()
+        .zip(size)
+        .map(|(h, &t)| {
+            Ok((
+                <[u8; 32]>::try_from(h.as_slice())
+                    .map_err(|_| anyhow!("SHA-256 de {} octets au lieu de 32", h.len()))?,
+                t,
+            ))
+        })
+        .collect()
+}
+
+/// Lit un fichier de la source (rien n'est stocké) : (taille lue, SHA-256).
+fn hacher_fichier(src: &mut UsbsasChild<ComRqFiles>, path: &str) -> Result<(u64, [u8; 32])> {
+    let attrs = src
+        .comm
+        .getattr(proto::files::RequestGetAttr { path: path.into() })?;
+    if FileType::try_from(attrs.ftype) != Ok(FileType::Regular) {
+        bail!("'{path}' n'est pas un fichier");
+    }
+    let mut hasher = Sha256::new();
+    let mut offset = 0u64;
+    while offset < attrs.size {
+        let n = READ_FILE_MAX_SIZE.min(attrs.size - offset);
+        let rep = src.comm.readfile(proto::files::RequestReadFile {
+            path: path.into(),
+            offset,
+            size: n,
+        })?;
+        if rep.data.len() as u64 != n {
+            bail!("lecture incomplète de '{path}'");
+        }
+        hasher.update(&rep.data);
+        offset += n;
+    }
+    Ok((attrs.size, hasher.finalize().into()))
+}
+
+/// Contrôles faits AVANT toute écriture d'une image officielle de `taille` octets : FAT32
+/// (4 Gio - 1 par fichier), place sur la clé de destination, espace de travail (une seule
+/// copie : le système de fichiers de sortie). Messages destinés à l'utilisateur de la borne.
+pub(crate) fn verifier_place_officielle(
+    taille: u64,
+    fstype: Option<FsType>,
+    max_dst: Option<u64>,
+    espace: Option<u64>,
+) -> Result<()> {
+    if matches!(fstype, Some(FsType::Fat)) && taille > 0xFFFF_FFFF {
+        bail!(
+            "fichier de plus de 4 Go : impossible en FAT32, choisissez exFAT ou NTFS ; rien n'a été écrit"
+        );
+    }
+    if max_dst.is_some_and(|m| taille > m) {
+        bail!("clé de destination trop petite pour l'image ; rien n'a été écrit");
+    }
+    if espace.is_some_and(|e| taille > e) {
+        bail!("espace de travail de la borne insuffisant pour l'image ; rien n'a été écrit");
+    }
+    Ok(())
+}
+
+/// Barbacane (écart n° 14) : copie d'une image officielle portée comme fichier, sans analyse
+/// et sans archive de session : lecture en flux de la source vers le système de fichiers de
+/// sortie (files2fs, une seule copie dans l'espace de travail) avec SHA-256 au fil de la
+/// lecture. La clé de destination n'est écrite (fs2dev) que si (empreinte, taille) figure
+/// dans la liste ; sinon erreur, le système de fichiers de sortie est abandonné, rien n'est
+/// écrit. Les octets écrits sont exactement ceux qui ont été hachés (pas de seconde lecture).
+pub struct OfficialFileState {
+    config: Config,
+    transfer: Transfer,
+    path: String,
+    liste: Vec<([u8; 32], u64)>,
+}
+
+impl RunState for OfficialFileState {
+    fn run(mut self, comm: &mut impl ProtoRespUsbsas, children: &mut Children) -> Result<State> {
+        comm.officialfile(proto::usbsas::ResponseOfficialFile::default())?;
+        let (Device::Usb(usbdev), Some(fstype)) = (&self.transfer.dst, self.transfer.outfstype)
+        else {
+            bail!("image officielle : destination clé USB requise");
+        };
+        let dev_size = usbdev.dev_size.ok_or(anyhow!("taille de destination inconnue"))?;
+        if self.transfer.bootable {
+            bail!("image officielle : destination démarrable non prise en charge");
+        }
+        let attrs = children
+            .scsi2files
+            .comm
+            .getattr(proto::files::RequestGetAttr {
+                path: self.path.clone(),
+            })?;
+        if FileType::try_from(attrs.ftype) != Ok(FileType::Regular) {
+            bail!("'{}' n'est pas un fichier", self.path);
+        }
+        let taille = attrs.size;
+        if !self.liste.iter().any(|(_, t)| *t == taille) {
+            bail!("image non reconnue : sa taille ne figure pas dans la liste ; rien n'a été écrit");
+        }
+        verifier_place_officielle(
+            taille,
+            Some(fstype),
+            self.transfer.max_dst_size,
+            self.config.available_space,
+        )?;
+        info!("official file '{}' ({taille}B): streaming copy", self.path);
+        children.files2fs.comm.init(proto::writedst::RequestInit {
+            dev_size,
+            fstype: fstype.into(),
+        })?;
+        children
+            .files2fs
+            .comm
+            .newfile(proto::writedst::RequestNewFile {
+                path: self.path.clone(),
+                size: taille,
+                ftype: FileType::Regular.into(),
+                timestamp: attrs.timestamp,
+            })?;
+        let mut hasher = Sha256::new();
+        let mut offset = 0u64;
+        while offset < taille {
+            let n = READ_FILE_MAX_SIZE.min(taille - offset);
+            let rep = children
+                .scsi2files
+                .comm
+                .readfile(proto::files::RequestReadFile {
+                    path: self.path.clone(),
+                    offset,
+                    size: n,
+                })?;
+            if rep.data.len() as u64 != n {
+                bail!("lecture incomplète de l'image ; rien n'a été écrit");
+            }
+            hasher.update(&rep.data);
+            children
+                .files2fs
+                .comm
+                .writefile(proto::writedst::RequestWriteFile {
+                    path: self.path.clone(),
+                    offset,
+                    data: rep.data,
+                })?;
+            offset += n;
+            comm.status(offset, taille, false, Status::MkFs)?;
+        }
+        children
+            .files2fs
+            .comm
+            .endfile(proto::writedst::RequestEndFile {
+                path: self.path.clone(),
+            })?;
+        let d: [u8; 32] = hasher.finalize().into();
+        if !self.liste.contains(&(d, taille)) {
+            bail!(
+                "image non reconnue : empreinte différente de la liste de l'administrateur ; rien n'a été écrit"
+            );
+        }
+        let cksum = format!("{:x}", HexDisplay(&d));
+        info!("official file '{}' verified (sha256: {cksum})", self.path);
+        children
+            .files2fs
+            .comm
+            .close(proto::writedst::RequestClose {})?;
+        comm.done(Status::MkFs)?;
+        let mut fi = FileInfo::from(&attrs);
+        fi.status = FileStatus::Clean;
+        fi.cksum = Some(cksum);
+        self.transfer.files.files.insert(self.path.clone(), fi);
+        self.transfer.selected_size = Some(taille);
+        Ok(State::TransferDst(TransferDstState {
+            config: self.config,
+            transfer: self.transfer,
+        }))
+    }
+}
+
+#[cfg(test)]
+mod tests_fichier_officiel {
+    use super::*;
+
+    #[test]
+    fn liste_validee() {
+        assert!(liste_officielle(&[], &[]).is_err());
+        assert!(liste_officielle(&[vec![0; 32]], &[]).is_err());
+        assert!(liste_officielle(&[vec![0; 31]], &[1]).is_err());
+        let l = liste_officielle(&[vec![7; 32]], &[42]).unwrap();
+        assert_eq!(l, vec![([7; 32], 42)]);
+    }
+
+    #[test]
+    fn place_controlee_avant_ecriture() {
+        let g = 8_900_000_000u64;
+        let e = verifier_place_officielle(g, Some(FsType::Fat), None, None).unwrap_err();
+        assert!(e.to_string().contains("FAT32"), "{e}");
+        assert!(verifier_place_officielle(0xFFFF_FFFF, Some(FsType::Fat), None, None).is_ok());
+        assert!(verifier_place_officielle(g, Some(FsType::Exfat), Some(g), Some(g)).is_ok());
+        assert!(verifier_place_officielle(g, Some(FsType::Ntfs), Some(g - 1), None).is_err());
+        // une seule copie : 15 Go d'espace de travail suffisent pour 8,9 Go (2 × refusait)
+        assert!(verifier_place_officielle(g, Some(FsType::Exfat), None, Some(15 << 30)).is_ok());
+        let e = verifier_place_officielle(g, Some(FsType::Exfat), None, Some(g - 1)).unwrap_err();
+        assert!(e.to_string().contains("espace de travail"), "{e}");
     }
 }
 

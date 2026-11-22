@@ -148,7 +148,8 @@ protorequest_async!(
     Report,
     UserId,
     Wipe,
-    RewriteImage
+    RewriteImage,
+    OfficialFile
 );
 
 #[cfg(test)]
