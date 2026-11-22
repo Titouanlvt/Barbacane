@@ -271,6 +271,8 @@ install -o "$SVC" -g "$SVC" -m 444 "$C/audit/cle-audit.pub" "$H/web/cle-audit.pu
 if [ -d "$C/web-test" ]; then
     install -o "$SVC" -g "$SVC" -m 444 "$C/web-test/ca-administrateurs.pem" "$C/web-test/crl-administrateurs.pem" "$H/web/"
     install -o "$SVC" -g "$SVC" -m 600 "$C/web-test/comptes" "$H/web/comptes"
+    [ -f "$C/web-test/cle-ca-administrateurs.pem" ] \
+        && install -o "$SVC" -g "$SVC" -m 400 "$C/web-test/cle-ca-administrateurs.pem" "$H/web/cle-ca-administrateurs.pem"
     rm -rf "$C/web-test"
 fi
 chown "$SVC:$SVC" "$H/web/web.conf"

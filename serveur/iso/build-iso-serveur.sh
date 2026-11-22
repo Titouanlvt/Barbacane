@@ -330,6 +330,9 @@ if [ -n "$PKI_TEST" ]; then
     mkdir -p "$B/web-test"
     cp "$PKI_TEST/ca-administrateurs/cert.pem" "$B/web-test/ca-administrateurs.pem"
     cp "$PKI_TEST/ca-administrateurs/crl.pem" "$B/web-test/crl-administrateurs.pem"
+    # Clé de la CA des administrateurs de TEST : la Console émet les certificats (.p12) et publie
+    # la CRL des administrateurs (v2.2.0, docs/suite/comptes-administrateurs.md §4).
+    cp "$PKI_TEST/ca-administrateurs/cle.pem" "$B/web-test/cle-ca-administrateurs.pem"
     if [ -n "$MDP_WEB_F" ]; then MDP_WEB=$(head -n1 "$MDP_WEB_F"); MDP_WEB_AFFICHE=''
     else MDP_WEB=$(head -c 15 /dev/urandom | base64 | tr '+/' '-_'); MDP_WEB_AFFICHE=$MDP_WEB; fi
     [ "${#MDP_WEB}" -ge 12 ] || refus "--mdp-web : 12 caractères au moins"

@@ -89,7 +89,7 @@ grep -q 'iifname "@IF_ADMIN@" ip daddr @IP_ADMIN@ tcp dport @PORT_ADMIN@ ct stat
 mkdir -p "$W/racine/web"
 ecrire_conf_web "$W/racine/web/web.conf" 8443
 if ecrire_conf_web "$W/x.conf" 443 2>/dev/null; then echec "port interne < 1024 accepté"; fi
-for k in chaine_serveur cle_serveur ca_administrateurs crl_administrateurs comptes passerelle cle_audit_publique; do
+for k in chaine_serveur cle_serveur ca_administrateurs crl_administrateurs cle_ca_administrateurs comptes passerelle cle_audit_publique; do
     v=$(sed -n "s/^$k = //p" "$W/racine/web/web.conf")
     [[ "$v" =~ ^/(pki|web)/ ]] || echec "web : $k = $v : hors des volumes du quadlet"
 done
@@ -99,6 +99,7 @@ grep -qx 'outil_iso_borne = /usr/local/sbin/barbacane-iso-borne' "$W/racine/web/
 # Fichiers déposés comme le font build-iso-serveur.sh et configurer-serveur.sh (VRAIS binaires).
 cp "$W/pki/ca-administrateurs/cert.pem" "$W/racine/web/ca-administrateurs.pem"
 cp "$W/pki/ca-administrateurs/crl.pem" "$W/racine/web/crl-administrateurs.pem"
+( umask 077; cp "$W/pki/ca-administrateurs/cle.pem" "$W/racine/web/cle-ca-administrateurs.pem" )
 ( umask 077; printf 'mot-de-passe-de-test-01\n' | "$BINS/barbacane-web" compte admin-01 administrateur \
     "$W/pki/administrateurs/admin-01.cert.pem" > "$W/racine/web/comptes" ) || echec "barbacane-web compte"
 "$BINS/barbacane-audit" cle "$W/audit" >/dev/null || echec "barbacane-audit cle"
