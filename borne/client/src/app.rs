@@ -2066,26 +2066,6 @@ impl App {
                     .style(style::alerte),
             );
         }
-        let mut formats = row![texte("Format de la clé :")]
-            .spacing(14)
-            .align_y(Alignment::Center);
-        for f in [FsType::Exfat, FsType::Ntfs, FsType::Fat] {
-            let libelle = if f == FsType::Exfat {
-                "exFAT (recommandé)".to_string()
-            } else {
-                barbacane_parcours::nom_format(f).to_string()
-            };
-            formats = formats.push(bouton(
-                &libelle,
-                Msg::Format(f),
-                if f == self.format {
-                    style::primaire
-                } else {
-                    style::secondaire
-                },
-            ));
-        }
-        c = c.push(formats);
         let mut go = button(
             text("Effacer ce disque et y graver les fichiers")
                 .size(24)
@@ -2154,6 +2134,26 @@ impl App {
                     .style(style::alerte),
             );
         }
+        let mut formats = row![texte("Format de la clé :")]
+            .spacing(14)
+            .align_y(Alignment::Center);
+        for f in [FsType::Exfat, FsType::Ntfs, FsType::Fat] {
+            let libelle = if f == FsType::Exfat {
+                "exFAT (recommandé)".to_string()
+            } else {
+                barbacane_parcours::nom_format(f).to_string()
+            };
+            formats = formats.push(bouton(
+                &libelle,
+                Msg::Format(f),
+                if f == self.format {
+                    style::primaire
+                } else {
+                    style::secondaire
+                },
+            ));
+        }
+        c = c.push(formats);
         let mut go = button(
             text("Effacer cette clé et y copier les fichiers")
                 .size(24)
