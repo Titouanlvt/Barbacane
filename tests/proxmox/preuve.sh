@@ -828,7 +828,7 @@ if test_actif grandes-iso; then
         cliquer "Copier vers une clé connue"
         brancher usb2 "$SERIE_SORTIE"; attendre "Clé de destination" 90
         cliquer "FAT32"; sleep 2; cliquer "Effacer cette clé"
-        si voir "n'accepte pas" 60 "$D/05-fat32-refus.png" -- "FAT32 : fichier de plus de 4 Go refusé avant écriture, message clair" "FAT32 : pas de refus affiché"
+        si voir "pas les fichiers de plus" 60 "$D/05-fat32-refus.png" -- "FAT32 : fichier de plus de 4 Go refusé avant écriture, message clair" "FAT32 : pas de refus affiché"
         lire 05-fat32-refus >/dev/null
         debrancher usb2
         monter_ro "$SERIE_SORTIE"; si [ -f "$T/m/TEMOIN.txt" ] -- "FAT32 refusé : clé de sortie non modifiée (témoin présent)" "FAT32 refusé : la clé de sortie a été écrite"; umount "$T/m"

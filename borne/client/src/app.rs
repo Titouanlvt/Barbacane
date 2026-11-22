@@ -161,6 +161,9 @@ pub struct App {
     format: FsType,
     /// Estimation de durée de l'analyse, affichée avant la copie vers l'analyseur
     estimation: Option<String>,
+    /// Format refusé pour le contenu (FAT32 et fichier de plus de 4 Go) : gardé jusqu'au choix
+    /// d'un autre format (la liste des clés, relue chaque seconde, efface `dst_refused`)
+    format_refus: Option<String>,
 }
 
 /// Clé à écarter au retour à l'accueil : la clé source USB du passage terminé si elle est
@@ -247,6 +250,7 @@ impl App {
             cle_ecartee: None,
             format: FsType::Exfat,
             estimation: None,
+            format_refus: None,
         };
         let t = app.refresh_etat();
         (app, t)
@@ -728,6 +732,7 @@ impl App {
         self.demarrable = false;
         self.format = FsType::Exfat;
         self.estimation = None;
+        self.format_refus = None;
     }
 
     fn update(&mut self, m: Msg) -> Task<Msg> {
@@ -850,7 +855,7 @@ impl App {
             Msg::Ecrire => self.start_write(false),
             Msg::Format(f) => {
                 self.format = f;
-                self.dst_refused = None;
+                self.format_refus = None;
                 Task::none()
             }
             Msg::Blanchir => match self.screen {
@@ -973,7 +978,7 @@ impl App {
             if let Err(e) =
                 barbacane_parcours::verifier_format(fstype, an.report.copied().map(|f| f.size))
             {
-                self.dst_refused = Some(e.to_string());
+                self.format_refus = Some(e.to_string());
                 return Task::none();
             }
         }
@@ -2127,6 +2132,14 @@ impl App {
         .spacing(14)
         .align_x(Alignment::Center);
         if let Some(r) = &self.dst_refused {
+            c = c.push(
+                container(texte(r))
+                    .padding(12)
+                    .max_width(900)
+                    .style(style::alerte),
+            );
+        }
+        if let Some(r) = &self.format_refus {
             c = c.push(
                 container(texte(r))
                     .padding(12)
