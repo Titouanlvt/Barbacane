@@ -16,7 +16,7 @@ archives) puis :
 - **copie** les seuls fichiers sains vers une clé de destination ;
 - ou **blanchit** le support : effacement complet, puis réécriture des seuls fichiers sains.
 
-Aucune connaissance du projet n'est nécessaire. Ce manuel correspond à **Barbacane v2.1.0**.
+Aucune connaissance du projet n'est nécessaire. Ce manuel correspond à **Barbacane v2.2.0**.
 
 ## Les noms utilisés
 
@@ -592,9 +592,11 @@ La Liaison bornes et la Console ne démarrent qu'une fois la PKI (Autorité) en 
 (racine hors ligne, chapitre 14) ; aucun compte web n'existe par défaut.
 
 1. Déposer la PKI issue de la cérémonie dans `~barbacane-svc/pki/`, puis démarrer la Liaison bornes (`barbacane-passerelle`).
-2. Console (**v2.0.1**) : déposer `ca-administrateurs.pem` et `crl-administrateurs.pem`
-   dans `~barbacane-svc/web/` (lecture seule, 0444), puis créer le premier compte, lié au
-   certificat de cet administrateur (le mot de passe, 12 caractères au moins, est lu au clavier) :
+2. Console : déposer `ca-administrateurs.pem` et `crl-administrateurs.pem`
+   dans `~barbacane-svc/web/` (lecture seule, 0444) et, pour que la Console émette elle-même les
+   certificats des comptes (**v2.2.0**, recommandé), la clé de la CA des administrateurs
+   `cle-ca-administrateurs.pem` (0400) ; puis créer le premier compte, lié au certificat de cet
+   administrateur (mot de passe lu au clavier, politique du §10.6) :
 
 ```sh
 /usr/local/lib/barbacane-serveur/barbacane-web compte IDENTIFIANT administrateur CERT.pem \
@@ -602,11 +604,24 @@ La Liaison bornes et la Console ne démarrent qu'une fois la PKI (Autorité) en 
 systemctl --user -M barbacane-svc@ start barbacane-web
 ```
 
-**ISO de TEST** (`--pki-test`) : la PKI de test et un compte `admin-01` lié au certificat
-`administrateurs/admin-01.cert.pem` sont déjà installés.
+Ce fichier `comptes` n'est lu qu'au **premier démarrage** : son contenu est importé dans la base
+des comptes de la Console ; ensuite, tout se gère dans la page **Comptes** (§10.6).
 
-> La **CRL des administrateurs** doit être republiée avant son échéance : sinon plus aucune
-> connexion n'est acceptée (sécurité par défaut).
+**ISO de TEST** (`--pki-test`) : la PKI de test, la clé de sa CA des administrateurs et un compte
+`admin-01` lié au certificat `administrateurs/admin-01.cert.pem` sont déjà installés.
+
+> La **CRL des administrateurs** doit rester valide : avec la clé de la CA sur le serveur, la
+> Console la republie seule (moins de 4 jours restants, et à chaque révocation) ; sans elle,
+> republiez-la avant son échéance, sinon plus aucune connexion n'est acceptée (sécurité par défaut).
+
+### Mise à jour d'un serveur 2.1.0 en 2.2.0
+
+Les comptes sont conservés : au premier démarrage de la Console 2.2.0, le fichier `comptes` de la
+2.1.0 est importé tel quel (mêmes identifiants, rôles, certificats et mots de passe) ; il n'est
+pas modifié (un retour en 2.1.0 le relit, sans les comptes créés entre-temps). Ajoutez ensuite la
+clé de la CA des administrateurs (`cle-ca-administrateurs.pem`, 0400) et la ligne
+`cle_ca_administrateurs = /web/cle-ca-administrateurs.pem` dans `~barbacane-svc/web/web.conf`,
+puis redémarrez `barbacane-web`. (Les mises à jour signées du serveur sont prévues en 2.7.)
 
 ## 10.6 Se connecter à la Console
 
@@ -631,11 +646,39 @@ systemctl --user -M barbacane-svc@ start barbacane-web
 
 | Rôle | Droits |
 |---|---|
-| `administrateur` | tout : jetons, enrôlement, révocation, mises à jour, utilisateurs, sites, clés USB, ISO des bornes, quarantaine |
-| `auditeur` | **lecture seule** : supervision, demandes, mises à jour, Journal et sa vérification, utilisateurs (identifiants en clair). Toute action est refusée. |
+| Administrateur | tout, dont les **comptes**, la double validation, la quarantaine et la révocation de toutes les bornes d'un site |
+| Opérateur | exploitation du parc : jetons, enrôlement, révocation d'une borne, mises à jour, ISO des bornes, utilisateurs et PIN, sites, clés USB ; ni comptes, ni quarantaine, ni Journal |
+| Auditeur | **lecture seule** : supervision, demandes, mises à jour, Journal et sa vérification, utilisateurs (identifiants en clair), comptes ; toute action est refusée |
+| Lecture seule | consultation de la supervision (parc, enrôlement, mises à jour, sites, clés) ; ni données personnelles, ni Journal |
 
-Un autre compte se crée avec la même commande `barbacane-web compte` (rôle `administrateur` ou
-`auditeur`), ligne ajoutée au fichier `comptes`. Retirer la ligne ferme aussitôt ses sessions.
+Chaque compte peut changer son mot de passe (lien sous son nom) : 12 caractères au moins, trois
+types parmi minuscules, majuscules, chiffres et autres (ou une phrase de passe de 20 caractères),
+sans l'identifiant.
+
+## 10.6 bis Comptes de la Console (v2.2.0)
+
+Page **Comptes** (administrateur ; l'auditeur la consulte) : la liste donne pour chaque compte
+son rôle, son état, son certificat (série, échéance) et son **dernier accès**.
+
+1. **Créer** : identifiant et rôle → **Demander la création**. Un **second administrateur**
+   valide la demande (bouton « Valider » dans « Demandes en attente », dans l'heure). Seul le
+   validateur voit alors, **une seule fois** : le mot de passe provisoire, le mot de passe du
+   certificat et le bouton de **téléchargement du `.p12`** (une seule fois, 10 minutes). Remettez le
+   `.p12` et les deux mots de passe par des canaux séparés. À sa première connexion, le titulaire
+   doit choisir son mot de passe avant toute autre page.
+2. **Premier démarrage** : tant qu'il n'existe qu'un administrateur, il crée **seul** le second
+   administrateur (inscrit au Journal) ; ensuite, toute action sensible exige deux administrateurs.
+3. **Double validation** (demande puis validation par un autre administrateur, dans l'heure ;
+   votre propre demande ne peut pas être validée par vous) : création, suppression, réactivation,
+   passage au rôle administrateur, nouveau certificat, révocation d'un certificat, révocation de
+   toutes les bornes d'un site, activation, désactivation et export de la quarantaine.
+4. **Sans double validation** : désactiver un compte, le rétrograder, réinitialiser son mot de
+   passe (provisoire affiché une fois). Le **dernier administrateur** ne peut être ni désactivé,
+   ni rétrogradé, ni supprimé, ni privé de son certificat.
+5. **Révoquer le certificat** : la liste de révocation est republiée, la connexion de ce
+   certificat est refusée dès la poignée de main ; **Nouveau certificat** remplace l'ancien (révoqué).
+
+Tout est inscrit au Journal (demandeur et validateur) ; aucun mot de passe n'y figure.
 
 ## 10.7 Journal
 
@@ -647,8 +690,8 @@ Chaque action (connexion, jeton, validation, révocation, dépôt, consultation�
 
 En ligne de commande (console, **v2.0.1**) : `sudo barbacane-audit sceller …` ajoute un point de
 contrôle signé, `sudo barbacane-audit exporter …` produit le fichier d'empreintes à **sortir du
-serveur** (support non réinscriptible). Le scellement et l'export automatiques sont prévus en
-v2.1.0 : faites-les à la main régulièrement.
+serveur** (support non réinscriptible). Le scellement et l'export automatiques sont prévus
+(feuille de route) : faites-les à la main régulièrement.
 
 ## 10.8 Sauvegarde et restauration
 
@@ -679,7 +722,7 @@ barbacane-sauvegarde restaurer --archive FICHIER --cle-privee CLE --signataire C
 ```
 
 La restauration contrôle tout (empreinte, déchiffrement, signature, manifeste) **avant** d'écrire.
-La sauvegarde planifiée est prévue en v2.1.0 : lancez-la à la main.
+La sauvegarde planifiée est prévue (feuille de route) : lancez-la à la main.
 
 # 11. Console au quotidien
 
@@ -704,6 +747,10 @@ seul à mi-vie.
 Bouton **Révoquer** sur la ligne de la borne : motif obligatoire, et il faut **retaper le nom de
 la borne**. La borne est aussitôt refusée par le serveur (liste de révocation republiée). Une
 borne perdue ou volée doit être révoquée tout de suite.
+
+**Toutes les bornes d'un site** (v2.2.0, administrateur) : page **Sites et modes** → « Révoquer
+toutes les bornes d'un site » (motif, nom du site retapé) ; la révocation n'a lieu qu'après la
+validation d'un **second administrateur** (page **Comptes**, demandes en attente).
 
 ![Révocation : nom à retaper](preuves/serveur-web/captures/revocation-jour.png)
 
@@ -745,11 +792,15 @@ Chaque **site** a un mode (page **Sites et modes**) :
 | **Identification** | l'utilisateur tape son identifiant ; il doit être actif dans l'annuaire |
 | **Authentification** | identifiant + **PIN Barbacane** (jamais le mot de passe de l'annuaire) |
 
+**Règle D13** : le mode **Aucun** est refusé tant que la quarantaine est active, et la quarantaine
+ne peut pas être activée tant qu'un site est en mode Aucun (le message cite les sites concernés) ;
+quarantaine active, un jeton d'enrôlement n'est pas délivré pour un site encore en mode Aucun.
+
 ![Sites et modes](preuves/serveur-web/captures/sites-jour.png)
 
 - **Annuaire** : page **Utilisateurs** → **Synchroniser** : la liste des identifiants est lue en
   LDAPS (compte de service en lecture seule). Les absents sont retirés et leur PIN effacé.
-  La synchronisation périodique est prévue en v2.1.0 : relancez-la après chaque arrivée ou départ.
+  La synchronisation périodique est prévue (feuille de route) : relancez-la après chaque arrivée ou départ.
 - **PIN** : **Réinitialiser le PIN** affiche un PIN initial de 8 chiffres **une seule fois** ; le
   remettre à l'utilisateur. À sa première identification, la borne lui fait choisir son propre PIN
   (6 à 12 chiffres, ni suite ni répétition).
@@ -785,10 +836,11 @@ Elle est **désactivée par défaut** ; rien n'est reçu tant qu'elle n'est pas 
 > affiché et journalisé à l'activation.
 
 - **Activation** (page **Quarantaine**) : demandée par un administrateur, **validée par un second
-  administrateur** distinct dans l'heure ; la désactivation se fait par un seul.
+  administrateur** distinct dans l'heure ; **la désactivation aussi** (v2.2.0). Refusée tant
+  qu'un site est en mode Aucun (règle D13, §11.5).
 - Conservation 30 jours, puis purge automatique ; chaque consultation est auditée ; l'export
   demande aussi une double validation et donne un fichier neutralisé (`quarantaine-<id>.bin`).
-- L'envoi des fichiers par les bornes n'est pas encore livré (v2.1.0).
+- L'envoi des fichiers par les bornes n'est pas encore livré (prévu en 2.11).
 
 # 12. Bornes connectées
 
@@ -900,15 +952,16 @@ servent à l'essai ; **ce ne sont pas des ISO de site**.
 En production, la PKI est créée lors d'une **cérémonie** : racine hors ligne, puis CA des bornes,
 du serveur et des administrateurs (politique de certification, `docs/suite/politique-certification.md`).
 Les clés ne sont **jamais** dans une ISO de production : elles sont déposées sur le serveur après
-la cérémonie (§10.5). La procédure de cérémonie de production est prévue en **v2.1.0**.
+la cérémonie (§10.5). La procédure de cérémonie de production est prévue en **v2.4.0** (feuille de route).
 
-## 14.2 Mesures en place (v2.1.0)
+## 14.2 Mesures en place (v2.2.0)
 
 - Serveur : disque chiffré LUKS2 scellé au TPM, pare-feu en liste blanche, aucune route par
   défaut, aucun accès distant, services en conteneurs sans root, journal persistant 1 an.
 - Liaisons : TLS 1.3 mutuel seulement, liste de révocation relue à chaque connexion ; cryptographie
   conforme au RGS (P-384/P-256, AES-256-GCM, Argon2id).
-- Console : certificat + mot de passe, rôles, protection CSRF, aucun JavaScript.
+- Console : certificat + mot de passe, quatre rôles, comptes nominatifs gérés dans la Console,
+  double validation des actions sensibles, protection CSRF, aucun JavaScript.
 - Aucun nom de fichier transmis ; mises à jour toujours signées hors ligne et revérifiées.
 
 ## 14.3 Limites connues
@@ -918,20 +971,21 @@ la cérémonie (§10.5). La procédure de cérémonie de production est prévue 
   d'administration dédié).
 - Clés de la PKI, de l'audit, de l'interface, de la quarantaine et secrets des utilisateurs : encore
   en fichiers protégés (0600), pas dans le TPM. Preuves faites avec un TPM logiciel seulement.
-- Pas encore de double validation générale ni de second facteur matériel des administrateurs.
+- Pas encore de facteur matériel (carte à puce, FIDO2) pour les administrateurs ; la clé de la CA
+  des administrateurs est en fichier sur le serveur (TPM prévu en 2.4).
 - Limites de la borne v1 toujours valables.
 
-## 14.4 Prévu pour la v2.1.0
+## 14.4 Prévu (feuille de route 2.3 à 3.0)
 
 - **Autorité et Liaison bornes** : clés dans le TPM, refus des certificats TEST en production, CRL de la
   racine et republication quotidienne automatique, service PKI séparé ; cérémonie de production.
-- **Enrôlement** : double validation des révocations massives ; PostgreSQL.
+- **Enrôlement** : PostgreSQL.
 - **ISO serveur** : machine physique avec TPM matériel et démarrage sécurisé, re-scellement (shim,
   `systemd-pcrlock`), faillock, AIDE, GNSS/radio, sauvegarde planifiée.
 - **Audit et mises à jour** : minuteries de scellement/export, clé d'audit dans le TPM, `chattr +a`,
   clé distincte pour le `.bcu` serveur, plancher étendu, diffusion par lot avec double validation.
-- **Console** : TPM, service systemd durci, pare-feu d'administration, double validation
-  générale, deux facteurs des administrateurs, comparaison aux exports d'audit, lecture de la fin
+- **Console** : TPM, service systemd durci, pare-feu d'administration, facteur matériel des
+  administrateurs, comparaison aux exports d'audit, lecture de la fin
   du journal.
 - **Utilisateurs et clés USB** : rattachement aux rapports, synchronisation périodique de
   l'annuaire, secrets dans le TPM, mode par borne, rôles de site ; LDAPS sur un vrai annuaire.

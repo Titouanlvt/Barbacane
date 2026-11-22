@@ -21,9 +21,11 @@ la borne), `serveur/passerelle/src/utilisateurs.rs` (base, PIN, anti force brute
 - Le mode est réglé par site dans l'interface web ; la borne le lit dans la politique de son site
   (§4). Le site est celui du **certificat de la borne** (SAN `urn:barbacane:borne:<site>:<uuid>`),
   jamais une donnée de la requête.
-- **Mode Aucun interdit si la quarantaine est activée** (D13) : `Utilisateurs::definir_mode` le
-  refuse quand `quarantaine_active()` est vrai. La quarantaine existe depuis la v2.0.0 mais n'est pas
-  encore raccordée : la fonction renvoie toujours faux (à faire en v2.1.0) ; le refus est prouvé par un test unitaire.
+- **Mode Aucun interdit si la quarantaine est activée** (D13, raccordée en **v2.2.0**) :
+  `quarantaine_active()` lit l'état réel de la quarantaine (fail-closed) ; la Console refuse le
+  mode Aucun quand elle est active (`Utilisateurs::definir_mode_d13`, sous le verrou de la
+  quarantaine), refuse d'activer la quarantaine tant qu'un site est en mode Aucun, et refuse un jeton
+  d'enrôlement pour un site en mode Aucun quand elle est active (`comptes-administrateurs.md` §6).
 - Mode par borne (conception §1 « par site ou par borne ») : PRÉVU ; le site suffit à 100 bornes.
 
 ## 2. Identifiants et annuaire

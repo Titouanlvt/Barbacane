@@ -30,13 +30,10 @@ révocation ou de mise à jour n'est dupliqué : la page appelle les mêmes fonc
 
 ## 2. Rôles
 
-| Rôle | Droits |
-|---|---|
-| `administrateur` | tout : jetons, validation et refus d'enrôlement, révocation, plancher, dépôt, diffusion, consultation |
-| `auditeur` | **lecture seule** : tableau de bord, demandes, mises à jour, journal et sa vérification. Tout `POST` autre que la déconnexion → 403, **avant** lecture du corps |
-
-La double validation (§3.10 : révocation massive, baisse de politique, quarantaine) ne concerne
-aucune action de cette version (révocation d'une seule borne) : PRÉVU avec ces fonctions.
+**v2.2.0** : quatre rôles (administrateur, opérateur, auditeur, lecture seule), matrice et double
+validation généralisée dans [`comptes-administrateurs.md`](comptes-administrateurs.md) §2 et §5.
+Le droit de chaque route est contrôlé **avant** la lecture du corps (`droit_route`, refus par
+défaut).
 
 ## 3. Authentification (deux facteurs)
 
@@ -50,10 +47,11 @@ aucune action de cette version (révocation d'une seule borne) : PRÉVU avec ces
    passe avec le certificat d'un autre compte est refusé ; la session est liée au certificat (un
    cookie volé ne sert à rien sans le certificat et sa clé).
 
-Fichier des comptes (`comptes`, une ligne par compte, refusé s'il est lisible par d'autres
-comptes que le service) : `identifiant rôle empreinte-certificat $argon2id$…`. Ligne produite par
-`barbacane-web compte IDENTIFIANT RÔLE CERT.pem` (mot de passe lu sur l'entrée standard). Le
-fichier est relu à chaque requête : retirer un compte ferme ses sessions aussitôt.
+Comptes (**v2.2.0**) : base `<registre>/administrateurs/comptes.json` gérée dans la Console
+(`comptes-administrateurs.md`), relue à chaque requête (un compte désactivé ou modifié perd sa
+session aussitôt). Le fichier texte de la v2.1.0 (`comptes`, `identifiant rôle
+empreinte-certificat $argon2id$…`, produit par `barbacane-web compte IDENTIFIANT RÔLE CERT.pem`)
+est importé sans perte au premier démarrage, puis n'est plus lu.
 
 Anti force brute : 5 échecs pour un compte (ou un certificat) → verrouillage 15 min, doublé à
 chaque nouvel échec ; message identique quel que soit le motif (compte inconnu, certificat d'un
@@ -154,6 +152,13 @@ par `borne/admind`), `httparse` (analyse des en-têtes HTTP, déjà tirée par `
 déjà utilisée par `borne/admind`). Les autres viennent de la passerelle (`rustls`, `ring`,
 `x509-parser`, `serde_json`, `hex`, `anyhow`). Pas de cadriciel web ni de moteur de gabarits :
 un fil par connexion suffit à quelques administrateurs et limite la surface.
+
+**v2.2.0** : `rcgen`, `serde`, `data-encoding` (déjà dans `Cargo.lock`, passées de
+développement à production : émission des certificats d'administrateur, base des comptes, PEM) ;
+**nouvelle** : `aes` 0.9 (RustCrypto, avec `cipher` et `inout`), chiffrement AES-256-CBC de la clé
+dans le `.p12` (PBES2, le seul chiffrement de clé PKCS#12 lu par tous les navigateurs ; `ring`
+n'expose pas le chiffrement par blocs). Mode CBC et PKCS#12 écrits dans `pkcs12.rs` (≈ 200 lignes,
+vecteur NIST et relecture par `openssl pkcs12` en test). `cargo audit` : aucune alerte.
 
 ## 10. Preuves
 

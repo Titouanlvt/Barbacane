@@ -47,3 +47,28 @@ non à l'installation. Discrétion conservée (port non standard, propre au site
 - **Conservation des rapports et journaux : configurable par l'administrateur** dans la Console (valeur par défaut 1 an, plafond imposé, changement audité et par double validation), avec purge effective des rapports de passage, rotation du journal d'audit par segments scellés et purge des sauvegardes (version 2.3). L'AIPD est mise à jour en conséquence.
 - **CSPN : non** (pas de certification visée pour l'instant).
 - **E1-bis (grilles ANSSI ligne à ligne, registre, plan MCS) : non** ; les écarts bloquants de l'étude restent traités dans les versions 2.2 à 2.4.
+
+## 22/11/2026 — v2.2.0 (comptes de la Console, double validation, D13), choix de Claude à valider
+
+Pris sans l'utilisateur, selon la consigne « sécurité d'abord » ; détail :
+`comptes-administrateurs.md`. À confirmer ou corriger par une nouvelle entrée datée.
+
+- **Rôles** : administrateur, **opérateur** (exploitation du parc, ni comptes ni quarantaine ni
+  journal), auditeur (lecture seule avec journal, comptes et utilisateurs), **lecture seule**
+  (supervision seulement, aucune donnée personnelle). Matrice : `comptes-administrateurs.md` §2.
+- **Double validation généralisée** (§3.10) : création, suppression, élévation et réactivation de
+  compte, émission et révocation de certificat d'administrateur, révocation de toutes les bornes
+  d'un site, activation, export **et désactivation** de la quarantaine. *Écart à la décision du
+  21/11 (« désactivation par un seul ») : la désactivation coupe aussi la capacité d'investigation
+  et un administrateur seul pourrait s'en servir pour effacer ses traces ; elle passe en double
+  validation à la demande de la tâche v2.2.0.* Désactivation et rétrogradation d'un compte,
+  réinitialisation d'un mot de passe : un seul administrateur (sens sûr), jamais pour le dernier.
+- **Amorçage** : tant qu'il n'existe qu'un administrateur utilisable, il crée **seul** le second
+  administrateur (journalisé) ; c'est la seule exception (sinon aucun second administrateur ne
+  pourrait jamais exister).
+- **CA « administrateurs » sur le serveur** (clé en fichier 0400, comme la CA bornes ; TPM en 2.4)
+  pour que la Console émette les `.p12` et republie la CRL des administrateurs ; facultative
+  (absente : pas d'émission dans la Console). Le validateur d'une création reçoit le `.p12` et le
+  mot de passe provisoire (changement imposé à la première connexion).
+- **D13 raccordée** : `quarantaine_active()` lit l'état réel ; refus dans les deux sens et jeton
+  d'enrôlement refusé pour un site en mode Aucun tant que la quarantaine est active.

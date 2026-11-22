@@ -69,10 +69,10 @@ l'IGI 1300. L'IGI 1300 ne concerne que *Secret* et *Très Secret*. `decisions.md
 
 | Exigence (nature) | État (preuve) | Écart | Traité par |
 |---|---|---|---|
-| Comptes nominatifs des administrateurs, pas de compte partagé (R1, R5, recommandé) | PARTIEL : comptes liés à un certificat + mot de passe Argon2id (`serveur/web/src/comptes.rs`, `serveur/web/tests/web.rs`) ; gestion des comptes hors Console | création/retrait des comptes dans la Console | 2.2 |
+| Comptes nominatifs des administrateurs, pas de compte partagé (R1, R5, recommandé) | **FAIT (v2.2.0)** : comptes nominatifs gérés dans la Console (création, désactivation, suppression, rôle, mot de passe, certificat `.p12`, dernier accès), liés à un certificat + mot de passe Argon2id, politique de robustesse (`comptes-administrateurs.md`, `serveur/web/tests/comptes.rs`) | — | 2.2 |
 | Authentification forte des administrateurs (R5) | PARTIEL : certificat client mTLS + mot de passe ; certificats en fichiers, pas de carte à puce/FIDO2 | support matériel du facteur | 2.4 (TPM) + NOUVEAU FIDO2/carte (HORS PROJET pour le matériel) |
 | Poste et réseau d'administration dédiés (R5) | interface d'administration distincte (`serveur/iso/configurer-serveur.sh`) ; poste dédié : HORS PROJET | pare-feu d'administration à compléter | 2.2 / organisme |
-| Séparation des rôles, double validation (R5) | PARTIEL : rôles web ; double validation sur la quarantaine seulement (`serveur/web/tests/quarantaine.rs`) | généralisation | 2.2 |
+| Séparation des rôles, double validation (R5) | **FAIT (v2.2.0)** : 4 rôles (administrateur, opérateur, auditeur, lecture seule), double validation généralisée (comptes, certificats, révocation d'un site, quarantaine), auto-validation refusée, expiration 1 h (`comptes-administrateurs.md` §2, §5) | conservation (2.3) sur le même mécanisme | 2.2 |
 | Durcissement GNU/Linux (R4) | borne FAIT (systemd confiné, nftables, GRUB verrouillé S-01) ; serveur PARTIEL (sysctl, auditd, journald : `serveur/iso/fichiers/etc/`) | pas d'auto-évaluation BP-028 ligne à ligne ; faillock, AIDE absents ; services web non durcis (systemd) | NOUVEAU : grille BP-028 (niveau visé à fixer) ; AIDE/faillock en 2.7 ou 2.8 |
 | Journalisation centralisée, horodatée, protégée (R6) | PARTIEL : audit chaîné SHA-384 + points ECDSA P-384 (`serveur/audit/tests/chaine.rs`) ; chrony local ; `ForwardToSyslog=no` | pas d'export hors serveur, pas de format structuré, pas de collecteur séparé, `chattr +a` absent | 2.3 (structuré + Syslog) ; collecteur séparé 2.8 |
 | TLS 1.3, suites et courbes RGS (R7) | FAIT : `serveur/passerelle/tests/mtls.rs` ; LDAPS TLS 1.2 optionnel audité (`serveur/web/tests/annuaire.rs`) | — | — |
@@ -141,8 +141,8 @@ relèvent du périmètre du SI DR qui les héberge (D1).
    sur la passerelle) — objet même de 2.4 ; pré-requis : décision sur le TPM matériel cible.
 3. **Pas d'export de journal hors serveur** (R6, II 901) : un serveur compromis peut effacer ses traces
    avant la liaison Syslog — 2.3 doit précéder 2.4 (c'est le cas).
-4. **Double validation et comptes administrateurs incomplets** (R5) — 2.2, à terminer avant la
-   cérémonie PKI de production de 2.4 (qui en dépend).
+4. ~~**Double validation et comptes administrateurs incomplets** (R5)~~ — **traité en v2.2.0**
+   (`comptes-administrateurs.md`) ; reste le facteur matériel (P8).
 5. **Niveau de conformité non décidé** : la PKI de production (2.4) ne doit pas être figée avant de savoir
    si une AH exige des supports/produits agréés (carte à puce, HSM).
 6. Confusion DR / IGI 1300 dans `decisions.md` et `README.md` à corriger (documentaire).
