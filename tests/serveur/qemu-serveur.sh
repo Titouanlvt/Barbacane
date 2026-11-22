@@ -241,7 +241,7 @@ parcours_comptes() {
         && ok "double validation : « lect » (lecture seule) créé par admin-01 ; .p12 au validateur, mot de passe provisoire au demandeur" \
         || echec "double validation : validation par admin-01 : HTTP $code, remise $code2"
     p12_vers_pem "$W/creation-lect.html" lect "${A1[@]}"
-    premiere_connexion lect "$PL" "Phrase de passe du banc, lecture seule"
+    premiere_connexion lect "$PL" "Phrase de passe du banc, consultation"
     AL=("$W/lect.cert.pem" "$W/lect.cle.pem" "$W/cookies-lect")
     SL=$(champ "$W/tableau-lect.html" csrf)
     c1=$(requete "${AL[@]}" /dev/null /comptes); c2=$(requete "${AL[@]}" /dev/null /audit)
