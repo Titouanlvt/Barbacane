@@ -470,33 +470,24 @@ impl DevOpenedState {
         // « mode DD », dd). Sa table MBR/GPT ne déclare qu'une partition EFI (FAT) reconnue ;
         // le système ISO 9660, qui porte tout le contenu, couvre le périphérique depuis le
         // secteur 0. Sans ce test, seule la partition EFI était lue (3 fichiers sur 1 011).
-        if !(partitions.len() == 1 && partitions[0].ptype == 0) {
-            let mut n = MAX_LEN_ISO_HEADER / block_size;
-            if MAX_LEN_ISO_HEADER.rem_euclid(block_size) > 0 {
-                n += 1;
-            }
-            let data =
-                self.usb_mass_storage
-                    .read_sectors(0x8000 / block_size, n, block_size as usize)?;
-            let cd001 = [0x43, 0x44, 0x30, 0x30, 0x31];
-            if cd001 == data[0x1..0x6] || cd001 == data[0x801..0x806] {
-                // Une partition déclarée à partir du secteur 0 (isohybrid) est l'ISO elle-même.
-                if let Some(p) = partitions.iter_mut().find(|p| p.start == 0) {
-                    p.type_str = "ISO9660".into();
-                    p.ptype = 0xFF;
-                    p.size = p.size.max(self.usb_mass_storage.dev_size);
-                } else {
-                    partitions.insert(
-                        0,
-                        PartitionInfo {
-                            ptype: 0xFF,
-                            start: 0,
-                            size: self.usb_mass_storage.dev_size,
-                            name_str: "ISO9660".into(),
-                            type_str: "ISO9660".into(),
-                        },
-                    );
-                }
+        // (détection amont `is_iso9660`, au secteur 0 du périphérique)
+        if !(partitions.len() == 1 && partitions[0].ptype == 0) && self.is_iso9660(0) {
+            // Une partition déclarée à partir du secteur 0 (isohybrid) est l'ISO elle-même.
+            if let Some(p) = partitions.iter_mut().find(|p| p.start == 0) {
+                p.type_str = "ISO9660".into();
+                p.ptype = 0xFF;
+                p.size = p.size.max(self.usb_mass_storage.dev_size);
+            } else {
+                partitions.insert(
+                    0,
+                    PartitionInfo {
+                        ptype: 0xFF,
+                        start: 0,
+                        size: self.usb_mass_storage.dev_size,
+                        name_str: "ISO9660".into(),
+                        type_str: "ISO9660".into(),
+                    },
+                );
             }
         }
 
