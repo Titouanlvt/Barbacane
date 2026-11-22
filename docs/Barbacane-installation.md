@@ -675,9 +675,9 @@ son rôle, son état, son certificat (série, échéance) et son **dernier accè
 3. **Double validation** (demande puis validation par un autre administrateur, dans l'heure ;
    votre propre demande ne peut pas être validée par vous) : création, suppression, réactivation,
    passage au rôle administrateur, nouveau certificat, révocation d'un certificat, révocation de
-   toutes les bornes d'un site, activation, désactivation et export de la quarantaine.
+   toutes les bornes d'un site, activation et export de la quarantaine.
 4. **Sans double validation** : désactiver un compte, le rétrograder, réinitialiser son mot de
-   passe (provisoire affiché une fois). Le **dernier administrateur** ne peut être ni désactivé,
+   passe (provisoire affiché une fois), désactiver la quarantaine. Le **dernier administrateur** ne peut être ni désactivé,
    ni rétrogradé, ni supprimé, ni privé de son certificat.
 5. **Révoquer le certificat** : la liste de révocation est republiée, la connexion de ce
    certificat est refusée dès la poignée de main ; **Nouveau certificat** remplace l'ancien (révoqué).
@@ -840,7 +840,7 @@ Elle est **désactivée par défaut** ; rien n'est reçu tant qu'elle n'est pas 
 > affiché et journalisé à l'activation.
 
 - **Activation** (page **Quarantaine**) : demandée par un administrateur, **validée par un second
-  administrateur** distinct dans l'heure ; **la désactivation aussi** (v2.2.0). Refusée tant
+  administrateur** distinct dans l'heure ; la désactivation se fait par un seul (journalisée). Activation refusée tant
   qu'un site est en mode Aucun (règle D13, §11.5).
 - Conservation 30 jours, puis purge automatique ; chaque consultation est auditée ; l'export
   demande aussi une double validation et donne un fichier neutralisé (`quarantaine-<id>.bin`).

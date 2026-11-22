@@ -45,7 +45,7 @@ Décisions prises par défaut : `decisions.md`.
 | Usurpation d'un compte de la Console | administrateur malveillant, vol du `.p12` | importante / limitée | deux facteurs (certificat + mot de passe), double validation des créations et élévations, changement imposé du mot de passe provisoire, `.p12` téléchargeable une fois, journal nominatif des deux administrateurs | limitée / négligeable |
 | Conservation excessive | défaut de purge | limitée / significative | purge automatique testée, y compris sauvegardes | négligeable / limitée |
 | Révélation d'informations sensibles par les noms de fichiers | transmission en clair | importante / significative | noms jamais transmis (D2) | négligeable |
-| Exposition de fichiers en quarantaine | serveur, analyste | importante / limitée | quarantaine désactivée par défaut, chiffrée pour une clé hors serveur, activation et désactivation par double validation, jamais avec un site en mode Aucun (D13, v2.2.0) | limitée / négligeable |
+| Exposition de fichiers en quarantaine | serveur, analyste | importante / limitée | quarantaine désactivée par défaut, chiffrée pour une clé hors serveur, activation par double validation, jamais avec un site en mode Aucun (D13, v2.2.0) | limitée / négligeable |
 
 ## 4. Validation
 

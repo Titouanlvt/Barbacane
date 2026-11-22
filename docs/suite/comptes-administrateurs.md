@@ -137,12 +137,12 @@ administrateur utilisable, distinct (identifiant **et** numéro de compte), dans
 | Émission et révocation d'un certificat d'administrateur | Comptes |
 | Révocation **massive** : toutes les bornes actives d'un site (nom du site retapé, une seule CRL) | Comptes |
 | Activation de la quarantaine | Quarantaine |
-| **Désactivation** de la quarantaine (v2.2.0 ; un seul administrateur auparavant) | Quarantaine |
 | Export d'un élément de la quarantaine | Quarantaine |
 | Changement de la durée de conservation (décision du 22/11) | **2.3.0**, même mécanisme |
 
-Hors double validation (sens sûr ou réversible, toujours journalisé) : désactivation et
-rétrogradation d'un compte, réinitialisation d'un mot de passe, révocation d'**une** borne (nom
+Hors double validation (sens sûr ou réversible, toujours journalisé) : **désactivation de la
+quarantaine** (un seul administrateur, décision du 21/11 maintenue le 22/11 ; ne viole jamais
+D13), désactivation et rétrogradation d'un compte, réinitialisation d'un mot de passe, révocation d'**une** borne (nom
 retapé), modes de site, PIN, clés USB, mises à jour (les paquets restent signés hors ligne).
 
 ## 6. D13 — mode Aucun et quarantaine
@@ -150,7 +150,7 @@ retapé), modes de site, PIN, clés USB, mises à jour (les paquets restent sign
 `quarantaine_active()` lit désormais l'état réel (fail-closed : état illisible = active).
 
 - Quarantaine active → passer un site en mode **Aucun** est refusé (« mode Aucun interdit : la
-  quarantaine est activée (D13) ; désactivez-la d'abord (double validation) »). Le contrôle se fait
+  quarantaine est activée (D13) ; désactivez-la d'abord »). Le contrôle se fait
   sous le verrou de la quarantaine : une activation validée au même moment ne peut pas s'intercaler.
 - Un site en mode Aucun → **demander et valider** l'activation est refusé (« D13 : la quarantaine
   ne peut pas être activée tant qu'un site est en mode Aucun… (sites en mode Aucun : …) »),
@@ -184,7 +184,7 @@ CA des administrateurs (`~barbacane-svc/web/cle-ca-administrateurs.pem`, 0400) e
 | `validations::tests::auto_validation_expiration_et_non_administrateur` | auto-validation, non-administrateur, doublon, expiration à 1 h, exécution unique, demande d'un compte désactivé retirée |
 | `pkcs12::tests::der_et_aes` | DER, AES-256-CBC (SP 800-38A F.2.5) |
 | `serveur/web/tests/comptes.rs` | migration, CSRF, dernier administrateur, amorçage du 2e administrateur puis amorçage refusé et `reamorcer`, séparation des remises (remise unique au demandeur, réinitialisation et nouveau certificat refusés au détenteur de l'autre secret), clé de la CA 0644 refusée, `.p12` relu par `openssl pkcs12` (et mauvais mot de passe refusé), téléchargement unique, changement imposé, auto-validation refusée, rôles opérateur et lecture seule refusés, révocation d'un certificat (poignée de main refusée), révocation d'un site, suppression, journal sans secret, CRL de la cérémonie reprise, pas de réimportation |
-| `serveur/web/tests/quarantaine.rs` | D13 dans les deux sens, jeton refusé, désactivation par double validation |
+| `serveur/web/tests/quarantaine.rs` | D13 dans les deux sens, jeton refusé, désactivation par un seul administrateur, journalisée |
 | `serveur/passerelle/tests/maj.rs` `quarantaine_refusee_par_la_passerelle_si_desactivee` | D13 sur l'état réel, `sites_en_mode_aucun`, jetons |
 | `tests/serveur/migration-comptes.sh` | vrais binaires 2.1.0 puis 2.2.0 sur les mêmes fichiers : comptes conservés |
 | `tests/serveur/qemu-serveur.sh` | ISO installée : 2e administrateur, `.p12`, double validation, D13, lecture seule refusée |

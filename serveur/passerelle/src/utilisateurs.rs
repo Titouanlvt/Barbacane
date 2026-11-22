@@ -1047,7 +1047,8 @@ pub fn nom_mode(m: ModeUtilisateurs) -> &'static str {
 /// Message de refus D13 (activation de la quarantaine avec un site en mode Aucun).
 pub const REFUS_D13_QUARANTAINE: &str = "D13 : la quarantaine ne peut pas être activée tant qu'un site est en mode Aucun ; passez d'abord ces sites en Identification ou Authentification";
 /// Message de refus D13 (mode Aucun demandé alors que la quarantaine est active).
-pub const REFUS_D13_MODE: &str = "mode Aucun interdit : la quarantaine est activée (D13) ; désactivez-la d'abord (double validation)";
+pub const REFUS_D13_MODE: &str =
+    "mode Aucun interdit : la quarantaine est activée (D13) ; désactivez-la d'abord";
 /// Message de refus D13 (jeton d'enrôlement pour un site en mode Aucun, quarantaine active).
 pub const REFUS_D13_JETON: &str = "D13 : la quarantaine est active et ce site est en mode Aucun ; choisissez d'abord Identification ou Authentification pour ce site (Sites et modes)";
 

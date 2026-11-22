@@ -50,7 +50,7 @@ estimation, format de sortie au choix ([notes](docs/notes-de-version/v2.1.0.md))
 
 ## v2.2.0 (branche `v220`, preuves faites, non fusionnée) : comptes administrateurs + D13
 Comptes gérés dans la Console (4 rôles, `.p12`, politique, dernier accès), double validation
-généralisée (comptes, certificats, révocation d'un site, quarantaine dont la désactivation),
+généralisée (comptes, certificats, révocation d'un site, activation et export de la quarantaine ; sa désactivation reste à un seul administrateur),
 séparation des remises, D13 raccordée, migration des comptes 2.1.0
 ([notes](docs/notes-de-version/v2.2.0.md), [référence](docs/suite/comptes-administrateurs.md)).
 Preuves ([dossier](docs/preuves/2026-11-22-v2.2.0/README.md)) : CI locale FIN 0, banc serveur

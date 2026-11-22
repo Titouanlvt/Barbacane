@@ -606,17 +606,8 @@ fn quarantaine_refusee_par_la_passerelle_si_desactivee() {
     assert!(format!("{e:#}").contains("D13"));
     assert!(b.admin.creer_jeton("site-neuf", maintenant()).is_err());
     assert!(b.admin.creer_jeton(&site, maintenant()).is_ok());
-    // Désactivation : double validation, puis Aucun de nouveau permis.
-    let d = q.demander_desactivation("web:alice", maintenant()).unwrap();
-    assert!(
-        q.valider(&d, "web:alice", maintenant()).is_err(),
-        "auto-validation"
-    );
-    let d = q.demander_desactivation("web:alice", maintenant()).unwrap();
-    assert!(matches!(
-        q.valider(&d, "web:carole", maintenant()).unwrap(),
-        Validation::Desactivee
-    ));
+    // Désactivation par un seul administrateur (sens sûr), puis Aucun de nouveau permis.
+    q.desactiver("web:alice").unwrap();
     assert!(!barbacane_passerelle::utilisateurs::quarantaine_active(
         &b.admin.stockage
     ));

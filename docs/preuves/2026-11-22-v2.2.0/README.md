@@ -24,7 +24,8 @@ documentation et les preuves. PKI de TEST de `serveur/pki/racine-test.sh`, TPM l
 5. `lect` : comptes, Journal, réglage de site et jeton refusés (403) ;
 6. D13 : site `labo` en mode Aucun → activation de la quarantaine refusée (message D13) ; en
    Identification → activation demandée par `admin-01`, validée par `admin-02` ; mode Aucun alors
-   refusé ; désactivation par double validation.
+   refusé ; (parcours de la passe `5181187` : désactivation par double validation, retirée ensuite
+   à la demande de l'utilisateur — voir la passe finale ci-dessous).
 
 Passe précédente du banc (même jour, commit `3cd4a9a`) : 65 OK, 1 ÉCHEC — le banc choisissait pour
 `lect` un mot de passe contenant « lect » (« lecture seule »), refusé **à raison** par la politique ;

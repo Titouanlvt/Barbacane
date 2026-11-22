@@ -261,10 +261,11 @@ parcours_comptes() {
     [ "$code" = 200 ] && grep -q '>Active<' "$W/q3.html" && [ "$code2" = 400 ] && grep -q 'D13' "$W/q4.html" \
         && ok "D13 : quarantaine activée par double validation (admin-01 puis admin-02), mode Aucun alors refusé (400)" \
         || echec "D13 : activation $code, mode Aucun $code2"
-    requete "${A1[@]}" "$W/q5.html" /quarantaine/desactiver "csrf=$S1" >/dev/null
-    code=$(requete "${A2[@]}" "$W/q6.html" /quarantaine/valider "csrf=$S2" "demande=$(champ "$W/q5.html" demande)")
-    [ "$code" = 200 ] && grep -q 'Désactivée' "$W/q6.html" && ok "quarantaine désactivée par double validation" \
-        || echec "désactivation de la quarantaine : $code"
+    code=$(requete "${A1[@]}" "$W/q5.html" /quarantaine/desactiver "csrf=$S1")
+    code2=$(requete "${A1[@]}" "$W/q6.html" /sites/mode "csrf=$S1" "site=labo" "mode=aucun")
+    [ "$code" = 200 ] && grep -q 'Désactivée' "$W/q5.html" && [ "$code2" = 200 ] \
+        && ok "quarantaine désactivée par un seul administrateur (journalisé), mode Aucun de nouveau permis" \
+        || echec "désactivation de la quarantaine : $code, mode Aucun $code2"
 }
 if [ -n "$PKI" ]; then
     A=(--silent --show-error --max-time 20 --insecure --cert "$PKI/administrateurs/admin-01.cert.pem" --key "$PKI/administrateurs/admin-01.cle.pem")

@@ -303,7 +303,7 @@ pub fn comptes(ctx: &Contexte, v: &VueComptes) -> String {
         }
         c.b("</div>");
     }
-    c.b("<p class=\"b-aide\">Double validation : création, suppression, réactivation, passage au rôle administrateur, émission et révocation de certificat, révocation de toutes les bornes d'un site, activation, désactivation et export de la quarantaine. Une demande expire après 1 h et ne peut pas être validée par son auteur. Seule exception : tant qu'il n'existe qu'UN administrateur utilisable, il crée seul le second administrateur (inscrit au journal). Désactivation, rétrogradation et réinitialisation du mot de passe : un seul administrateur (sens sûr), jamais pour le dernier administrateur.</p>");
+    c.b("<p class=\"b-aide\">Double validation : création, suppression, réactivation, passage au rôle administrateur, émission et révocation de certificat, révocation de toutes les bornes d'un site, activation et export de la quarantaine. Une demande expire après 1 h et ne peut pas être validée par son auteur. Seule exception : tant qu'il n'existe qu'UN administrateur utilisable, il crée seul le second administrateur (inscrit au journal). Désactivation et rétrogradation d'un compte, réinitialisation d'un mot de passe, désactivation de la quarantaine : un seul administrateur (sens sûr, journalisé), jamais contre le dernier administrateur.</p>");
     pages::coque(
         ctx,
         Rubrique::Comptes,

@@ -1,9 +1,9 @@
 //! Page « Quarantaine » (administrateur seulement ; `docs/suite/quarantaine.md`).
 //!
 //! Désactivée par défaut : la page affiche l'état et sa raison, avec l'avertissement DR
-//! avant l'activation (option choisie par les administrateurs). Activation, désactivation
-//! (v2.2.0) et export par double validation (deux administrateurs distincts) ; D13 : pas
-//! d'activation tant qu'un site est en mode Aucun.
+//! avant l'activation (option choisie par les administrateurs). Activation et export
+//! par double validation (deux administrateurs distincts), désactivation par un seul
+//! (journalisée) ; D13 : pas d'activation tant qu'un site est en mode Aucun.
 //! L'export est restitué en pièce jointe neutralisée (nom `quarantaine-<id>.bin`,
 //! `application/octet-stream`), jamais affiché. Tout accès est audité. Auditeur : 403.
 
@@ -72,13 +72,7 @@ pub fn page(
     }
     c.b("<div class=\"b-formulaire__actions\">");
     if s.active {
-        bouton(
-            &mut c,
-            ctx,
-            ROUTE_DESACTIVER,
-            None,
-            "Demander la désactivation",
-        );
+        bouton(&mut c, ctx, ROUTE_DESACTIVER, None, "Désactiver");
     } else {
         bouton(&mut c, ctx, ROUTE_ACTIVER, None, "Demander l'activation");
     }
@@ -91,7 +85,6 @@ pub fn page(
         let quoi = match &d.action {
             Action::Activation => "Activation".to_owned(),
             Action::Export { element } => format!("Export de {element}"),
-            Action::Desactivation => "Désactivation".to_owned(),
         };
         c.b("<tr><td>")
             .t(&quoi)
@@ -196,19 +189,15 @@ impl Web {
             ROUTE_ACTIVER => q.demander_activation(&a, t).map(|_| {
                 "Activation demandée : un SECOND administrateur doit la valider (1 h).".to_owned()
             }),
-            ROUTE_DESACTIVER => q.demander_desactivation(&a, t).map(|_| {
-                "Désactivation demandée : un SECOND administrateur doit la valider (1 h)."
-                    .to_owned()
-            }),
+            ROUTE_DESACTIVER => q
+                .desactiver(&a)
+                .map(|_| "Quarantaine désactivée.".to_owned()),
             ROUTE_EXPORTER => q.demander_export(champ("element"), &a, t).map(|_| {
                 "Export demandé : un SECOND administrateur doit le valider (1 h).".to_owned()
             }),
             ROUTE_VALIDER => match q.valider(champ("demande"), &a, t) {
                 Ok(Validation::Activee) => {
                     Ok("Quarantaine activée (double validation).".to_owned())
-                }
-                Ok(Validation::Desactivee) => {
-                    Ok("Quarantaine désactivée (double validation).".to_owned())
                 }
                 Ok(Validation::Export(e, contenu)) => {
                     let mut rep = Reponse::texte(200, "");

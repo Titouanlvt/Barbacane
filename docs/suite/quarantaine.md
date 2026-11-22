@@ -3,8 +3,8 @@
 Conception : `docs/conception-barbacane-suite.md` §3.6, §3.10 ; homologation :
 `docs/suite/dossier-homologation.md` (§1, §2, §8). **Implémentée mais DÉSACTIVÉE par défaut**
 (niveau Diffusion Restreinte). **Décision du 21/11/2026** : la quarantaine est une option que
-l'administrateur choisit d'activer ou non (activation, désactivation et export : double
-validation, `comptes-administrateurs.md` §5) ; le champ `mesures_dr_serveur` du dossier
+l'administrateur choisit d'activer ou non (activation et export : double validation,
+désactivation par un seul, `comptes-administrateurs.md` §5) ; le champ `mesures_dr_serveur` du dossier
 d'homologation (toujours `non`) n'est plus un verrou logiciel. Aucun changement côté borne (v1 hors ligne et charte v1
 intactes).
 
@@ -14,7 +14,7 @@ intactes).
 |---|---|---|
 | Option des administrateurs | désactivée par défaut ; rien n'est reçu ni exporté tant qu'elle n'est pas activée ; activation = seul choix des administrateurs (plus de `quarantaine.conf` ni de lecture du dossier d'homologation) | `desactivee_par_defaut`, `reception_refusee_si_desactivee` |
 | Avertissement DR | page `/quarantaine` désactivée : « Les fichiers conservés en quarantaine peuvent être de niveau Diffusion Restreinte (DR) : n'activez qu'avec un stockage et des accès conformes. » (`AVERTISSEMENT_DR`) ; l'activation validée journalise aussi `avertissement-dr` avec l'identifiant `fichiers-conserves-peuvent-etre-DR:activer-seulement-avec-stockage-et-acces-conformes` | `serveur/web/tests/quarantaine.rs`, `activation_par_deux_administrateurs` |
-| Activation | demande par un administrateur, validation par un SECOND administrateur distinct (1 h) ; refus explicite et audité (`validation-refusee`) ; **désactivation aussi par double validation depuis la v2.2.0** (`desactivation-demandee`, `desactivation-validee` ; décision du 22/11 dans `decisions.md`) | `activation_par_deux_administrateurs`, `serveur/web/tests/quarantaine.rs` |
+| Activation | demande par un administrateur, validation par un SECOND administrateur distinct (1 h) ; refus explicite et audité (`validation-refusee`) ; désactivation par un seul (sens sûr, journalisée `desactivation` ; décision du 21/11 maintenue le 22/11) | `activation_par_deux_administrateurs`, `serveur/web/tests/quarantaine.rs` |
 | D13 (v2.2.0) | activation refusée tant qu'un site est en mode Aucun (`activation-refusee-d13`, à la demande et à la validation) ; quarantaine active : mode Aucun et jeton d'enrôlement d'un site en mode Aucun refusés | `serveur/web/tests/quarantaine.rs`, `comptes-administrateurs.md` §6 |
 | Stockage chiffré | AES-256-GCM (`ring`, déjà audité) ; clé neuve de 32 octets par fichier, enveloppée AES-256-GCM par la clé de quarantaine (`<registre>/quarantaine/cle-quarantaine`, 0600, refusée si droits plus larges) derrière le trait `CleQuarantaine` (TPM prévu) | `chiffrement_dechiffrement_et_cle_0600` |
 | Métadonnées minimales | identifiant aléatoire, uuid de borne, dates, SHA-256, taille ; jamais de nom de fichier | `Element` |

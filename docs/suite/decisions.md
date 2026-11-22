@@ -58,11 +58,9 @@ Pris sans l'utilisateur, selon la consigne « sécurité d'abord » ; détail :
   (supervision seulement, aucune donnée personnelle). Matrice : `comptes-administrateurs.md` §2.
 - **Double validation généralisée** (§3.10) : création, suppression, élévation et réactivation de
   compte, émission et révocation de certificat d'administrateur, révocation de toutes les bornes
-  d'un site, activation, export **et désactivation** de la quarantaine. *Écart à la décision du
-  21/11 (« désactivation par un seul ») : la désactivation coupe aussi la capacité d'investigation
-  et un administrateur seul pourrait s'en servir pour effacer ses traces ; elle passe en double
-  validation à la demande de la tâche v2.2.0.* Désactivation et rétrogradation d'un compte,
-  réinitialisation d'un mot de passe : un seul administrateur (sens sûr), jamais pour le dernier.
+  d'un site, activation et export de la quarantaine. Désactivation et rétrogradation d'un compte,
+  réinitialisation d'un mot de passe, **désactivation de la quarantaine** : un seul administrateur
+  (sens sûr, journalisé), jamais contre le dernier administrateur.
 - **Amorçage** : tant qu'il n'existe qu'un administrateur utilisable et qu'aucun second n'a jamais
   existé, il crée **seul** le second administrateur (journalisé) ; c'est la seule exception (sinon
   aucun second administrateur ne pourrait jamais exister). Ensuite, seul `barbacane-web reamorcer`
@@ -75,3 +73,12 @@ Pris sans l'utilisateur, selon la consigne « sécurité d'abord » ; détail :
   (absente : pas d'émission dans la Console) ; refusée si lisible par d'autres comptes (0400).
 - **D13 raccordée** : `quarantaine_active()` lit l'état réel ; refus dans les deux sens et jeton
   d'enrôlement refusé pour un site en mode Aucun tant que la quarantaine est active.
+
+## 22/11/2026 — décisions de l'utilisateur sur les choix v2.2.0
+
+- **Désactivation de la quarantaine : un seul administrateur** (décision du 21/11 maintenue) ;
+  activation et export restent en double validation ; la désactivation est journalisée
+  (`desactivation`) et ne viole jamais D13 (seule l'activation est contrôlée). Le passage en
+  double validation proposé dans la v2.2.0 est retiré.
+- **Amorçage unique + `barbacane-web reamorcer`** : validé tel quel.
+- **Séparation des remises** : validée telle quelle.

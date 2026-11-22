@@ -431,7 +431,7 @@ fn quarantaine_desactivee_double_validation_auditeur_refuse() {
         &[("csrf", &csrf_a), ("site", "site-1")],
     );
     assert_eq!(r.statut, 200, "site en Identification : jeton émis");
-    // Désactivation : double validation (v2.2.0), auto-validation refusée.
+    // Désactivation : un seul administrateur suffit (décision du 21/11 maintenue), journalisée.
     let r = post(
         &b,
         &b.alice,
@@ -440,28 +440,7 @@ fn quarantaine_desactivee_double_validation_auditeur_refuse() {
         &[("csrf", &csrf_a)],
     );
     assert_eq!(r.statut, 200, "{}", r.texte());
-    assert!(
-        r.texte().contains("Active"),
-        "toujours active avant validation"
-    );
-    let id = demande(&r.texte());
-    let r = post(
-        &b,
-        &b.alice,
-        "/quarantaine/valider",
-        &ca,
-        &[("csrf", &csrf_a), ("demande", &id)],
-    );
-    assert_eq!(r.statut, 400);
-    let r = post(
-        &b,
-        &b.carole,
-        "/quarantaine/valider",
-        &cc,
-        &[("csrf", &csrf_c), ("demande", &id)],
-    );
-    assert_eq!(r.statut, 200, "{}", r.texte());
-    assert!(r.texte().contains("Désactivée"));
+    assert!(r.texte().contains("Désactivée"), "{}", r.texte());
     assert!(!barbacane_passerelle::utilisateurs::quarantaine_active(
         &admin.stockage
     ));
@@ -487,8 +466,7 @@ fn quarantaine_desactivee_double_validation_auditeur_refuse() {
         "export-demande",
         "validation-refusee",
         "export-valide",
-        "desactivation-demandee",
-        "desactivation-validee",
+        "desactivation",
         "activation-refusee-d13",
     ] {
         assert!(a.contains(&x.to_owned()), "{x} : {a:?}");

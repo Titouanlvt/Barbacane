@@ -5,9 +5,9 @@
 //!   que la quarantaine n'a pas été activée ; l'activation est un choix des administrateurs,
 //!   précédé de l'avertissement [`AVERTISSEMENT_DR`] (journalisé avec l'activation). Le champ
 //!   `mesures_dr_serveur` du dossier d'homologation n'est plus un verrou logiciel.
-//! - **Double validation** (conception §3.10) : activation, désactivation (depuis la v2.2.0)
-//!   et export sont demandés par un administrateur et validés par un SECOND administrateur
-//!   distinct (demande valable 1 h). D13 : activation refusée si un site est en mode Aucun.
+//! - **Double validation** (conception §3.10) : activation et export sont demandés par un
+//!   administrateur et validés par un SECOND administrateur distinct (demande valable 1 h) ;
+//!   la désactivation se fait par un seul (sens sûr, décision du 21/11/2026 maintenue le 22/11). D13 : activation refusée si un site est en mode Aucun.
 //! - **Stockage chiffré** : chaque fichier est chiffré en AES-256-GCM par une clé neuve qui lui
 //!   est propre ; cette clé est enveloppée (AES-256-GCM) par la clé de quarantaine du serveur
 //!   (fichier 0600, derrière le trait [`CleQuarantaine`] pour un futur TPM). Les métadonnées
@@ -136,11 +136,7 @@ impl CleQuarantaine for CleFichier {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
     Activation,
-    Export {
-        element: String,
-    },
-    /// Désactivation (double validation depuis la v2.2.0, `comptes-administrateurs.md` §5).
-    Desactivation,
+    Export { element: String },
 }
 
 /// Demande en attente de la validation d'un SECOND administrateur.
@@ -205,7 +201,6 @@ fn id_valide(id: &str) -> bool {
 #[derive(Debug)]
 pub enum Validation {
     Activee,
-    Desactivee,
     /// Export : contenu en clair et métadonnées (à restituer sans aperçu).
     Export(Element, Vec<u8>),
 }
@@ -345,19 +340,6 @@ impl Quarantaine {
         Ok(())
     }
 
-    /// Premier temps de la désactivation (validée par un second administrateur).
-    pub fn demander_desactivation(&self, acteur: &str, t: u64) -> Result<String> {
-        let _v = self.verrou()?;
-        let mut etat = self.lire_etat()?;
-        if !etat.active {
-            bail!("quarantaine déjà désactivée");
-        }
-        let id = self.nouvelle_demande(&mut etat, Action::Desactivation, acteur, t)?;
-        self.auditer(acteur, "desactivation-demandee", &id)?;
-        self.ecrire_etat(&etat)?;
-        Ok(id)
-    }
-
     /// Premier temps de l'export d'un élément (quarantaine active seulement).
     pub fn demander_export(&self, element: &str, acteur: &str, t: u64) -> Result<String> {
         let _v = self.verrou()?;
@@ -417,19 +399,13 @@ impl Quarantaine {
                 self.auditer(acteur, "export-valide", element)?;
                 Validation::Export(e, clair)
             }
-            Action::Desactivation => {
-                etat.active = false;
-                etat.demandes.clear();
-                self.auditer(acteur, "desactivation-validee", &d.id)?;
-                Validation::Desactivee
-            }
         };
         self.ecrire_etat(&etat)?;
         Ok(v)
     }
 
-    /// Désactivation IMMÉDIATE (outil local et tests seulement ; la Console passe par
-    /// [`Quarantaine::demander_desactivation`]). Les éléments restent chiffrés jusqu'à leur purge.
+    /// Désactivation : un seul administrateur suffit (sens sûr ; ne viole jamais D13), auditée.
+    /// Les éléments restent chiffrés jusqu'à leur purge.
     pub fn desactiver(&self, acteur: &str) -> Result<()> {
         let _v = self.verrou()?;
         let mut etat = self.lire_etat()?;
