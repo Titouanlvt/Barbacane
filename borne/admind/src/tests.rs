@@ -534,6 +534,9 @@ fn installation_des_paquets_sans_no_download() {
     assert!(!argv.iter().any(|a| a == "--no-download"));
     assert!(argv.contains(&"Dir::Etc::SourceList=/dev/null".to_string()));
     assert!(argv.contains(&"Dir::Etc::SourceParts=/dev/null".to_string()));
+    // conffiles modifiés sur la borne : version locale gardée, sans question
+    assert!(argv.contains(&"Dpkg::Options::=--force-confold".to_string()));
+    assert!(argv.contains(&"Dpkg::Options::=--force-confdef".to_string()));
     assert!(argv.last().unwrap().starts_with('/'));
 }
 

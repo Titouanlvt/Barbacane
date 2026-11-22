@@ -215,6 +215,12 @@ pub(crate) fn apt_install_argv(debs: &[PathBuf]) -> Vec<String> {
         "apt-get",
         "install",
         "-y",
+        // Fichiers de configuration modifiés sur la borne (ex. /etc/usbsas/config.toml) : garder
+        // la version locale, sans question (dpkg échouait sans terminal, v2.0.3).
+        "-o",
+        "Dpkg::Options::=--force-confdef",
+        "-o",
+        "Dpkg::Options::=--force-confold",
         "-o",
         "Dir::Etc::SourceList=/dev/null",
         "-o",
