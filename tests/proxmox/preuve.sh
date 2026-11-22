@@ -775,12 +775,12 @@ fi
 # === grandes images ISO (v2.1.0) ============================================================
 # LISTE_BCU : mise à jour signée qui porte la liste « sha256 taille nom » avec ISO_WIN (pas ISO_DEB).
 # ISO_WIN : image officielle (copie en flux, écart n° 14) ; ISO_DEB : image non déclarée (analyse
-# complète). Clés émulées seulement (source exFAT de 12 Go, sortie de 16 Go).
+# complète). Clés émulées seulement (source ext4 de 12 Go : mkfs.exfat absent de l hôte, sortie de 16 Go).
 iso_sur_source() { # image fs taille
     local img; img=$(virt_img "$SERIE_SOURCE"); liberer "$img"; rm -f "$img"; truncate -s "$3" "$img"
-    local d p; d=$(disque "$SERIE_SOURCE"); echo "type=7" | sfdisk -q "$d"; partx -u "$d" 2>/dev/null || true; sleep 2
+    local d p; d=$(disque "$SERIE_SOURCE"); echo "type=$([ "$2" = ext4 ] && echo 83 || echo c)" | sfdisk -q "$d"; partx -u "$d" 2>/dev/null || true; sleep 2
     p=$(partition "$d"); [ -n "$p" ] || { partx -a "$d" 2>/dev/null || true; sleep 1; p=$(partition "$d"); }
-    if [ "$2" = exfat ]; then mkfs.exfat -L SOURCE "$p" >/dev/null; else mkfs.vfat -F32 -n SOURCE "$p" >/dev/null; fi
+    if [ "$2" = ext4 ]; then mkfs.ext4 -q -L SOURCE "$p"; else mkfs.vfat -F32 -n SOURCE "$p" >/dev/null; fi
     mount "$p" "$T/m"; cp "$1" "$T/m/"; sync; umount "$T/m"
 }
 sortie_vierge() { # taille ; témoin écrit sur la sortie
@@ -802,7 +802,7 @@ if test_actif grandes-iso; then
     si maj_appliquer "$LISTE_BCU" 00-liste "Paquet de mise à jour version" -- "liste d'images officielles signée (clé de TEST) appliquée" "liste non appliquée"
     cliquer "Retour au menu"; debrancher usb1; quitter_admin
     # 1. Windows 11 officielle → exFAT (défaut)
-    iso_sur_source "$ISO_WIN" exfat 12G
+    iso_sur_source "$ISO_WIN" ext4 12G
     sortie_vierge 16G
     t0=$SECONDS
     brancher usb1 "$SERIE_SOURCE"; attendre "Clé détectée" 120 "$D/01-cle-detectee.png"; cliquer "Analyser"
