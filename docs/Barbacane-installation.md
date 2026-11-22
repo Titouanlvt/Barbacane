@@ -16,7 +16,7 @@ archives) puis :
 - **copie** les seuls fichiers sains vers une clé de destination ;
 - ou **blanchit** le support : effacement complet, puis réécriture des seuls fichiers sains.
 
-Aucune connaissance du projet n'est nécessaire. Ce manuel correspond à **Barbacane v2.0.2**.
+Aucune connaissance du projet n'est nécessaire. Ce manuel correspond à **Barbacane v2.0.3**.
 
 ## Les noms utilisés
 
@@ -866,7 +866,7 @@ du serveur et des administrateurs (politique de certification, `docs/suite/polit
 Les clés ne sont **jamais** dans une ISO de production : elles sont déposées sur le serveur après
 la cérémonie (§10.5). La procédure de cérémonie de production est prévue en **v2.1.0**.
 
-## 14.2 Mesures en place (v2.0.2)
+## 14.2 Mesures en place (v2.0.3)
 
 - Serveur : disque chiffré LUKS2 scellé au TPM, pare-feu en liste blanche, aucune route par
   défaut, aucun accès distant, services en conteneurs sans root, journal persistant 1 an.

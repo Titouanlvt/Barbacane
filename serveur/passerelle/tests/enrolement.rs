@@ -245,7 +245,7 @@ fn battement(heure_borne: u64, etat: EtatBorne) -> String {
     serde_json::to_string(&Battement {
         version: VERSION,
         heure_borne,
-        version_logiciel: "2.0.2".into(),
+        version_logiciel: "2.0.3".into(),
         etat,
         age_signatures_s: 3600,
         espace_libre_octets: 10_000_000_000,
@@ -521,7 +521,7 @@ fn battement_met_a_jour_la_supervision() {
     .unwrap();
     assert_eq!(r.0, 200);
     let l = ligne(maintenant());
-    assert_eq!(l.version_logiciel.as_deref(), Some("2.0.2"));
+    assert_eq!(l.version_logiciel.as_deref(), Some("2.0.3"));
     assert_eq!(l.etat, Some(EtatBorne::Maintenance));
     assert!(l.derniere_vue.unwrap() + 5 > maintenant());
     assert!(l.alertes.is_empty(), "{:?}", l.alertes);
@@ -634,7 +634,7 @@ fn message_mal_forme_ou_trop_gros_refuse() {
     assert!(deposer(&b, &j.secret, &csr).is_ok());
     // Côté service : battement avec un champ de trop, ou texte hostile.
     let (_, cle) = enroler(&b);
-    let hostile = battement(maintenant(), EtatBorne::EnService).replace("2.0.2", "<script>");
+    let hostile = battement(maintenant(), EtatBorne::EnService).replace("2.0.3", "<script>");
     let r = post(&b, b.service, Some(&cle), route::BATTEMENT, &hostile).unwrap();
     assert_eq!((r.0, code(&r)), (400, CodeErreur::RequeteInvalide));
     let plus = battement(maintenant(), EtatBorne::EnService).replacen('{', "{\"fichiers\":[],", 1);
