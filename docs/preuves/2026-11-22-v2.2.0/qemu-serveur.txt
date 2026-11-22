@@ -1,15 +1,14 @@
-# tests/serveur/qemu-serveur.sh, ISO serveur de banc construite au commit 5181187 (lab/qemu-v220-serveur.sh), bu, 22/11/2026
+# tests/serveur/qemu-serveur.sh, ISO serveur de banc construite au commit ff298d7 (lab/qemu-v220-serveur.sh), bu, 22/11/2026
 == contrôle de l'ISO
 OK : ISO : 224 paquets, aucun interdit
 OK : preseed : aucun réseau à l'installation
 OK : preseed : disque chiffré, AES-256 (clé XTS de 512 bits : partman double 256)
 == installation (sans intervention, TPM logiciel swtpm)
-installation : 6 min
 OK : installation terminée (fin-installation-serveur.sh jusqu'au bout)
 == premier démarrage (déverrouillage par le TPM)
 OK : démarré sans phrase de passe (TPM) : état du serveur lu sur la console
 OK : ports de la passerelle tirés à l'installation : 43117 et 43118 (D4)
-OK : passerelle joignable depuis le réseau des bornes, borne mTLS acceptée, chaîne vérifiée contre la racine : {"version":1,"etat":"ok","borne":"borne borne-01","heure_serveur":1795373102}
+OK : passerelle joignable depuis le réseau des bornes, borne mTLS acceptée, chaîne vérifiée contre la racine : {"version":1,"etat":"ok","borne":"borne borne-01","heure_serveur":1795381567}
 OK : passerelle : client sans certificat refusé
 OK : passerelle injoignable depuis le réseau d'administration
 OK : interface web servie sur 10.0.3.15:443 (administration) au certificat admin-01 de TEST : page de connexion, HTTP 200
@@ -30,11 +29,11 @@ OK : lect : connexion au mot de passe provisoire, changement imposé (303 https:
 OK : rôle lecture seule : comptes, journal, réglage de site et jeton refusés (403)
 OK : D13 : site « labo » en mode Aucun, activation de la quarantaine refusée (400, message D13)
 OK : D13 : quarantaine activée par double validation (admin-01 puis admin-02), mode Aucun alors refusé (400)
-OK : quarantaine désactivée par double validation
+OK : quarantaine désactivée par un seul administrateur (journalisé), mode Aucun de nouveau permis
 OK : port redirigé 47003 (443/22 sur l'interface bornes) : aucune réponse
 OK : port redirigé 47004 (443/22 sur l'interface bornes) : aucune réponse
 == état du serveur (console)
-=== BARBACANE-ETAT DEBUT 2026-11-22T19:44:56+01:00
+=== BARBACANE-ETAT DEBUT 2026-11-22T22:05:57+01:00
 ===============================================================================
 === BARBACANE-ETAT FIN alertes=0
 OK : racine sur volume ouvert aes-xts-plain64, 512 bits
