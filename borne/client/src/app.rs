@@ -14,6 +14,7 @@ use crate::style;
 use crate::utilisateur::{self, Etape};
 use crate::worker::{self, Cmd, Ev};
 use barbacane_parcours::est_optique;
+use barbacane_parcours::proto::common::FsType;
 use barbacane_parcours::{
     Analysis, Analyzer, Devices, Event, PasswordRequest,
     proto::common::{Status, UsbDevice},
@@ -85,6 +86,8 @@ pub enum Msg {
     Reveil,
     /// Bouton « Maintenir pour effacer » enfoncé (true) ou relâché (false)
     Maintien(bool),
+    /// Format de la clé de sortie choisi sur l'écran « Clé de destination »
+    Format(FsType),
     /// Borne en ligne : rapport minimal de passage déposé par admind pour l'agent
     Passage(Result<serde_json::Value, String>),
     /// Écran d'identification : valider l'étape, abandonner, réponse du serveur
@@ -154,6 +157,10 @@ pub struct App {
     /// Clé ignorée jusqu'à son retrait : refusée par la politique du site, ou passage
     /// terminé (« Arrêter ici », « Nouveau transfert », « Annuler ») alors qu'elle est branchée
     cle_ecartee: Option<UsbDevice>,
+    /// Format de la clé de sortie (exFAT par défaut, choisi sur l'écran de destination)
+    format: FsType,
+    /// Estimation de durée de l'analyse, affichée avant la copie vers l'analyseur
+    estimation: Option<String>,
 }
 
 /// Clé à écarter au retour à l'accueil : la clé source USB du passage terminé si elle est
@@ -238,6 +245,8 @@ impl App {
             msg_u: None,
             attente_u: false,
             cle_ecartee: None,
+            format: FsType::Exfat,
+            estimation: None,
         };
         let t = app.refresh_etat();
         (app, t)
@@ -717,6 +726,8 @@ impl App {
         self.dst_refused = None;
         self.input = Input::text(128);
         self.demarrable = false;
+        self.format = FsType::Exfat;
+        self.estimation = None;
     }
 
     fn update(&mut self, m: Msg) -> Task<Msg> {
@@ -780,6 +791,7 @@ impl App {
                     self.progress = None;
                     self.optique_avance = None;
                     self.analysis_progress = (0, 0, 0);
+                    self.estimation = None;
                     self.screen = Screen::Analyse;
                     self.send(Cmd::Analyse(src));
                 }
@@ -836,6 +848,11 @@ impl App {
                 }
             }
             Msg::Ecrire => self.start_write(false),
+            Msg::Format(f) => {
+                self.format = f;
+                self.dst_refused = None;
+                Task::none()
+            }
             Msg::Blanchir => match self.screen {
                 // Blanchiment autorisé sur toute clé, même non enrôlée (décision du 21/11) :
                 // il n'écrit sur la clé source que ses propres fichiers sains.
@@ -946,6 +963,20 @@ impl App {
                 None => return Task::none(),
             },
         };
+        // FAT32 : un fichier de plus de 4 Go est refusé ici, avant toute écriture.
+        if !matches!(self.mode, Mode::Graver) {
+            let fstype = if self.mode == Mode::Blanchir {
+                FsType::Exfat
+            } else {
+                self.format
+            };
+            if let Err(e) =
+                barbacane_parcours::verifier_format(fstype, an.report.copied().map(|f| f.size))
+            {
+                self.dst_refused = Some(e.to_string());
+                return Task::none();
+            }
+        }
         self.progress = None;
         self.optique_avance = None;
         self.screen = Screen::Ecriture;
@@ -956,6 +987,12 @@ impl App {
             demarrable: self.demarrable && self.mode == Mode::Blanchir,
             image: self.demarrable && self.mode == Mode::Blanchir && an.demarrable_autre,
             job: an.report.id.clone(),
+            fstype: if self.mode == Mode::Copier {
+                self.format
+            } else {
+                FsType::Exfat
+            },
+            officielle: an.officielle.clone().map(Box::new),
         });
         Task::none()
     }
@@ -991,6 +1028,26 @@ impl App {
                     self.input = Input::text(128);
                     self.screen = Screen::MotDePasse(req);
                 }
+            }
+            Ev::Op(Event::Estimation { images, secondes }) => {
+                self.estimation = Some(if images > 0 {
+                    format!(
+                        "Image disque de {} analysée intégralement : durée estimée {}.",
+                        barbacane_parcours::go(images),
+                        barbacane_parcours::duree_lisible(secondes)
+                    )
+                } else {
+                    format!(
+                        "Durée estimée : {}.",
+                        barbacane_parcours::duree_lisible(secondes)
+                    )
+                });
+            }
+            Ev::Op(Event::Verification { nom, taille }) => {
+                self.estimation = Some(format!(
+                    "Vérification de l'empreinte de {nom} ({}) dans la liste des images officielles…",
+                    barbacane_parcours::go(taille)
+                ));
             }
             Ev::Op(Event::PasswordDone) => {
                 if matches!(self.screen, Screen::MotDePasse(_)) {
@@ -1452,6 +1509,11 @@ impl App {
         if let Some(e) = etape_txt {
             c = c.push(texte(&e));
         }
+        if matches!(self.screen, Screen::Analyse)
+            && let Some(e) = &self.estimation
+        {
+            c = c.push(petit(e));
+        }
         // Barre vivante + chronomètre (charte : la borne montre qu'elle travaille).
         c = c.push(barre::barre(
             self.fraction().map(|f| f.max(self.barre_val)),
@@ -1904,6 +1966,19 @@ impl App {
         let mut c = column![titre("Résultat de l'analyse"), verdict]
             .spacing(16)
             .align_x(Alignment::Center);
+        if let Some(o) = &a.officielle {
+            c = c.push(texte(&format!(
+                "Image officielle reconnue : {} ({}), empreinte présente dans la liste signée de                  l'administrateur. Elle sera copiée intacte, sans analyse de son contenu.",
+                o.chemin.trim_start_matches('/'),
+                barbacane_parcours::go(o.taille)
+            )));
+            if o.ignores > 0 {
+                c = c.push(petit(&format!(
+                    "{} autre(s) élément(s) de la clé ne seront pas copiés pendant ce passage :                      faites-les analyser dans un passage séparé.",
+                    o.ignores
+                )));
+            }
+        }
         if !unpacked.is_empty() {
             c = c.push(petit(&format!(
                 "{} archive(s) contenant des fichiers refusés : leurs fichiers sains seront copiés dans un dossier « <archive>.extrait ».",
@@ -1939,7 +2014,7 @@ impl App {
                 style::secondaire,
             ));
         }
-        if !disque || reinscriptible {
+        if (!disque || reinscriptible) && a.officielle.is_none() {
             actions = actions.push(bouton(
                 if disque {
                     "Blanchir le disque"
@@ -1991,6 +2066,26 @@ impl App {
                     .style(style::alerte),
             );
         }
+        let mut formats = row![texte("Format de la clé :")]
+            .spacing(14)
+            .align_y(Alignment::Center);
+        for f in [FsType::Exfat, FsType::Ntfs, FsType::Fat] {
+            let libelle = if f == FsType::Exfat {
+                "exFAT (recommandé)".to_string()
+            } else {
+                barbacane_parcours::nom_format(f).to_string()
+            };
+            formats = formats.push(bouton(
+                &libelle,
+                Msg::Format(f),
+                if f == self.format {
+                    style::primaire
+                } else {
+                    style::secondaire
+                },
+            ));
+        }
+        c = c.push(formats);
         let mut go = button(
             text("Effacer ce disque et y graver les fichiers")
                 .size(24)
@@ -2109,7 +2204,13 @@ impl App {
 /// Erreurs brutes d'usbsas (en anglais) traduites en consigne compréhensible (charte : dire ce
 /// qui s'est passé et quoi faire). Le texte d'origine reste entre parenthèses pour le support.
 fn explique_erreur(e: &str) -> String {
-    if e.contains("Remote server error") {
+    if e.contains("Not enough space") {
+        format!(
+            "l'espace de travail de la borne est insuffisant pour analyser ce contenu. \
+             Rien n'a été copié. Une image d'installation officielle (Windows, Debian…) \
+             peut passer si l'administrateur l'a déclarée dans la liste signée ({e})"
+        )
+    } else if e.contains("Remote server error") {
         format!(
             "l'analyseur n'a pas pu traiter le contenu de la clé (espace de travail plein ou \
              service redémarré). Réessayez ; si l'erreur revient, prévenez l'administrateur \

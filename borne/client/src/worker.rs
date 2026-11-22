@@ -2,7 +2,10 @@
 //! usbsas-server), surveille les clés branchées et exécute les parcours de
 //! `barbacane-parcours`. Il ne bloque jamais l'interface.
 
-use barbacane_parcours::{self as parcours, Analyzer, Devices, Event, proto::common::UsbDevice};
+use barbacane_parcours::{
+    self as parcours, Analyzer, Devices, Event, Officielle,
+    proto::common::{FsType, UsbDevice},
+};
 use iced::futures::channel::mpsc::UnboundedSender;
 use std::os::unix::net::UnixStream;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
@@ -26,6 +29,10 @@ pub enum Cmd {
         /// Clé Etcher / Rufus « mode DD » : son image officielle réécrite (écart n° 11)
         image: bool,
         job: String,
+        /// Format de la clé de sortie choisi sur la borne (exFAT par défaut)
+        fstype: FsType,
+        /// Image officielle reconnue : copiée intacte, sans analyse (écart n° 14)
+        officielle: Option<Box<Officielle>>,
     },
     /// Écrire un dossier local (export admin) sur une clé
     Export { dst: UsbDevice },
@@ -174,11 +181,15 @@ impl Worker {
                 demarrable,
                 image,
                 job,
+                fstype,
+                officielle,
             } => {
-                let r = if image {
+                let r = if let Some(o) = officielle {
+                    self.ecrire_officielle(&src, &dst, wipe, &o, fstype, &etx)
+                } else if image {
                     self.reecrire_image(&src, &job, &etx)
                 } else {
-                    self.write(&src, &dst, wipe, demarrable, &job, &etx)
+                    self.write(&src, &dst, wipe, demarrable, fstype, &job, &etx)
                 };
                 self.send(Ev::Written(r.map_err(|e| e.to_string())));
             }
@@ -233,12 +244,14 @@ impl Worker {
         r
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn write(
         &mut self,
         src: &UsbDevice,
         dst: &UsbDevice,
         wipe: bool,
         demarrable: bool,
+        fstype: FsType,
         job: &str,
         ev: &Sender<Event>,
     ) -> Result<u64, String> {
@@ -271,8 +284,38 @@ impl Worker {
             parcours::wipe(&mut s, id, ev).map_err(|e| format!("effacement : {e}"))?;
         }
         let stage = self.dirs.stage.clone();
-        self.write_stage_mode(dst, ev, &stage, demarrable)?;
+        self.write_stage_mode(dst, ev, &stage, demarrable, fstype)?;
         Ok(n)
+    }
+
+    /// Image officielle reconnue à l'analyse : usbsas la relit sur la clé source, la hache au
+    /// passage et n'écrit la clé de sortie que si l'empreinte figure toujours dans la liste.
+    fn ecrire_officielle(
+        &mut self,
+        src: &UsbDevice,
+        dst: &UsbDevice,
+        wipe: bool,
+        o: &Officielle,
+        fstype: FsType,
+        ev: &Sender<Event>,
+    ) -> Result<u64, String> {
+        parcours::verifier_format(fstype, [o.taille]).map_err(|e| e.to_string())?;
+        if wipe {
+            let mut s = self.fresh()?;
+            let devs = parcours::devices(&mut s).map_err(|e| e.to_string())?;
+            let id = devs.same_as_dst(dst).ok_or("la clé a été retirée")?;
+            parcours::wipe(&mut s, id, ev).map_err(|e| format!("effacement : {e}"))?;
+        }
+        let mut s = self.fresh()?;
+        let devs = parcours::devices(&mut s).map_err(|e| e.to_string())?;
+        let id_src = devs.find(src, false).ok_or("la clé source a été retirée")?;
+        let id_dst = devs
+            .find(dst, true)
+            .or_else(|| devs.same_as_dst(dst))
+            .ok_or("la clé de sortie a été retirée")?;
+        parcours::ecrire_officielle(&mut s, id_src, id_dst, o, fstype, ev)
+            .map_err(|e| format!("écriture : {e}"))?;
+        Ok(1)
     }
 
     /// Clé Etcher / Rufus « mode DD » : la borne relit l'image de la clé, la compare à la liste
@@ -317,7 +360,7 @@ impl Worker {
         ev: &Sender<Event>,
         dir: &str,
     ) -> Result<(), String> {
-        self.write_stage_mode(dst, ev, dir, false)
+        self.write_stage_mode(dst, ev, dir, false, FsType::Exfat)
     }
 
     /// `demarrable` : clé Ventoy reconstruite (zone de démarrage de la borne, écart n° 9)
@@ -327,6 +370,7 @@ impl Worker {
         ev: &Sender<Event>,
         dir: &str,
         demarrable: bool,
+        fstype: FsType,
     ) -> Result<(), String> {
         let mut s = self.fresh()?;
         let devs = parcours::devices(&mut s).map_err(|e| e.to_string())?;
@@ -337,14 +381,12 @@ impl Worker {
         let stage = devs
             .local_dir(dir)
             .ok_or_else(|| format!("configuration usbsas incomplète ([[src_local_dirs]] {dir})"))?;
-        let w = if demarrable {
-            parcours::write_demarrable
+        let r = if demarrable {
+            parcours::write_demarrable(&mut s, stage, id, ev)
         } else {
-            parcours::write
+            parcours::write(&mut s, stage, id, fstype, ev)
         };
-        w(&mut s, stage, id, ev)
-            .map(|_| ())
-            .map_err(|e| format!("écriture : {e}"))
+        r.map(|_| ()).map_err(|e| format!("écriture : {e}"))
     }
 
     fn export(&mut self, dst: &UsbDevice, ev: &Sender<Event>) -> Result<(), String> {
