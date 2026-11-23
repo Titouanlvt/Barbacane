@@ -1,0 +1,118 @@
+d780033f Syslog : plus d'interblocage entre le pare-feu et l'exportateur (relance --no-block, pas d'ordre After, délai de 60 s) ; banc v2.3.0 plus robuste (extraction de la console, fichiers absents, hors set -e)
+barbacane-maj-202611230831.bcu
+barbacane-maj-202611230831.bcu.minisig
+CORRECTIF=/nvme/correctifs/2611230927/barbacane-maj-202611230831.bcu
+6f1e0c6b714f041eb55f852d2c8622ea57e4a20e67d086a1ecb6109d8e47da4d 8913713152 fr-fr_windows_11_business_editions_version_26h2_x64_dvd_fbef8553__1_.iso
+
+Copiez barbacane-maj-202611230833.bcu et barbacane-maj-202611230833.bcu.minisig à la racine d'une clé USB, puis sur la borne :
+Administration → Mettre à jour → Lire et appliquer (clé sur le port d'entrée).
+LISTE=/nvme/correctifs/liste-v230/barbacane-maj-202611230833.bcu
+fatal: not a git repository (or any of the parent directories): .git
+Preuves : /root/BARBACANE/rapide-v230 ; ISO : /nvme/contenu/iso-test/barbacane-TEST-cle-lab.iso (sha256 538c984718c84c40…) ; commit 
+fatal: not a git repository (or any of the parent directories): .git
+   (instantané « propre » restauré en 6 s)
+OK [installation] : borne remise à l'état « propre » (installée, PIN, clé enrôlée)
+
+== transfert : clé inconnue virt:source → clé enrôlée virt:sortie
+   (instantané « propre » restauré en 7 s)
+/dev/loop1: calling ioctl to re-read partition table: Success
+Partition #1 contains a exfat signature.
+OK [transfert] : mot de passe d'archive demandé (clavier virtuel)
+OK [transfert] : écran : menaces détectées
+/dev/loop0: calling ioctl to re-read partition table: Success
+Partition #1 contains a vfat signature.
+OK [transfert] : clé non enrôlée refusée en sortie
+OK [transfert] : clé non enrôlée intacte (rien n'y a été écrit)
+OK [transfert] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [transfert] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [transfert] : aucun fichier de la sortie ne contient EICAR
+OK [transfert] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [transfert] : archive chiffrée (bon mot de passe) copiée
+OK [transfert] : archive mixte : seul son fichier sain est extrait
+OK [transfert] : noms piégés (traversée, absolu) non écrits
+OK [transfert] : contenu précédent de la destination effacé (témoin absent)
+OK [transfert] : rapport : EICAR détecté et refusé
+
+== blanchiment : blanchiment de la clé virt:source
+   (instantané « propre » restauré en 7 s)
+/dev/loop2: calling ioctl to re-read partition table: Success
+Partition #1 contains a vfat signature.
+OK [blanchiment] : avant : EICAR sur la clé (octets 18251804 18255900 18260035 18264170 )
+OK [blanchiment] : mot de passe d'archive demandé (clavier virtuel)
+OK [blanchiment] : empreinte de la clé entière modifiée
+OK [blanchiment] : après : aucune trace d'EICAR sur TOUTE la clé
+OK [blanchiment] : 4 fichiers sains copiés intacts (sha256 identiques à la source)
+OK [blanchiment] : aucun fichier inattendu en sortie (sains, extraits d'archives et rapports seulement)
+OK [blanchiment] : aucun fichier de la sortie ne contient EICAR
+OK [blanchiment] : fichiers EICAR (dont le .jpg déguisé) absents
+OK [blanchiment] : archive chiffrée (bon mot de passe) copiée
+OK [blanchiment] : archive mixte : seul son fichier sain est extrait
+OK [blanchiment] : noms piégés (traversée, absolu) non écrits
+
+== correctif : correctif barbacane-maj-202611230831.bcu appliqué par mise à jour signée
+   (instantané « propre » restauré en 7 s)
+/dev/loop0: calling ioctl to re-read partition table: Success
+Partition #1 contains a vfat signature.
+OK [correctif] : correctif appliqué (paquets Debian installés)
+OK [correctif] : rapport : « Redémarrage nécessaire »
+OK [correctif] : borne redémarrée sur les nouveaux binaires
+OK [correctif] : instantané « propre » repris sur la borne corrigée
+
+== grandes-iso : grandes images ISO : Windows 11 officielle (liste signée), Debian 13 analysée, formats de sortie
+   (instantané « propre » restauré en 6 s)
+/dev/loop0: calling ioctl to re-read partition table: Success
+Partition #1 contains a vfat signature.
+OK [grandes-iso] : liste d'images officielles signée (clé de TEST) appliquée
+OK [grandes-iso] : Windows 11 (8,9 Go) : vérification de l'empreinte en 212 s (le refus « Not enough space » de la v2.0.3 venait en 10 s)
+OK [grandes-iso] : écran : « Image officielle reconnue »
+OK [grandes-iso] : choix du format affiché (exFAT par défaut)
+OK [grandes-iso] : copie en flux vers exFAT : 364 s
+OK [grandes-iso] : Windows 11 copiée sur exFAT, sha256 identique à l'image officielle
+OK [grandes-iso] : FAT32 : fichier de plus de 4 Go refusé avant écriture, message clair
+OK [grandes-iso] : FAT32 refusé : clé de sortie non modifiée (témoin présent)
+OK [grandes-iso] : copie en flux vers NTFS : 377 s
+OK [grandes-iso] : Windows 11 copiée sur NTFS, sha256 identique
+OK [grandes-iso] : clé de sortie en NTFS
+OK [grandes-iso] : estimation de durée affichée avant l'analyse
+OK [grandes-iso] : Debian 13 analysée intégralement en 1734 s
+OK [grandes-iso] : Debian 13 analysée puis copiée, sha256 identique à l'image officielle
+
+== export : export des journaux et rapports sur la clé virt:sortie
+OK [export] : export terminé
+OK [export] : journal de la borne exporté
+OK [export] : rapports exportés (24 rapports JSON)
+OK [export] : rapports exportés : détections EICAR présentes
+
+== vide : clé vide
+   (instantané « propre » restauré en 8 s)
+/dev/loop1: calling ioctl to re-read partition table: Success
+Partition #1 contains a vfat signature.
+OK [vide] : clé vide : la borne affiche un résultat sans planter
+OK [vide] : retour à l'accueil
+
+== illisible : clé illisible (64 premiers Mo aléatoires : ni table de partitions ni système de fichiers)
+   (instantané « propre » restauré en 7 s)
+/dev/loop1: calling ioctl to re-read partition table: Success
+OK [illisible] : clé illisible : message affiché, borne de nouveau utilisable
+
+== retrait : clé retirée pendant la lecture
+   (instantané « propre » restauré en 6 s)
+OK [retrait] : retrait en cours de lecture : erreur affichée, aucune copie, borne de nouveau utilisable
+
+== verrouillage : 5 mauvais PIN → verrouillage
+   (instantané « propre » restauré en 7 s)
+OK [verrouillage] : administration verrouillée après 5 échecs
+OK [verrouillage] : même le bon PIN est refusé pendant le verrouillage
+
+== journal : journal et rapports de la borne
+OK [journal] : grub.cfg : super-utilisateur et mot de passe (édition protégée)
+OK [journal] : grub.cfg : entrée par défaut démarrable sans mot de passe
+OK [journal] : journal : détections EICAR consignées
+OK [journal] : journal : clavier USB vu par hid-dealer
+
+Vérifications OK : 57
+OK
+PREUVE=0
+57
+status: stopped
+FIN

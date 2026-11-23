@@ -1,0 +1,18 @@
+OK : 2.2.0 : borne enrôlée par le protocole réel, 4 rapports de passage reçus
+OK : 2.2.0 : Console, admin-01 connecté
+OK : 2.2.0 : journal scellé et vérifié (13 lignes, schéma 1)
+OK : 2 rapports vieillis de 400 jours (date de réception réécrite)
+OK : 2.3.0 : Console, admin-01 connecté avec le même mot de passe et le même certificat
+OK : 2.3.0 : les 4 rapports de passage de la 2.2.0 sont affichés
+OK : 2.3.0 : conservation posée à 365 jours avec préavis de 7 jours (Console)
+OK : 2.3.0 : pose du réglage inscrite au journal (premier-demarrage-2.3.0)
+OK : fichier des comptes inchangé
+OK : première passe de conservation : AUCUNE purge (préavis), même les rapports de 400 jours : « Conservation : 365 jours, en préavis jusqu'au 2026-11-30 07:49:02 UTC : aucune purge d'ici là. »
+OK : 2.3.0 : journal d'audit : aucune purge pendant le préavis
+OK : journal 2.2.0 (schéma 1) relu, rangé en segment scellé, chaîne vérifiée de bout en bout : Journal intègre : 21 enregistrements (n° 1 à 21) dans 2 fichier(s), 2 points de contrôle, 1 postérieurs au dernier point.
+OK : journal 2.2.0 exporté au format structuré
+OK : après le préavis : les 2 rapports de 400 jours purgés, les 2 récents gardés
+OK : purge des passages tracée au journal d'audit
+OK : chaîne toujours intègre après la purge
+OK : retour arrière : la 2.2.0 signale le journal 2.3.0 (code 2 : JOURNAL D'AUDIT ALTÉRÉ : ligne 1 illisible : JSON refusé : unknown variant `segment_ouvert`, expected one of `jeton_c), jamais de lecture silencieuse
+MIGRATION 2.2.0 → 2.3.0 : OK

@@ -1,0 +1,21 @@
+Conservation : 200 jours appliqués (limite 2027-01-12 08:21:06 UTC) ; 0 rapport(s) de passage purgé(s).
+barbacane-conservation-registre.service: Deactivated successfully.
+Finished barbacane-conservation-registre.service - Conservation : purge des rapports de passage (Barbacane).
+Segment n° 74 scellé et rangé.
+Durée appliquée : 200 jours (limite 2027-01-12 08:21:06 UTC) ; 1 segment(s) purgé(s) n° 1–73.
+Point de contrôle n° 81 ajouté. (purge scellée)
+barbacane-conservation.service: Deactivated successfully.
+Finished barbacane-conservation.service - Conservation : rotation, purge et scellement du journal d'audit (Barbacane).
+sauvegarde : purgée (plus de 200 jours) : barbacane-sauvegarde-barbacane-serveur-20261123T082248Z.cms
+sauvegarde : conservation : 200 jours, 1 sauvegarde(s) purgée(s)
+00000000000000000074.jsonl
+1
+conservation : 200 jours, effective le 2026-11-30 08:22:40 UTC, appliquée aujourd'hui : 200 jours
+passages : 0
+Journal intègre : 9 enregistrements (n° 74 à 82) dans 2 fichier(s), 3 points de contrôle, 1 postérieurs au dernier point.
+Enregistrements 1 à 73 purgés (conservation) : vérification depuis l'ouverture signée du segment n° 74.
+Attention : sans export (empreintes conservées hors du serveur), une réécriture complète ou une troncature n'est pas détectable.
+code-verification=0
+      1 "objet":"passages"
+      1 "objet":"sauvegardes"
+      1 "type":"segment_purge"

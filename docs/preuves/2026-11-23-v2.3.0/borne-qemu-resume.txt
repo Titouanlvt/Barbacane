@@ -1,0 +1,5 @@
+9ebeaaccd181e726547e2b4f5337046ff8ec6244771a08e0efbe53edbd05da53  /travail/v230-borne.iso
+passage 1 : code 0
+passage 2 : code 0
+passage 3 : code 0
+FIN

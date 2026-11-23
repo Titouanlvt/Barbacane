@@ -1,0 +1,378 @@
+paquets installés par Barbacane : 272
+OK : ISO hors ligne sans agent, sans paquet réseau, sortie bloquée (boucle locale seule)
+== installation (sans intervention)
+== sonde de diagnostic (test uniquement)
+== premier démarrage
+QEMU 10.0.13 monitor - type 'help' for more information
+(qemu) s[K[Dsc[K[D[Dscr[K[D[D[Dscre[K[D[D[D[Dscree[K[D[D[D[D[Dscreen[K[D[D[D[D[D[Dscreend[K[D[D[D[D[D[D[Dscreendu[K[D[D[D[D[D[D[D[Dscreendum[K[D[D[D[D[D[D[D[D[Dscreendump[K[D[D[D[D[D[D[D[D[D[Dscreendump [K[D[D[D[D[D[D[D[D[D[D[Dscreendump /[K[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /t[K[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /tr[K[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /tra[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /trav[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /trava[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travai[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v2[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v23[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-q[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qe[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qem[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/e[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ec[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecr[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecra[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.p[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.pn[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.png[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.png [K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.png -[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.png -f[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.png -f [K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.png -f p[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.png -f pn[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.png -f png[K
+(qemu) QEMU 10.0.13 monitor - type 'help' for more information
+(qemu) s[K[Dsc[K[D[Dscr[K[D[D[Dscre[K[D[D[D[Dscree[K[D[D[D[D[Dscreen[K[D[D[D[D[D[Dscreend[K[D[D[D[D[D[D[Dscreendu[K[D[D[D[D[D[D[D[Dscreendum[K[D[D[D[D[D[D[D[D[Dscreendump[K[D[D[D[D[D[D[D[D[D[Dscreendump [K[D[D[D[D[D[D[D[D[D[D[Dscreendump /[K[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /t[K[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /tr[K[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /tra[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /trav[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /trava[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travai[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v2[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v23[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-q[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qe[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qem[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/e[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ec[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecr[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecra[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.p[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.pp[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dscreendump /travail/v230-qemu/3/ecran.ppm[K
+(qemu) QEMU 10.0.13 monitor - type 'help' for more information
+(qemu) s[K[Dsy[K[D[Dsys[K[D[D[Dsyst[K[D[D[D[Dsyste[K[D[D[D[D[Dsystem[K[D[D[D[D[D[Dsystem_[K[D[D[D[D[D[D[Dsystem_p[K[D[D[D[D[D[D[D[Dsystem_po[K[D[D[D[D[D[D[D[D[Dsystem_pow[K[D[D[D[D[D[D[D[D[D[Dsystem_powe[K[D[D[D[D[D[D[D[D[D[D[Dsystem_power[K[D[D[D[D[D[D[D[D[D[D[D[Dsystem_powerd[K[D[D[D[D[D[D[D[D[D[D[D[D[Dsystem_powerdo[K[D[D[D[D[D[D[D[D[D[D[D[D[D[Dsystem_powerdow[K[D[D[D[D[D[D[D[D[D[D[D[D[D[D[Dsystem_powerdown[K
+(qemu) == inspection du disque installé
+-- barbacane-analyzer
+Started barbacane-analyzer.service - Barbacane : analyseur de fichiers (ClamAV + YARA, archives).
+[2026-11-23T08:38:25Z INFO  barbacane_analyzer::av] 0 fichier(s) de règles YARA chargé(s)
+[2026-11-23T08:38:35Z INFO  barbacane_analyzer] clamd joignable : ("ClamAV 1.4.6", "28192", "Mon Nov 23 07:24:27 2026")
+[2026-11-23T08:38:35Z INFO  barbacane_analyzer] bac à sable des archives : OK
+[2026-11-23T08:38:35Z INFO  barbacane_analyzer] écoute sur 127.0.0.1:8042
+Stopping barbacane-analyzer.service - Barbacane : analyseur de fichiers (ClamAV + YARA, archives)...
+barbacane-analyzer.service: Deactivated successfully.
+Stopped barbacane-analyzer.service - Barbacane : analyseur de fichiers (ClamAV + YARA, archives).
+-- barbacane-admind
+Started barbacane-admind.service - Barbacane : service d'administration (PIN, mises à jour, enrôlement).
+[2026-11-23T08:38:25Z INFO  barbacane_admind] écoute sur /run/barbacane/admin.sock
+[2026-11-23T08:38:25Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+[2026-11-23T08:39:25Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+[2026-11-23T08:40:25Z INFO  barbacane_admind] commande : dpkg-query -W -f=${Version} usbsas-server
+Stopping barbacane-admind.service - Barbacane : service d'administration (PIN, mises à jour, enrôlement)...
+barbacane-admind.service: Deactivated successfully.
+Stopped barbacane-admind.service - Barbacane : service d'administration (PIN, mises à jour, enrôlement).
+-- barbacane-kiosk
+Starting barbacane-kiosk.service - Barbacane : interface kiosque...
+pam_unix(barbacane-kiosk:session): session opened for user barbacane-kiosk(uid=103) by (uid=0)
+Started barbacane-kiosk.service - Barbacane : interface kiosque.
+Stopping barbacane-kiosk.service - Barbacane : interface kiosque...
+barbacane-kiosk.service: Deactivated successfully.
+Stopped barbacane-kiosk.service - Barbacane : interface kiosque.
+-- usbsas-server
+[2026-11-23T08:41:19Z ERROR usbsas_local2files] state run error: io error: failed to fill whole buffer, waiting end
+[2026-11-23T08:41:19Z ERROR usbsas_tar2files] state run error: io error: failed to fill whole buffer
+[2026-11-23T08:41:19Z ERROR usbsas_dev2scsi] state run error: io error: failed to fill whole buffer, waiting end
+[2026-11-23T08:41:19Z ERROR usbsas_net::uploader] state run error: io error: failed to fill whole buffer, waiting end
+[2026-11-23T08:41:19Z ERROR usbsas_cmdexec] state run error: io error: failed to fill whole buffer
+[2026-11-23T08:41:19Z ERROR usbsas_fs2dev] state run error: io error: failed to fill whole buffer, waiting end
+[2026-11-23T08:41:19Z ERROR usbsas_files2tar::files2tar] state run error: io error: failed to fill whole buffer
+[2026-11-23T08:41:19Z ERROR usbsas_net::downloader] state run error: io error: failed to fill whole buffer, waiting end
+usbsas-server.service: Main process exited, code=exited, status=1/FAILURE
+usbsas-server.service: Failed with result 'exit-code'.
+Stopped usbsas-server.service - SAS USB Server.
+usbsas-server.service: Consumed 179ms CPU time, 94.2M memory peak.
+-- kiosque (complet)
+Nov 23 08:38:25 barbacane systemd[1]: Starting barbacane-kiosk.service - Barbacane : interface kiosque...
+Nov 23 08:38:25 barbacane (chvt)[706]: pam_unix(barbacane-kiosk:session): session opened for user barbacane-kiosk(uid=103) by (uid=0)
+Nov 23 08:38:25 barbacane systemd[1]: Started barbacane-kiosk.service - Barbacane : interface kiosque.
+Nov 23 08:38:25 barbacane (env)[735]: pam_unix(barbacane-kiosk:session): session opened for user barbacane-kiosk(uid=103) by (uid=0)
+Nov 23 08:41:19 barbacane systemd[1]: Stopping barbacane-kiosk.service - Barbacane : interface kiosque...
+Nov 23 08:41:19 barbacane systemd[1]: barbacane-kiosk.service: Deactivated successfully.
+Nov 23 08:41:19 barbacane systemd[1]: Stopped barbacane-kiosk.service - Barbacane : interface kiosque.
+-- diagnostic
+    PID USER     STAT WCHAN                          COMMAND
+      1 root     Ss   do_epoll_wait                  /sbin/init
+      2 root     S    kthreadd                       [kthreadd]
+      3 root     S    kthread_worker_fn              [pool_workqueue_release]
+      4 root     I<   rescuer_thread                 [kworker/R-kvfree_rcu_reclaim]
+      5 root     I<   rescuer_thread                 [kworker/R-rcu_gp]
+      6 root     I<   rescuer_thread                 [kworker/R-sync_wq]
+      7 root     I<   rescuer_thread                 [kworker/R-slub_flushwq]
+      8 root     I<   rescuer_thread                 [kworker/R-netns]
+      9 root     I    worker_thread                  [kworker/0:0-cgroup_free]
+     10 root     I    worker_thread                  [kworker/0:1-events]
+     11 root     I<   worker_thread                  [kworker/0:0H-kblockd]
+     12 root     I    worker_thread                  [kworker/u8:0-events_unbound]
+     13 root     I<   rescuer_thread                 [kworker/R-mm_percpu_wq]
+     14 root     I    rcu_tasks_one_gp               [rcu_tasks_kthread]
+     15 root     I    rcu_tasks_one_gp               [rcu_tasks_rude_kthread]
+     16 root     I    rcu_tasks_one_gp               [rcu_tasks_trace_kthread]
+     17 root     S    smpboot_thread_fn              [ksoftirqd/0]
+     18 root     I    rcu_gp_fqs_loop                [rcu_preempt]
+     19 root     S    kthread_worker_fn              [rcu_exp_par_gp_kthread_worker/0]
+     20 root     S    kthread_worker_fn              [rcu_exp_gp_kthread_worker]
+     21 root     S    smpboot_thread_fn              [migration/0]
+     22 root     S    smpboot_thread_fn              [idle_inject/0]
+     23 root     S    smpboot_thread_fn              [cpuhp/0]
+     24 root     S    smpboot_thread_fn              [cpuhp/1]
+     25 root     S    smpboot_thread_fn              [idle_inject/1]
+     26 root     S    smpboot_thread_fn              [migration/1]
+     27 root     S    smpboot_thread_fn              [ksoftirqd/1]
+     28 root     I    worker_thread                  [kworker/1:0-ata_sff]
+     29 root     I<   worker_thread                  [kworker/1:0H-events_highpri]
+     31 root     I    worker_thread                  [kworker/u8:1-flush-254:0]
+     32 root     S    devtmpfs_work_loop             [kdevtmpfs]
+     33 root     I<   rescuer_thread                 [kworker/R-inet_frag_wq]
+     34 root     S    kauditd_thread                 [kauditd]
+     35 root     S    watchdog                       [khungtaskd]
+     36 root     S    oom_reaper                     [oom_reaper]
+     37 root     I<   rescuer_thread                 [kworker/R-writeback]
+     38 root     S    kcompactd                      [kcompactd0]
+     39 root     SN   ksm_scan_thread                [ksmd]
+     40 root     SN   khugepaged                     [khugepaged]
+     41 root     I<   rescuer_thread                 [kworker/R-kintegrityd]
+     42 root     I<   rescuer_thread                 [kworker/R-kblockd]
+     43 root     I<   rescuer_thread                 [kworker/R-blkcg_punt_bio]
+     44 root     S    irq_thread                     [irq/9-acpi]
+     45 root     I    worker_thread                  [kworker/u8:2-loop0]
+     46 root     I<   rescuer_thread                 [kworker/R-tpm_dev_wq]
+     47 root     I<   rescuer_thread                 [kworker/R-edac-poller]
+     48 root     I<   rescuer_thread                 [kworker/R-devfreq_wq]
+     49 root     I<   rescuer_thread                 [kworker/R-quota_events_unbound]
+     50 root     I    worker_thread                  [kworker/1:1-events]
+     51 root     I<   worker_thread                  [kworker/0:1H-kblockd]
+     52 root     S    kswapd                         [kswapd0]
+     59 root     I<   rescuer_thread                 [kworker/R-kthrotld]
+     63 root     I<   rescuer_thread                 [kworker/R-acpi_thermal_pm]
+     64 root     I<   rescuer_thread                 [kworker/R-mld]
+     65 root     I<   rescuer_thread                 [kworker/R-ipv6_addrconf]
+     70 root     I<   rescuer_thread                 [kworker/R-kstrp]
+     72 root     I<   worker_thread                  [kworker/u9:0]
+    156 root     I<   worker_thread                  [kworker/1:1H-kblockd]
+    179 root     I    worker_thread                  [kworker/0:2-events]
+    182 root     I<   rescuer_thread                 [kworker/R-ata_sff]
+    183 root     I    worker_thread                  [kworker/1:2-ata_sff]
+    184 root     S    scsi_error_handler             [scsi_eh_0]
+    185 root     I<   rescuer_thread                 [kworker/R-scsi_tmf_0]
+    186 root     S    scsi_error_handler             [scsi_eh_1]
+    187 root     I<   rescuer_thread                 [kworker/R-scsi_tmf_1]
+    188 root     I    worker_thread                  [kworker/u8:3-flush-254:0]
+    189 root     I    worker_thread                  [kworker/u8:4-events_unbound]
+    190 root     I    worker_thread                  [kworker/u8:5-events_unbound]
+    191 root     I<   rescuer_thread                 [kworker/R-ttm]
+    194 root     I<   worker_thread                  [kworker/0:2H-kblockd]
+    225 root     S    kjournald2                     [jbd2/vda2-8]
+    226 root     I<   rescuer_thread                 [kworker/R-ext4-rsv-conversion]
+    254 root     S    psi_rtpoll_worker              [psimon]
+    268 root     Ss   do_epoll_wait                  /usr/lib/systemd/systemd-journald
+    286 root     I    worker_thread                  [kworker/0:3-ata_sff]
+    293 root     I    worker_thread                  [kworker/0:4-cgroup_free]
+    320 root     I    worker_thread                  [kworker/1:3-events]
+    321 root     Ss   do_epoll_wait                  /usr/lib/systemd/systemd-udevd
+    325 root     S    psi_rtpoll_worker              [psimon]
+    412 root     I<   rescuer_thread                 [kworker/R-cryptd]
+    447 root     I    worker_thread                  [kworker/u8:6-events_unbound]
+    481 root     I    worker_thread                  [kworker/1:4-ata_sff]
+    482 root     I<   rescuer_thread                 [kworker/R-nfit]
+    545 root     I<   rescuer_thread                 [kworker/R-kdmflush/253:0]
+    546 root     I<   rescuer_thread                 [kworker/R-kcryptd_io-253:0-1]
+    547 root     I<   rescuer_thread                 [kworker/R-kcryptd-253:0-1]
+    548 root     S    dmcrypt_write                  [dmcrypt_write/253:0]
+    603 root     S    kjournald2                     [jbd2/dm-0-8]
+    604 root     I<   rescuer_thread                 [kworker/R-ext4-rsv-conversion]
+    648 root     Ss   skb_wait_for_more_packets      /usr/bin/barbacane-admind -c /etc/barbacane/admind.toml
+    649 barbaca+ Ssl  skb_wait_for_more_packets      /usr/bin/barbacane-optique -c /etc/barbacane/optique.toml
+    653 root     Ss   hrtimer_nanosleep              /usr/sbin/cron -f
+    656 message+ Ss   do_epoll_wait                  /usr/bin/dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+    657 root     Ss   do_wait                        /bin/sh -c sleep 90; { ps -eo pid,user,stat,wchan:30,args; loginctl list-sessions; loginctl show-seat seat0; ls -l /dev/dri /dev/tty2 /run/barbacane-kiosk; cat /etc/barbacane/client.toml; journalctl -b -u systemd-logind --no-pager | tail -n 20; dmesg | tail -n 25; journalctl -b --no-pager | grep -iE "cage|wlr|libseat|seatd|drm" | tail -n 30; for p in $(pidof cage barbacane-client); do echo "== $p"; cat /proc/$p/stack; ls -l /proc/$p/fd; done; } > /var/log/diag.txt 2>&1
+    662 usbsas-+ Ssl  futex_wait_queue               /usr/libexec/hid-dealer
+    663 root     Ss   do_sys_poll                    seatd -g video
+    665 root     Ss   do_epoll_wait                  /usr/lib/systemd/systemd-logind
+    667 usbsas   Ss   unix_stream_read_generic       /usr/libexec/usbsas-usbsas -s
+    683 root     Ss+  do_select                      /sbin/agetty -o -- \u --noreset --noclear - linux
+    690 clamav   Ssl  do_sys_poll                    /usr/sbin/clamd --foreground=true
+    693 barbaca+ Ssl  futex_wait_queue               /usr/bin/barbacane-analyzer -c /etc/barbacane/analyzer.toml
+    700 usbsas   S    pipe_read                      /usr/libexec/usbsas-identifier
+    701 usbsas   S    pipe_read                      /usr/libexec/usbsas-cmdexec /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d.tar /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d.img -c /etc/usbsas/config.toml
+    704 usbsas   S    pipe_read                      /usr/libexec/usbsas-downloader /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d.tar -c /etc/usbsas/config.toml
+    707 usbsas   Sl   pipe_read                      /usr/libexec/usbsas-usbdev -c /etc/usbsas/config.toml
+    708 usbsas   S    pipe_read                      /usr/libexec/usbsas-scsi2files
+    710 usbsas   S    pipe_read                      /usr/libexec/usbsas-local2files -c /etc/usbsas/config.toml
+    711 usbsas   S    pipe_read                      /usr/libexec/usbsas-files2tar /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d.tar
+    713 usbsas   S    pipe_read                      /usr/libexec/usbsas-files2tar /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d_clean.tar
+    714 usbsas   S    pipe_read                      /usr/libexec/usbsas-files2fs /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d.img
+    715 usbsas   S    pipe_read                      /usr/libexec/usbsas-fs2dev /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d.img
+    716 usbsas   S    pipe_read                      /usr/libexec/usbsas-tar2files /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d.tar
+    717 usbsas   S    pipe_read                      /usr/libexec/usbsas-uploader /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d.tar -c /etc/usbsas/config.toml
+    718 usbsas   S    pipe_read                      /usr/libexec/usbsas-dev2scsi
+    719 usbsas   Sl   pipe_read                      /usr/libexec/usbsas-analyzer /var/lib/barbacane/travail/usbsas/usbsas_1411accd91b641faa9832bebb8aaa09d.tar -c /etc/usbsas/config.toml
+    725 barbaca+ Ss   do_epoll_wait                  /usr/lib/systemd/systemd --user
+    726 usbsas   S    pipe_read                      /usr/libexec/usbsas-jsonparser
+    729 barbaca+ S    do_sigtimedwait.isra.0         (sd-pam)
+    735 barbaca+ Ss+  do_epoll_wait                  /usr/bin/cage -d -- /usr/bin/barbacane-client -c /etc/barbacane/client.toml
+    739 barbaca+ S+   do_sigtimedwait.isra.0         (sd-pam)
+    740 barbaca+ Sl+  do_epoll_wait                  /usr/bin/barbacane-client -c /etc/barbacane/client.toml
+    963 barbaca+ S    do_sys_poll                    /usr/bin/bwrap --unshare-all --die-with-parent --new-session --cap-drop ALL --clearenv --setenv PATH /usr/bin --setenv LANG C.UTF-8 --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib64 /lib64 --symlink usr/bin /bin --dev /dev --tmpfs /tmp --dev-bind-try /dev/sr0 /dev/sr0 -- /usr/bin/xorriso -abort_on FAILURE -return_with SORRY 32 -outdev /dev/sr0 -toc -list_speeds
+    966 barbaca+ Ss   do_wait                        /usr/bin/bwrap --unshare-all --die-with-parent --new-session --cap-drop ALL --clearenv --setenv PATH /usr/bin --setenv LANG C.UTF-8 --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib64 /lib64 --symlink usr/bin /bin --dev /dev --tmpfs /tmp --dev-bind-try /dev/sr0 /dev/sr0 -- /usr/bin/xorriso -abort_on FAILURE -return_with SORRY 32 -outdev /dev/sr0 -toc -list_speeds
+    967 barbaca+ S    hrtimer_nanosleep              /usr/bin/xorriso -abort_on FAILURE -return_with SORRY 32 -outdev /dev/sr0 -toc -list_speeds
+    968 root     R    -                              ps -eo pid,user,stat,wchan:30,args
+SESSION UID USER            SEAT  LEADER CLASS         TTY  IDLE SINCE
+      1 103 barbacane-kiosk -     725    manager-early -    no   -
+     c2 103 barbacane-kiosk seat0 735    user-early    tty2 no   -
+
+2 sessions listed.
+Id=seat0
+ActiveSession=c2
+CanTTY=yes
+CanGraphical=yes
+Sessions=c2
+IdleHint=no
+IdleSinceHint=1795423105000000
+IdleSinceHintMonotonic=4632241
+crw------- 1 barbacane-kiosk tty             4, 2 Nov 23 09:38 /dev/tty2
+
+/dev/dri:
+total 0
+drwxr-xr-x  2 root root      60 Nov 23 09:38 by-path
+crw-rw----+ 1 root video 226, 0 Nov 23 09:38 card0
+
+/run/barbacane-kiosk:
+total 0
+srwxr-xr-x 1 barbacane-kiosk barbacane-kiosk 0 Nov 23 09:38 wayland-0
+-rw-r----- 1 barbacane-kiosk barbacane-kiosk 0 Nov 23 09:38 wayland-0.lock
+# Configuration de l'interface (/etc/barbacane/client.toml)
+usbsas_socket = "/run/usbsas"
+analyzer_url = "http://127.0.0.1:8042"
+admin_socket = "/run/barbacane/admin.sock"
+stage_dir = "/var/lib/barbacane/travail/sortie"
+export_dir = "/var/lib/barbacane/export"
+# Disques optiques (barbacane-optique) ; optique_socket = "" : pas de lecteur
+optique_socket = "/run/barbacane-optique/optique.sock"
+optique_entree = "/var/lib/barbacane/travail/optique/entree"
+title = "Barbacane"
+signatures_max_age_days = 7
+# Identification par badge : prévue, non disponible
+badge = false
+Nov 23 09:38:25 barbacane systemd[1]: Starting systemd-logind.service - User Login Management...
+Nov 23 09:38:25 barbacane systemd-logind[665]: New seat seat0.
+Nov 23 09:38:25 barbacane systemd-logind[665]: Watching system buttons on /dev/input/event1 (Power Button)
+Nov 23 09:38:25 barbacane systemd-logind[665]: Watching system buttons on /dev/input/event0 (AT Translated Set 2 keyboard)
+Nov 23 09:38:25 barbacane systemd[1]: Started systemd-logind.service - User Login Management.
+Nov 23 09:38:25 barbacane systemd-logind[665]: New session c1 of user barbacane-kiosk.
+Nov 23 09:38:25 barbacane systemd-logind[665]: New session 1 of user barbacane-kiosk.
+Nov 23 09:38:25 barbacane systemd-logind[665]: Session c1 logged out. Waiting for processes to exit.
+Nov 23 09:38:25 barbacane systemd-logind[665]: Removed session c1.
+Nov 23 09:38:25 barbacane systemd-logind[665]: New session c2 of user barbacane-kiosk.
+[    3.638550] input: Power Button as /devices/LNXSYSTM:00/LNXPWRBN:00/input/input2
+[    3.640535] input: PC Speaker as /devices/platform/pcspkr/input/input3
+[    3.657109] Adding 878588k swap on /dev/vda3.  Priority:-2 extents:1 across:878588k 
+[    3.668376] ACPI: button: Power Button [PWRF]
+[    3.668833] parport_pc 00:03: reported by Plug and Play ACPI
+[    3.670025] parport0: PC-style at 0x378, irq 7 [PCSPP,TRISTATE]
+[    3.773336] RAPL PMU: API unit is 2^-32 Joules, 0 fixed counters, 10737418240 ms ovfl timer
+[    3.778447] ppdev: user-space parallel port driver
+[    3.778501] cryptd: max_cpu_qlen set to 1000
+[    3.793422] AES CTR mode by8 optimization enabled
+[    4.397062] audit: type=1400 audit(1795423104.748:2): apparmor="STATUS" operation="profile_load" profile="unconfined" name="Discord" pid=519 comm="apparmor_parser"
+[    4.398292] audit: type=1400 audit(1795423104.748:3): apparmor="STATUS" operation="profile_load" profile="unconfined" name="1password" pid=518 comm="apparmor_parser"
+[    4.401386] audit: type=1400 audit(1795423104.752:4): apparmor="STATUS" operation="profile_load" profile="unconfined" name=4D6F6E676F444220436F6D70617373 pid=523 comm="apparmor_parser"
+[    4.403541] audit: type=1400 audit(1795423104.752:5): apparmor="STATUS" operation="profile_load" profile="unconfined" name="QtWebEngineProcess" pid=524 comm="apparmor_parser"
+[    4.406889] audit: type=1400 audit(1795423104.756:6): apparmor="STATUS" operation="profile_load" profile="unconfined" name="balena-etcher" pid=527 comm="apparmor_parser"
+[    4.408545] audit: type=1400 audit(1795423104.760:7): apparmor="STATUS" operation="profile_load" profile="unconfined" name="brave" pid=528 comm="apparmor_parser"
+[    4.409869] audit: type=1400 audit(1795423104.760:8): apparmor="STATUS" operation="profile_load" profile="unconfined" name="buildah" pid=529 comm="apparmor_parser"
+[    4.411315] audit: type=1400 audit(1795423104.760:9): apparmor="STATUS" operation="profile_load" profile="unconfined" name="busybox" pid=530 comm="apparmor_parser"
+[    4.417824] audit: type=1400 audit(1795423104.768:10): apparmor="STATUS" operation="profile_load" profile="unconfined" name="cam" pid=531 comm="apparmor_parser"
+[    4.431325] device-mapper: core: CONFIG_IMA_DISABLE_HTABLE is disabled. Duplicate IMA measurements will not be recorded in the IMA log.
+[    4.431347] device-mapper: uevent: version 1.0.3
+[    4.431428] device-mapper: ioctl: 4.48.0-ioctl (2023-03-01) initialised: dm-devel@lists.linux.dev
+[    4.444371] loop: module loaded
+[    4.445856] loop0: detected capacity change from 0 to 16777216
+[    4.746226] EXT4-fs (dm-0): mounted filesystem f38e1fc2-8d26-46d3-8134-c3aa0cb8a9a2 r/w with ordered data mode. Quota mode: none.
+Nov 23 09:38:23 barbacane kernel: ACPI: bus type drm_connector registered
+Nov 23 09:38:23 barbacane kernel: bochs-drm 0000:00:02.0: vgaarb: deactivate vga console
+Nov 23 09:38:23 barbacane kernel: [drm] Found bochs VGA, ID 0xb0c5.
+Nov 23 09:38:23 barbacane kernel: [drm] Framebuffer size 16384 kB @ 0xc0000000, mmio @ 0xc1061000.
+Nov 23 09:38:23 barbacane kernel: [drm] Found EDID data blob.
+Nov 23 09:38:23 barbacane kernel: [drm] Initialized bochs-drm 1.0.0 for 0000:00:02.0 on minor 0
+Nov 23 09:38:23 barbacane kernel: fbcon: bochs-drmdrmfb (fb0) is primary device
+Nov 23 09:38:23 barbacane kernel: bochs-drm 0000:00:02.0: [drm] fb0: bochs-drmdrmfb frame buffer device
+Nov 23 09:38:23 barbacane systemd[1]: Starting modprobe@drm.service - Load Kernel Module drm...
+Nov 23 09:38:23 barbacane systemd[1]: modprobe@drm.service: Deactivated successfully.
+Nov 23 09:38:23 barbacane systemd[1]: Finished modprobe@drm.service - Load Kernel Module drm.
+Nov 23 09:38:25 barbacane systemd[1]: Started seatd.service - Seat management daemon.
+Nov 23 09:38:25 barbacane seatd[663]: 00:00:00.000 [INFO] [seatd/seat.c:48] Created VT-bound seat seat0
+Nov 23 09:38:25 barbacane seatd[663]: 00:00:00.004 [INFO] [seatd/seatd.c:194] seatd started
+Nov 23 09:38:25 barbacane seatd[663]: 00:00:00.450 [INFO] [seatd/server.c:145] New client connected (pid: 735, uid: 103, gid: 104)
+Nov 23 09:38:25 barbacane seatd[663]: 00:00:00.451 [INFO] [seatd/seat.c:239] Added client 2 to seat0
+Nov 23 09:38:25 barbacane seatd[663]: 00:00:00.451 [INFO] [seatd/seat.c:563] Opened client 2 on seat0
+== 735
+[<0>] do_epoll_wait+0x694/0x830
+[<0>] __x64_sys_epoll_wait+0x71/0x110
+[<0>] do_syscall_64+0x87/0x1b0
+[<0>] entry_SYSCALL_64_after_hwframe+0x76/0x7e
+total 0
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:38 0 -> /dev/tty2
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:38 1 -> socket:[6555]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 10 -> socket:[7200]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 11 -> socket:[7200]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 12 -> /dev/dri/card0
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 13 -> /dev/dri/card0
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 14 -> /dev/dri/card0
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 15 -> socket:[7208]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:38 16 -> socket:[7208]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 17 -> socket:[7209]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 18 -> socket:[7209]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 19 -> /run/barbacane-kiosk/wayland-0.lock
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:38 2 -> socket:[6555]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 20 -> socket:[7210]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 21 -> socket:[7210]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 22 -> anon_inode:[eventpoll]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 23 -> anon_inode:[timerfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 24 -> socket:[7212]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 25 -> /dev/input/event1
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 26 -> /dev/input/event0
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 27 -> anon_inode:[eventpoll]
+lr-x------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 28 -> /dev/shm/wlroots-IGFBGl (deleted)
+lr-x------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 29 -> /dev/shm/wlroots-FLOfGl (deleted)
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:38 3 -> anon_inode:[eventpoll]
+lr-x------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 30 -> /dev/shm/wlroots-FFeLKl (deleted)
+lr-x------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 31 -> /dmabuf:
+lr-x------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 32 -> pipe:[7219]
+lr-x------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 33 -> pipe:[7219]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 34 -> socket:[7223]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 35 -> socket:[7223]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 36 -> /memfd:smithay-client-toolkit (deleted)
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 37 -> anon_inode:[timerfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 38 -> /memfd:softbuffer (deleted)
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 39 -> /memfd:softbuffer (deleted)
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:38 4 -> anon_inode:[eventfd]
+lr-x------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 40 -> /dmabuf:
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 5 -> anon_inode:[eventfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 6 -> anon_inode:[signalfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 7 -> anon_inode:[signalfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 8 -> socket:[7198]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 9 -> socket:[7198]
+== 740
+[<0>] do_epoll_wait+0x694/0x830
+[<0>] do_compat_epoll_pwait.part.0+0xb/0x70
+[<0>] __x64_sys_epoll_pwait+0x93/0x140
+[<0>] do_syscall_64+0x87/0x1b0
+[<0>] entry_SYSCALL_64_after_hwframe+0x76/0x7e
+total 0
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 0 -> /dev/tty2
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 1 -> socket:[6555]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 10 -> anon_inode:[eventpoll]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 11 -> anon_inode:[eventfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 12 -> anon_inode:[timerfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 13 -> anon_inode:[eventfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 14 -> /memfd:softbuffer (deleted)
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 15 -> socket:[7237]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 16 -> /memfd:softbuffer (deleted)
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 17 -> anon_inode:[eventpoll]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 18 -> anon_inode:[eventfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 19 -> anon_inode:[timerfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 2 -> socket:[6555]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 20 -> socket:[7237]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 21 -> socket:[8475]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 3 -> socket:[7222]
+l-wx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 33 -> pipe:[7219]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 4 -> anon_inode:[eventpoll]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 5 -> anon_inode:[eventfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 6 -> anon_inode:[timerfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 7 -> /memfd:smithay-client-toolkit (deleted)
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 8 -> anon_inode:[eventfd]
+lrwx------ 1 barbacane-kiosk barbacane-kiosk 64 Nov 23 09:39 9 -> anon_inode:[eventfd]
+-- systemd / usbsas-server
+Nov 23 08:38:25 barbacane systemd[1]: Started usbsas-server.service - SAS USB Server.
+Nov 23 08:41:19 barbacane systemd[1]: usbsas-server.service: Main process exited, code=exited, status=1/FAILURE
+Nov 23 08:41:19 barbacane systemd[1]: usbsas-server.service: Failed with result 'exit-code'.
+Nov 23 08:41:19 barbacane systemd[1]: Stopped usbsas-server.service - SAS USB Server.
+Nov 23 08:41:19 barbacane systemd[1]: usbsas-server.service: Consumed 179ms CPU time, 94.2M memory peak.
+-- erreurs
+Nov 23 08:39:05 barbacane systemd[1]: Failed to start clamav-freshclam-once.service - Update ClamAV virus database once.
+-- droits
+drwxr-xr-x 19 root root 4096 Nov 23 08:10 /travail/v230-qemu/3/racine
+drwxr-xr-x 10 root root 4096 Nov 23 08:38 /travail/v230-qemu/3/racine/var/lib/barbacane
+drwxr-xr-x  2 root root 4096 Nov 23 08:10 /travail/v230-qemu/3/racine/var/lib/barbacane/yara
+-- base ClamAV
+total 110168
+-rw-r--r-- 1 systemd-resolve systemd-resolve   281702 Nov 23 08:11 bytecode.cvd
+-rw-r--r-- 1 systemd-resolve systemd-resolve 23446447 Nov 23 08:10 daily.cvd
+-rw-r--r-- 1 systemd-resolve systemd-resolve       90 Nov 23 08:10 freshclam.dat
+-rw-r--r-- 1 systemd-resolve systemd-resolve 89072577 Nov 23 08:10 main.cvd
+OK : aucun paquet réseau installé (336 paquets)
+OK : barbacane-analyzer
+OK : barbacane-admind
+OK : barbacane-kiosk
+OK : usbsas-server
+OK : clamav-daemon
+OK : bac à sable des archives fonctionnel dans le service
+OK : GRUB verrouillé (superusers), entrée par défaut sans mot de passe
+écran : 100 % de pixels non noirs

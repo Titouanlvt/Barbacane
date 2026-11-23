@@ -1,0 +1,6 @@
+OK    audit
+OK    fmt
+OK    cargo
+OK    shellcheck
+journaux : /travail/journaux-ci-v230
+FIN 0

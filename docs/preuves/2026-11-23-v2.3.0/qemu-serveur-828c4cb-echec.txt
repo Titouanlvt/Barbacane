@@ -1,0 +1,43 @@
+== contrôle de l'ISO
+OK : ISO : 224 paquets, aucun interdit
+OK : preseed : aucun réseau à l'installation
+OK : preseed : disque chiffré, AES-256 (clé XTS de 512 bits : partman double 256)
+== installation (sans intervention, TPM logiciel swtpm)
+installation : 5 min
+OK : installation terminée (fin-installation-serveur.sh jusqu'au bout)
+== premier démarrage (déverrouillage par le TPM)
+OK : démarré sans phrase de passe (TPM) : état du serveur lu sur la console
+OK : ports de la passerelle tirés à l'installation : 43117 et 43118 (D4)
+OK : passerelle joignable depuis le réseau des bornes, borne mTLS acceptée, chaîne vérifiée contre la racine : {"version":1,"etat":"ok","borne":"borne borne-01","heure_serveur":1795420881}
+OK : passerelle : client sans certificat refusé
+OK : passerelle injoignable depuis le réseau d'administration
+OK : interface web servie sur 10.0.3.15:443 (administration) au certificat admin-01 de TEST : page de connexion, HTTP 200
+OK : interface web : certificat HTTPS vérifié contre la racine de TEST (chaîne complète, SAN 10.0.3.15)
+OK : interface web : client SANS certificat refusé à la poignée de main TLS (tlsv13 alert certificate required)
+OK : interface web : port interne 8443 injoignable (seul 443 est publié et ouvert)
+OK : interface web injoignable depuis le réseau des bornes
+OK : interface web : connexion admin-01 (certificat + mot de passe Argon2id, HTTP 303) puis tableau de bord HTTP 200
+OK : comptes : admin-01 importé du fichier v2.1.0 (migration au premier démarrage)
+OK : comptes : création sans jeton anti-CSRF refusée (403)
+OK : comptes : second administrateur admin-02 créé par le seul administrateur (amorçage journalisé)
+OK : admin-02 : .p12 téléchargé une seule fois (puis 404), relu par openssl (PBES2 AES-256, MAC SHA-256)
+OK : admin-02 : connexion au mot de passe provisoire, changement imposé (303 https://127.0.0.1:47010/mot-de-passe), nouveau mot de passe accepté, tableau 200
+OK : double validation : demande d'admin-02, auto-validation refusée (400)
+OK : double validation : « lect » (lecture seule) créé par admin-01 ; .p12 au validateur, mot de passe provisoire au demandeur
+OK : lect : .p12 téléchargé une seule fois (puis 404), relu par openssl (PBES2 AES-256, MAC SHA-256)
+OK : lect : connexion au mot de passe provisoire, changement imposé (303 https://127.0.0.1:47010/mot-de-passe), nouveau mot de passe accepté, tableau 200
+OK : rôle lecture seule : comptes, journal, réglage de site et jeton refusés (403)
+OK : D13 : site « labo » en mode Aucun, activation de la quarantaine refusée (400, message D13)
+OK : D13 : quarantaine activée par double validation (admin-01 puis admin-02), mode Aucun alors refusé (400)
+OK : quarantaine désactivée par un seul administrateur (journalisé), mode Aucun de nouveau permis
+OK : conservation : 365 jours par défaut, posée au premier démarrage avec préavis (aucune purge immédiate)
+OK : mTLS : clé client tirée par le serveur, demande signée par l'AC du collecteur, certificat déposé (clé assortie vérifiée)
+OK : Syslog : demande TLS par admin-01, AUTO-VALIDATION REFUSÉE (400)
+OK : Syslog TLS 1.3 + mTLS vers 10.0.3.100:6514 validé par admin-02 (double validation)
+ÉCHEC : collecteur TLS : rien reçu en 90 s ()
+OK : borne de test enrôlée par le protocole réel (jeton de la Console, demande, validation HTTP 200, certificat retiré)
+OK : 2 rapports de passage (sain, menace) reçus par la passerelle (mTLS de la borne de test)
+ÉCHEC : rapports de passage absents du collecteur
+ÉCHEC : collecteur coupé : état non affiché
+sed: can't read /travail/v230-banc/preuve/collecteur/recus-tls.txt: No such file or directory
+qemu-system-x86_64: terminating on signal 15 from pid 405395 (bash)

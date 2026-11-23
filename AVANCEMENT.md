@@ -1,4 +1,4 @@
-# Avancement — Barbacane (état au 23/11/2026, v2.3.0 en preuves)
+# Avancement — Barbacane (état au 23/11/2026, v2.3.0 publiée)
 
 ## Versions publiées
 - **v1.0.0** (19/11/2026) : borne hors ligne — [notes](docs/notes-de-version/v1.0.0.md),
@@ -57,7 +57,7 @@ Preuves ([dossier](docs/preuves/2026-11-22-v2.2.0/README.md)) : CI locale FIN 0,
 66 OK, banc borne 3/3, migration 2.1.0 → 2.2.0 14 OK, campagne 950 57 OK.
 Choix à valider par l'utilisateur : `docs/suite/decisions.md` (22/11, v2.2.0).
 
-## v2.3.0 (branche `v230`, non fusionnée) : journal structuré, Syslog, conservation
+## v2.3.0 (publiée le 23/11/2026) : journal structuré, Syslog, conservation
 Format structuré (JSON par ligne, RFC 3339 UTC, identifiant, gravité RFC 5424), export Syslog
 RFC 5424 en TLS 1.3 (mTLS possible) ou en clair signalé, file persistante (le journal) avec remise
 confirmée, alertes ; durée de conservation réglée par double validation (365 j, 180–730 j, préavis
