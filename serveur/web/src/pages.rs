@@ -313,7 +313,12 @@ pub fn resultat(
 
 // ───────────────────────────── Tableau de bord ────────────────────────────────────────────────
 
-pub fn tableau(ctx: &Contexte, lignes: &[LigneSupervision], demandes: usize) -> String {
+pub fn tableau(
+    ctx: &Contexte,
+    lignes: &[LigneSupervision],
+    demandes: usize,
+    alertes_journal: &[String],
+) -> String {
     let actives = lignes.iter().filter(|l| l.active).count();
     let compte = |classe: &str, mot: &str| {
         lignes
@@ -331,6 +336,11 @@ pub fn tableau(ctx: &Contexte, lignes: &[LigneSupervision], demandes: usize) -> 
         actions.b("<a class=\"b-btn b-btn--principal\" href=\"/enrolement\">Enrôler une borne</a>");
     }
     let mut c = Html::new();
+    for a in alertes_journal {
+        c.b("<div class=\"b-avis b-avis--bloque\" role=\"alert\"><span><b>Journal :</b> ")
+            .t(a)
+            .b(" <a href=\"/journal\">Conservation et export</a></span></div>");
+    }
     c.b("<div class=\"b-tuiles\">");
     tuile(&mut c, actives, "", "Bornes actives");
     tuile(&mut c, compte("sain", "En service"), "sain", "En service");
@@ -820,6 +830,11 @@ fn libelle_evenement(cle: &str) -> &'static str {
         "administration" => "Administration",
         "quarantaine" => "Quarantaine",
         "point_de_controle" => "Point de contrôle signé",
+        "segment_ouvert" => "Segment ouvert (ancre signée)",
+        "segment_purge" => "Segment du journal purgé",
+        "purge" => "Purge (conservation)",
+        "conservation_reglee" => "Durée de conservation",
+        "syslog" => "Export Syslog",
         _ => "Autre",
     }
 }
@@ -853,6 +868,7 @@ pub fn audit(
     pages: usize,
 ) -> String {
     let mut actions = Html::new();
+    actions.b("<a class=\"b-btn\" href=\"/journal\">Conservation et export</a>");
     actions.b(
         "<a class=\"b-btn b-btn--principal\" href=\"/audit/verification\">Vérifier la chaîne</a>",
     );
@@ -921,11 +937,24 @@ pub fn verification(ctx: &Contexte, resultat: Result<Bilan, String>) -> String {
                 &mut c,
                 "b-avis--sain",
                 &format!(
-                    "Chaîne intègre : {} enregistrements, {} points de contrôle signés valides.",
+                    "Chaîne intègre : {} enregistrements (n° {} à {}) dans {} fichier(s), {} points de contrôle signés valides.",
                     b.enregistrements,
+                    b.premier,
+                    b.dernier,
+                    b.segments,
                     b.points.len()
                 ),
             );
+            if b.purges > 0 {
+                avis(
+                    &mut c,
+                    "",
+                    &format!(
+                        "Enregistrements 1 à {} purgés par la conservation : la chaîne restante est vérifiée depuis l'ouverture signée du segment n° {}.",
+                        b.purges, b.premier
+                    ),
+                );
+            }
             if b.non_scelles > 0 {
                 avis(
                     &mut c,
@@ -996,7 +1025,13 @@ mod tests {
             csrf: "j\"x",
             maintenant: 130,
         };
-        let p = tableau(&ctx, &[ligne("<script>alert(1)</script>")], 0);
+        let p = tableau(
+            &ctx,
+            &[ligne("<script>alert(1)</script>")],
+            0,
+            &["<b>x</b>".to_owned()],
+        );
+        assert!(!p.contains("<b>x</b>"), "alerte du journal échappée");
         assert!(!p.contains("<script>"));
         assert!(!p.contains("<i>2.0"));
         assert!(p.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
@@ -1013,7 +1048,7 @@ mod tests {
             csrf: "x",
             maintenant: 130,
         };
-        let p = tableau(&ctx, &[ligne("b1")], 0);
+        let p = tableau(&ctx, &[ligne("b1")], 0, &[]);
         assert!(!p.contains("/bornes/revoquer"));
         assert!(!p.contains("Enrôler une borne"));
     }

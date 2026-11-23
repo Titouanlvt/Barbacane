@@ -220,6 +220,59 @@ pub fn csr_client(stockage: &Stockage, nom_serveur: &str) -> Result<Option<Strin
     Ok(Some(p.serialize_request(&cle)?.pem()?))
 }
 
+/// Dépose le certificat client signé par l'AC du collecteur (mTLS) : il doit correspondre à
+/// la clé tirée par le serveur. Devient le certificat « actuel » proposé dans la Console.
+pub fn deposer_certificat_client(stockage: &Stockage, pem: &[u8]) -> Result<String> {
+    let h = deposer_pem(stockage, "client", pem)?;
+    verifier_client(&dossier(stockage)?, &h)?;
+    ecrire_atomique(&dossier(stockage)?.join("client-actuel"), h.as_bytes())?;
+    Ok(h)
+}
+
+/// Empreinte du certificat client déposé en dernier (`None` : aucun).
+pub fn certificat_client_actuel(stockage: &Stockage) -> Result<Option<String>> {
+    Ok(lire_borne(&dossier(stockage)?.join("client-actuel"), 64)?
+        .and_then(|o| String::from_utf8(o).ok())
+        .filter(|h| hex64(h)))
+}
+
+/// Résumé lisible d'un certificat déposé (sujet, échéance) pour l'administrateur validateur.
+pub fn resume_pem(stockage: &Stockage, prefixe: &str, h: &str) -> Option<String> {
+    if !hex64(h) {
+        return None;
+    }
+    let pem = lire_borne(
+        &dossier(stockage).ok()?.join(format!("{prefixe}-{h}.pem")),
+        PEM_MAX,
+    )
+    .ok()??;
+    let der = certificats(&pem).ok()?;
+    let (_, x) = x509_parser::parse_x509_certificate(der[0].as_ref()).ok()?;
+    Some(format!(
+        "{} (jusqu'au {})",
+        x.subject(),
+        crate::outils::date_utc(u64::try_from(x.validity().not_after.timestamp()).unwrap_or(0))
+    ))
+}
+
+fn verifier_client(d: &Path, h: &str) -> Result<()> {
+    let cert = lire_borne(&d.join(format!("client-{h}.pem")), PEM_MAX)?
+        .context("mTLS : certificat client absent")?;
+    if sha256_hex(&cert) != *h {
+        bail!("mTLS : fichier du certificat client modifié");
+    }
+    let cle = lire_borne(&d.join("client.cle.pem"), PEM_MAX)?
+        .context("mTLS : clé client absente (générer la clé)")?;
+    let paire = rcgen::KeyPair::from_pem(std::str::from_utf8(&cle)?)?;
+    let der = certificats(&cert)?;
+    let (_, x) = x509_parser::parse_x509_certificate(der[0].as_ref())
+        .map_err(|e| anyhow::anyhow!("certificat client : {e}"))?;
+    if x.public_key().raw != rcgen::PublicKeyData::subject_public_key_info(&paire).as_slice() {
+        bail!("mTLS : le certificat client ne correspond pas à la clé du serveur");
+    }
+    Ok(())
+}
+
 /// Contrôle d'un réglage DEMANDÉ dans la Console : cible du réseau local, puis
 /// [`controler`].
 pub fn controler_demande(stockage: &Stockage, c: &ConfigSyslog) -> Result<()> {
@@ -259,22 +312,7 @@ pub fn controler(stockage: &Stockage, c: &ConfigSyslog) -> Result<()> {
                 if !hex64(h) {
                     bail!("certificat client invalide");
                 }
-                let cert = lire_borne(&d.join(format!("client-{h}.pem")), PEM_MAX)?
-                    .context("mTLS : certificat client absent")?;
-                if sha256_hex(&cert) != *h {
-                    bail!("mTLS : fichier du certificat client modifié");
-                }
-                let cle = lire_borne(&d.join("client.cle.pem"), PEM_MAX)?
-                    .context("mTLS : clé client absente (générer la clé)")?;
-                let paire = rcgen::KeyPair::from_pem(std::str::from_utf8(&cle)?)?;
-                let der = certificats(&cert)?;
-                let (_, x) = x509_parser::parse_x509_certificate(der[0].as_ref())
-                    .map_err(|e| anyhow::anyhow!("certificat client : {e}"))?;
-                if x.public_key().raw
-                    != rcgen::PublicKeyData::subject_public_key_info(&paire).as_slice()
-                {
-                    bail!("mTLS : le certificat client ne correspond pas à la clé du serveur");
-                }
+                verifier_client(&d, h)?;
             }
         }
         Mode::TcpClair | Mode::UdpClair => {

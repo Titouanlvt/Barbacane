@@ -18,6 +18,7 @@ pub mod comptes;
 pub mod html;
 pub mod http;
 pub mod iso_bornes;
+pub mod journal;
 pub mod multipart;
 pub mod pages;
 pub mod pages_comptes;
@@ -433,7 +434,9 @@ impl Utilisateur {
 pub fn droit_route(methode: &str, chemin: &str) -> Droit {
     match (methode, chemin) {
         ("GET", "/utilisateurs" | "/passages" | "/passages/detail") => Droit::ConsulterPersonnel,
-        ("GET", "/audit" | "/audit/verification") => Droit::ConsulterJournal,
+        ("GET", "/audit" | "/audit/verification" | journal::ROUTE | journal::ROUTE_EXPORT) => {
+            Droit::ConsulterJournal
+        }
         ("GET", "/comptes") => Droit::ConsulterComptes,
         ("GET", "/enrolement/demande" | "/bornes/revoquer" | iso_bornes::ROUTE) => Droit::Exploiter,
         ("GET", quarantaine::ROUTE) => Droit::Administrer,
@@ -516,6 +519,17 @@ impl Web {
             }
         } else {
             comptes.lire()?;
+        }
+        if ecrire {
+            // v2.3.0 : durée de conservation posée au premier démarrage (365 jours, préavis de 7
+            // jours avant toute purge ; journalisé).
+            barbacane_passerelle::conservation::lire_ou_initialiser(
+                &admin.stockage,
+                maintenant(),
+                "premier-demarrage-2.3.0",
+            )?;
+        } else {
+            barbacane_passerelle::conservation::lire(&admin.stockage)?;
         }
         let ca_admin = charger_ca_admin(&config, admin.stockage.dossier())?;
         if let Some(a) = &config.annuaire
@@ -832,7 +846,22 @@ impl Web {
             "/tableau" => {
                 let lignes = admin.supervision(t)?;
                 let demandes = admin.demandes(t)?.len();
-                page(200, pages::tableau(&ctx, &lignes, demandes))
+                let alertes = if u.role.peut(comptes::Droit::ConsulterJournal) {
+                    journal::alertes(
+                        barbacane_passerelle::syslog::lire_actif(&admin.stockage)
+                            .ok()
+                            .flatten()
+                            .as_ref(),
+                        barbacane_passerelle::syslog::lire_etat(&admin.stockage)
+                            .ok()
+                            .flatten()
+                            .as_ref(),
+                        t,
+                    )
+                } else {
+                    Vec::new()
+                };
+                page(200, pages::tableau(&ctx, &lignes, demandes, &alertes))
             }
             "/enrolement" => page(
                 200,
@@ -874,6 +903,15 @@ impl Web {
                         normaliser_identifiant(s).and_then(|i| base.utilisateur(&i))
                     }
                 });
+                // Fiche consultée : journalisée par son pseudonyme (jamais l'identifiant).
+                if let Some(x) = trouve {
+                    admin.stockage.auditer(
+                        &u.acteur(),
+                        Evenement::Administration {
+                            action: format!("consultation-utilisateur:{}", x.pseudonyme),
+                        },
+                    )?;
+                }
                 self.page_utilisateurs(&ctx, &base, saisie.map(|s| (s, trouve)), None, None)
             }
             "/sites" => self.page_sites(&admin, &ctx, None)?,
@@ -883,12 +921,26 @@ impl Web {
             }
             "/mot-de-passe" => self.page_mot_de_passe(u, t, None),
             "/passages" | "/passages/detail" => {
-                admin.stockage.auditer(
-                    &u.acteur(),
-                    Evenement::Administration {
-                        action: "consultation-passages".into(),
-                    },
-                )?;
+                // Consultation de données personnelles journalisée, avec le rapport consulté.
+                let v = |k: &str| r.parametres.get(k).map(String::as_str).unwrap_or("");
+                let action = if r.chemin == "/passages" {
+                    "consultation-passages".to_owned()
+                } else {
+                    let (b, i) = (v("borne"), v("id"));
+                    if barbacane_protocole::passage::uuid_valide(b)
+                        && barbacane_protocole::passage::uuid_valide(i)
+                    {
+                        format!(
+                            "consultation-passage:{b}:{i}:{}",
+                            v("partie").parse::<u32>().unwrap_or(0)
+                        )
+                    } else {
+                        "consultation-passage:-".to_owned()
+                    }
+                };
+                admin
+                    .stockage
+                    .auditer(&u.acteur(), Evenement::Administration { action })?;
                 let p = Passages::ouvrir(&admin.stockage)?;
                 let noms = admin
                     .stockage
@@ -914,6 +966,11 @@ impl Web {
                 page(200, pages_utilisateurs::cles_usb(&ctx, &base, None))
             }
             iso_bornes::ROUTE => self.page_iso(u, t, None)?,
+            journal::ROUTE => {
+                self.auditer(&u.acteur(), "consultation-conservation-export")?;
+                self.page_journal(u, t, None, None)?
+            }
+            journal::ROUTE_EXPORT => self.export_journal(u, t)?,
             quarantaine::ROUTE => self.page_quarantaine(u, t, None)?,
             "/audit" => {
                 admin.stockage.auditer(
@@ -922,9 +979,10 @@ impl Web {
                         action: "consultation-audit".into(),
                     },
                 )?;
-                let contenu = admin.stockage.journal_audit().lire()?;
-                let lignes: Vec<&[u8]> = contenu
-                    .split(|o| *o == b'\n')
+                let contenus = admin.stockage.journal_audit().contenus()?;
+                let lignes: Vec<&[u8]> = contenus
+                    .iter()
+                    .flat_map(|c| c.split(|o| *o == b'\n'))
                     .filter(|l| !l.is_empty())
                     .collect();
                 let pages_n = lignes.len().div_ceil(AUDIT_PAR_PAGE).max(1);
@@ -951,9 +1009,11 @@ impl Web {
                     },
                 )?;
                 let cle = ClePublique::lire(&self.config.cle_audit_publique)?;
-                let contenu = admin.stockage.journal_audit().lire()?;
-                let resultat =
-                    barbacane_audit::verifier(&contenu, &cle, &[]).map_err(|d| d.to_string());
+                let resultat = admin
+                    .stockage
+                    .journal_audit()
+                    .verifier_tout(&cle, &[])
+                    .map_err(|d| format!("{d:#}"));
                 page(200, pages::verification(&ctx, resultat))
             }
             _ => refus(404, "Page introuvable."),
@@ -1215,6 +1275,9 @@ impl Web {
             return Ok(rep);
         }
         if let Some(rep) = self.post_quarantaine(&r.chemin, f, u, t)? {
+            return Ok(rep);
+        }
+        if let Some(rep) = self.post_journal(&r.chemin, f, u, t)? {
             return Ok(rep);
         }
         if let Some(rep) = self.post_utilisateurs(&r.chemin, f, u, &admin, t)? {

@@ -275,6 +275,11 @@ fn main() {
         }],
         non_scelles: 0,
         derniere: "7e".repeat(48),
+        dernier: 8,
+        premier: 1,
+        purges: 0,
+        segments: 1,
+        exports_purges: 0,
     };
     // Utilisateurs, sites, clés USB (données d'EXEMPLE ; PIN fictif).
     let mut base = BaseUtilisateurs::default();
@@ -354,7 +359,7 @@ fn main() {
     let trouve = base.utilisateur("j.dupont").cloned();
     let pages_rendues = [
         ("connexion", pages::connexion("exemple", None)),
-        ("tableau", pages::tableau(&ctx, &lignes, 1)),
+        ("tableau", pages::tableau(&ctx, &lignes, 1, &[])),
         (
             "enrolement",
             pages::enrolement(

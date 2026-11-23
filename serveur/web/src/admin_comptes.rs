@@ -66,7 +66,7 @@ pub(crate) struct Secrets {
     p12: Option<(String, String)>,
 }
 
-fn action(nom: &str, parties: &[&str]) -> String {
+pub(crate) fn action(nom: &str, parties: &[&str]) -> String {
     let mut s = nom.to_owned();
     for p in parties {
         s.push(':');
@@ -337,6 +337,46 @@ impl Web {
                     None,
                 )
             }
+            Operation::ChangerConservation { jours } => {
+                let r = barbacane_passerelle::conservation::changer(
+                    &self.stockage()?,
+                    *jours,
+                    t,
+                    &a,
+                    &format!("web:{}+{}", demande.par, validateur.compte),
+                )?;
+                (
+                    format!(
+                        "Durée de conservation : {} jours (double validation), effective le {}.",
+                        r.jours,
+                        barbacane_passerelle::outils::date_utc(r.effective_le)
+                    ),
+                    None,
+                )
+            }
+            Operation::ConfigurerSyslog { config } => {
+                barbacane_passerelle::syslog::appliquer(
+                    &self.stockage()?,
+                    config.clone(),
+                    t,
+                    &a,
+                    &format!("web:{}+{}", demande.par, validateur.compte),
+                )?;
+                (
+                    match config {
+                        None => "Export Syslog désactivé (double validation).".to_owned(),
+                        Some(c) if c.mode.clair() => format!(
+                            "Export Syslog EN CLAIR vers {}:{} (double validation ; non recommandé, inscrit au journal).",
+                            c.adresse, c.port
+                        ),
+                        Some(c) => format!(
+                            "Export Syslog TLS vers {}:{} (double validation) ; pare-feu ouvert vers cette seule cible.",
+                            c.adresse, c.port
+                        ),
+                    },
+                    None,
+                )
+            }
             Operation::RevoquerSite { site, motif } => {
                 let m = Motif::analyser(motif).context("motif")?;
                 let uuids = self.admin(validateur)?.revoquer_site(site, m, t)?;
@@ -432,7 +472,7 @@ impl Web {
             return self.remettre_mot_de_passe(champ("jeton"), u, t).map(Some);
         }
         let demande = |op: Operation| -> Result<String> {
-            let (nom, cible) = (op.nom(), op.cible().to_owned());
+            let (nom, cible) = (op.nom(), op.cible());
             validations::demander(&self.comptes, op, &u.compte, t, |d| {
                 self.auditer_web(&a, &action("demande", &[nom, &cible, d]))
             })
@@ -635,7 +675,7 @@ impl Web {
                             &a,
                             &action(
                                 "validation",
-                                &[dem.operation.nom(), dem.operation.cible(), &dem.id],
+                                &[dem.operation.nom(), &dem.operation.cible(), &dem.id],
                             ),
                         )?;
                         self.executer(dem, base, u, t)
@@ -652,14 +692,22 @@ impl Web {
             }
             _ => return Ok(Some(refus(404, "Action introuvable."))),
         };
+        // Demandes de la page « Conservation et export » : retour sur cette page.
+        let journal = champ("retour") == "journal" && secrets.is_none();
         Ok(Some(match r {
+            Ok(m) if journal => self.page_journal(u, t, Some((true, &m)), None)?,
             Ok(m) => self.page_comptes(u, t, Some((true, &m)), secrets.as_ref())?,
             Err(e) => {
                 // Tout refus est inscrit au journal (route et cible, jamais le motif détaillé).
                 let route = chemin.trim_start_matches('/').replace('/', "-");
                 let cible = if identifiant_valide(id) { id } else { "-" };
                 self.auditer_web(&a, &action("refus", &[&route, cible]))?;
-                self.page_comptes(u, t, Some((false, &format!("Refusé : {e:#}"))), None)?
+                let m = format!("Refusé : {e:#}");
+                if journal {
+                    self.page_journal(u, t, Some((false, &m)), None)?
+                } else {
+                    self.page_comptes(u, t, Some((false, &m)), None)?
+                }
             }
         }))
     }

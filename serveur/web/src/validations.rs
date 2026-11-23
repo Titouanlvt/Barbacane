@@ -55,6 +55,15 @@ pub enum Operation {
         site: String,
         motif: String,
     },
+    /// Durée de conservation (v2.3.0).
+    ChangerConservation {
+        jours: u32,
+    },
+    /// Export Syslog (v2.3.0) ; `None` : désactivation (moins de sécurité : double validation
+    /// aussi).
+    ConfigurerSyslog {
+        config: Option<barbacane_passerelle::syslog::ConfigSyslog>,
+    },
 }
 
 impl Operation {
@@ -68,6 +77,8 @@ impl Operation {
             Operation::EmettreCertificat { .. } => "emission-certificat",
             Operation::RevoquerCertificat { .. } => "revocation-certificat",
             Operation::RevoquerSite { .. } => "revocation-site",
+            Operation::ChangerConservation { .. } => "conservation",
+            Operation::ConfigurerSyslog { .. } => "syslog",
         }
     }
 
@@ -95,19 +106,46 @@ impl Operation {
             Operation::RevoquerSite { site, .. } => {
                 format!("Révoquer toutes les bornes du site {site}")
             }
+            Operation::ChangerConservation { jours } => {
+                format!("Durée de conservation : {jours} jours")
+            }
+            Operation::ConfigurerSyslog { config: None } => "Désactiver l'export Syslog".into(),
+            Operation::ConfigurerSyslog { config: Some(c) } => {
+                let mut s = format!(
+                    "Export Syslog : {} vers {}:{}",
+                    c.mode.libelle(),
+                    c.adresse,
+                    c.port
+                );
+                if let Some(n) = &c.nom {
+                    s.push_str(&format!(", nom attendu {n}"));
+                }
+                if let Some(h) = &c.ac {
+                    s.push_str(&format!(", AC {}…", &h[..16.min(h.len())]));
+                }
+                if let Some(h) = &c.certificat_client {
+                    s.push_str(&format!(", mTLS (certificat {}…)", &h[..16.min(h.len())]));
+                }
+                s
+            }
         }
     }
 
-    /// Cible (audit, ASCII : identifiant de compte ou site).
-    pub fn cible(&self) -> &str {
+    /// Cible (audit, ASCII : identifiant de compte, site, durée ou cible Syslog).
+    pub fn cible(&self) -> String {
         match self {
             Operation::CreerCompte { identifiant, .. }
             | Operation::SupprimerCompte { identifiant, .. }
             | Operation::EleverCompte { identifiant, .. }
             | Operation::ReactiverCompte { identifiant, .. }
             | Operation::EmettreCertificat { identifiant, .. }
-            | Operation::RevoquerCertificat { identifiant, .. } => identifiant,
-            Operation::RevoquerSite { site, .. } => site,
+            | Operation::RevoquerCertificat { identifiant, .. } => identifiant.clone(),
+            Operation::RevoquerSite { site, .. } => site.clone(),
+            Operation::ChangerConservation { jours } => format!("{jours}j"),
+            Operation::ConfigurerSyslog { config } => config
+                .as_ref()
+                .map(|c| c.cible())
+                .unwrap_or_else(|| "desactive".into()),
         }
     }
 }
