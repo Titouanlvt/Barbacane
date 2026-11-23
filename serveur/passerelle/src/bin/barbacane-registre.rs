@@ -12,6 +12,8 @@
 //! barbacane-registre CONFIG maj-deposer FICHIER.bcu (+ FICHIER.bcu.minisig, clé des bornes)
 //! barbacane-registre CONFIG maj-diffuser VERSION
 //! barbacane-registre CONFIG maj-etat
+//! barbacane-registre CONFIG conservation          passe quotidienne : réglage posé si absent, purge des passages
+//! barbacane-registre CONFIG conservation-etat     durée, date d'effet, passages conservés
 //! ```
 //! Chaque opération est inscrite au journal d'audit chaîné (`audit.jsonl` du registre).
 #![forbid(unsafe_code)]
@@ -25,7 +27,7 @@ use barbacane_passerelle::admin::Admin;
 use barbacane_passerelle::outils::{date_utc, maintenant};
 use barbacane_passerelle::registre::Motif;
 
-const USAGE: &str = "usage : barbacane-registre CONFIG (jeton SITE | demandes | valider ID EMPREINTE [NOM] | refuser ID | revoquer UUID MOTIF | crl | supervision | maj-plancher FICHIER | maj-deposer FICHIER.bcu | maj-diffuser VERSION | maj-etat)";
+const USAGE: &str = "usage : barbacane-registre CONFIG (jeton SITE | demandes | valider ID EMPREINTE [NOM] | refuser ID | revoquer UUID MOTIF | crl | supervision | maj-plancher FICHIER | maj-deposer FICHIER.bcu | maj-diffuser VERSION | maj-etat | conservation | conservation-etat)";
 
 /// Empreinte lisible : groupes de 4 caractères.
 fn grouper(h: &str) -> String {
@@ -173,6 +175,38 @@ fn executer(args: &[String]) -> Result<ExitCode> {
                     date_utc(s.le)
                 );
             }
+        }
+        "conservation" => {
+            let p = barbacane_passerelle::conservation::passe(&admin.stockage, t, "conservation")?;
+            match p.limite {
+                None => println!(
+                    "Conservation : {} jours, en préavis jusqu'au {} : aucune purge d'ici là.",
+                    p.reglage.jours,
+                    date_utc(p.reglage.effective_le)
+                ),
+                Some(avant) => println!(
+                    "Conservation : {} jours appliqués (limite {}) ; {} rapport(s) de passage purgé(s).",
+                    p.reglage.effectifs(t).unwrap_or(0),
+                    date_utc(avant),
+                    p.passages
+                ),
+            }
+        }
+        "conservation-etat" => {
+            let r = barbacane_passerelle::conservation::lire(&admin.stockage)?;
+            let n = barbacane_passerelle::passages::Passages::ouvrir(&admin.stockage)?.nombre()?;
+            match r {
+                None => println!("conservation : non réglée (posée à la première passe)"),
+                Some(r) => println!(
+                    "conservation : {} jours, effective le {}, appliquée aujourd'hui : {}",
+                    r.jours,
+                    date_utc(r.effective_le),
+                    r.effectifs(t)
+                        .map(|j| format!("{j} jours"))
+                        .unwrap_or_else(|| "aucune purge (préavis)".into())
+                ),
+            }
+            println!("passages : {n}");
         }
         _ => bail!(USAGE),
     }

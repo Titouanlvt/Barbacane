@@ -15,7 +15,7 @@ use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use barbacane_audit::{Evenement, VerdictPassage};
+use barbacane_audit::{Evenement, ObjetPurge, VerdictPassage};
 use barbacane_protocole::passage::{RapportPassage, TAILLE_RAPPORT_MAX, Verdict, uuid_valide};
 use serde::{Deserialize, Serialize};
 
@@ -179,6 +179,86 @@ impl Passages {
             .collect())
     }
 
+    /// Nombre de parties indexées (affichage).
+    pub fn nombre(&self) -> Result<u64> {
+        match std::fs::read(self.dossier.join("index.jsonl")) {
+            Ok(o) => Ok(o.split(|c| *c == b'\n').filter(|l| !l.is_empty()).count() as u64),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(0),
+            Err(e) => Err(e).context("index des passages"),
+        }
+    }
+
+    /// Purge (conservation, v2.3.0) : supprime les rapports REÇUS avant `avant` (fichiers et
+    /// lignes de l'index, réécrit atomiquement) et les dossiers de bornes vidés. La purge est
+    /// inscrite au journal d'audit AVANT toute suppression. Renvoie le nombre de rapports
+    /// supprimés. Un rapport illisible est gardé (et compté dans l'erreur affichée), jamais
+    /// supprimé à l'aveugle.
+    pub fn purger(&self, avant: u64, acteur: &str) -> Result<u64> {
+        let _v = self.verrou()?;
+        let mut fichiers = Vec::new();
+        for borne in std::fs::read_dir(&self.dossier).context("dossier des passages")? {
+            let borne = borne?;
+            let nom = borne.file_name().to_string_lossy().into_owned();
+            if !borne.file_type()?.is_dir() || !uuid_valide(&nom) {
+                continue;
+            }
+            for r in std::fs::read_dir(borne.path())? {
+                let r = r?;
+                if !r.file_type()?.is_file() || !r.file_name().to_string_lossy().ends_with(".json")
+                {
+                    continue;
+                }
+                let mut o = Vec::new();
+                File::open(r.path())?
+                    .take(2 * TAILLE_RAPPORT_MAX as u64)
+                    .read_to_end(&mut o)?;
+                let s: Stocke = serde_json::from_slice(&o).with_context(|| {
+                    format!("rapport de passage illisible : {}", r.path().display())
+                })?;
+                if s.recu_le < avant {
+                    fichiers.push(r.path());
+                }
+            }
+        }
+        let index = match std::fs::read(self.dossier.join("index.jsonl")) {
+            Ok(o) => o,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+            Err(e) => return Err(e).context("index des passages"),
+        };
+        let mut garde = Vec::new();
+        let mut retirees = 0u64;
+        for l in index.split(|c| *c == b'\n').filter(|l| !l.is_empty()) {
+            match serde_json::from_slice::<Resume>(l) {
+                Ok(r) if r.recu_le < avant => retirees += 1,
+                _ => {
+                    garde.extend_from_slice(l);
+                    garde.push(b'\n');
+                }
+            }
+        }
+        if fichiers.is_empty() && retirees == 0 {
+            return Ok(0);
+        }
+        // Trace d'abord : aucune suppression sans audit.
+        self.stockage.auditer(
+            acteur,
+            Evenement::Purge {
+                objet: ObjetPurge::Passages,
+                nombre: fichiers.len() as u64,
+                avant,
+            },
+        )?;
+        ecrire_atomique(&self.dossier.join("index.jsonl"), &garde)?;
+        for f in &fichiers {
+            std::fs::remove_file(f).with_context(|| format!("suppression de {}", f.display()))?;
+            if let Some(d) = f.parent() {
+                // Dossier de la borne vidé : retiré (échoue sans dommage s'il reste un rapport).
+                let _ = std::fs::remove_dir(d);
+            }
+        }
+        Ok(fichiers.len() as u64)
+    }
+
     /// Rapport complet d'une partie (`None` s'il est inconnu).
     pub fn detail(&self, borne: &str, id: &str, partie: u32) -> Result<Option<Stocke>> {
         let Some(chemin) = self.chemin(borne, id, partie) else {
@@ -246,5 +326,45 @@ mod tests {
         assert!(p.recevoir("../../x", &rapport(), "passerelle", 1).is_err());
         let audit = String::from_utf8(s.journal_audit().lire().unwrap()).unwrap();
         assert_eq!(audit.matches("rapport_passage").count(), 1, "{audit}");
+    }
+
+    #[test]
+    fn purge_des_rapports_anciens() {
+        let d = tempfile::tempdir().unwrap();
+        let s = Stockage::ouvrir(&d.path().join("etat")).unwrap();
+        let p = Passages::ouvrir(&s).unwrap();
+        let mut r2 = rapport();
+        r2.id = "2c6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11".into();
+        let autre = "3b6f4b0e-6a43-4c8e-9a51-2f7d0f3c9e11";
+        p.recevoir(BORNE, &rapport(), "passerelle", 100).unwrap();
+        p.recevoir(BORNE, &r2, "passerelle", 300).unwrap();
+        p.recevoir(autre, &rapport(), "passerelle", 150).unwrap();
+        assert_eq!(p.nombre().unwrap(), 3);
+        // Rien avant 100 : rien à purger, rien n'est audité.
+        assert_eq!(p.purger(100, "conservation").unwrap(), 0);
+        assert_eq!(p.purger(200, "conservation").unwrap(), 2);
+        assert_eq!(p.nombre().unwrap(), 1);
+        assert!(p.detail(BORNE, &rapport().id, 1).unwrap().is_none());
+        assert!(p.detail(BORNE, &r2.id, 1).unwrap().is_some());
+        assert!(
+            !d.path().join("etat/passages").join(autre).exists(),
+            "dossier vidé retiré"
+        );
+        let l = p.derniers(10).unwrap();
+        assert_eq!(l.len(), 1);
+        assert_eq!(l[0].id, r2.id);
+        let audit = String::from_utf8(s.journal_audit().lire().unwrap()).unwrap();
+        assert!(
+            audit.contains("\"purge\":{\"objet\":\"passages\",\"nombre\":2,\"avant\":200}"),
+            "{audit}"
+        );
+        // Rapport altéré : purge refusée, rien supprimé.
+        std::fs::write(
+            d.path().join("etat/passages").join(BORNE).join("x.json"),
+            b"{",
+        )
+        .unwrap();
+        assert!(p.purger(1000, "conservation").is_err());
+        assert_eq!(p.nombre().unwrap(), 1);
     }
 }

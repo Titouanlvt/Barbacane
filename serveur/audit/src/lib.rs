@@ -15,7 +15,22 @@
 //! - **Export** des empreintes des points de contrôle, à sortir du serveur chaque jour :
 //!   une réécriture complète du journal (même re-signée avec une clé volée) ou une troncature
 //!   devient détectable.
+//! - **Segments scellés** (v2.3.0, `docs/suite/journal-conservation.md`) : `barbacane-audit
+//!   conservation` scelle puis range le journal actif dans `audit-segments/` une fois par jour
+//!   (UTC) ; le nouveau segment s'ouvre par un enregistrement [`Evenement::SegmentOuvert`] signé
+//!   qui ancre la chaîne (numéro et empreinte du dernier enregistrement du segment précédent).
+//!   Un segment plus ancien que la durée de conservation est purgé (événement
+//!   [`Evenement::SegmentPurge`] inscrit AVANT la suppression) : les segments restants se
+//!   vérifient depuis l'ancre signée.
+//! - **Format structuré** ([`structure`]) : une ligne JSON par événement, champs stables, horodatage
+//!   RFC 3339 UTC, identifiant, gravité RFC 5424 ; c'est le message envoyé au collecteur Syslog.
 #![forbid(unsafe_code)]
+
+pub mod conservation;
+mod segments;
+pub mod structure;
+
+pub use segments::{Lecture, SegmentPurge, nom_segment};
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -30,12 +45,17 @@ use ring::signature::{
 };
 use serde::{Deserialize, Serialize};
 
-/// Version du schéma portée par chaque enregistrement.
-pub const VERSION_SCHEMA: u16 = 1;
+/// Version du schéma portée par chaque NOUVEL enregistrement. La version 2 (v2.3.0) ajoute
+/// les segments, purges, réglage de conservation et Syslog ; les lignes de version 1 restent
+/// lues telles quelles (journal d'un serveur 2.2.0), mais un événement de la version 2 n'est
+/// jamais accepté dans une ligne de version 1.
+pub const VERSION_SCHEMA: u16 = 2;
 /// Taille maximale d'une ligne (sans le saut de ligne).
 pub const TAILLE_ENREGISTREMENT_MAX: usize = 2048;
 /// Contexte signé avec chaque point de contrôle (séparation des usages de la clé).
 pub const CONTEXTE_SIGNATURE: &str = "barbacane-audit-v1 point-de-controle";
+/// Contexte signé avec chaque ouverture de segment (ancre de la chaîne).
+pub const CONTEXTE_ANCRE: &str = "barbacane-audit-v2 ouverture-de-segment";
 /// En-tête SubjectPublicKeyInfo d'une clé publique ECDSA P-384 (point non compressé).
 const SPKI_P384: [u8; 23] = [
     0x30, 0x76, 0x30, 0x10, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x05, 0x2b,
@@ -76,6 +96,16 @@ pub enum RefusMaj {
     SousLePlancher,
     VersionNonCroissante,
     PlancherEnRecul,
+}
+
+/// Données purgées par la conservation (v2.3.0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ObjetPurge {
+    /// Rapports de passage (fichiers et index).
+    Passages,
+    /// Sauvegardes chiffrées présentes sur le support monté.
+    Sauvegardes,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -261,6 +291,43 @@ pub enum Evenement {
         cle: String,
         signature: String,
     },
+    // ── Version 2 (v2.3.0) ──
+    /// Première ligne d'un segment ouvert par la rotation (écrite seulement par
+    /// [`Journal::tourner`]) : signe `precedent` (numéro du dernier enregistrement du segment
+    /// rangé) et `empreinte` (SHA-384 de sa ligne). Une fois le segment précédent purgé, c'est
+    /// l'ancre qui permet de vérifier les segments restants.
+    SegmentOuvert {
+        precedent: u64,
+        empreinte: String,
+        cle: String,
+        signature: String,
+    },
+    /// Segment supprimé par la conservation : numéros extrêmes et empreinte de sa dernière
+    /// ligne (celle que l'ancre du segment suivant signe). Inscrit AVANT la suppression.
+    SegmentPurge {
+        premier: u64,
+        dernier: u64,
+        empreinte: String,
+    },
+    /// Purge de données personnelles par la conservation : `avant` = limite (secondes Unix,
+    /// tout ce qui est reçu avant est supprimé).
+    Purge {
+        objet: ObjetPurge,
+        nombre: u64,
+        avant: u64,
+    },
+    /// Durée de conservation appliquée (après double validation, ou valeur par défaut posée
+    /// à la migration) ; `effective_le` : date d'effet (préavis d'une réduction).
+    ConservationReglee {
+        jours: u32,
+        effective_le: u64,
+    },
+    /// Export Syslog : `action` (`configuration`, `clair`, `injoignable`, `reprise`,
+    /// `debordement`, `perte`…), `detail` (mode et cible, ou numéros), jamais de secret.
+    Syslog {
+        action: String,
+        detail: String,
+    },
 }
 
 /// Identifiant ou mot court : `[A-Za-z0-9._:+~=-]`, 1 à 128.
@@ -324,6 +391,35 @@ impl Evenement {
                 ..
             } => hex_valide(empreinte, 96) && hex_valide(cle, 16) && hex_valide(signature, 192),
             CrlPubliee { .. } | PlancherInstalle { .. } | MajDiffusee { .. } => true,
+            SegmentOuvert {
+                empreinte,
+                cle,
+                signature,
+                ..
+            } => hex_valide(empreinte, 96) && hex_valide(cle, 16) && hex_valide(signature, 192),
+            SegmentPurge {
+                premier,
+                dernier,
+                empreinte,
+            } => premier <= dernier && hex_valide(empreinte, 96),
+            Purge { .. } => true,
+            ConservationReglee { jours, .. } => {
+                (conservation::JOURS_MIN..=conservation::JOURS_MAX).contains(jours)
+            }
+            Syslog { action, detail } => ident_valide(action) && ident_valide(detail),
+        }
+    }
+
+    /// Version de schéma à partir de laquelle l'événement existe.
+    pub fn version_min(&self) -> u16 {
+        use Evenement::*;
+        match self {
+            SegmentOuvert { .. }
+            | SegmentPurge { .. }
+            | Purge { .. }
+            | ConservationReglee { .. }
+            | Syslog { .. } => 2,
+            _ => 1,
         }
     }
 }
@@ -352,8 +448,11 @@ impl Enregistrement {
         }
         let e: Enregistrement =
             serde_json::from_slice(ligne).map_err(|e| format!("JSON refusé : {e}"))?;
-        if e.v != VERSION_SCHEMA {
+        if !(1..=VERSION_SCHEMA).contains(&e.v) {
             return Err(format!("version de schéma {} non gérée", e.v));
+        }
+        if e.evenement.version_min() > e.v {
+            return Err("événement absent de cette version de schéma".into());
         }
         if !ident_valide(&e.acteur) || !hex_valide(&e.prec, 96) || !e.evenement.valider() {
             return Err("champ hors bornes".into());
@@ -513,6 +612,11 @@ fn message_point(jusqua: u64, empreinte: &str) -> Vec<u8> {
     format!("{CONTEXTE_SIGNATURE}\n{jusqua}\n{empreinte}\n").into_bytes()
 }
 
+/// Message signé par une ouverture de segment.
+fn message_ancre(precedent: u64, empreinte: &str) -> Vec<u8> {
+    format!("{CONTEXTE_ANCRE}\n{precedent}\n{empreinte}\n").into_bytes()
+}
+
 // ───────────────────────────── Vérification ───────────────────────────────────────────────────
 
 /// Altération détectée (numéro de ligne = numéro attendu de l'enregistrement).
@@ -535,6 +639,16 @@ pub enum Defaut {
     },
     PointDeControle {
         ligne: u64,
+        cause: &'static str,
+    },
+    /// Ouverture de segment (ancre) invalide, absente ou mal placée.
+    Ancre {
+        ligne: u64,
+        cause: &'static str,
+    },
+    /// Fichier de segment incohérent (nom, vide, segment manquant).
+    Segment {
+        fichier: String,
         cause: &'static str,
     },
     /// Désaccord avec une empreinte exportée hors du serveur.
@@ -560,6 +674,10 @@ impl std::fmt::Display for Defaut {
             Defaut::PointDeControle { ligne, cause } => {
                 write!(f, "point de contrôle ligne {ligne} : {cause}")
             }
+            Defaut::Ancre { ligne, cause } => {
+                write!(f, "ouverture de segment ligne {ligne} : {cause}")
+            }
+            Defaut::Segment { fichier, cause } => write!(f, "segment {fichier} : {cause}"),
             Defaut::Export { point, cause } => write!(f, "point exporté n° {point} : {cause}"),
         }
     }
@@ -580,6 +698,7 @@ pub struct PointExporte {
 /// Résultat d'une vérification réussie.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Bilan {
+    /// Enregistrements présents (lignes vérifiées).
     pub enregistrements: u64,
     pub points: Vec<PointExporte>,
     /// Enregistrements postérieurs au dernier point de contrôle (non encore protégés par une
@@ -587,29 +706,111 @@ pub struct Bilan {
     pub non_scelles: u64,
     /// Empreinte de la dernière ligne.
     pub derniere: String,
+    /// Numéro du dernier enregistrement (0 si vide).
+    pub dernier: u64,
+    /// Numéro du premier enregistrement présent (1, ou suivant de la partie purgée).
+    pub premier: u64,
+    /// Enregistrements purgés avant le premier présent (0 si rien n'a été purgé) : la
+    /// vérification part alors de l'ancre signée du premier segment présent.
+    pub purges: u64,
+    /// Fichiers vérifiés (segments rangés + journal actif).
+    pub segments: u64,
+    /// Points exportés hors du serveur antérieurs à la partie purgée (non revérifiables).
+    pub exports_purges: u64,
 }
 
-/// Vérifie tout le contenu d'un journal : forme, numéros, chaînage, signatures des points de
-/// contrôle, et accord avec les empreintes exportées.
+/// État de la chaîne à la fin d'un segment : numéro et empreinte de sa dernière ligne.
+pub type Depart = (u64, String);
+
+/// Vérifie tout le contenu d'un journal d'un seul fichier (sans segments) : forme, numéros,
+/// chaînage, signatures des points de contrôle, et accord avec les empreintes exportées.
 pub fn verifier(
     contenu: &[u8],
     cle: &ClePublique,
     exports: &[PointExporte],
 ) -> Result<Bilan, Defaut> {
+    let b = verifier_segment(contenu, cle, None)?;
+    controler_exports(b, exports)
+}
+
+/// Vérifie un segment. `depart` : fin du segment précédent (le segment doit alors s'ouvrir par
+/// une ancre qui la signe) ; `None` : premier fichier présent, qui commence soit au tout premier
+/// enregistrement, soit par une ancre signée (segments antérieurs purgés).
+pub fn verifier_segment(
+    contenu: &[u8],
+    cle: &ClePublique,
+    depart: Option<&Depart>,
+) -> Result<Bilan, Defaut> {
     if !contenu.is_empty() && !contenu.ends_with(b"\n") {
         return Err(Defaut::FinIncomplete);
     }
-    let mut prec = empreinte_initiale();
-    let mut n = 0u64;
+    let (mut n, mut prec) = depart.cloned().unwrap_or_else(|| (0, empreinte_initiale()));
     let mut points = Vec::new();
+    let mut premier = 0u64;
+    let mut purges = 0u64;
+    let mut lignes = 0u64;
     let corps = contenu.strip_suffix(b"\n").unwrap_or(contenu);
+    if contenu.is_empty() && depart.is_some() {
+        return Err(Defaut::Ancre {
+            ligne: n + 1,
+            cause: "segment vide : ancre absente",
+        });
+    }
     if !contenu.is_empty() {
         for ligne in corps.split(|o| *o == b'\n') {
-            let attendu = n + 1;
             let e = Enregistrement::analyser(ligne).map_err(|cause| Defaut::Illisible {
-                ligne: attendu,
+                ligne: n + 1,
                 cause,
             })?;
+            let h = empreinte(ligne);
+            if lignes == 0 {
+                match (&e.evenement, depart) {
+                    (
+                        Evenement::SegmentOuvert {
+                            precedent,
+                            empreinte: e_ancre,
+                            cle: id,
+                            signature,
+                        },
+                        _,
+                    ) => {
+                        let defaut = |cause| Defaut::Ancre { ligne: e.n, cause };
+                        if let Some((n0, h0)) = depart
+                            && (*precedent != *n0 || e_ancre != h0)
+                        {
+                            return Err(defaut("ne prolonge pas le segment précédent"));
+                        }
+                        if e.n != precedent + 1 || e.prec != *e_ancre {
+                            return Err(defaut("incohérente avec son propre enregistrement"));
+                        }
+                        if *id != cle.id() {
+                            return Err(defaut("clé d'audit inconnue"));
+                        }
+                        if !cle.verifier(&message_ancre(*precedent, e_ancre), signature) {
+                            return Err(defaut("signature invalide"));
+                        }
+                        if depart.is_none() {
+                            purges = *precedent;
+                        }
+                        n = *precedent;
+                        prec = e_ancre.clone();
+                    }
+                    (_, Some(_)) => {
+                        return Err(Defaut::Ancre {
+                            ligne: n + 1,
+                            cause: "segment sans ouverture signée",
+                        });
+                    }
+                    (_, None) => {}
+                }
+                premier = n + 1;
+            } else if matches!(e.evenement, Evenement::SegmentOuvert { .. }) {
+                return Err(Defaut::Ancre {
+                    ligne: n + 1,
+                    cause: "ouverture de segment hors de la première ligne",
+                });
+            }
+            let attendu = n + 1;
             if e.n != attendu {
                 return Err(Defaut::Numero {
                     ligne: attendu,
@@ -619,7 +820,6 @@ pub fn verifier(
             if e.prec != prec {
                 return Err(Defaut::Chainage { ligne: attendu });
             }
-            let h = empreinte(ligne);
             if let Evenement::PointDeControle {
                 jusqua,
                 empreinte: e_point,
@@ -648,10 +848,31 @@ pub fn verifier(
             }
             prec = h;
             n = attendu;
+            lignes += 1;
         }
     }
+    let dernier_point = points
+        .last()
+        .map(|p| p.n)
+        .unwrap_or(premier.saturating_sub(1));
+    Ok(Bilan {
+        enregistrements: lignes,
+        non_scelles: n - dernier_point.max(premier.saturating_sub(1)),
+        points,
+        derniere: prec,
+        dernier: n,
+        premier: if lignes == 0 { 0 } else { premier },
+        purges,
+        segments: 1,
+        exports_purges: 0,
+    })
+}
+
+/// Accord avec les empreintes exportées hors du serveur. Un point antérieur à la partie purgée
+/// n'est plus revérifiable : il est compté (`exports_purges`), pas refusé.
+pub fn controler_exports(mut b: Bilan, exports: &[PointExporte]) -> Result<Bilan, Defaut> {
     for x in exports {
-        match points.iter().find(|p| p.n == x.n) {
+        match b.points.iter().find(|p| p.n == x.n) {
             Some(p) if p.empreinte == x.empreinte => {}
             Some(_) => {
                 return Err(Defaut::Export {
@@ -659,7 +880,8 @@ pub fn verifier(
                     cause: "empreinte différente (journal réécrit)",
                 });
             }
-            None if x.n > n => {
+            None if b.purges > 0 && x.n <= b.purges => b.exports_purges += 1,
+            None if x.n > b.dernier => {
                 return Err(Defaut::Export {
                     point: x.n,
                     cause: "absent : journal tronqué",
@@ -673,13 +895,7 @@ pub fn verifier(
             }
         }
     }
-    let dernier_point = points.last().map(|p| p.n).unwrap_or(0);
-    Ok(Bilan {
-        enregistrements: n,
-        points,
-        non_scelles: n - dernier_point,
-        derniere: prec,
-    })
+    Ok(b)
 }
 
 // ───────────────────────────── Export ─────────────────────────────────────────────────────────
@@ -748,10 +964,24 @@ pub fn lire_export(texte: &str) -> Result<Vec<PointExporte>> {
 
 // ───────────────────────────── Journal (fichier) ──────────────────────────────────────────────
 
-/// Journal d'audit sur disque : `CHEMIN` (ajout seul) et `CHEMIN.verrou`.
+/// Journal d'audit sur disque : `CHEMIN` (journal actif, ajout seul), `CHEMIN.verrou`, et les
+/// segments rangés par la rotation dans `audit-segments/` (même dossier).
 #[derive(Debug, Clone)]
 pub struct Journal {
     chemin: PathBuf,
+}
+
+/// Donne à `f` le propriétaire du dossier `dossier` (outil lancé par root dans un dossier de
+/// barbacane-svc : les services doivent pouvoir continuer à écrire).
+pub(crate) fn aligner_proprietaire(f: &File, dossier: &Path) -> Result<()> {
+    use std::os::unix::fs::MetadataExt;
+    let d = std::fs::metadata(dossier).with_context(|| format!("{}", dossier.display()))?;
+    let m = f.metadata()?;
+    if (m.uid(), m.gid()) != (d.uid(), d.gid()) {
+        std::os::unix::fs::fchown(f, Some(d.uid()), Some(d.gid()))
+            .context("propriétaire d'un fichier du journal d'audit")?;
+    }
+    Ok(())
 }
 
 impl Journal {
@@ -765,35 +995,71 @@ impl Journal {
         &self.chemin
     }
 
-    fn verrou(&self) -> Result<File> {
+    /// Dossier du journal (celui du journal actif).
+    pub(crate) fn dossier(&self) -> &Path {
+        self.chemin
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."))
+    }
+
+    fn suffixe(&self, s: &str) -> PathBuf {
         let mut nom = self.chemin.as_os_str().to_owned();
-        nom.push(".verrou");
+        nom.push(s);
+        PathBuf::from(nom)
+    }
+
+    pub(crate) fn verrou(&self) -> Result<File> {
         let f = OpenOptions::new()
             .create(true)
             .truncate(false)
             .write(true)
             .mode(0o600)
-            .open(PathBuf::from(nom))
+            .open(self.suffixe(".verrou"))
             .context("verrou du journal d'audit")?;
+        aligner_proprietaire(&f, self.dossier())?;
         f.lock().context("prise du verrou du journal d'audit")?;
         Ok(f)
     }
 
-    fn ouvrir(&self) -> Result<File> {
-        OpenOptions::new()
+    /// Journal actif « en cours de remplacement » (rotation interrompue).
+    pub(crate) fn chemin_nouveau(&self) -> PathBuf {
+        self.suffixe(".nouveau")
+    }
+
+    /// Ouvre le journal actif (sous verrou). Une rotation interrompue entre le rangement du
+    /// segment et la mise en place du nouveau journal est terminée ici ; un journal actif
+    /// disparu alors que des segments existent n'est JAMAIS recréé vide (la chaîne repartirait
+    /// de 1 sans ancre) : refus, vérification requise.
+    pub(crate) fn ouvrir(&self) -> Result<File> {
+        if !self.chemin.exists() {
+            let nouveau = self.chemin_nouveau();
+            if nouveau.exists() {
+                std::fs::rename(&nouveau, &self.chemin)
+                    .context("fin d'une rotation interrompue du journal d'audit")?;
+            } else if !self.segments()?.is_empty() {
+                bail!(
+                    "journal d'audit actif absent alors que des segments existent : vérification requise (barbacane-audit verifier)"
+                );
+            }
+        }
+        let f = OpenOptions::new()
             .read(true)
             .append(true)
             .create(true)
             .mode(0o600)
             .open(&self.chemin)
-            .with_context(|| format!("journal d'audit {}", self.chemin.display()))
+            .with_context(|| format!("journal d'audit {}", self.chemin.display()))?;
+        aligner_proprietaire(&f, self.dossier())?;
+        Ok(f)
     }
 
-    /// Numéro et empreinte du dernier enregistrement (lecture de la fin seulement).
-    fn dernier(f: &mut File) -> Result<(u64, String)> {
+    /// Dernier enregistrement d'un fichier (lecture de la fin seulement) : numéro, empreinte,
+    /// enregistrement. `None` si le fichier est vide.
+    pub(crate) fn dernier_enr(f: &mut File) -> Result<Option<(u64, String, Enregistrement)>> {
         let taille = f.metadata()?.len();
         if taille == 0 {
-            return Ok((0, empreinte_initiale()));
+            return Ok(None);
         }
         let debut = taille.saturating_sub(2 * TAILLE_ENREGISTREMENT_MAX as u64 + 2);
         f.seek(SeekFrom::Start(debut))?;
@@ -809,10 +1075,17 @@ impl Journal {
         };
         let e = Enregistrement::analyser(ligne)
             .map_err(|c| anyhow::anyhow!("journal d'audit : dernière ligne : {c}"))?;
-        Ok((e.n, empreinte(ligne)))
+        Ok(Some((e.n, empreinte(ligne), e)))
     }
 
-    fn ecrire(f: &mut File, le: u64, acteur: &str, evenement: Evenement) -> Result<u64> {
+    /// Numéro et empreinte du dernier enregistrement.
+    fn dernier(f: &mut File) -> Result<(u64, String)> {
+        Ok(Journal::dernier_enr(f)?
+            .map(|(n, h, _)| (n, h))
+            .unwrap_or_else(|| (0, empreinte_initiale())))
+    }
+
+    pub(crate) fn ecrire(f: &mut File, le: u64, acteur: &str, evenement: Evenement) -> Result<u64> {
         let (n, prec) = Journal::dernier(f)?;
         let e = Enregistrement {
             v: VERSION_SCHEMA,
@@ -829,17 +1102,26 @@ impl Journal {
         Ok(e.n)
     }
 
-    /// Ajoute un événement (tout sauf un point de contrôle). Renvoie son numéro.
+    /// Ajoute un événement (tout sauf un point de contrôle ou une ouverture de segment).
+    /// Renvoie son numéro.
     pub fn ajouter(&self, le: u64, acteur: &str, evenement: Evenement) -> Result<u64> {
-        if matches!(evenement, Evenement::PointDeControle { .. }) {
-            bail!("un point de contrôle s'écrit par « sceller »");
+        if matches!(
+            evenement,
+            Evenement::PointDeControle { .. }
+                | Evenement::SegmentOuvert { .. }
+                | Evenement::SegmentPurge { .. }
+        ) {
+            bail!(
+                "un point de contrôle ou une ouverture de segment s'écrit par « barbacane-audit »"
+            );
         }
         let _v = self.verrou()?;
         let mut f = self.ouvrir()?;
         Journal::ecrire(&mut f, le, acteur, evenement)
     }
 
-    /// Contenu complet (vide si le journal n'existe pas encore).
+    /// Contenu du journal ACTIF (vide s'il n'existe pas encore). Pour tout le journal :
+    /// [`Journal::contenus`].
     pub fn lire(&self) -> Result<Vec<u8>> {
         match std::fs::read(&self.chemin) {
             Ok(o) => Ok(o),
@@ -848,27 +1130,33 @@ impl Journal {
         }
     }
 
-    /// Vérifie TOUTE la chaîne puis ajoute un point de contrôle signé. Une chaîne altérée
-    /// n'est jamais scellée.
-    pub fn sceller(&self, cle: &CleAudit, le: u64) -> Result<u64> {
-        let _v = self.verrou()?;
-        let mut f = self.ouvrir()?;
-        let mut contenu = Vec::new();
-        f.read_to_end(&mut contenu)?;
-        let bilan = verifier(&contenu, &cle.publique(), &[])
+    /// Scelle le journal actif sous verrou déjà pris (vérifié depuis la fin du segment
+    /// précédent).
+    pub(crate) fn sceller_sous_verrou(&self, f: &mut File, cle: &CleAudit, le: u64) -> Result<u64> {
+        // TOUTE la chaîne (segments rangés compris) : une chaîne altérée n'est jamais scellée.
+        let bilan = self
+            .verifier_tout(&cle.publique(), &[])
             .map_err(|d| anyhow::anyhow!("journal d'audit altéré, non scellé : {d}"))?;
-        let signature = cle.signer(&message_point(bilan.enregistrements, &bilan.derniere))?;
+        let signature = cle.signer(&message_point(bilan.dernier, &bilan.derniere))?;
         Journal::ecrire(
-            &mut f,
+            f,
             le,
             "audit",
             Evenement::PointDeControle {
-                jusqua: bilan.enregistrements,
+                jusqua: bilan.dernier,
                 empreinte: bilan.derniere,
                 cle: cle.publique().id(),
                 signature,
             },
         )
+    }
+
+    /// Vérifie toute la chaîne (segments rangés et journal actif) puis ajoute un point de
+    /// contrôle signé. Une chaîne altérée n'est jamais scellée.
+    pub fn sceller(&self, cle: &CleAudit, le: u64) -> Result<u64> {
+        let _v = self.verrou()?;
+        let mut f = self.ouvrir()?;
+        self.sceller_sous_verrou(&mut f, cle, le)
     }
 }
 

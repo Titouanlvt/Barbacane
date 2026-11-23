@@ -12,11 +12,13 @@
 
 pub mod admin;
 pub mod ca;
+pub mod conservation;
 pub mod maj;
 pub mod outils;
 pub mod passages;
 pub mod quarantaine;
 pub mod registre;
+pub mod syslog;
 pub mod utilisateurs;
 
 use std::io::{Read, Write};

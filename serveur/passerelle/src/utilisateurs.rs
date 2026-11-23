@@ -48,7 +48,8 @@ pub const SESSIONS_MAX: usize = 1000;
 /// Utilisateurs au plus (import refusé au-delà).
 pub const UTILISATEURS_MAX: usize = 10_000;
 /// Correspondance identifiant ↔ pseudonyme conservée après retrait de l'annuaire (journaux
-/// conservés 1 an, conception §1).
+/// conservés 1 an, conception §1) ; depuis la v2.3.0, la durée de conservation réglée dans la
+/// Console une fois en vigueur (`conservation::duree_correspondances_s`), sinon celle-ci.
 pub const CONSERVATION_S: u64 = 365 * 86400;
 /// Longueur du PIN tiré à la réinitialisation (affiché une fois, à changer au premier usage).
 pub const LONGUEUR_PIN_INITIAL: usize = 8;
@@ -225,12 +226,13 @@ impl BaseUtilisateurs {
             .map(|j| j - t)
     }
 
-    /// Purge : correspondances retirées depuis plus d'un an, sessions échues, compteurs de
-    /// bornes sans échec depuis 24 h. Renvoie le nombre d'utilisateurs purgés.
-    fn purger(&mut self, t: u64) -> u64 {
+    /// Purge : correspondances retirées depuis plus que la durée de conservation, sessions
+    /// échues, compteurs de bornes sans échec depuis 24 h. Renvoie le nombre d'utilisateurs
+    /// purgés.
+    fn purger(&mut self, t: u64, conservation_s: u64) -> u64 {
         let avant = self.utilisateurs.len();
         self.utilisateurs
-            .retain(|u| u.retire_le.is_none_or(|r| r + CONSERVATION_S > t));
+            .retain(|u| u.retire_le.is_none_or(|r| r + conservation_s > t));
         self.sessions.retain(|s| s.expire_le > t);
         self.bornes
             .retain(|_, b| b.bloquee_jusqua > t || b.dernier_echec + 86400 > t);
@@ -485,7 +487,10 @@ impl Utilisateurs {
     ) -> Result<T> {
         let _v = self.verrou()?;
         let (mut base, avant) = self.lire_sans_verrou()?;
-        let purges = base.purger(t);
+        let purges = base.purger(
+            t,
+            crate::conservation::duree_correspondances_s(&self.stockage, t),
+        );
         if purges > 0 {
             self.auditer(
                 "passerelle",
