@@ -106,7 +106,18 @@ lignes restent vérifiables. Retour arrière vers la 2.2.0 : non pris en charge 
 événements de schéma 2 écrits (la 2.2.0 signale le journal comme illisible, elle ne le lit jamais
 en silence).
 
-## 7. Preuves
+## 7. Limites
+
+- `conservation.json` appartient à barbacane-svc (comme le journal et le registre) : un attaquant
+  qui exécute du code sous ce compte (conteneur compromis) peut le réécrire et contourner la double
+  validation et le préavis (dans les bornes 180–730 jours, revérifiées par root). Les purges restent
+  tracées avant suppression et parties au collecteur Syslog ; séparation des comptes : 2.8.
+- Un rapport de passage purgé puis renvoyé par une borne (qui ne l'aurait jamais vu accusé) serait
+  de nouveau conservé, avec sa nouvelle date de réception.
+- La purge suit la date de réception par le serveur ; une horloge du serveur faussée (aucune source
+  NTP par défaut) décale d'autant les purges (`chrony`, §3.11 de la conception).
+
+## 8. Preuves
 
 | Test / banc | Ce qui est prouvé |
 |---|---|

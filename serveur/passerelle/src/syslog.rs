@@ -709,8 +709,16 @@ impl Exportateur {
             if etat.etat != "injoignable" {
                 etat.etat = "ok".into();
             }
-            ecrire_json(&d.join("curseur.json"), &curseur)?;
-            ecrire_json(&d.join("etat.json"), &etat)?;
+            // Rien à remettre : n'écrire (fsync) que ce qui change, et l'état au plus une fois
+            // par minute (signe de vie lu par la Console).
+            if lire_curseur(&d).ok().flatten().as_ref() != Some(&curseur) {
+                ecrire_json(&d.join("curseur.json"), &curseur)?;
+            }
+            let mut comparable = precedent.clone();
+            comparable.maj_le = etat.maj_le;
+            if comparable != etat || precedent.maj_le + 60 <= t {
+                ecrire_json(&d.join("etat.json"), &etat)?;
+            }
             return Ok(Passe::AJour);
         }
         let messages: Vec<(u64, Vec<u8>)> = lot
