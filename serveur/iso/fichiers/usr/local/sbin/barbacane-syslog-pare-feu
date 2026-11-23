@@ -1,0 +1,43 @@
+#!/bin/bash
+# Serveur Barbacane : applique dans nftables la cible Syslog validée dans la Console
+# (docs/suite/journal-syslog.md). Le fichier lu est écrit par la Console (barbacane-svc) : il
+# est relu STRICTEMENT (une seule ligne « aucun » ou « tcp|udp ADRESSE PORT »), l'adresse doit
+# appartenir au réseau d'administration du serveur (aucune sortie ailleurs, jamais Internet :
+# le serveur n'a pas de route par défaut). Puis l'exportateur est relancé.
+set -euo pipefail
+export LC_ALL=C
+F=/var/lib/barbacane-serveur/svc/etat/registre/syslog/pare-feu
+# shellcheck source=/dev/null
+. /etc/barbacane-serveur/serveur.conf
+journal() { logger -t barbacane-syslog-pare-feu -- "$*"; echo "$*"; }
+vider() { nft flush set inet barbacane syslog; }
+if [ ! -f "$F" ] || [ -L "$F" ]; then
+    vider; journal "aucune cible Syslog"; exit 0
+fi
+[ "$(stat -c %s "$F")" -le 64 ] || { vider; journal "REFUS : $F trop long"; exit 1; }
+ligne=$(head -n 1 "$F")
+if [ "$ligne" = aucun ]; then
+    vider; journal "export Syslog désactivé : aucune sortie"
+    systemctl restart barbacane-syslog.service || true
+    exit 0
+fi
+re='^(tcp|udp) ([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3}) ([0-9]{1,5})$'
+[[ "$ligne" =~ $re ]] || { vider; journal "REFUS : ligne inattendue dans $F"; exit 1; }
+proto=${BASH_REMATCH[1]} port=${BASH_REMATCH[6]}
+o=("${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}" "${BASH_REMATCH[4]}" "${BASH_REMATCH[5]}")
+for x in "${o[@]}"; do [ "$((10#$x))" -le 255 ] || { vider; journal "REFUS : adresse invalide"; exit 1; }; done
+[ "$((10#$port))" -ge 1 ] && [ "$((10#$port))" -le 65535 ] || { vider; journal "REFUS : port invalide"; exit 1; }
+ip="$((10#${o[0]})).$((10#${o[1]})).$((10#${o[2]})).$((10#${o[3]}))"
+# Réseau d'administration : IP_ADMIN=a.b.c.d/n
+net=${IP_ADMIN%/*} lg=${IP_ADMIN#*/}
+en_entier() { local IFS=.; read -r a b c d <<<"$1"; echo $(( (a << 24) | (b << 16) | (c << 8) | d )); }
+masque=$(( lg == 0 ? 0 : (0xFFFFFFFF << (32 - lg)) & 0xFFFFFFFF ))
+if [ $(( $(en_entier "$ip") & masque )) -ne $(( $(en_entier "$net") & masque )) ] || [ "$ip" = "$net" ]; then
+    vider; journal "REFUS : $ip hors du réseau d'administration ($IP_ADMIN) ou adresse du serveur"; exit 1
+fi
+nft -f - <<NFT
+flush set inet barbacane syslog
+add element inet barbacane syslog { $ip . $proto . $((10#$port)) }
+NFT
+journal "cible Syslog ouverte : $proto $ip:$((10#$port)) (interface d'administration, compte barbacane-svc)"
+systemctl restart barbacane-syslog.service || true

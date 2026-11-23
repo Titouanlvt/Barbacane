@@ -30,7 +30,8 @@ lancer cargo 'set -e
   cargo clippy --no-deps --all-targets --workspace
   cargo test
   cargo build -p barbacane-admind && tests/maj/maj.sh
-  cargo build -p barbacane-passerelle -p barbacane-web -p barbacane-audit && tests/iso/serveur-config.sh'
+  cargo build -p barbacane-passerelle -p barbacane-web -p barbacane-audit && tests/iso/serveur-config.sh
+  tests/serveur/sauvegarde.sh'
 if [ "${1:-}" = --iso ]; then
   lancer iso "set -e; systeme/iso/build-iso.sh --sortie '$J/ci.iso' && bash tests/iso/hors-ligne.sh '$J/ci.iso' && bash tests/iso/qemu.sh '$J/ci.iso' '$J/qemu'"
 fi

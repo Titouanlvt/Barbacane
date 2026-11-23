@@ -3,7 +3,9 @@
 # Test automatisé de serveur/sauvegarde/barbacane-sauvegarde (conception §3.8 : « restauration
 # testée en CI ») : sauvegarde d'une arborescence de serveur factice, DESTRUCTION, restauration,
 # comparaison exacte (contenu, types, droits, liens, propriétaires si root) ; puis refus attendus :
-# support abîmé, archive modifiée, mauvaise clé, archive forgée par un tiers ; rotation.
+# support abîmé, archive modifiée, mauvaise clé, archive forgée par un tiers ; rotation ;
+# conservation (v2.3.0) : sauvegardes plus anciennes que la durée purgées, purge inscrite au
+# journal d'audit (avec le vrai barbacane-audit s'il est compilé).
 # Usage : tests/serveur/sauvegarde.sh   (prérequis : openssl ≥ 3, tar, coreutils)
 set -euo pipefail
 S="$(cd "$(dirname "$0")/../.." && pwd)/serveur/sauvegarde/barbacane-sauvegarde"
@@ -84,6 +86,36 @@ refuse "archive forgée par un tiers (signature)" bash "$S" restaurer --archive 
 for _ in 1 2; do sleep 1.1; bash "$S" creer --destination "$W/support" --racine "$R" --liste "$W/liste" --garder 2 "${COMMUN[@]}" >/dev/null; done
 n=$(find "$W/support" -name '*.cms' | wc -l)
 [ "$n" = 2 ] && [ ! -e "$A" ] && ok "rotation : 2 archives gardées, la plus ancienne purgée" || echec "rotation : $n archives"
+
+# 5. Conservation : sauvegardes datées de 400, 200 et 10 jours (copies renommées), durée 365 j
+B=$(basename "$(find "$W/support" -name '*.cms' | sort | tail -1)")
+for j in 400 200 10; do
+    n="barbacane-sauvegarde-hote-a-b-$(date -u -d "-$j days" +%Y%m%dT%H%M%SZ).cms"
+    cp "$W/support/$B" "$W/support/$n"; (cd "$W/support" && sha384sum "$n" > "$n.sha384")
+done
+bash "$S" purger --destination "$W/support" --conservation-jours aucune > "$W/p0"
+n=$(find "$W/support" -name '*.cms' | wc -l)
+[ "$n" = 5 ] && grep -q 'aucune durée en vigueur' "$W/p0" && ok "conservation en préavis (« aucune ») : rien purgé par âge" || echec "préavis : $n archives"
+AUDIT_BIN="${CARGO_TARGET_DIR:-$(dirname "$S")/../../target}/debug/barbacane-audit"
+JA="$W/audit.jsonl"
+if [ -x "$AUDIT_BIN" ]; then export BARBACANE_AUDIT="$AUDIT_BIN" JOURNAL_AUDIT="$JA"; : > "$JA"; fi
+bash "$S" purger --destination "$W/support" --conservation-jours 365 > "$W/p1"
+n=$(find "$W/support" -name '*.cms' | wc -l)
+[ "$n" = 4 ] && ! ls "$W/support"/*"$(date -u -d '-400 days' +%Y%m%d)"* >/dev/null 2>&1 \
+    && ok "conservation 365 jours : la sauvegarde de 400 jours (et son empreinte) purgée, celles de 200 et 10 jours gardées" \
+    || echec "conservation 365 j : $n archives ($(cat "$W/p1"))"
+bash "$S" purger --destination "$W/support" --conservation-jours 180 > "$W/p2"
+n=$(find "$W/support" -name '*.cms' | wc -l)
+[ "$n" = 3 ] && ok "conservation 180 jours : la sauvegarde de 200 jours purgée ($(grep -c 'purgée (plus' "$W/p2") archive)" || echec "conservation 180 j : $n archives"
+refuse "durée de conservation invalide" bash "$S" purger --destination "$W/support" --conservation-jours 'x;y'
+if [ -x "$AUDIT_BIN" ]; then
+    [ "$(grep -c '"purge":{"objet":"sauvegardes","nombre":1,' "$JA")" = 2 ] \
+        && "$AUDIT_BIN" structurer "$JA" srv | grep -q '"type":"purge"' \
+        && ok "purges des sauvegardes inscrites au journal d'audit (vrai barbacane-audit) : $(wc -l < "$JA") enregistrements" \
+        || echec "purge des sauvegardes absente du journal : $(cat "$JA")"
+else
+    echo "(barbacane-audit non compilé : inscription au journal non vérifiée ici)"
+fi
 
 [ "$ko" = 0 ] && echo "SAUVEGARDE/RESTAURATION : OK"
 exit "$ko"

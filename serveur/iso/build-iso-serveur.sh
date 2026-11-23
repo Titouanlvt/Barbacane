@@ -25,7 +25,7 @@
 #                          admin-01 ; défaut : aléatoire, affiché UNE fois ici
 #     --cle-maj-bornes PUB clé PUBLIQUE minisign des mises à jour des bornes (dépôt des .bcu, facultatif)
 #     --passerelle BIN     binaire barbacane-passerelle (défaut : cargo build --release) ; barbacane-registre,
-#                          barbacane-web et barbacane-audit sont pris dans le même dossier
+#                          barbacane-syslog, barbacane-web et barbacane-audit sont pris dans le même dossier
 #     --paquets DOSSIER    paquets .deb déjà résolus (défaut : résolus dans un Debian 13 minimal)
 #     --netinst ISO        ISO netinst Debian 13 amd64 (défaut : téléchargée, empreinte vérifiée)
 #     --sortie FICHIER     ISO produite (défaut : ./barbacane-serveur.iso)
@@ -200,7 +200,7 @@ if [ -z "$PASSERELLE" ]; then
     PASSERELLE="${CARGO_TARGET_DIR:-$REPO/target}/release/barbacane-passerelle"
 fi
 BINS="$(dirname "$PASSERELLE")"
-for b in barbacane-passerelle barbacane-registre barbacane-web barbacane-audit; do
+for b in barbacane-passerelle barbacane-registre barbacane-syslog barbacane-web barbacane-audit; do
     [ -x "$BINS/$b" ] || { echo "binaire introuvable : $BINS/$b" >> "$JOURNAL"; false; }
 done
 # Racine minimale : les binaires et leurs seules bibliothèques (ni gestionnaire de paquets ni
@@ -274,6 +274,8 @@ install -D -m 644 "$T/web.tar" "$F/usr/share/barbacane-serveur/images/web.tar"
 # /usr/local/sbin/barbacane-registre), barbacane-audit (root : clé d'audit), barbacane-web pour
 # « barbacane-web compte » (ligne du fichier des comptes).
 install -D -m 755 "$BINS/barbacane-registre" "$F/usr/local/lib/barbacane-serveur/barbacane-registre"
+# Exportateur Syslog (v2.3.0), service système sous barbacane-svc.
+install -D -m 755 "$BINS/barbacane-syslog" "$F/usr/local/lib/barbacane-serveur/barbacane-syslog"
 install -D -m 755 "$BINS/barbacane-web" "$F/usr/local/lib/barbacane-serveur/barbacane-web"
 install -D -m 755 "$BINS/barbacane-audit" "$F/usr/local/sbin/barbacane-audit"
 install -D -m 755 "$REPO/serveur/iso-bornes/barbacane-iso-borne" "$F/usr/local/sbin/barbacane-iso-borne"

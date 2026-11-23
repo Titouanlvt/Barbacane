@@ -102,6 +102,22 @@ while read -r p; do
     [ -z "$p" ] || ! grep -qx "$p" /run/barbacane-paquets.txt || alerte "paquet interdit installé : $p"
 done < /usr/share/barbacane-serveur/paquets-interdits
 rm -f /run/barbacane-paquets.txt
+section conservation
+# v2.3.0 : durée en vigueur, passages conservés, minuterie, intégrité du journal (segments).
+runuser -u "$SVC" -- /usr/local/lib/barbacane-serveur/barbacane-registre "$h/registre.conf" conservation-etat 2>&1 | head -n 4
+printf 'minuterie %s %s\n' "$(systemctl is-enabled barbacane-conservation.timer 2>&1)" "$(systemctl is-active barbacane-conservation.timer 2>&1)"
+R="$h/etat/registre"
+echo "segments du journal d'audit : $(find "$R/audit-segments" -maxdepth 1 -name '*.jsonl' 2>/dev/null | wc -l)"
+if [ -f "$C/audit/cle-audit.pub" ] && [ -f "$R/audit.jsonl" ]; then
+    /usr/local/sbin/barbacane-audit verifier "$R/audit.jsonl" "$C/audit/cle-audit.pub" 2>&1 | head -n 2
+    [ "${PIPESTATUS[0]}" = 0 ] || alerte "journal d'audit : vérification en échec"
+fi
+section syslog
+printf 'service %s %s ; surveillance du réglage %s\n' "$(systemctl is-enabled barbacane-syslog.service 2>&1)" \
+    "$(systemctl is-active barbacane-syslog.service 2>&1)" "$(systemctl is-active barbacane-syslog-pare-feu.path 2>&1)"
+echo "réglage : $(head -n 1 "$R/syslog/pare-feu" 2>/dev/null || echo aucun)"
+nft list set inet barbacane syslog 2>&1 | grep -E 'elements|type' || true
+if [ -f "$R/syslog/etat.json" ]; then tr -d '\n ' < "$R/syslog/etat.json" | head -c 400; echo; fi
 section journal
 journalctl --header 2>/dev/null | grep -m1 'File path' || true
 ls -d /var/log/journal/*/ 2>/dev/null

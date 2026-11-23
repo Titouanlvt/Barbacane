@@ -1,0 +1,10 @@
+# Serveur Barbacane : réapplique la cible Syslog du pare-feu à chaque réglage validé.
+[Unit]
+Description=Surveillance du réglage Syslog validé (Barbacane)
+
+[Path]
+PathChanged=/var/lib/barbacane-serveur/svc/etat/registre/syslog/pare-feu
+Unit=barbacane-syslog-pare-feu.service
+
+[Install]
+WantedBy=paths.target

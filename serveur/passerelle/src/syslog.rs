@@ -662,15 +662,20 @@ impl Exportateur {
             return Ok(Passe::Desactive);
         };
         let cible = c.cible();
+        let journal = self.stockage.journal_audit();
         let mut curseur = match lire_curseur(&d)? {
             Some(k) if k.cible == cible => k,
-            _ => Curseur {
-                cible: cible.clone(),
-                remis: 0,
-                ecrit: 0,
-            },
+            // Nouvelle cible : tout le journal ENCORE conservé lui est remis (ce que la
+            // conservation a déjà purgé n'est pas une perte pour elle).
+            _ => {
+                let premier = journal.lire_depuis(u64::MAX - 1, 0)?.premier;
+                Curseur {
+                    cible: cible.clone(),
+                    remis: premier.saturating_sub(1),
+                    ecrit: premier.saturating_sub(1),
+                }
+            }
         };
-        let journal = self.stockage.journal_audit();
         let lot = lire_lot(&journal, &self.serveur, curseur.remis, LOT_MAX)?;
         let mut etat = Etat {
             etat: precedent.etat.clone(),

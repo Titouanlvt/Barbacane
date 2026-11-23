@@ -11,12 +11,19 @@
 #             une empreinte SHA-384 du fichier chiffré (support abîmé détecté sans clé).
 #
 #   barbacane-sauvegarde creer      --destination DOSSIER [--racine /] [--liste FICHIER] [--garder N]
-#                                   [--destinataire CERT] [--signature-cle CLÉ --signature-cert CERT]
+#                                   [--conservation-jours N|aucune] [--destinataire CERT]
+#                                   [--signature-cle CLÉ --signature-cert CERT]
+#   barbacane-sauvegarde purger     --destination DOSSIER [--conservation-jours N|aucune]
 #   barbacane-sauvegarde verifier   --archive FICHIER --cle-privee CLÉ --signataire CERT
 #   barbacane-sauvegarde restaurer  --archive FICHIER --cle-privee CLÉ --signataire CERT [--racine /]
 #   barbacane-sauvegarde cles-destinataire DOSSIER [--sans-phrase]   (poste hors ligne : clé de sauvegarde)
 #   barbacane-sauvegarde cles-signature DOSSIER                       (serveur : clé de signature)
 # Options communes : --passin ARG (phrase de la clé privée, syntaxe openssl : pass:…, file:…, env:…).
+# Conservation (v2.3.0, docs/suite/journal-conservation.md) : une sauvegarde plus ancienne que la
+# durée réglée dans la Console (lue par « barbacane-audit conservation-jours » ; « aucune » pendant
+# le préavis) est supprimée du support monté, à chaque création et par « purger » ; chaque purge est
+# inscrite au journal d'audit (JOURNAL_AUDIT). Une restauration réapplique la durée : la tâche
+# barbacane-conservation purge ensuite ce que la sauvegarde contenait au-delà.
 set -Eeuo pipefail
 umask 077
 export LC_ALL=C.UTF-8
@@ -25,13 +32,17 @@ CMD=${1:-}
 [ $# -gt 0 ] && shift
 DEST='' RACINE=/ LISTE="$C/liste" GARDER=14 DESTINATAIRE="$C/destinataire.pem"
 SIG_CLE="$C/signature.cle.pem" SIG_CERT="$C/signature.pem" ARCHIVE='' CLE_PRIVEE='' SIGNATAIRE='' PASSIN=''
-SANS_PHRASE=0 DOSSIER=''
+SANS_PHRASE=0 DOSSIER='' CONSERVATION=''
+REGISTRE=/var/lib/barbacane-serveur/svc/etat/registre
+JOURNAL_AUDIT=${JOURNAL_AUDIT:-$REGISTRE/audit.jsonl}
+AUDIT=${BARBACANE_AUDIT:-/usr/local/sbin/barbacane-audit}
 while [ $# -gt 0 ]; do
     case "$1" in
         --destination) DEST="$2"; shift 2 ;;
         --racine) RACINE="$2"; shift 2 ;;
         --liste) LISTE="$2"; shift 2 ;;
         --garder) GARDER="$2"; shift 2 ;;
+        --conservation-jours) CONSERVATION="$2"; shift 2 ;;
         --destinataire) DESTINATAIRE="$2"; shift 2 ;;
         --signature-cle) SIG_CLE="$2"; shift 2 ;;
         --signature-cert) SIG_CERT="$2"; shift 2 ;;
@@ -40,7 +51,7 @@ while [ $# -gt 0 ]; do
         --signataire) SIGNATAIRE="$2"; shift 2 ;;
         --passin) PASSIN="$2"; shift 2 ;;
         --sans-phrase) SANS_PHRASE=1; shift ;;
-        -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
         -*) echo "option inconnue : $1" >&2; exit 2 ;;
         *) DOSSIER="$1"; shift ;;
     esac
@@ -53,6 +64,36 @@ trap nettoyer EXIT
 travail() { W=$(mktemp -d -p "${TMPDIR:-/var/tmp}" barbacane-sauvegarde.XXXXXX); }
 [[ "$GARDER" =~ ^[1-9][0-9]{0,3}$ ]] || erreur "--garder : entier de 1 à 9999 attendu"
 passin() { [ -z "$PASSIN" ] || printf '%s\n' -passin "$PASSIN"; }
+
+# ------------------------------------------------------------------ conservation (v2.3.0)
+# Durée appliquée : --conservation-jours, sinon celle de la Console (barbacane-audit) ; « aucune ».
+duree_conservation() {
+    if [ -n "$CONSERVATION" ]; then echo "$CONSERVATION"
+    elif [ "$RACINE" = / ] && [ -x "$AUDIT" ] && [ -d "$REGISTRE" ]; then
+        "$AUDIT" conservation-jours "$REGISTRE"
+    else echo aucune; fi
+}
+# purger_anciennes DOSSIER : supprime les sauvegardes antérieures à la durée (date UTC du nom).
+purger_anciennes() {
+    local d=$1 jours limite n=0 f horo t
+    jours=$(duree_conservation)
+    if [ "$jours" = aucune ]; then info "conservation : aucune durée en vigueur (préavis), rien purgé par âge"; return 0; fi
+    [[ "$jours" =~ ^[1-9][0-9]{0,4}$ ]] || erreur "durée de conservation invalide : $jours"
+    limite=$(( $(date -u +%s) - jours * 86400 ))
+    while IFS= read -r f; do
+        horo=$(sed -n 's/^barbacane-sauvegarde-.*-\([0-9]\{8\}T[0-9]\{6\}Z\)\.cms$/\1/p' <<<"$f")
+        [ -n "$horo" ] || continue
+        t=$(date -u -d "${horo:0:4}-${horo:4:2}-${horo:6:2} ${horo:9:2}:${horo:11:2}:${horo:13:2} UTC" +%s) || continue
+        if [ "$t" -lt "$limite" ]; then
+            rm -f "$d/$f" "$d/$f.sha384"; n=$((n + 1)); info "purgée (plus de $jours jours) : $f"
+        fi
+    done < <(find "$d" -maxdepth 1 -name 'barbacane-sauvegarde-*.cms' -printf '%f\n' | sort)
+    info "conservation : $jours jours, $n sauvegarde(s) purgée(s)"
+    if [ "$n" -gt 0 ] && [ -x "$AUDIT" ] && [ -f "$JOURNAL_AUDIT" ]; then
+        "$AUDIT" consigner-purge-sauvegardes "$JOURNAL_AUDIT" "$n" "$limite" >/dev/null \
+            || erreur "purge faite mais non inscrite au journal d'audit"
+    fi
+}
 
 # ------------------------------------------------------------------ déchiffrement et contrôles (sans rien écrire)
 # Résultat : $W/paquet/{META,MANIFEST,donnees.tar} authentifiés et cohérents.
@@ -133,6 +174,11 @@ creer)
     # Rotation : les purges s'appliquent aussi aux sauvegardes (conception §3.8).
     find "$DEST" -maxdepth 1 -name 'barbacane-sauvegarde-*.cms' -printf '%f\n' | sort -r | tail -n +"$((GARDER + 1))" \
         | while read -r ancien; do rm -f "$DEST/$ancien" "$DEST/$ancien.sha384"; info "purgée : $ancien"; done
+    purger_anciennes "$DEST"
+    ;;
+purger)
+    { [ -n "$DEST" ] && [ -d "$DEST" ]; } || erreur "--destination : dossier du support amovible monté requis"
+    purger_anciennes "$DEST"
     ;;
 verifier)
     ouvrir
@@ -169,7 +215,7 @@ cles-signature)
     info "empreinte du certificat de signature (à consigner HORS du serveur) : $(openssl x509 -in "$DOSSIER/signature.pem" -noout -fingerprint -sha256 | cut -d= -f2)"
     ;;
 *)
-    sed -n '2,23p' "$0" >&2
+    sed -n '2,30p' "$0" >&2
     exit 2
     ;;
 esac

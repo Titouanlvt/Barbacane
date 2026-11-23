@@ -1,0 +1,44 @@
+# Serveur Barbacane : export du journal vers le collecteur Syslog du réseau local (v2.3.0,
+# docs/suite/journal-syslog.md). Hors conteneur, sous barbacane-svc (propriétaire du journal) ;
+# réglage validé par deux administrateurs dans la Console. Sans réglage : ne fait rien.
+# Sortie réseau : seule la cible validée, ouverte par barbacane-syslog-pare-feu (nftables).
+[Unit]
+Description=Export Syslog du journal Barbacane (RFC 5424, TLS 1.3 ou en clair)
+After=network.target nftables.service barbacane-syslog-pare-feu.service
+ConditionPathExists=/var/lib/barbacane-serveur/svc/registre.conf
+
+[Service]
+User=barbacane-svc
+Group=barbacane-svc
+ExecStart=/usr/local/lib/barbacane-serveur/barbacane-syslog /var/lib/barbacane-serveur/svc/registre.conf
+Restart=always
+RestartSec=10
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/barbacane-serveur/svc/etat/registre
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+MemoryMax=256M
+TasksMax=16
+
+[Install]
+WantedBy=multi-user.target

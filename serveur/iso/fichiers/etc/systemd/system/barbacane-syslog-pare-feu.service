@@ -1,0 +1,16 @@
+# Serveur Barbacane : ouvre dans nftables la SEULE cible Syslog validée dans la Console (fichier
+# « pare-feu » écrit par la Console, relu ici strictement par root), puis relance l'exportateur.
+[Unit]
+Description=Pare-feu : cible du collecteur Syslog validée (Barbacane)
+After=nftables.service
+Requires=nftables.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/barbacane-syslog-pare-feu
+PrivateTmp=yes
+ProtectHome=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

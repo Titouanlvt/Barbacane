@@ -1,0 +1,26 @@
+# Serveur Barbacane : conservation, partie registre (sous barbacane-svc) : réglage posé s'il
+# manque, purge des rapports de passage hors durée (docs/suite/journal-conservation.md).
+[Unit]
+Description=Conservation : purge des rapports de passage (Barbacane)
+ConditionPathExists=/var/lib/barbacane-serveur/svc/registre.conf
+
+[Service]
+Type=oneshot
+User=barbacane-svc
+Group=barbacane-svc
+ExecStart=/usr/local/lib/barbacane-serveur/barbacane-registre /var/lib/barbacane-serveur/svc/registre.conf conservation
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/barbacane-serveur/svc/etat/registre
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service

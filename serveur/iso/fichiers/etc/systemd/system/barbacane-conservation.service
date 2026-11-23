@@ -1,0 +1,30 @@
+# Serveur Barbacane : conservation quotidienne (docs/suite/journal-conservation.md) :
+#   1. barbacane-conservation-registre (barbacane-svc) : purge des rapports de passage ;
+#   2. ici (root : seul compte qui lit la clé d'audit) : rotation du journal d'audit en segment
+#      scellé, purge des segments hors durée (ancre signée conservée), scellement quotidien.
+# Bac à sable : écriture dans le registre seulement, aucun réseau.
+[Unit]
+Description=Conservation : rotation, purge et scellement du journal d'audit (Barbacane)
+Requires=barbacane-conservation-registre.service
+After=barbacane-conservation-registre.service
+ConditionPathExists=/etc/barbacane-serveur/audit/cle-audit.pem
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/barbacane-audit conservation /var/lib/barbacane-serveur/svc/etat/registre/audit.jsonl /etc/barbacane-serveur/audit/cle-audit.pem /var/lib/barbacane-serveur/svc/etat/registre
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/barbacane-serveur/svc/etat/registre
+ReadOnlyPaths=/etc/barbacane-serveur/audit
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
+SystemCallArchitectures=native
+SystemCallFilter=@system-service @chown

@@ -432,14 +432,30 @@ fn debordement_et_perte_signales() {
     ecrire_actif(&b.s, &c);
     assert_eq!(passes(&b.e), Passe::AJour);
     let e = lire_etat(&b.s).unwrap().unwrap();
-    assert!(e.pertes >= 5, "{e:?}");
-    assert!(!e.debordement);
-    let v = analyser(&recus);
     assert!(
-        v.iter().any(|x| x.0 == p[0].dernier + 1),
-        "reprise à l'ancre du segment restant"
+        e.pertes == 0 && !e.debordement,
+        "nouvelle cible : pas de perte ({e:?})"
+    );
+    let v = analyser(&recus);
+    assert_eq!(
+        v[0].0,
+        p[0].dernier + 1,
+        "nouvelle cible : depuis l'ancre du segment restant"
     );
     col.arreter();
+    // Même cible, coupée pendant qu'une purge emporte des événements jamais remis : perte.
+    for i in 50..55 {
+        evenement(&b.s, i);
+    }
+    assert!(matches!(b.e.passe(5).unwrap(), Passe::Echec(_)));
+    j.tourner(&cle, 4_100_000_000, true).unwrap().unwrap();
+    let p = j
+        .purger_segments(&cle.publique(), 4_100_000_000, u64::MAX, "conservation")
+        .unwrap();
+    assert_eq!(p.len(), 1);
+    assert!(matches!(b.e.passe(6).unwrap(), Passe::Echec(_)));
+    let e = lire_etat(&b.s).unwrap().unwrap();
+    assert!(e.pertes >= 5, "{e:?}");
     let audit = String::from_utf8(b.s.journal_audit().lire().unwrap()).unwrap();
     assert!(audit.contains("\"action\":\"perte\""), "{audit}");
 }

@@ -1,0 +1,13 @@
+# Serveur Barbacane : conservation chaque nuit (03:15) et 3 minutes après chaque démarrage ;
+# un passage manqué (serveur éteint) est rattrapé au démarrage (Persistent).
+[Unit]
+Description=Conservation quotidienne du journal et des passages (Barbacane)
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+OnBootSec=3min
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

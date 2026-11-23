@@ -70,6 +70,12 @@ done
 
 # ------------------------------------------------------------------ 2. réseau : deux interfaces, aucune route par défaut
 etape "réseau et pare-feu"
+# Compte des services créé d'abord : le pare-feu le nomme (seul compte autorisé vers la cible
+# Syslog validée, v2.3.0).
+if ! id "$SVC" >/dev/null 2>&1; then
+    useradd --system --create-home --home-dir "$DONNEES/svc" --shell /usr/sbin/nologin \
+        -c "Services Barbacane (Podman sans root)" "$SVC"
+fi
 for s in networking NetworkManager wpa_supplicant ssh systemd-resolved; do
     systemctl mask "$s.service" 2>/dev/null || true
 done
@@ -206,10 +212,6 @@ update-grub
 
 # ------------------------------------------------------------------ 5. services : Podman sans root (D11)
 etape "services (Podman sans root)"
-if ! id "$SVC" >/dev/null 2>&1; then
-    useradd --system --create-home --home-dir "$DONNEES/svc" --shell /usr/sbin/nologin \
-        -c "Services Barbacane (Podman sans root)" "$SVC"
-fi
 grep -q "^$SVC:" /etc/subuid || usermod --add-subuids 200000-265535 --add-subgids 200000-265535 "$SVC"
 chmod 750 "$DONNEES/svc"
 # Session utilisateur systemd permanente (les conteneurs démarrent sans connexion).
@@ -217,7 +219,8 @@ mkdir -p /var/lib/systemd/linger
 touch "/var/lib/systemd/linger/$SVC"
 H="$DONNEES/svc"
 install -d -o "$SVC" -g "$SVC" -m 700 "$H/.config" "$H/.config/containers" "$H/.config/containers/systemd" \
-    "$H/.config/systemd" "$H/.config/systemd/user" "$H/pki" "$H/etat" "$H/etat/registre" "$H/web" "$H/tmp-web"
+    "$H/.config/systemd" "$H/.config/systemd/user" "$H/pki" "$H/etat" "$H/etat/registre" "$H/etat/registre/syslog" \
+    "$H/web" "$H/tmp-web"
 # ISO des bornes (lecture seule, montées dans barbacane-web) : dossier présent même vide.
 install -d -m 755 "$DONNEES/iso-bornes"
 sed -e "s|@VERSION@|$VERSION|g" -e "s|@IP_BORNES@|$ip_bornes|g" -e "s|@PORT@|$PORT|g" \
@@ -279,6 +282,10 @@ chown "$SVC:$SVC" "$H/web/web.conf"
 chmod 400 "$H/web/web.conf"
 chown -R "$SVC:$SVC" "$H/.config"
 systemctl enable barbacane-serveur-etat.service
+# v2.3.0 : conservation quotidienne (purge des passages, rotation et purge du journal d'audit
+# en segments scellés) et export Syslog (inactif tant qu'aucun réglage n'est validé).
+systemctl enable barbacane-conservation.timer barbacane-syslog.service \
+    barbacane-syslog-pare-feu.service barbacane-syslog-pare-feu.path
 # Clé de signature des sauvegardes (propre à ce serveur) ; le certificat de la clé de sauvegarde
 # (destinataire.pem) est déposé par l'administrateur, la clé privée restant hors du serveur.
 [ -f "$C/sauvegarde/signature.cle.pem" ] || /usr/local/sbin/barbacane-sauvegarde cles-signature "$C/sauvegarde"

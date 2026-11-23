@@ -15,6 +15,10 @@
 #            la passerelle doit être « en attente de PKI » (condition non remplie, pas d'échec).
 #     MDP_WEB fichier du mot de passe du compte web admin-01 (--mdp-web à la construction) : connexion
 #            complète à l'interface web (sinon : page de connexion seulement).
+#   MDP_ADMIN=FICHIER (v2.3.0) : mot de passe initial du compte d'administration système (--hache-admin
+#            à la construction) : parcours « journal » (tests/serveur/qemu-journal.sh) avec la console
+#            série : Syslog TLS/mTLS et en clair vers un collecteur de test, coupure et reprise,
+#            conservation par double validation, horloge avancée, purges, vérification de la chaîne.
 # Interface web : servie sur 10.0.3.15:443 (administration) avec le certificat admin-01 de TEST,
 # refusée sans certificat, injoignable depuis le réseau des bornes et sur son port interne (8443).
 # Prérequis (root) : qemu-system-x86, ovmf, qemu-utils, swtpm, cryptsetup, socat, openssl, xorriso, KVM.
@@ -27,7 +31,7 @@ mkdir -p "$W"
 ko=0
 ok() { echo "OK : $*"; }
 echec() { echo "ÉCHEC : $*" >&2; ko=1; }
-for o in qemu-system-x86_64 qemu-img qemu-nbd swtpm cryptsetup socat openssl xorriso curl; do
+for o in qemu-system-x86_64 qemu-img qemu-nbd swtpm cryptsetup socat openssl xorriso curl mkfs.ext4; do
     command -v "$o" >/dev/null || { echo "prérequis absent : $o" >&2; exit 2; }
 done
 OVMF=/usr/share/ovmf/OVMF.fd
@@ -72,7 +76,8 @@ AVEC_TPM=(-chardev "socket,id=chrtpm,path=$W/swtpm.sock" -tpmdev emulator,id=tpm
 commun=(-enable-kvm -cpu host -m 4096 -smp 2 -bios "$OVMF" -vga std -display none
     -drive "file=$W/disque.qcow2,if=none,id=disque" -device "virtio-blk-pci,drive=disque,bootindex=1"
     -netdev user,id=nb,restrict=on,net=10.0.2.0/24 -device virtio-net-pci,netdev=nb,addr=0x8
-    -netdev user,id=na,restrict=on,net=10.0.3.0/24 -device virtio-net-pci,netdev=na,addr=0x9
+    -netdev "user,id=na,restrict=on,net=10.0.3.0/24,guestfwd=tcp:10.0.3.100:6514-cmd:socat -t 10 - TCP:127.0.0.1:16514,guestfwd=tcp:10.0.3.100:5514-cmd:socat -t 10 - TCP:127.0.0.1:15514"
+    -device virtio-net-pci,netdev=na,addr=0x9
     -device qemu-xhci)
 
 # ------------------------------------------------------------------ 1. installation
@@ -117,7 +122,13 @@ fi
 # ------------------------------------------------------------------ 2. démarrage avec le TPM
 echo "== premier démarrage (déverrouillage par le TPM)"
 tpm
-qemu-system-x86_64 "${commun[@]}" "${AVEC_TPM[@]}" -serial "file:$W/demarrage.log" \
+# Console série journalisée ET joignable (socket) : parcours v2.3.0 (compte d'administration système).
+# Disque « support » (ext4) : sauvegardes du parcours v2.3.0.
+qemu-img create -q -f raw "$W/support.img" 128M
+mkfs.ext4 -q -F "$W/support.img"
+qemu-system-x86_64 "${commun[@]}" "${AVEC_TPM[@]}" \
+    -chardev "socket,id=serie,path=$W/serie.sock,server=on,wait=off,logfile=$W/demarrage.log" -serial chardev:serie \
+    -drive "file=$W/support.img,if=none,id=support,format=raw" -device virtio-blk-pci,drive=support \
     -monitor "unix:$W/mon.sock,server,nowait" &
 PID=$!
 lu=0
@@ -307,6 +318,11 @@ if [ -n "$PKI" ]; then
             ok "interface web : connexion admin-01 (certificat + mot de passe Argon2id, HTTP $code) puis tableau de bord HTTP 200"
         else echec "interface web : connexion admin-01 (POST $code, tableau $code2)"; fi
         parcours_comptes
+        if [ -n "${MDP_ADMIN:-}" ]; then
+            # shellcheck source=tests/serveur/qemu-journal.sh
+            . "$(dirname "$0")/qemu-journal.sh"
+            parcours_journal
+        fi
     fi
 fi
 # 443 et 22 sur l'interface bornes : filtrés (aucun octet en retour, même à une requête).
@@ -334,7 +350,14 @@ for ch in entree transit sortie; do
     awk -v c="chain $ch" '$0 ~ c { p = 1 } p && /policy/ { print; exit }' <<<"$nft" | grep -q 'policy drop' \
         && ok "pare-feu : chaîne $ch, politique drop" || echec "pare-feu : chaîne $ch sans politique drop"
 done
-autorises=$(grep -E '\baccept\b' <<<"$nft" | grep -v 'type nat hook' | sed 's/^[[:space:]]*//' | sort || true)
+# v2.3.0 : sortie vers la seule cible Syslog validée (ensemble « syslog », vide à l'installation).
+regle_syslog=$(grep -E '\baccept\b' <<<"$nft" | grep '@syslog' | sed 's/^[[:space:]]*//' || true)
+grep -qE "^oifname \"$IF_ADMIN\" meta skuid [^ ]+ ip daddr \. meta l4proto \. th dport @syslog ct state new accept$" <<<"$regle_syslog" \
+    && ok "pare-feu : sortie Syslog limitée à l'ensemble « syslog », au compte barbacane-svc et à l'interface d'administration" \
+    || echec "pare-feu : règle de sortie Syslog absente ou inattendue : $regle_syslog"
+awk '/set syslog/ { s = 1 } s && /elements/ { e = 1 } s && /}/ { exit } END { exit e }' <<<"$nft" \
+    && ok "pare-feu : ensemble syslog vide à l'installation (aucune sortie)" || echec "pare-feu : ensemble syslog non vide à l'installation"
+autorises=$(grep -E '\baccept\b' <<<"$nft" | grep -v 'type nat hook' | grep -v '@syslog' | sed 's/^[[:space:]]*//' | sort || true)
 attendu=$(printf '%s\n' 'ct state established,related accept' 'ct state established,related accept' 'iif "lo" accept' \
     "iifname \"$IF_ADMIN\" ip daddr 10.0.3.15 tcp dport 443 ct state new accept" \
     "iifname \"$IF_BORNES\" ip daddr 10.0.2.15 tcp dport { $PA, $PB } ct state new accept" 'oif "lo" accept' | sort)
