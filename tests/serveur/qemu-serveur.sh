@@ -321,7 +321,8 @@ if [ -n "$PKI" ]; then
         if [ -n "${MDP_ADMIN:-}" ]; then
             # shellcheck source=tests/serveur/qemu-journal.sh
             . "$(dirname "$0")/qemu-journal.sh"
-            parcours_journal
+            # Hors « set -e » (contexte « || ») : un contrôle en échec n'interrompt jamais le banc.
+            parcours_journal || echec "parcours journal interrompu"
         fi
     fi
 fi

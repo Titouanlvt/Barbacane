@@ -61,7 +61,7 @@ racine() {
     n=$(lignes_console)
     serie "( $1 ) > /root/banc-$NV.out 2>&1; r=\$?; echo ==DEB""UT-$NV==; cat /root/banc-$NV.out; echo ==F""IN-$NV== \$r"
     if attendre_console "==FIN-$NV== [0-9]+" "$d" "$n"; then
-        lisible "$W/demarrage.log" | tail -n +"$((n + 1))" | sed -n "/^==DEBUT-$NV==/,/^==FIN-$NV==/p" | sed '1d;$d' > "$W/racine-$NV.txt"
+        lisible "$W/demarrage.log" | tail -n +"$((n + 1))" | sed -n "/==DEBUT-$NV==/,/==FIN-$NV==/p" | sed '1d;$d' > "$W/racine-$NV.txt"
         RC=$(lisible "$W/demarrage.log" | tail -n +"$((n + 1))" | sed -n "s/.*==FIN-$NV== \([0-9]*\).*/\1/p" | head -1)
     else
         echo "(commande $NV sans réponse en $d s : $1)" > "$W/racine-$NV.txt"
@@ -93,7 +93,7 @@ lancer_collecteur() { # tls|clair
     sleep 1
 }
 # numeros FICHIER → numéros n reçus (un par ligne, dans l'ordre de réception)
-numeros() { sed -n 's/.* n="\([0-9]*\)".*/\1/p' "$1"; }
+numeros() { sed -n 's/.* n="\([0-9]*\)".*/\1/p' "$1" 2>/dev/null || true; }
 # contigus FICHIER → « premier dernier » si les numéros reçus couvrent tout l'intervalle, sinon vide
 contigus() {
     numeros "$1" | sort -nu | awk 'NR == 1 { p = $1; d = $1 - 1 } $1 != d + 1 { trou = 1 } { d = $1 } END { if (!trou && NR) print p, d }'
@@ -144,7 +144,7 @@ borne_de_test() {
 }
 
 # ---------------------------------------------------------------- parcours
-demande_de() { sed -n 's/.*name="demande" value="\([^"]*\)".*/\1/p' "$1" | head -1; }
+demande_de() { sed -n 's/.*name="demande" value="\([^"]*\)".*/\1/p' "$1" 2>/dev/null | head -1 || true; }
 valider() { # FICHIER_DEMANDE ADMIN(A1|A2) → code HTTP, page dans $W/val.html
     local d; d=$(demande_de "$1")
     if [ "$2" = A1 ]; then requete "${A1[@]}" "$W/val.html" /validations/valider "csrf=$S1" "demande=$d" "retour=journal"
@@ -205,7 +205,7 @@ parcours_journal() {
     sleep 70
     r=$(contigus "$COL/recus-tls.txt")
     doublons=$(numeros "$COL/recus-tls.txt" | sort -n | uniq -d | wc -l)
-    silencieux=$(awk '{ n = $0; sub(/.* n="/, "", n); sub(/".*/, "", n); r = ($0 ~ /reprise="1"/); if (vu[n]++ && !r) s++ } END { print s + 0 }' "$COL/recus-tls.txt")
+    silencieux=$(awk '{ n = $0; sub(/.* n="/, "", n); sub(/".*/, "", n); r = ($0 ~ /reprise="1"/); if (vu[n]++ && !r) s++ } END { print s + 0 }' "$COL/recus-tls.txt" 2>/dev/null || echo 0)
     [ -n "$r" ] && [ "${r##* }" -gt "${avant:-0}" ] && [ "$silencieux" = 0 ] \
         && ok "collecteur rétabli : reprise sans perte (n° $r contigus, dernier avant coupure $avant), $doublons doublon(s), tous marqués reprise=\"1\"" \
         || echec "reprise : intervalle « $r », dernier avant $avant, doublons non marqués $silencieux"
@@ -274,6 +274,6 @@ parcours_journal() {
     grep -q 'EN CLAIR' "$W/j-tab.html" && ok "tableau de bord : alerte « export Syslog EN CLAIR »" || echec "tableau de bord : pas d'alerte en clair"
     racine "nft list set inet barbacane syslog"
     grep -q '10.0.3.100 . tcp . 5514' "$SORTIE" && ! grep -q '6514' "$SORTIE" && ok "pare-feu : cible remplacée (seul 10.0.3.100:5514 ouvert)" || echec "pare-feu après changement : $(cat "$SORTIE")"
-    kill "$PID_TLS" "$PID_CLAIR" 2>/dev/null || true
+    kill "${PID_TLS:-}" "${PID_CLAIR:-}" 2>/dev/null || true
     cp "$COL"/recus-*.txt "$W/" 2>/dev/null || true
 }

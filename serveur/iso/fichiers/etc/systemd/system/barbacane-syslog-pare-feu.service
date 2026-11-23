@@ -8,6 +8,7 @@ Requires=nftables.service
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/barbacane-syslog-pare-feu
+TimeoutStartSec=60
 PrivateTmp=yes
 ProtectHome=yes
 NoNewPrivileges=yes

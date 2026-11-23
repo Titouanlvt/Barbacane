@@ -4,7 +4,9 @@
 # Sortie réseau : seule la cible validée, ouverte par barbacane-syslog-pare-feu (nftables).
 [Unit]
 Description=Export Syslog du journal Barbacane (RFC 5424, TLS 1.3 ou en clair)
-After=network.target nftables.service barbacane-syslog-pare-feu.service
+# Pas d'ordre après barbacane-syslog-pare-feu : ce dernier relance l'exportateur (sinon interblocage,
+# banc QEMU du 23/11/2026) ; sans cible ouverte, l'exportateur réessaie seul.
+After=network.target nftables.service
 ConditionPathExists=/var/lib/barbacane-serveur/svc/registre.conf
 
 [Service]
