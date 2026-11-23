@@ -1,8 +1,8 @@
 # Notes pour Claude Code — projet BARBACANE
 
 Borne autonome de décontamination USB (Debian 13) et suite en ligne (Serveur Barbacane, Borne connectée,
-Console, Liaison bornes, Journal, Quarantaine). Versions publiées : v1.0.0 (19/11/2026), v2.0.0 et
-v2.0.1 (21/11/2026) ; en cours : v2.0.2, feuille de route dans `AVANCEMENT.md`. Dépôt **autonome**
+Console, Liaison bornes, Journal, Quarantaine). Versions publiées : v1.0.0 à v2.2.0 (19–22/11/2026) ;
+en cours : v2.3.0 (journal structuré, Syslog, conservation), feuille de route dans `AVANCEMENT.md`. Dépôt **autonome**
 `Titouanlvt/Barbacane` (plus de dépôt amont ni de dépendance externe au projet), géré
 par Claude. Le noyau de lecture USB provient d'usbsas (CEA) et vit dans `noyau/`.
 
@@ -78,6 +78,10 @@ Un seul workspace Cargo ; `.cargo/config.toml` fait pointer `USBSAS_BIN_PATH` su
 - Borne : charte v1 (y compris Borne connectée) ; charte v2 = Console seulement ; branche
   `borne-charte-v2` gardée, non fusionnée.
 - CI publique lisible sans `gh` : `curl api.github.com/repos/Titouanlvt/Barbacane/actions/runs`.
+- Journal d'audit (v2.3.0) : schéma chaîné version 2, segments dans `registre/audit-segments/` ;
+  lire TOUT le journal avec `Journal::contenus()`/`verifier_tout()`, jamais `lire()` seul (journal actif).
+- Banc serveur v2.3.0 : `MDP_ADMIN=…` active `tests/serveur/qemu-journal.sh` (console série en root,
+  horloge de la VM avancée, collecteur Syslog de test sur l'hôte du banc via guestfwd 10.0.3.100).
 
 ## Travail autonome (règles de l'utilisateur, 17/11/2026)
 - Toute commande longue : `timeout`, en arrière-plan avec journal dans `/root/BARBACANE/logs/`,

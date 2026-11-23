@@ -74,12 +74,12 @@ l'IGI 1300. L'IGI 1300 ne concerne que *Secret* et *Très Secret*. `decisions.md
 | Poste et réseau d'administration dédiés (R5) | interface d'administration distincte (`serveur/iso/configurer-serveur.sh`) ; poste dédié : HORS PROJET | pare-feu d'administration à compléter | 2.2 / organisme |
 | Séparation des rôles, double validation (R5) | **FAIT (v2.2.0)** : 4 rôles (administrateur, opérateur, auditeur, lecture seule), double validation généralisée (comptes, certificats, révocation d'un site, quarantaine), auto-validation refusée, expiration 1 h (`comptes-administrateurs.md` §2, §5) | conservation (2.3) sur le même mécanisme | 2.2 |
 | Durcissement GNU/Linux (R4) | borne FAIT (systemd confiné, nftables, GRUB verrouillé S-01) ; serveur PARTIEL (sysctl, auditd, journald : `serveur/iso/fichiers/etc/`) | pas d'auto-évaluation BP-028 ligne à ligne ; faillock, AIDE absents ; services web non durcis (systemd) | NOUVEAU : grille BP-028 (niveau visé à fixer) ; AIDE/faillock en 2.7 ou 2.8 |
-| Journalisation centralisée, horodatée, protégée (R6) | PARTIEL : audit chaîné SHA-384 + points ECDSA P-384 (`serveur/audit/tests/chaine.rs`) ; chrony local ; `ForwardToSyslog=no` | pas d'export hors serveur, pas de format structuré, pas de collecteur séparé, `chattr +a` absent | 2.3 (structuré + Syslog) ; collecteur séparé 2.8 |
+| Journalisation centralisée, horodatée, protégée (R6) | **FAIT (v2.3.0)** pour le format et l'export : audit chaîné SHA-384 + points ECDSA P-384, **scellement quotidien automatique**, segments scellés ; **format structuré** (JSON par ligne, RFC 3339 UTC, identifiant, gravité RFC 5424, `journal-structure.md`) ; **export Syslog** RFC 5424 en TLS 1.3 (RFC 5425, mTLS possible) ou en clair signalé, double validation, file persistante, remise confirmée, alertes (`journal-syslog.md`, `serveur/passerelle/tests/syslog.rs`, banc QEMU) | collecteur séparé et homologué (organisme), `chattr +a` absent | collecteur séparé 2.8 |
 | TLS 1.3, suites et courbes RGS (R7) | FAIT : `serveur/passerelle/tests/mtls.rs` ; LDAPS TLS 1.2 optionnel audité (`serveur/web/tests/annuaire.rs`) | — | — |
 | Clés non exportables (R7, recommandé) | ABSENT : clés serveur en fichiers 0600 ; TPM seulement pour LUKS (swtpm au labo) | **écart important** | 2.4 |
 | Racine PKI hors ligne, politique de certification (R7) | document FAIT (`politique-certification.md`) ; racine de TEST seulement (`serveur/pki/racine-test.sh`) | PKI de production, cérémonie, refus des certificats TEST | 2.4 |
 | Mises à jour maîtrisées (R1) | bornes FAIT (`.bcu`) ; serveur : paquets de l'ISO, pas de mise à jour signée du serveur | — | 2.7 |
-| Sauvegarde testée (R1) | FAIT manuel (`tests/serveur/sauvegarde.sh`) ; non planifiée | sauvegarde planifiée, hors site | NOUVEAU (petit, à rattacher à 2.7) |
+| Sauvegarde testée (R1) | FAIT manuel (`tests/serveur/sauvegarde.sh`, désormais en CI locale) ; purge par âge (v2.3.0) ; non planifiée | sauvegarde planifiée, hors site | NOUVEAU (petit, à rattacher à 2.7) |
 | Veille et correction des vulnérabilités (R1) | PARTIEL : reprise des correctifs usbsas (v2.0.3), dependabot | pas de processus de veille écrit (CVE Debian, ClamAV) | NOUVEAU (document MCS, §4.5) |
 
 ## 3. RGPD et CNIL
@@ -93,12 +93,12 @@ qui **permet** la conformité (art. 25, protection dès la conception).
 | Registre des traitements (art. 30, obligatoire) | ABSENT : aucune fiche de registre fournie | modèle de fiche à fournir | NOUVEAU (document, E1-bis) |
 | AIPD (art. 35, obligatoire si risque élevé ; surveillance de l'activité des salariés = cas listé par la CNIL *(à vérifier)*) | PARTIEL : trame v0.1 non validée (`aipd.md` §4 vide) ; ne couvre pas les administrateurs en détail, ni Syslog, dépôt SI, contrôle postes | AIPD à réviser à chaque version qui ajoute des données (2.3, 2.9, 2.11, 2.12, 3.0) | règle NOUVELLE dans la porte de sortie |
 | Minimisation (art. 5.1.c, obligatoire) | FAIT : pas de nom de fichier (D2), pseudonyme HMAC (`serveur/passerelle/src/utilisateurs.rs`, `serveur/passerelle/tests/utilisateurs.rs`), mode Aucun sans donnée | numéro de série du support = donnée indirectement identifiante, à justifier ; contenu quarantaine | AIPD ; 2.11 |
-| Limitation de la conservation (art. 5.1.e, obligatoire) ; durée des journaux 6 mois à 1 an sauf justification (R11, recommandé) | PARTIEL : correspondance identifiant ↔ pseudonyme purgée à 1 an (`CONSERVATION_S`, test `import_retrait_et_purge`) ; quarantaine purgée à 30 j (`serveur/passerelle/src/quarantaine.rs`) ; **rapports de passage et journal d'audit : aucune purge dans le code** ; sauvegardes : aucune purge | **écart bloquant** : l'AIPD annonce « 1 an, sauvegardes comprises, purge automatique » alors que ce n'est pas implémenté | NOUVEAU, à placer en 2.3 (journal) |
-| Contradiction purge / journal chaîné | la chaîne d'audit est inaltérable par conception | purger sans casser la preuve d'intégrité (rotation par segment scellé) | 2.3 (conception) |
+| Limitation de la conservation (art. 5.1.e, obligatoire) ; durée des journaux 6 mois à 1 an sauf justification (R11, recommandé) | **FAIT (v2.3.0)** : durée réglée dans la Console par double validation (défaut 365 j, 180–730 j, préavis de 7 j), purge quotidienne tracée des rapports de passage, du journal d'audit (segments), des correspondances et des sauvegardes du support monté (`journal-conservation.md`, `serveur/audit/tests/segments.rs`, `passages::tests`, `tests/serveur/sauvegarde.sh`, banc QEMU avec horloge avancée) ; quarantaine 30 j | supports de sauvegarde au coffre purgés à leur montage seulement (procédure) | — |
+| Contradiction purge / journal chaîné | **FAIT (v2.3.0)** : rotation quotidienne en segments scellés, ancre signée en tête de chaque segment, purge des plus anciens seulement, chaîne restante vérifiée (outil, Console) | — | — |
 | Information des personnes (art. 13, obligatoire) | PARTIEL : message prévu sur la borne (`aipd.md` §2) ; modèle de note d'information absent | modèle de mention | NOUVEAU (document) |
 | Droits d'accès, rectification, limitation (art. 15-18, obligatoire) | PARTIEL : export par identifiant par l'auditeur annoncé dans l'AIPD *(non retrouvé comme test dédié)* | procédure et fonction testée | 2.13 (export CSV) ou NOUVEAU |
-| Données des administrateurs (journaux d'actions, art. 5, 13) | journal d'audit nominatif des administrateurs, sans durée ni information | durée et information à définir | 2.2 / 2.3 |
-| Sécurité (art. 32, obligatoire) ; journalisation des accès aux données (R11) | PARTIEL : rôles, audit des consultations sensibles, LUKS ; consultation des pages Passages non journalisée *(à vérifier)* | journaliser les consultations de données personnelles | 2.3 |
+| Données des administrateurs (journaux d'actions, art. 5, 13) | **FAIT (v2.3.0)** pour la durée : journal nominatif des administrateurs = durée du journal d'audit (réglée, défaut 1 an) ; journald 1 an (`aipd.md` §1) | information des administrateurs (note interne) | organisme |
+| Sécurité (art. 32, obligatoire) ; journalisation des accès aux données (R11) | **FAIT (v2.3.0)** : consultations journalisées (liste et détail des passages avec le rapport consulté, fiche utilisateur par pseudonyme, journal, export structuré), `serveur/web/tests/journal.rs` | — | — |
 | Consultation des représentants du personnel (Code du travail L.2312-38, obligatoire pour un employeur privé avec CSE ; équivalent public) | HORS PROJET, rappelée dans `aipd.md` | — | organisme |
 | Pas de transfert hors UE, pas de sous-traitant | FAIT par conception (serveur sur site sans Internet) | — | — |
 
@@ -115,7 +115,7 @@ relèvent du périmètre du SI DR qui les héberge (D1).
 | Cloisonnement, aucune interconnexion avec un SI de niveau inférieur sans passerelle adaptée (obligatoire) | PARTIEL : serveur sans route par défaut, nftables liste blanche (`serveur/iso/configurer-serveur.sh`, `tests/serveur/qemu-serveur.sh`) | **2.12 (dépôt vers le SI) et 3.0 créent des flux vers d'autres SI** : à analyser avant conception | 2.8 (rôles séparés) ; analyse NOUVELLE avant 2.12 |
 | Chiffrement des données DR au repos sur les supports mobiles et serveurs hors zone protégée (obligatoire en pratique, par produit agréé) | serveur : LUKS2 + TPM (PCR 7), non qualifié ; borne : non chiffrée au repos hors espace éphémère | — | 2.5 (bornes) ; produit agréé HORS PROJET |
 | Chiffrement des flux DR hors zone protégée (obligatoire) | sur site : TLS 1.3 (non agréé) ; entre sites : WireGuard au labo seulement | chiffreur IP agréé | HORS PROJET |
-| Journalisation et conservation des traces (obligatoire au titre de la sécurité ; modalités R6) | voir §2.2 | export, collecteur séparé | 2.3, 2.8 |
+| Journalisation et conservation des traces (obligatoire au titre de la sécurité ; modalités R6) | voir §2.2 ; **export Syslog et conservation : FAIT (v2.3.0)** | collecteur séparé | 2.8 |
 | Administration depuis des postes dédiés (exigé pour DR selon R3/R5) | voir §2.2 | — | 2.2 + organisme |
 | Maintien en condition de sécurité (obligatoire : correctifs, veille, revue périodique de l'homologation) | PARTIEL : mises à jour bornes signées ; serveur sans mise à jour signée ; pas de plan MCS écrit ; pas de durée de support annoncée | plan MCS (veille CVE, délais, fin de vie Debian 13) | 2.7 + NOUVEAU (document MCS) |
 | Gestion des supports amovibles (obligatoire : maîtrise des supports) | FAIT pour la décontamination ; enrôlement des clés (`serveur/passerelle/tests/utilisateurs.rs`) ; S-05 n° de série copiable | identification forte des supports | 3.0 (Clés Barbacane chiffrées) |
@@ -135,12 +135,12 @@ relèvent du périmètre du SI DR qui les héberge (D1).
 
 ### 6.1 Écarts bloquants avant 2.4
 
-1. **Purge non implémentée** des rapports de passage, du journal d'audit et des sauvegardes, alors que
-   l'AIPD l'annonce (RGPD art. 5.1.e, obligatoire) — à concevoir avec le journal chaîné (2.3).
+1. ~~**Purge non implémentée** des rapports de passage, du journal d'audit et des sauvegardes~~ —
+   **traité en v2.3.0** (`journal-conservation.md`).
 2. **Secrets du serveur en fichiers** (clés de la passerelle, de l'audit, poivre des PIN, CA émettrice
    sur la passerelle) — objet même de 2.4 ; pré-requis : décision sur le TPM matériel cible.
-3. **Pas d'export de journal hors serveur** (R6, II 901) : un serveur compromis peut effacer ses traces
-   avant la liaison Syslog — 2.3 doit précéder 2.4 (c'est le cas).
+3. ~~**Pas d'export de journal hors serveur**~~ (R6, II 901) — **traité en v2.3.0** (export Syslog
+   TLS 1.3, `journal-syslog.md`) ; reste le collecteur séparé (2.8, organisme).
 4. ~~**Double validation et comptes administrateurs incomplets** (R5)~~ — **traité en v2.2.0**
    (`comptes-administrateurs.md`) ; reste le facteur matériel (P8).
 5. **Niveau de conformité non décidé** : la PKI de production (2.4) ne doit pas être figée avant de savoir
@@ -151,9 +151,9 @@ relèvent du périmètre du SI DR qui les héberge (D1).
 
 - **P1** (doc, immédiat) : corriger « DR, IGI 1300 » en « DR, II 901 » ; ajouter la phrase
   « Barbacane ne revendique aucune conformité IGI 1300 ».
-- **P2** (2.3) : ajouter **rétention et purge** (passages, audit par segments scellés, sauvegardes),
+- ~~**P2**~~ (**fait en v2.3.0**) : ajouter **rétention et purge** (passages, audit par segments scellés, sauvegardes),
   journalisation des consultations de données personnelles, durée des journaux des administrateurs.
-- **P3** (porte de sortie de chaque version) : **revue de l'AIPD et du registre** dès qu'une version
+- **P3** (porte de sortie de chaque version ; **appliquée en v2.3.0** : `aipd.md` révisée) : **revue de l'AIPD et du registre** dès qu'une version
   ajoute une donnée ou un flux (2.3, 2.9, 2.11, 2.12, 3.0).
 - **P4** (décision) : viser ou non une **CSPN** de la borne hors ligne (cible de sécurité à rédiger) ; si
   oui, geler le périmètre de la borne v1 et prévoir une version « candidate CSPN ».

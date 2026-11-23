@@ -1,4 +1,4 @@
-# Avancement — Barbacane (état au 21/11/2026, après v2.0.1)
+# Avancement — Barbacane (état au 23/11/2026, v2.3.0 en preuves)
 
 ## Versions publiées
 - **v1.0.0** (19/11/2026) : borne hors ligne — [notes](docs/notes-de-version/v1.0.0.md),
@@ -57,6 +57,15 @@ Preuves ([dossier](docs/preuves/2026-11-22-v2.2.0/README.md)) : CI locale FIN 0,
 66 OK, banc borne 3/3, migration 2.1.0 → 2.2.0 14 OK, campagne 950 57 OK.
 Choix à valider par l'utilisateur : `docs/suite/decisions.md` (22/11, v2.2.0).
 
+## v2.3.0 (branche `v230`, non fusionnée) : journal structuré, Syslog, conservation
+Format structuré (JSON par ligne, RFC 3339 UTC, identifiant, gravité RFC 5424), export Syslog
+RFC 5424 en TLS 1.3 (mTLS possible) ou en clair signalé, file persistante (le journal) avec remise
+confirmée, alertes ; durée de conservation réglée par double validation (365 j, 180–730 j, préavis
+7 j), purge quotidienne des passages, rotation du journal d'audit en segments scellés (ancre
+signée) et purge, purge des sauvegardes ; consultations journalisées ; migration 2.2.0 avec préavis
+([notes](docs/notes-de-version/v2.3.0.md), références `docs/suite/journal-*.md`). Écarts E1 n° 1 et
+n° 3 traités. Choix à valider : `docs/suite/decisions.md` (23/11, v2.3.0).
+
 ## Reporté après 2.0.2 (reprend les [notes v2.0.0](docs/notes-de-version/v2.0.0.md))
 - **PKI et passerelle** : clés dans le TPM, refus des certificats TEST en production, CRL de la
   racine et republication quotidienne, service PKI séparé, racine du lab sur VM sans réseau ;
@@ -64,14 +73,14 @@ Choix à valider par l'utilisateur : `docs/suite/decisions.md` (22/11, v2.2.0).
 - **Enrôlement** : PostgreSQL (double validation des révocations massives : faite en 2.2.0).
 - **ISO serveur** : machine physique avec TPM matériel et démarrage sécurisé, re-scellement (shim,
   `systemd-pcrlock`), faillock, AIDE, GNSS/radio, sauvegarde planifiée.
-- **Audit et mises à jour** : minuteries de scellement/export, clé d'audit dans le TPM, `chattr +a`,
+- **Audit et mises à jour** : export automatique des empreintes (le scellement quotidien est fait en 2.3.0), clé d'audit dans le TPM, `chattr +a`,
   clé distincte pour le `.bcu` serveur, plancher étendu, diffusion par lot avec double validation.
 - **Interface web** : TPM, service systemd durci, pare-feu d'administration, facteur matériel
   des administrateurs, comparaison aux exports d'audit, fin du journal.
 - **Utilisateurs et clés USB** : rattachement aux rapports, synchronisation de l'annuaire, secrets
   dans le TPM, mode par borne, rôles de site ; LDAPS sur un vrai annuaire (D13 raccordée en 2.2.0).
 - **Borne en ligne** : clés dans le TPM, session jointe aux rapports, captures des nouveaux écrans.
-- **Rapports de passage** : analyse en échec, signature par la borne, rétention/purge, analyse
+- **Rapports de passage** : analyse en échec, signature par la borne, analyse
   réelle de bout en bout.
 - **Quarantaine** : clé dans le TPM, chiffrement sur la borne pour une clé d'analyste hors serveur,
   envoi par l'agent, fichiers > 4 Mio.

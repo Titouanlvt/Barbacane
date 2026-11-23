@@ -82,3 +82,39 @@ Pris sans l'utilisateur, selon la consigne « sécurité d'abord » ; détail :
   double validation proposé dans la v2.2.0 est retiré.
 - **Amorçage unique + `barbacane-web reamorcer`** : validé tel quel.
 - **Séparation des remises** : validée telle quelle.
+
+## 23/11/2026 — v2.3.0 (journal structuré, Syslog, conservation), choix de Claude à valider
+
+Pris sans l'utilisateur, selon la consigne « sécurité d'abord » ; détail :
+`journal-structure.md`, `journal-syslog.md`, `journal-conservation.md`. À confirmer ou corriger
+par une nouvelle entrée datée.
+
+- **Bornes de la conservation** : défaut 365 jours, **minimum 180 jours** (bas de la fourchette
+  CNIL), **plafond 730 jours** (au-delà d'1 an, justification à consigner dans l'AIPD ; rappel
+  dans la Console). Une seule durée pour passages, journal d'audit (dont journal des
+  administrateurs), correspondances identifiant ↔ pseudonyme et sauvegardes ; quarantaine (30 j)
+  et journald (1 an) inchangés.
+- **Préavis de 7 jours** pour toute réduction et pour la valeur posée au premier démarrage
+  (migration 2.2.0 : aucune purge pendant 7 jours, puis purge tracée de ce qui dépasse 365 jours) ;
+  augmentation immédiate.
+- **Segments quotidiens** (UTC) du journal d'audit, **ancre signée** (`segment_ouvert`) en tête de
+  chaque segment ; purge des plus anciens seulement, jamais sur une chaîne altérée ; schéma chaîné
+  passé en **version 2** (retour arrière vers la 2.2.0 non pris en charge : signalé, pas silencieux).
+- **Tâche de conservation en root** (seul compte qui lit la clé d'audit), bac à sable systemd
+  (écriture limitée au registre, sans réseau) plutôt qu'un compte dédié avec la clé en
+  « credential ».
+- **File d'attente Syslog = le journal lui-même** + curseur (aucune copie des données) ; seuil de
+  **débordement à 100 000 événements** = alerte, sans troncature (la conservation borne la file) ;
+  événement purgé avant remise signalé `perte`.
+- **Remise confirmée** par fermeture ordonnée (le collecteur doit fermer après notre FIN, comme
+  rsyslog et syslog-ng) ; renvoi marqué `reprise="1"` avec le même `id` ; UDP sans confirmation.
+- **Nouvelle cible Syslog** : reçoit tout le journal encore conservé.
+- **Désactivation de l'export par double validation** aussi (elle réduit la sécurité).
+- **Cible limitée au réseau d'administration**, adresse IPv4 sans DNS, sortie autorisée au seul
+  compte barbacane-svc (nftables `meta skuid`) ; les conteneurs, sous le même compte, peuvent la
+  joindre (limite).
+- **Clé client mTLS tirée par le serveur** (demande de certificat affichée), jamais importée.
+- **SD-ID `barbacane@32473`** (numéro réservé à la documentation, RFC 5612) en attendant un numéro
+  d'entreprise privé ; facilité 13 (« log audit ») ; gravités du `journal-structure.md` §3.
+- **Consultations journalisées** avec la cible (rapport de passage consulté, pseudonyme de la fiche),
+  export du journal structuré ouvert aux auditeurs (journalisé).

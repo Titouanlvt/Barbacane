@@ -138,7 +138,8 @@ administrateur utilisable, distinct (identifiant **et** numéro de compte), dans
 | Révocation **massive** : toutes les bornes actives d'un site (nom du site retapé, une seule CRL) | Comptes |
 | Activation de la quarantaine | Quarantaine |
 | Export d'un élément de la quarantaine | Quarantaine |
-| Changement de la durée de conservation (décision du 22/11) | **2.3.0**, même mécanisme |
+| Changement de la durée de conservation (décision du 22/11) | Conservation et export (v2.3.0, `journal-conservation.md`) |
+| Réglage, changement et désactivation de l'export Syslog | Conservation et export (v2.3.0, `journal-syslog.md`) |
 
 Hors double validation (sens sûr ou réversible, toujours journalisé) : **désactivation de la
 quarantaine** (un seul administrateur, décision du 21/11 maintenue le 22/11 ; ne viole jamais

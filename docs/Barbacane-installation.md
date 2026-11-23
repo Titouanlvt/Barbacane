@@ -684,18 +684,52 @@ son rôle, son état, son certificat (série, échéance) et son **dernier accè
 
 Tout est inscrit au Journal (demandeur et validateur) ; aucun mot de passe n'y figure.
 
-## 10.7 Journal
+## 10.7 Journal, conservation et export Syslog (v2.3.0)
 
 Chaque action (connexion, jeton, validation, révocation, dépôt, consultation…) est écrite dans un
 **journal chaîné** (SHA-384) : une ligne modifiée, supprimée ou déplacée est détectée. Page
-**Journal** → **Vérifier** : contrôle de toute la chaîne.
+**Journal** → **Vérifier la chaîne** : contrôle de toute la chaîne (segments compris).
 
 ![Journal](preuves/serveur-web/captures/audit-jour.png)
 
-En ligne de commande (console, **v2.0.1**) : `sudo barbacane-audit sceller …` ajoute un point de
-contrôle signé, `sudo barbacane-audit exporter …` produit le fichier d'empreintes à **sortir du
-serveur** (support non réinscriptible). Le scellement et l'export automatiques sont prévus
-(feuille de route) : faites-les à la main régulièrement.
+**Chaque nuit** (03:15) et après chaque démarrage, la tâche `barbacane-conservation` scelle le
+journal (point de contrôle signé), le range en **segment quotidien** et purge ce qui dépasse la
+durée de conservation : rapports de passage, segments du journal (la chaîne restante reste
+vérifiable depuis une ancre signée), correspondances des utilisateurs partis. Tout est inscrit au
+journal. Exporter régulièrement les empreintes (à **sortir du serveur**, support non
+réinscriptible) : `sudo barbacane-audit exporter …` (inchangé).
+
+Page **Journal → Conservation et export** (administrateur ; l'auditeur la consulte) :
+
+1. **Durée de conservation** : 365 jours par défaut, de 180 à 730 jours (au-delà de 365 jours,
+   justification à consigner dans l'AIPD). « Demander le changement » ; un **second
+   administrateur** valide dans l'heure. Une réduction prend effet **7 jours** plus tard (date
+   affichée) ; une augmentation, aussitôt.
+2. **Export Syslog** vers le collecteur du réseau d'administration : **TLS 1.3** (recommandé :
+   adresse IPv4, port, nom attendu dans le certificat du collecteur, AC du collecteur collée en PEM)
+   ou **en clair** (TCP ou UDP : déconseillé, signalé en permanence). Double validation pour toute
+   modification et pour la désactivation. Le pare-feu n'ouvre que la cible validée.
+3. **mTLS** (facultatif) : « Générer une nouvelle clé client » (la clé reste sur le serveur), faire
+   signer la demande affichée par l'AC du collecteur, « Déposer le certificat », puis demander un
+   réglage TLS en cochant « présenter le certificat client ».
+4. **Alertes** (page et tableau de bord) : collecteur injoignable (événements en attente, rien
+   n'est perdu), file en débordement (plus de 100 000 événements), événements purgés avant remise,
+   export en clair, exportateur arrêté.
+5. **Exporter tout le journal conservé** (format structuré, une ligne JSON par événement ;
+   consultation journalisée).
+
+Le collecteur doit fermer la connexion quand le serveur ferme la sienne (rsyslog et syslog-ng le
+font) : c'est ce qui confirme la remise. Référence : `docs/suite/journal-syslog.md`,
+`journal-conservation.md`, `journal-structure.md`.
+
+### Mise à jour d'un serveur 2.2.0 en 2.3.0
+
+Données conservées (passages, comptes, journal). Au premier démarrage, la durée de 365 jours est
+posée **avec un préavis de 7 jours** : aucune purge pendant 7 jours, puis, en une fois, purge
+tracée de ce qui dépasse 365 jours (allonger la durée avant si nécessaire). Installer
+`barbacane-syslog`, les unités `barbacane-conservation*` et `barbacane-syslog*` et le nouveau
+modèle de pare-feu (ensemble `syslog`) : l'ISO 2.3.0 le fait. Retour en 2.2.0 non pris en charge
+après la mise à jour (journal de schéma 2, signalé par la 2.2.0).
 
 ## 10.8 Sauvegarde et restauration
 
@@ -717,6 +751,10 @@ barbacane-sauvegarde cles-destinataire DOSSIER
 sudo barbacane-sauvegarde creer --destination /media/sauvegarde --garder 14
 ```
 
+   Les sauvegardes du support plus anciennes que la **durée de conservation** sont alors purgées
+   (inscrit au journal). Monter chaque support au moins une fois par mois et lancer
+   `sudo barbacane-sauvegarde purger --destination /media/sauvegarde`.
+
 4. Vérifier ou restaurer, avec la clé privée sortie du coffre et le certificat de signature
    consigné :
 
@@ -725,7 +763,8 @@ barbacane-sauvegarde verifier  --archive FICHIER --cle-privee CLE --signataire C
 barbacane-sauvegarde restaurer --archive FICHIER --cle-privee CLE --signataire CERT
 ```
 
-La restauration contrôle tout (empreinte, déchiffrement, signature, manifeste) **avant** d'écrire.
+La restauration contrôle tout (empreinte, déchiffrement, signature, manifeste) **avant** d'écrire ;
+au redémarrage suivant, la tâche de conservation purge ce qui a dépassé la durée.
 La sauvegarde planifiée est prévue (feuille de route) : lancez-la à la main.
 
 # 11. Console au quotidien
